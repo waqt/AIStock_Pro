@@ -84,9 +84,16 @@ async def startup_event():
 
     logger.info("[✅] System startup sequence complete.")
 
+from fastapi.responses import RedirectResponse
+
 @app.get("/")
+async def root():
+    """便捷重定向到前端主页"""
+    return RedirectResponse(url="/static/index.html")
+
+@app.get("/health")
 async def health_check():
-    return {"status": "healthy", "architecture": "DDD / Clean"}
+    return {"status": "healthy", "architecture": "DDD / Clean V5.0"}
 
 if __name__ == "__main__":
     import uvicorn

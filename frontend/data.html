@@ -270,20 +270,26 @@
         }
 
         async function triggerSync(type) {
-            addLog(`指令下达: ${type}`, 'info');
             try {
                 const res = await fetch('/api/data/sync/daily/auto', { 
                     method: 'POST', 
                     headers: {'Content-Type':'application/json'},
-                    body: JSON.stringify({type})
+                    body: JSON.stringify({ type: type }) // 必须发送 Body，否则 422
                 });
+                
+                if (!res.ok) {
+                    const errorData = await res.json();
+                    throw new Error(errorData.detail || '请求失败');
+                }
+
                 const data = await res.json();
                 if(data.task_id) {
                     document.getElementById('task-id-display').innerText = `ID: ${data.task_id.substring(0,8)}`;
-                    addLog(`任务链激活成功`, 'success');
+                    addLog(`任务链激活成功: ${type}`, 'success');
                 }
             } catch (e) {
                 addLog(`启动异常: ${e.message}`, 'error');
+                console.error("Sync Error:", e);
             }
         }
 

@@ -8,6 +8,7 @@ class PositionResponse(BaseModel):
     stock_name: Optional[str]
     volume: float
     avg_cost: float
+    current_price: Optional[float] = 0.0
     market_value: float
     profit_loss: float
     profit_loss_ratio: float
