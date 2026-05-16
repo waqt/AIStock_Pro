@@ -5,6 +5,7 @@ from sqlalchemy import select, update, delete, desc
 from app.core.database import async_session
 from app.models.models import TaskDefinition, TaskExecution
 from app.core.task_manager import task_manager
+from app.core.scheduler import scheduler
 from app.core.logger import logger
 from pydantic import BaseModel
 
@@ -39,8 +40,9 @@ async def update_task_definition(code: str, req: TaskUpdateRequest):
         
         if req.cron_expr is not None: defn.cron_expr = req.cron_expr
         if req.is_enabled is not None: defn.is_enabled = req.is_enabled
-        
+
         await db.commit()
+        await scheduler.refresh_job(code)  # 同步更新调度器
         return {"status": "success"}
 
 @router.get("/executions/active")
@@ -91,21 +93,43 @@ async def stop_task_execution(exec_id: str):
 
 @router.delete("/history")
 async def clear_history(
-    days_ago: Optional[int] = Query(None), 
-    ids: Optional[List[str]] = Query(None)
+    days_ago: Optional[int] = Query(None),
+    ids: Optional[List[str]] = Query(None),
+    all: Optional[bool] = Query(False)
 ):
-    """批量清理历史记录"""
+    """批量清理历史记录。支持按天数、按ID列表、或全部清理"""
     async with async_session() as db:
-        stmt = delete(TaskExecution).where(TaskExecution.status.notin_(["RUNNING", "PENDING", "STOPPING"]))
-        
+        stmt = delete(TaskExecution).where(
+            TaskExecution.status.notin_(["RUNNING", "STOPPING"])
+        )
+
         if ids:
             stmt = stmt.where(TaskExecution.id.in_(ids))
         elif days_ago is not None:
             cutoff = datetime.now() - timedelta(days=days_ago)
             stmt = stmt.where(TaskExecution.start_time < cutoff)
-        else:
-            raise HTTPException(status_code=400, detail="Must provide ids or days_ago")
-            
-        await db.execute(stmt)
+        elif not all:
+            raise HTTPException(status_code=400, detail="Must provide ids, days_ago, or all=true")
+
+        result = await db.execute(stmt)
         await db.commit()
-        return {"status": "cleared"}
+        return {"status": "cleared", "deleted": result.rowcount}
+
+# --- Scheduler Endpoints (V5.0) ---
+
+@router.get("/scheduler/jobs")
+async def list_scheduled_jobs():
+    """获取所有定时作业及其下次运行时间"""
+    return scheduler.list_jobs()
+
+@router.post("/scheduler/refresh")
+async def refresh_all_schedules():
+    """重新从 DB 加载所有定时作业"""
+    await scheduler.refresh_all()
+    return {"status": "refreshed", "jobs": scheduler.list_jobs()}
+
+@router.post("/scheduler/refresh/{code}")
+async def refresh_single_schedule(code: str):
+    """刷新单个定时作业"""
+    await scheduler.refresh_job(code)
+    return {"status": "refreshed", "code": code}

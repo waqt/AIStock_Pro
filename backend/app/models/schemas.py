@@ -16,16 +16,29 @@ class PositionResponse(BaseModel):
     
     model_config = ConfigDict(from_attributes=True)
 
-class TaskStatusResponse(BaseModel):
+class TaskExecutionResponse(BaseModel):
     id: str
-    task_type: str
+    task_code: str
+    params: Optional[Dict[str, Any]] = None
     status: str
     progress: int
-    current_step: Optional[str]
-    result_summary: Optional[str]
-    error_msg: Optional[str]
-    created_at: datetime
-    
+    pid: Optional[int] = None
+    result_msg: Optional[str] = None
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+class TaskDefinitionResponse(BaseModel):
+    code: str
+    name: str
+    description: Optional[str] = None
+    cron_expr: Optional[str] = None
+    is_enabled: bool
+    module_path: Optional[str] = None
+    created_at: Optional[datetime] = None
+
     model_config = ConfigDict(from_attributes=True)
 
 class IndicatorResponse(BaseModel):

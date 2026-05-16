@@ -17,7 +17,7 @@
             <!-- 顶栏 (由 ui.js 填充) -->
             <div class="top-bar"></div>
 
-            <!-- 核心工作区 -->
+            <!-- 核心工作区 (使用全局 workspace 网格) -->
             <div class="workspace">
                 <!-- 左侧：调仓建议区 -->
                 <div class="panel">
@@ -29,10 +29,10 @@
                             <thead>
                                 <tr>
                                     <th>股票代码</th>
-                                    <th>操作建议</th>
-                                    <th style="text-align: right;">建议仓位</th>
-                                    <th style="text-align: right;">当前价格</th>
-                                    <th style="text-align: right;">综合评分</th>
+                                    <th>建议</th>
+                                    <th style="text-align: right;">仓位</th>
+                                    <th style="text-align: right;">现价</th>
+                                    <th style="text-align: right;">评分</th>
                                     <th style="text-align: right;">执行</th>
                                 </tr>
                             </thead>
@@ -46,14 +46,13 @@
                 <!-- 右侧：深度投研区 -->
                 <div class="panel">
                     <div class="panel-header">
-                        <span class="panel-title">全球供应链动态 (AI Intelligence)</span>
+                        <span class="panel-title">AI 产业链深度洞察 (Supply Chain)</span>
                     </div>
-                    <div class="panel-body" id="research-container">
+                    <div class="panel-body" id="research-container" style="overflow-y: auto;">
                         <!-- 由 app.js 填充 -->
                     </div>
                 </div>
             </div>
-
         </main>
     </div>
 
@@ -62,6 +61,5 @@
     <script src="js/ui.js"></script>
     <script src="js/common.js"></script>
     <script src="js/app.js"></script>
-</body>
 </body>
 </html>

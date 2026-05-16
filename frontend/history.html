@@ -2,74 +2,243 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>AIStock | 交易审计</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIStock | 任务执行历史</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
-<body>
+<body data-page-id="history">
     <div class="app-container">
-        <aside class="sidebar">
-            <div class="brand-area"><div class="brand-title">AI STOCK</div></div>
-            <div class="nav-item" onclick="location.href='index.html'"><i class="fas fa-terminal"></i><span>指挥部概览</span></div>
-            <div class="nav-item" onclick="location.href='positions.html'"><i class="fas fa-search-dollar"></i><span>持仓管理</span></div>
-            <div class="nav-item" onclick="location.href='suggestions.html'"><i class="fas fa-exchange-alt"></i><span>调仓建议</span></div>
-            <div class="nav-item" onclick="location.href='research.html'"><i class="fas fa-brain"></i><span>AI 投研</span></div>
-            <div class="nav-item active" onclick="location.href='history.html'"><i class="fas fa-history"></i><span>交易审计</span></div>
-            <div class="nav-item" onclick="location.href='data.html'"><i class="fas fa-server"></i><span>数据中心</span></div>
-            <div class="nav-item" onclick="location.href='import.html'"><i class="fas fa-file-import"></i><span>智能导入</span></div>
-            <div style="margin-top: auto;"><div class="nav-item"><i class="fas fa-cog"></i><span>系统设置</span></div></div>
-        </aside>
+        <aside class="sidebar"></aside>
 
         <main class="main-content">
-            <div class="top-bar">
-                <div class="status-item"><span class="status-label">已审计成交记录:</span> <span class="status-value" id="history-count">0</span></div>
-            </div>
+            <div class="top-bar"></div>
 
             <div class="workspace" style="grid-template-columns: 1fr;">
                 <div class="panel">
-                    <div class="panel-header"><span class="panel-title">历史交易记录 (Audit Trail)</span></div>
-                    <div class="panel-body">
+                    <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center;">
+                        <span class="panel-title">任务执行历史 (Execution History)</span>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <select id="filter-code" style="background: var(--bg-deep); border: 1px solid var(--border-color); color: var(--text-normal); padding: 4px 8px; border-radius: 4px; font-size: 12px;">
+                                <option value="">全部任务类型</option>
+                            </select>
+                            <button class="btn-action" onclick="refreshHistory()" style="font-size: 11px;">
+                                <i class="fas fa-sync"></i> 刷新
+                            </button>
+                            <button class="btn-action" onclick="clearOldHistory()" style="font-size: 11px; color: var(--accent-red);">
+                                <i class="fas fa-trash"></i> 清理 7 天前
+                            </button>
+                        </div>
+                    </div>
+                    <div class="panel-body" style="padding: 0;">
                         <table>
                             <thead>
                                 <tr>
-                                    <th>交易时间</th>
-                                    <th>标的</th>
-                                    <th>操作</th>
-                                    <th style="text-align: right;">成交价</th>
-                                    <th style="text-align: right;">成交数量</th>
-                                    <th style="text-align: right;">成交总额</th>
-                                    <th>策略标记</th>
+                                    <th style="width: 180px;">启动时间</th>
+                                    <th>任务名称</th>
+                                    <th style="width: 80px;">状态</th>
+                                    <th style="text-align: right; width: 60px;">进度</th>
+                                    <th style="width: 90px;">耗时</th>
+                                    <th>执行摘要</th>
+                                    <th style="text-align: center; width: 60px;">操作</th>
                                 </tr>
                             </thead>
-                            <tbody id="history-list"></tbody>
+                            <tbody id="history-list">
+                                <tr><td colspan="7" style="text-align: center; color: var(--text-micro); padding: 40px;">加载中...</td></tr>
+                            </tbody>
                         </table>
+                    </div>
+                    <div class="panel-footer" style="display: flex; justify-content: center; gap: 8px; padding: 10px; border-top: 1px solid var(--border-thin);" id="pagination">
                     </div>
                 </div>
             </div>
         </main>
     </div>
+
+    <script src="js/ui.js"></script>
+    <script src="js/common.js"></script>
     <script>
-        const API_BASE = '/api';
-        async function loadHistory() {
-            const res = await fetch(`${API_BASE}/positions/transactions/`);
-            const data = await res.json();
-            document.getElementById('history-count').textContent = data.length;
-            const list = document.getElementById('history-list');
-            list.innerHTML = data.map(t => `
-                <tr>
-                    <td style="color: var(--text-micro); font-size: 11px;">${t.trade_date}</td>
-                    <td class="ticker">${t.stock_name}<br><small style="color:var(--text-micro);">${t.stock_code}</small></td>
-                    <td style="color: ${t.trade_type === 'BUY' ? 'var(--accent-green)' : 'var(--accent-red)'}; font-weight: bold;">
-                        ${t.trade_type === 'BUY' ? '买入' : '卖出'}
-                    </td>
-                    <td style="text-align: right; font-family: var(--font-mono);">¥${Number(t.price).toFixed(2)}</td>
-                    <td style="text-align: right; font-family: var(--font-mono);">${Number(t.shares).toLocaleString()}</td>
-                    <td style="text-align: right; font-family: var(--font-mono);">¥${Number(t.amount).toLocaleString()}</td>
-                    <td style="font-size: 11px; color: var(--text-dim);">${t.notes || 'AI 导入'}</td>
-                </tr>
-            `).join('');
+        let currentPage = 1;
+        const PAGE_SIZE = 20;
+        let currentFilter = '';
+
+        // ── 加载任务定义列表用于筛选下拉 ──
+        async function loadFilterOptions() {
+            try {
+                const res = await fetch(`${API_BASE}/system/tasks/definitions`);
+                const defs = await res.json();
+                const select = document.getElementById('filter-code');
+                defs.forEach(d => {
+                    const opt = document.createElement('option');
+                    opt.value = d.code;
+                    opt.textContent = `${d.name} (${d.code})`;
+                    select.appendChild(opt);
+                });
+                select.addEventListener('change', () => {
+                    currentFilter = select.value;
+                    currentPage = 1;
+                    refreshHistory();
+                });
+            } catch (e) {
+                console.error('加载任务定义失败:', e);
+            }
         }
-        window.onload = loadHistory;
+
+        // ── 刷新执行历史 ──
+        async function refreshHistory() {
+            const list = document.getElementById('history-list');
+            list.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-micro); padding: 40px;">加载中...</td></tr>';
+
+            try {
+                let url = `${API_BASE}/system/tasks/executions/history?page=${currentPage}&limit=${PAGE_SIZE}`;
+                if (currentFilter) url += `&task_code=${encodeURIComponent(currentFilter)}`;
+
+                const res = await fetch(url);
+                const tasks = await res.json();
+
+                if (!tasks.length) {
+                    list.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-micro); padding: 40px;">暂无执行记录</td></tr>';
+                    document.getElementById('pagination').innerHTML = '';
+                    return;
+                }
+
+                list.innerHTML = tasks.map(t => {
+                    const statusColor = {
+                        'SUCCESS': 'var(--accent-green)',
+                        'FAILED': 'var(--accent-red)',
+                        'CANCELLED': 'var(--accent-orange)',
+                        'STOPPING': 'var(--accent-orange)'
+                    }[t.status] || 'var(--text-dim)';
+
+                    const statusText = {
+                        'SUCCESS': '成功',
+                        'FAILED': '失败',
+                        'CANCELLED': '已取消',
+                        'STOPPING': '终止中'
+                    }[t.status] || t.status;
+
+                    let duration = '—';
+                    if (t.start_time && t.end_time) {
+                        const ms = new Date(t.end_time) - new Date(t.start_time);
+                        if (ms < 1000) duration = `${ms}ms`;
+                        else if (ms < 60000) duration = `${(ms/1000).toFixed(1)}s`;
+                        else duration = `${Math.floor(ms/60000)}m ${Math.floor((ms%60000)/1000)}s`;
+                    }
+
+                    const startTime = t.start_time ? new Date(t.start_time).toLocaleString('zh-CN') : '—';
+
+                    return `
+                        <tr>
+                            <td style="font-size: 11px; color: var(--text-micro);">${startTime}</td>
+                            <td>
+                                <span style="font-weight: 600;">${t.task_code}</span>
+                            </td>
+                            <td>
+                                <span style="color: ${statusColor}; font-weight: bold; font-size: 11px;">${statusText}</span>
+                            </td>
+                            <td style="text-align: right; font-family: var(--font-mono);">
+                                <div style="height: 3px; background: var(--border-color); border-radius: 2px; margin-top: 4px;">
+                                    <div style="width: ${t.progress || 0}%; height: 100%; background: ${statusColor}; border-radius: 2px;"></div>
+                                </div>
+                                <span style="font-size: 10px; color: var(--text-micro);">${t.progress || 0}%</span>
+                            </td>
+                            <td style="font-family: var(--font-mono); font-size: 11px; color: var(--text-dim);">${duration}</td>
+                            <td style="font-size: 11px; color: var(--text-dim); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${t.result_msg || '—'}</td>
+                            <td style="text-align: center;">
+                                <button class="btn-action" style="padding: 2px 8px; font-size: 10px;" onclick="viewDetail('${t.id}')" title="查看详情">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+
+                // 分页
+                const hasMore = tasks.length === PAGE_SIZE;
+                document.getElementById('pagination').innerHTML = `
+                    <button class="btn-action" ${currentPage <= 1 ? 'disabled' : ''} onclick="goPage(${currentPage - 1})" style="font-size: 11px;">
+                        <i class="fas fa-chevron-left"></i> 上一页
+                    </button>
+                    <span style="color: var(--text-dim); font-size: 11px; line-height: 28px;">第 ${currentPage} 页</span>
+                    <button class="btn-action" ${!hasMore ? 'disabled' : ''} onclick="goPage(${currentPage + 1})" style="font-size: 11px;">
+                        下一页 <i class="fas fa-chevron-right"></i>
+                    </button>
+                `;
+            } catch (e) {
+                list.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--accent-red); padding: 40px;">加载失败: ${e.message}</td></tr>`;
+            }
+        }
+
+        function goPage(page) {
+            currentPage = page;
+            refreshHistory();
+        }
+
+        // ── 详情弹窗 ──
+        async function viewDetail(execId) {
+            try {
+                const res = await fetch(`${API_BASE}/system/tasks/executions/history?page=1&limit=100`);
+                const tasks = await res.json();
+                const t = tasks.find(x => x.id === execId);
+                if (!t) { alert('未找到该记录'); return; }
+
+                const startTime = t.start_time ? new Date(t.start_time).toLocaleString('zh-CN') : '—';
+                const endTime = t.end_time ? new Date(t.end_time).toLocaleString('zh-CN') : '—';
+                let duration = '—';
+                if (t.start_time && t.end_time) {
+                    const ms = new Date(t.end_time) - new Date(t.start_time);
+                    duration = ms < 1000 ? `${ms}ms` : ms < 60000 ? `${(ms/1000).toFixed(1)}s` : `${Math.floor(ms/60000)}m ${Math.floor((ms%60000)/1000)}s`;
+                }
+
+                alert(
+                    `━━━ 任务执行详情 ━━━\n` +
+                    `任务代码: ${t.task_code}\n` +
+                    `执行 ID: ${t.id}\n` +
+                    `状态: ${t.status}\n` +
+                    `进度: ${t.progress || 0}%\n` +
+                    `PID: ${t.pid || '—'}\n` +
+                    `启动: ${startTime}\n` +
+                    `结束: ${endTime}\n` +
+                    `耗时: ${duration}\n` +
+                    `参数: ${JSON.stringify(t.params || {})}\n` +
+                    `━━━━━━━━━━━━━━━━\n` +
+                    `摘要: ${t.result_msg || '—'}`
+                );
+            } catch (e) {
+                alert('加载详情失败: ' + e.message);
+            }
+        }
+
+        // ── 清理功能 ──
+        async function clearOldHistory() {
+            const choice = prompt('清理历史记录：\n输入数字 = 清理N天前的记录\n输入 "all" = 清理全部\n输入 "cancel" = 取消', '7');
+            if (!choice || choice === 'cancel') return;
+
+            try {
+                let url;
+                if (choice.toLowerCase() === 'all') {
+                    if (!confirm('确认删除全部历史记录？此操作不可撤销！')) return;
+                    url = `${API_BASE}/system/tasks/history?all=true`;
+                } else {
+                    const days = parseInt(choice);
+                    if (isNaN(days) || days < 0) { alert('请输入有效数字'); return; }
+                    if (!confirm(`确认删除 ${days} 天前的记录？`)) return;
+                    url = `${API_BASE}/system/tasks/history?days_ago=${days}`;
+                }
+                const res = await fetch(url, { method: 'DELETE' });
+                const data = await res.json();
+                alert(`已清理 ${data.deleted || 0} 条记录`);
+                currentPage = 1;
+                refreshHistory();
+            } catch (e) {
+                alert('清理失败: ' + e.message);
+            }
+        }
+
+        window.onload = () => {
+            loadFilterOptions();
+            refreshHistory();
+        };
     </script>
 </body>
 </html>

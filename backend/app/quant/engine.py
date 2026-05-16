@@ -1,148 +1,249 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, delete
-from datetime import date, datetime
-import json
+from sqlalchemy import select, update, delete, insert
+from sqlalchemy.dialects.mysql import insert as mysql_insert
+from datetime import date, datetime, timedelta
 import asyncio
 
+from app.core.database import async_session
 from app.core.data_service import data_service
 from app.quant.indicators import Indicators
 from app.quant.patterns import Patterns
-from app.models.models import StockIndicator, Position, MarketData
+from app.models.models import StockIndicator, Position, MarketData, TaskExecution
 from app.core.logger import logger
 from app.core.task_manager import task_manager
 
+
 class QuantEngine:
-    """逻辑链量化决策引擎"""
+    """V5.1 量化决策引擎 — 增量同步 + 批量 upsert + 节点追踪"""
 
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def analyze_stock(self, stock_code: str, task_id: str = None, mode: str = "AUTO", db_session=None):
-        """执行全栈逻辑分析 (支持原子事务)"""
-        db = db_session or self.db
-        
-        # 0. 自动感知模式
+    # ═══════════════════════════════════════════
+    # 行情数据同步
+    # ═══════════════════════════════════════════
+
+    async def sync_market_data(self, stock_code: str, mode: str = "AUTO") -> int:
+        """
+        同步单股日线数据 (支持增量/全量感知)
+        返回: 新增记录数
+        """
+        # 1. 判断同步模式
+        days_to_fetch = 500
         if mode == "AUTO":
-            # ... (保持原有感知逻辑，将 self.db 换成 db)
-            res = await db.execute(
-                select(StockIndicator.analysis_date)
-                .where(StockIndicator.stock_code == stock_code)
-                .order_by(StockIndicator.analysis_date.desc())
+            res = await self.db.execute(
+                select(MarketData.trade_date)
+                .where(MarketData.stock_code == stock_code)
+                .order_by(MarketData.trade_date.desc())
                 .limit(1)
             )
             latest_date = res.scalars().first()
-            # ... (中间逻辑略)
             if latest_date:
-                gap_days = (date.today() - latest_date).days
-                mode = "INCREMENTAL" if gap_days < 15 else "AUTO_FULL"
-            else:
-                mode = "AUTO_FULL"
+                gap = (date.today() - latest_date).days
+                if gap <= 1:
+                    return 0  # 已是最新
+                days_to_fetch = max(gap + 5, 10)  # 多抓几天防止节假日断层
+            # else: 无历史数据 → 全量抓取 (days=500)
 
-        try:
-            # 1. 获取行情数据
-            df = await data_service.get_daily_data(stock_code, days=500 if mode == "AUTO_FULL" else 60)
-            if df.empty: return None
+        # 2. 抓取行情
+        df = await data_service.get_daily_data(stock_code, days=days_to_fetch)
+        if df.empty:
+            return 0
 
-            # 2. 计算技术指标
-            df = Indicators.calculate_all(df)
-            findings = Patterns.scan(df)
-            
-            latest = df.iloc[-1]
-            indicator_snapshot = {
-                "price": float(latest['close']),
-                "ma5": float(latest['ma5']),
-                "ma20": float(latest['ma20']),
-                "rsi": float(latest['rsi']),
-                "macd_hist": float(latest['macd_hist'])
-            }
+        # 3. 过滤出数据库中缺失的日期
+        existing_dates = set()
+        res = await self.db.execute(
+            select(MarketData.trade_date).where(MarketData.stock_code == stock_code)
+        )
+        for row in res.scalars().all():
+            existing_dates.add(row)
 
-            # 3. 持仓表更新 (使用事务 DB)
-            price = float(latest['close'])
-            pos_result = await db.execute(select(Position).where(Position.stock_code == stock_code))
-            position = pos_result.scalars().first()
-            if position:
-                position.current_price = price
-                position.market_value = float(position.volume) * price
-                position.updated_at = datetime.now()
+        new_rows = []
+        for _, row in df.iterrows():
+            td = row['trade_date']
+            if hasattr(td, 'date'):
+                td = td.date()
+            if td not in existing_dates:
+                new_rows.append({
+                    "stock_code": stock_code,
+                    "trade_date": td,
+                    "open": float(row['open']),
+                    "high": float(row['high']),
+                    "low": float(row['low']),
+                    "close": float(row['close']),
+                    "volume": float(row['volume']),
+                    "amount": float(row.get('amount', 0)),
+                    "change_pct": float(row.get('change_pct', 0)) if row.get('change_pct') and str(row.get('change_pct')) != 'nan' else None
+                })
 
-            # 4. 覆盖式写入指标库 (在事务内)
-            await db.execute(delete(StockIndicator).where(
+        # 4. 批量 upsert
+        if new_rows:
+            await self.db.execute(
+                mysql_insert(MarketData).values(new_rows).prefix_with("IGNORE")
+            )
+            logger.info(f"[+] {stock_code}: synced {len(new_rows)} new daily records")
+        return len(new_rows)
+
+    # ═══════════════════════════════════════════
+    # 指标计算
+    # ═══════════════════════════════════════════
+
+    async def calculate_indicators(self, stock_code: str) -> dict:
+        """计算单股全部技术指标并存储"""
+        res = await self.db.execute(
+            select(MarketData)
+            .where(MarketData.stock_code == stock_code)
+            .order_by(MarketData.trade_date.asc())
+        )
+        rows = res.scalars().all()
+        if not rows:
+            return {}
+
+        import pandas as pd
+        df = pd.DataFrame([{
+            'trade_date': r.trade_date,
+            'open': r.open, 'high': r.high, 'low': r.low, 'close': r.close,
+            'volume': r.volume, 'amount': r.amount
+        } for r in rows])
+
+        df = Indicators.calculate_all(df)
+        findings = Patterns.scan(df)
+        latest = df.iloc[-1]
+
+        indicator_snapshot = {
+            "price": float(latest['close']),
+            "ma5": float(latest['ma5']) if pd.notna(latest.get('ma5')) else None,
+            "ma10": float(latest['ma10']) if pd.notna(latest.get('ma10')) else None,
+            "ma20": float(latest['ma20']) if pd.notna(latest.get('ma20')) else None,
+            "ma60": float(latest['ma60']) if pd.notna(latest.get('ma60')) else None,
+            "ma120": float(latest['ma120']) if pd.notna(latest.get('ma120')) else None,
+            "ma250": float(latest['ma250']) if pd.notna(latest.get('ma250')) else None,
+            "rsi": float(latest['rsi']) if pd.notna(latest.get('rsi')) else None,
+            "macd": float(latest['macd']) if pd.notna(latest.get('macd')) else None,
+            "macd_signal": float(latest['macd_signal']) if pd.notna(latest.get('macd_signal')) else None,
+            "macd_hist": float(latest['macd_hist']) if pd.notna(latest.get('macd_hist')) else None,
+            "bb_upper": float(latest['bb_upper']) if pd.notna(latest.get('bb_upper')) else None,
+            "bb_mid": float(latest['bb_mid']) if pd.notna(latest.get('bb_mid')) else None,
+            "bb_lower": float(latest['bb_lower']) if pd.notna(latest.get('bb_lower')) else None,
+            "v_ma5": float(latest['v_ma5']) if pd.notna(latest.get('v_ma5')) else None,
+            "v_ma10": float(latest['v_ma10']) if pd.notna(latest.get('v_ma10')) else None,
+            "v_ma20": float(latest['v_ma20']) if pd.notna(latest.get('v_ma20')) else None,
+        }
+
+        # 覆盖式写入今日指标
+        await self.db.execute(
+            delete(StockIndicator).where(
                 StockIndicator.stock_code == stock_code,
                 StockIndicator.analysis_date == date.today()
-            ))
+            )
+        )
+        self.db.add(StockIndicator(
+            stock_code=stock_code,
+            indicator_type="FULL_SCAN",
+            data_json=indicator_snapshot,
+            logic_chain={"findings": findings} if findings else None,
+            analysis_date=date.today()
+        ))
 
-            db.add(StockIndicator(
-                stock_code=stock_code,
-                indicator_type="HYBRID_LOGIC",
-                data_json=indicator_snapshot,
-                logic_chain={"findings": findings},
-                analysis_date=date.today()
-            ))
-            
-            # 注意：不再局部 commit，交由外部 batch_analyze 控制
-            logger.info(f"[+] {mode} analysis complete for {stock_code}")
-            return findings
-        except Exception as e:
-            logger.error(f"Analysis error for {stock_code}: {str(e)}")
-            raise e
+        return {"snapshot": indicator_snapshot, "findings": findings}
 
-    async def batch_analyze_positions(self, task_id: str = None, mode: str = "technical"):
-        """批量同步持仓数据 (V3.0 原子回滚版)"""
-        logger.info(f"[*] Starting batch analysis (Task: {task_id}, Mode: {mode})")
-        
-        # 1. 获取所有待处理持仓
+    # ═══════════════════════════════════════════
+    # 更新持仓损益
+    # ═══════════════════════════════════════════
+
+    async def update_position_pnl(self, stock_code: str) -> bool:
+        """根据最新行情更新单股持仓的现价和盈亏"""
+        res = await self.db.execute(
+            select(MarketData)
+            .where(MarketData.stock_code == stock_code)
+            .order_by(MarketData.trade_date.desc())
+            .limit(1)
+        )
+        latest = res.scalars().first()
+        if not latest:
+            return False
+
+        price = latest.close
+        pos_res = await self.db.execute(select(Position).where(Position.stock_code == stock_code))
+        position = pos_res.scalars().first()
+        if position:
+            position.current_price = price
+            position.market_value = float(position.volume) * price
+            position.profit_loss = position.market_value - (float(position.volume) * float(position.avg_cost))
+            if float(position.avg_cost) > 0:
+                position.profit_loss_ratio = (position.profit_loss / (float(position.volume) * float(position.avg_cost))) * 100
+            position.updated_at = datetime.now()
+        return True
+
+    # ═══════════════════════════════════════════
+    # 批量任务入口
+    # ═══════════════════════════════════════════
+
+    async def batch_sync_and_analyze(self, exec_id: str = None, mode: str = "AUTO"):
+        """
+        批量同步 + 分析 (V5.1 节点追踪版)
+        节点: FETCHING → CALCULATING → SAVING → UPDATING_POSITIONS
+        """
         result = await self.db.execute(select(Position))
         positions = result.scalars().all()
         total = len(positions)
 
-        # 2. 开启原子事务
-        async with async_session() as db:
-            async with db.begin(): # 整个同步过程是一个大事务
-                try:
-                    for idx, pos in enumerate(positions):
-                        # 核心：允许 asyncio 切换任务，从而接收到 cancel 信号
-                        await asyncio.sleep(0) 
+        try:
+            # ── 节点 1: FETCHING ──
+            for idx, pos in enumerate(positions):
+                await asyncio.sleep(0)
+                if exec_id:
+                    await task_manager.update_progress(
+                        exec_id, int(((idx + 1) / total) * 25),
+                        f"FETCHING: {idx+1}/{total} | {pos.stock_code}"
+                    )
+                await self.sync_market_data(pos.stock_code, mode=mode)
 
-                        # 执行分析 (传入事务 session)
-                        await self.analyze_stock(pos.stock_code, task_id=task_id, mode=mode, db_session=db)
-                        
-                        # 3. 统一使用引擎接口更新进度
-                        if task_id:
-                            progress = int(((idx + 1) / total) * 100)
-                            await task_manager.update_progress(
-                                task_id, 
-                                progress, 
-                                f"分析中: {idx+1}/{total} | {pos.stock_code}"
-                            )
-                    
-                    logger.info("[✅] All sync operations committed successfully.")
-                except asyncio.CancelledError:
-                    logger.warning(f"[🛑] Task {task_id} received physical kill signal. Rolling back all changes...")
-                    await db.rollback() # 撤销所有 analyze_stock 产生的影响
-                    raise # 继续抛出让 TaskManager 标记状态
-                except Exception as e:
-                    logger.error(f"[❌] Task {task_id} failed: {e}. Rolling back...")
-                    await db.rollback()
-                    raise
-        return total
+            # ── 节点 2: CALCULATING ──
+            for idx, pos in enumerate(positions):
+                await asyncio.sleep(0)
+                if exec_id:
+                    await task_manager.update_progress(
+                        exec_id, 25 + int(((idx + 1) / total) * 25),
+                        f"CALCULATING: {idx+1}/{total} | {pos.stock_code}"
+                    )
+                await self.calculate_indicators(pos.stock_code)
 
+            # ── 节点 3: SAVING ──
+            await self.db.commit()
+            if exec_id:
+                await task_manager.update_progress(exec_id, 75, "SAVING: 落库完成")
 
-    async def sync_prices_only(self, task_id: str = None):
-        """仅同步行情价格 (V4.0 强杀支持版)"""
-        result = await self.db.execute(select(Position))
-        positions = result.scalars().all()
-        
-        if task_id:
-            await self.db.execute(
-                update(AnalysisTask).where(AnalysisTask.id == task_id).values(status="RUNNING")
-            )
+            # ── 节点 4: UPDATING_POSITIONS ──
+            for idx, pos in enumerate(positions):
+                await asyncio.sleep(0)
+                if exec_id:
+                    await task_manager.update_progress(
+                        exec_id, 75 + int(((idx + 1) / total) * 25),
+                        f"UPDATING_POSITIONS: {idx+1}/{total} | {pos.stock_code}"
+                    )
+                await self.update_position_pnl(pos.stock_code)
             await self.db.commit()
 
-        total = len(positions)
-        for idx, pos in enumerate(positions):
-            # 允许 asyncio 响应强杀信号
-            await asyncio.sleep(0)
+            logger.info("[✅] Batch sync+analyze complete.")
+        except asyncio.CancelledError:
+            logger.warning(f"[🛑] Task {exec_id} cancelled, rolling back.")
+            await self.db.rollback()
+            raise
+        except Exception as e:
+            logger.error(f"[❌] Task {exec_id} failed: {e}")
+            await self.db.rollback()
+            raise
+        return total
 
+    async def sync_prices_only(self, exec_id: str = None):
+        """仅刷新持仓价格 (轻量模式)"""
+        result = await self.db.execute(select(Position))
+        positions = result.scalars().all()
+        total = len(positions)
+
+        for idx, pos in enumerate(positions):
+            await asyncio.sleep(0)
             try:
                 df = await data_service.get_daily_data(pos.stock_code, days=1)
                 if not df.empty:
@@ -154,14 +255,14 @@ class QuantEngine:
                         pos.profit_loss_ratio = (pos.profit_loss / (float(pos.volume) * float(pos.avg_cost))) * 100
             except Exception as e:
                 logger.error(f"Failed to sync price for {pos.stock_code}: {e}")
-            
-            if task_id:
+
+            if exec_id:
                 await task_manager.update_progress(
-                    task_id, 
-                    int(((idx+1)/total)*100), 
-                    f"行情同步: {idx+1}/{total} | {pos.stock_code}"
+                    exec_id, int(((idx + 1) / total) * 100),
+                    f"PRICE_ONLY: {idx+1}/{total} | {pos.stock_code}"
                 )
-        
-        if task_id:
-            await task_manager.update_progress(task_id, 100, "行情同步完成")
+            await self.db.commit()
+
+        if exec_id:
+            await task_manager.update_progress(exec_id, 100, "行情刷新完成")
         return total

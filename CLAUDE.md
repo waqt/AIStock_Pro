@@ -72,10 +72,20 @@ AIStock_Pro/
 │       ├── common.js          # 全局常量 API_BASE + 任务轮询 + 账户摘要
 │       └── app.js             # 指挥中心业务逻辑
 └── docs/
-    ├── architecture_v2.md     # 架构设计文档
-    ├── roadmap_v2.md          # 迭代路线图 (V1.0 → V3.0)
-    ├── data_sync_spec.md      # 数据同步规格书
-    └── engineering_standards.md # 工程规范
+    ├── README.md                      # 文档索引 (导航入口)
+    ├── 01_Requirements/               # 需求与路线图
+    │   ├── MASTER_STRATEGY.md         #   产品迭代路线图 (V1.0→V3.0)
+    │   └── 2026-05-16_Task_V5_Spec.md #   任务引擎 V5.0 需求
+    ├── 02_Architecture/               # 架构设计
+    │   ├── architecture_v2.md         #   系统核心拓扑与 DDD 设计
+    │   └── Task_V5_Engine_Design.md   #   任务引擎 V5.0 详细设计
+    ├── 03_API_Specifications/         # API 与模块规格
+    │   └── data_sync_spec.md          #   数据同步模块规格书 V2.0
+    ├── 04_Frontend_UI/                # 前端设计
+    ├── 05_Engineering/                # 工程规范
+    │   └── engineering_standards.md   #   核心工程标准 V2.0
+    ├── 06_Quant_Research/             # 量化研究
+    └── Archive/                       # 历史归档
 ```
 
 ## 架构约束 (硬规则)

@@ -8,10 +8,9 @@ const UI_COMPONENTS = {
         const menuItems = [
             { id: 'index', icon: 'fas fa-terminal', label: '指挥部概览', url: 'index.html' },
             { id: 'positions', icon: 'fas fa-search-dollar', label: '持仓管理', url: 'positions.html' },
-            { id: 'suggestions', icon: 'fas fa-exchange-alt', label: '调仓建议', url: 'suggestions.html' },
-            { id: 'research', icon: 'fas fa-brain', label: 'AI 投研', url: 'research.html' },
-            { id: 'history', icon: 'fas fa-history', label: '交易审计', url: 'history.html' },
             { id: 'data', icon: 'fas fa-server', label: '数据中心', url: 'data.html' },
+            { id: 'definitions', icon: 'fas fa-tasks', label: '任务定义', url: 'definitions.html' },
+            { id: 'history', icon: 'fas fa-history', label: '执行历史', url: 'history.html' },
             { id: 'import', icon: 'fas fa-file-import', label: '智能导入', url: 'import.html' }
         ];
 

@@ -10,6 +10,7 @@ from app.core.logger import logger
 from app.models.models import TaskExecution
 from sqlalchemy import update, select
 from app.core.task_manager import task_manager
+from app.core.scheduler import scheduler
 import app.quant.tasks # 显式导入以触发装饰器
 
 # 导入领域路由器
@@ -30,16 +31,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 2. 挂载前端静态资源
-frontend_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend"))
-if os.path.exists(frontend_path):
-    app.mount("/static", StaticFiles(directory=frontend_path), name="static")
-    logger.info(f"[✅] Frontend mounted at: {frontend_path}")
-
-# 3. 注册业务路由
+# 2. 注册业务路由 (优先级最高)
 app.include_router(tasks.router)
 app.include_router(data.router)
 app.include_router(positions.router)
+
+# 3. 挂载前端静态资源 (作为兜底)
+frontend_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend"))
+if os.path.exists(frontend_path):
+    app.mount("/", StaticFiles(directory=frontend_path, html=True), name="static")
+    logger.info(f"[✅] Frontend mounted at root from: {frontend_path}")
 
 @app.on_event("startup")
 async def startup_event():
@@ -59,7 +60,13 @@ async def startup_event():
     except Exception as e:
         logger.error(f"[❌] Task Registration failed: {e}")
 
-    # 3. 启动自愈 (按照用户要求标记为 FAILED)
+    # 3. 启动定时调度器 (V5.0 APScheduler)
+    try:
+        await scheduler.start()
+    except Exception as e:
+        logger.error(f"[❌] Scheduler start failed: {e}")
+
+    # 4. 启动自愈 (按照用户要求标记为 FAILED)
     try:
         async with async_session() as db:
             res = await db.execute(
@@ -84,12 +91,14 @@ async def startup_event():
 
     logger.info("[✅] System startup sequence complete.")
 
-from fastapi.responses import RedirectResponse
-
 @app.get("/")
 async def root():
-    """便捷重定向到前端主页"""
-    return RedirectResponse(url="/static/index.html")
+    """欢迎页面 (现在由 StaticFiles 兜底，此接口仅作为元数据展示)"""
+    return {"message": "AIStock Pro Engine V5.1 Running"}
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    await scheduler.shutdown()
 
 @app.get("/health")
 async def health_check():

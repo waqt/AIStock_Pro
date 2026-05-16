@@ -1,299 +1,150 @@
 :root {
-    --bg-main: #0a0a0a;
-    --bg-side: #050505;
-    --bg-panel: #111;
-    --border-thin: #333;
-    --accent-blue: #00a2ff;
-    --accent-green: #2ecc71;
-    --accent-red: #e74c3c;
-    --accent-gold: #f1c40f;
-    --text-main: #e0e0e0;
-    --text-dim: #bbb;
-    --text-micro: #999;
-    --font-main: "PingFang SC", "Microsoft YaHei", "Source Han Sans CN", sans-serif;
-    --font-mono: "JetBrains Mono", Consolas, monospace;
+    --bg-deep: #050505;
+    --bg-panel: rgba(18, 18, 18, 0.8);
+    --accent-primary: #007bff;
+    --accent-green: #2ed573;
+    --accent-red: #ff4757;
+    --accent-gold: #ffa502;
+    --accent-blue: #70a1ff;
+    --text-main: #ffffff;
+    --text-dim: #a4b0be;
+    --text-micro: #57606f;
+    --border-color: rgba(255, 255, 255, 0.08);
+    --font-main: 'Outfit', 'Inter', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+* { box-sizing: border-box; }
 
 body {
-    background-color: var(--bg-main);
+    background-color: var(--bg-deep);
     color: var(--text-main);
     font-family: var(--font-main);
-    font-size: 13px;
-    line-height: 1.5;
-    height: 100vh;
-    overflow: hidden;
+    margin: 0; padding: 0;
+    overflow: hidden; /* 由 app-container 处理滚动 */
 }
 
+/* 布局核心 */
 .app-container {
     display: flex;
     height: 100vh;
     width: 100vw;
 }
 
-/* 侧边栏优化 */
+/* 侧边栏样式 */
 .sidebar {
-    width: 160px;
-    background-color: var(--bg-side);
-    border-right: 1px solid var(--border-thin);
+    width: 240px;
+    background: #000;
+    border-right: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
-    padding: 10px 0;
+    padding: 20px 0;
     flex-shrink: 0;
 }
 
-.brand-area {
-    padding: 15px 20px;
-    margin-bottom: 20px;
-    border-bottom: 1px solid var(--border-thin);
-}
-
-.brand-title {
-    font-size: 16px;
-    font-weight: bold;
-    color: var(--accent-blue);
-    letter-spacing: 1px;
+.brand-area { padding: 0 25px 30px; }
+.brand-title { 
+    font-size: 20px; font-weight: 800; letter-spacing: 2px; color: #fff;
+    background: linear-gradient(45deg, #fff, #555); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
 }
 
 .nav-item {
-    height: 44px;
+    padding: 14px 25px;
     display: flex;
     align-items: center;
-    padding: 0 18px;
+    gap: 15px;
     color: var(--text-dim);
     cursor: pointer;
     transition: all 0.2s;
-    font-size: 13px;
-    gap: 10px;
-    margin: 2px 8px;
-    border-radius: 4px;
+    font-size: 14px;
+}
+.nav-item i { width: 20px; font-size: 16px; }
+.nav-item:hover { color: #fff; background: rgba(255,255,255,0.03); }
+.nav-item.active { 
+    color: #fff; background: rgba(0, 123, 255, 0.1); 
+    border-right: 3px solid var(--accent-primary);
 }
 
-.nav-item i { width: 18px; font-size: 14px; text-align: center; }
-.nav-item:hover { background: rgba(255,255,255,0.05); color: #fff; }
-.nav-item.active { background: rgba(0, 162, 255, 0.15); color: var(--accent-blue); font-weight: 500; }
-
-/* 主内容布局 */
+/* 主内容区 */
 .main-content {
     flex: 1;
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    background: #000;
+    background: radial-gradient(circle at top right, #0a0a0a, #050505);
 }
 
+/* 顶栏 */
 .top-bar {
-    height: 50px;
-    background: var(--bg-side);
-    border-bottom: 1px solid var(--border-thin);
+    height: 70px;
+    border-bottom: 1px solid var(--border-color);
     display: flex;
     align-items: center;
-    padding: 0 20px;
-    gap: 20px;
-    flex-shrink: 0;
-    overflow-x: auto; /* 允许水平滚动如果内容太多 */
+    justify-content: space-between;
+    padding: 0 30px;
+    backdrop-filter: blur(10px);
 }
+.page-title { font-size: 18px; font-weight: 600; margin: 0; }
 
-.status-group {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    flex: 1;
-}
+.status-group { display: flex; gap: 30px; }
+.status-item { display: flex; flex-direction: column; gap: 4px; }
+.status-label { font-size: 10px; color: var(--text-micro); text-transform: uppercase; letter-spacing: 1px; }
+.status-value { font-size: 14px; font-weight: 600; font-family: var(--font-mono); }
 
-.status-item { display: flex; align-items: center; gap: 8px; font-size: 12px; }
-.status-label { color: var(--text-micro); }
-.status-value { color: var(--text-main); font-family: var(--font-mono); font-weight: 600; }
-
-/* 核心工作区：左右分割 */
+/* 工作区与面板 */
 .workspace {
     flex: 1;
+    padding: 30px;
+    overflow-y: auto;
     display: grid;
-    grid-template-columns: 1fr 400px;
-    gap: 1px; /* 用边框色作为分割线 */
-    background: var(--border-thin);
-    overflow: hidden;
+    grid-template-columns: 1fr 1fr;
+    gap: 25px;
 }
 
 .panel {
-    background: var(--bg-main);
+    background: var(--bg-panel);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    backdrop-filter: blur(5px);
 }
-
 .panel-header {
-    height: 40px;
-    padding: 0 15px;
+    padding: 18px 20px;
+    border-bottom: 1px solid var(--border-color);
     display: flex;
-    align-items: center;
     justify-content: space-between;
-    background: rgba(255,255,255,0.02);
-    border-bottom: 1px solid var(--border-thin);
-}
-
-.panel-title { font-size: 13px; font-weight: 600; color: var(--accent-blue); }
-
-.panel-body { flex: 1; overflow-y: auto; padding: 15px; }
-
-/* 底部控制台 */
-.system-console {
-    height: 160px;
-    background: #050505;
-    border-top: 1px solid var(--border-thin);
-    display: flex;
-    flex-direction: column;
-    flex-shrink: 0;
-}
-
-.console-header {
-    height: 28px;
-    background: #111;
-    padding: 0 15px;
-    display: flex;
     align-items: center;
-    font-size: 10px;
-    color: var(--text-micro);
-    justify-content: space-between;
 }
-
-.console-output {
-    flex: 1;
-    overflow-y: auto;
-    padding: 10px 15px;
-    font-family: var(--font-mono);
-    font-size: 12px;
-    color: #888;
-}
-
-/* 按钮样式 */
-.btn-action {
-    background: transparent;
-    border: 1px solid var(--border-thin);
-    color: var(--text-dim);
-    padding: 4px 12px;
-    font-size: 12px;
-    border-radius: 2px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-.btn-action:hover { border-color: var(--accent-blue); color: #fff; }
+.panel-title { font-size: 13px; font-weight: 600; letter-spacing: 0.5px; color: var(--text-dim); }
+.panel-body { padding: 20px; flex: 1; }
 
 /* 表格样式 */
 table { width: 100%; border-collapse: collapse; }
-th { text-align: left; padding: 10px; color: var(--text-micro); font-size: 11px; border-bottom: 1px solid var(--border-thin); }
-td { padding: 12px 10px; border-bottom: 1px solid rgba(255,255,255,0.02); }
-.ticker { font-family: var(--font-mono); font-weight: bold; color: var(--accent-gold); }
-/* 任务监控浮窗 */
-.task-monitor {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    z-index: 1000;
-}
+th { text-align: left; padding: 12px; font-size: 11px; color: var(--text-micro); text-transform: uppercase; border-bottom: 1px solid var(--border-color); }
+td { padding: 15px 12px; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.02); }
+.ticker { font-weight: 600; }
 
-.task-button {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    background: var(--bg-panel);
-    border: 1px solid var(--border-thin);
-    color: var(--text-dim);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-    transition: all 0.3s;
-}
-
-.task-button:hover {
-    border-color: var(--accent-blue);
+/* 按钮 */
+.btn-action {
+    background: transparent;
+    border: 1px solid var(--border-color);
     color: #fff;
-    transform: translateY(-2px);
-}
-
-.task-button.active {
-    background: var(--accent-blue);
-    color: #fff;
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-    0% { box-shadow: 0 0 0 0 rgba(0, 162, 255, 0.4); }
-    70% { box-shadow: 0 0 0 10px rgba(0, 162, 255, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(0, 162, 255, 0); }
-}
-
-.task-panel {
-    position: absolute;
-    bottom: 60px;
-    right: 0;
-    width: 300px;
-    background: var(--bg-panel);
-    border: 1px solid var(--border-thin);
-    border-radius: 8px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.6);
-    display: none;
-    flex-direction: column;
-    overflow: hidden;
-}
-
-.task-panel-header {
-    padding: 12px 15px;
-    background: rgba(255,255,255,0.03);
-    border-bottom: 1px solid var(--border-thin);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.task-list {
-    max-height: 400px;
-    overflow-y: auto;
-}
-
-.task-item {
-    padding: 12px 15px;
-    border-bottom: 1px solid var(--border-thin);
-}
-
-.task-item:last-child { border-bottom: none; }
-
-.task-info { display: flex; justify-content: space-between; margin-bottom: 6px; }
-.task-name { font-weight: 600; font-size: 12px; }
-.task-status { font-size: 11px; color: var(--accent-blue); }
-
-.task-progress-bar {
-    height: 4px;
-    background: #222;
-    border-radius: 2px;
-    overflow: hidden;
-    margin-bottom: 8px;
-}
-
-.task-progress-fill {
-    height: 100%;
-    background: var(--accent-blue);
-    width: 0%;
-    transition: width 0.3s;
-}
-
-.task-controls {
-    display: flex;
-    justify-content: flex-end;
-}
-
-.btn-task-stop {
-    font-size: 11px;
-    color: var(--accent-red);
-    background: none;
-    border: 1px solid var(--accent-red);
-    padding: 2px 8px;
-    border-radius: 3px;
+    padding: 8px 16px;
+    border-radius: 6px;
     cursor: pointer;
-    opacity: 0.7;
+    font-size: 12px;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
 }
+.btn-action:hover { background: #fff; color: #000; }
+.btn-primary { background: var(--accent-primary); border-color: var(--accent-primary); }
+.btn-primary:hover { background: #0056b3; color: #fff; }
 
-.btn-task-stop:hover { opacity: 1; background: rgba(231, 76, 60, 0.1); }
+/* 滚动条自定义 */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #222; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #333; }

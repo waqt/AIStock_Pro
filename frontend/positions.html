@@ -215,7 +215,10 @@
             if (myChart) myChart.resize();
         });
 
-        window.onload = refreshPositions;
+        // 注册刷新钩子
+        window.refreshPageData = refreshPositions;
     </script>
+    <script src="js/ui.js"></script>
+    <script src="js/common.js"></script>
 </body>
 </html>

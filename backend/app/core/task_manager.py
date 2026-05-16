@@ -18,7 +18,7 @@ class TaskEngine:
     # 核心组件
     _registry: Dict[str, Callable] = {}
     _running_handles: Dict[str, asyncio.Task] = {}
-    _semaphore = asyncio.Semaphore(10) # 全局并发上限
+    _semaphore = asyncio.Semaphore(3) # 全局并发上限，防止资源耗尽
 
     @classmethod
     def register(cls, code: str, name: str, description: str = ""):

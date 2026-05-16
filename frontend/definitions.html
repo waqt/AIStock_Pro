@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIStock | 任务定义与调度</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body data-page-id="definitions">
+    <div class="app-container">
+        <aside class="sidebar"></aside>
+
+        <main class="main-content">
+            <div class="top-bar"></div>
+
+            <div class="workspace" style="grid-template-columns: 1fr 380px; gap: 16px;">
+                <!-- 左：任务定义列表 -->
+                <div class="panel">
+                    <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center;">
+                        <span class="panel-title">任务定义注册表 (Task Registry)</span>
+                        <button class="btn-action" onclick="refreshDefinitions()" style="font-size: 11px;">
+                            <i class="fas fa-sync"></i> 刷新
+                        </button>
+                    </div>
+                    <div class="panel-body" style="padding: 0;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>任务标识</th>
+                                    <th>任务名称</th>
+                                    <th>所属模块</th>
+                                    <th style="text-align: center;">定时计划</th>
+                                    <th style="text-align: center;">状态</th>
+                                    <th style="text-align: center;">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="definition-list">
+                                <tr><td colspan="6" style="text-align: center; color: var(--text-micro); padding: 40px;">加载中...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 右：定时作业面板 + 快速触发 -->
+                <div style="display: flex; flex-direction: column; gap: 16px;">
+                    <!-- 定时作业看板 -->
+                    <div class="panel">
+                        <div class="panel-header">
+                            <span class="panel-title">定时作业 (Scheduled Jobs)</span>
+                        </div>
+                        <div class="panel-body" id="scheduled-jobs" style="max-height: 300px; overflow-y: auto;">
+                            <div style="text-align: center; color: var(--text-micro); padding: 20px;">加载中...</div>
+                        </div>
+                    </div>
+
+                    <!-- 手动触发 -->
+                    <div class="panel">
+                        <div class="panel-header">
+                            <span class="panel-title">手动触发任务</span>
+                        </div>
+                        <div class="panel-body">
+                            <select id="trigger-select" style="width: 100%; background: var(--bg-deep); border: 1px solid var(--border-color); color: var(--text-normal); padding: 8px; border-radius: 4px; margin-bottom: 10px;">
+                                <option value="">-- 选择任务 --</option>
+                            </select>
+                            <button class="btn-action btn-primary" onclick="manualTrigger()" style="width: 100%; justify-content: center;">
+                                <i class="fas fa-play"></i> 立即执行
+                            </button>
+                            <div id="trigger-result" style="margin-top: 10px; font-size: 11px; color: var(--accent-green);"></div>
+                        </div>
+                    </div>
+
+                    <!-- 系统信息 -->
+                    <div class="panel" style="background: rgba(255,255,255,0.02);">
+                        <div class="panel-body" style="font-size: 11px; color: var(--text-dim); line-height: 1.8;">
+                            <div><i class="fas fa-info-circle" style="color: var(--accent-blue);"></i> 全局并发上限: <strong>3</strong></div>
+                            <div><i class="fas fa-clock" style="color: var(--accent-gold);"></i> 时区: Asia/Shanghai</div>
+                            <div><i class="fas fa-database" style="color: var(--accent-green);"></i> 引擎: APScheduler + asyncio</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="js/ui.js"></script>
+    <script src="js/common.js"></script>
+    <script>
+        // ── 加载任务定义 ──
+        async function refreshDefinitions() {
+            const list = document.getElementById('definition-list');
+            const select = document.getElementById('trigger-select');
+            list.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-micro); padding: 40px;">加载中...</td></tr>';
+
+            try {
+                const [defRes, jobRes] = await Promise.all([
+                    fetch(`${API_BASE}/system/tasks/definitions`),
+                    fetch(`${API_BASE}/system/tasks/scheduler/jobs`)
+                ]);
+                const definitions = await defRes.json();
+                const jobs = await jobRes.json();
+                const jobMap = {};
+                jobs.forEach(j => { jobMap[j.task_code] = j; });
+
+                // 填充手动触发下拉
+                select.innerHTML = '<option value="">-- 选择任务 --</option>';
+                definitions.forEach(d => {
+                    select.innerHTML += `<option value="${d.code}">${d.name} (${d.code})</option>`;
+                });
+
+                if (!definitions.length) {
+                    list.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-micro); padding: 40px;">暂无已注册任务。启动时自动从业务模块加载。</td></tr>';
+                } else {
+                    list.innerHTML = definitions.map(d => {
+                        const job = jobMap[d.code];
+                        const cronDisplay = d.cron_expr || '—';
+                        const nextRun = job ? job.next_run_time : null;
+                        const nextRunDisplay = nextRun
+                            ? new Date(nextRun).toLocaleString('zh-CN')
+                            : '—';
+                        const enabledBadge = d.is_enabled
+                            ? '<span style="color: var(--accent-green); font-weight: bold;">● 启用</span>'
+                            : '<span style="color: var(--text-micro);">○ 禁用</span>';
+
+                        return `
+                            <tr>
+                                <td style="font-family: var(--font-mono); font-size: 12px;">${d.code}</td>
+                                <td>
+                                    <span style="font-weight: 600;">${d.name}</span>
+                                    ${d.description ? `<br><small style="color: var(--text-micro);">${d.description}</small>` : ''}
+                                </td>
+                                <td style="font-size: 11px; color: var(--text-dim);">${d.module_path || '—'}</td>
+                                <td style="text-align: center;">
+                                    <div style="font-family: var(--font-mono); font-size: 11px; color: var(--accent-blue);">${cronDisplay}</div>
+                                    ${cronDisplay !== '—' ? `<div style="font-size: 10px; color: var(--text-micro);">下次: ${nextRunDisplay}</div>` : ''}
+                                </td>
+                                <td style="text-align: center; font-size: 11px;">${enabledBadge}</td>
+                                <td style="text-align: center;">
+                                    <button class="btn-action" style="padding: 4px 10px; font-size: 11px;" onclick="toggleCron('${d.code}')" title="配置定时">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+
+                // 刷新定时作业面板
+                renderScheduledJobs(jobs);
+            } catch (e) {
+                list.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--accent-red); padding: 40px;">加载失败: ${e.message}</td></tr>`;
+            }
+        }
+
+        function renderScheduledJobs(jobs) {
+            const container = document.getElementById('scheduled-jobs');
+            if (!jobs.length) {
+                container.innerHTML = '<div style="text-align: center; color: var(--text-micro); padding: 20px;">暂无定时作业<br><small>在任务定义中配置 cron 表达式即可创建定时作业</small></div>';
+                return;
+            }
+            container.innerHTML = jobs.map(j => {
+                const nextRun = j.next_run_time ? new Date(j.next_run_time).toLocaleString('zh-CN') : '—';
+                return `
+                    <div style="padding: 10px; border-bottom: 1px solid var(--border-thin); display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-weight: 600; font-size: 12px;">${j.task_code}</div>
+                            <div style="font-size: 10px; color: var(--text-micro); font-family: var(--font-mono);">cron: ${j.cron_expr}</div>
+                            <div style="font-size: 10px; color: var(--accent-blue);">下次: ${nextRun}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ── 手动触发 ──
+        async function manualTrigger() {
+            const code = document.getElementById('trigger-select').value;
+            if (!code) { alert('请选择要执行的任务'); return; }
+
+            const resultEl = document.getElementById('trigger-result');
+            resultEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 提交中...';
+            try {
+                const res = await fetch(`${API_BASE}/system/tasks/executions`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ task_code: code, params: {} })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    resultEl.innerHTML = `已加入队列: ${data.id.substring(0, 8)}...`;
+                } else {
+                    resultEl.innerHTML = `<span style="color: var(--accent-red);">错误: ${data.detail || JSON.stringify(data)}</span>`;
+                }
+            } catch (e) {
+                resultEl.innerHTML = `<span style="color: var(--accent-red);">提交失败: ${e.message}</span>`;
+            }
+        }
+
+        // ── 配置定时 ──
+        async function toggleCron(code) {
+            const cronExpr = prompt(`为 "${code}" 设置定时表达式 (留空=取消定时, 如 "30 15 * * 1-5" 表示工作日15:30):`);
+            if (cronExpr === null) return; // 取消
+
+            try {
+                const res = await fetch(`${API_BASE}/system/tasks/definitions/${code}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cron_expr: cronExpr === '' ? null : cronExpr, is_enabled: cronExpr !== '' })
+                });
+                if (res.ok) {
+                    alert('定时配置已更新');
+                    refreshDefinitions();
+                } else {
+                    const err = await res.json();
+                    alert('更新失败: ' + (err.detail || '未知错误'));
+                }
+            } catch (e) {
+                alert('请求失败: ' + e.message);
+            }
+        }
+
+        window.onload = refreshDefinitions;
+    </script>
+</body>
+</html>

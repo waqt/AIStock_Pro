@@ -120,7 +120,5 @@ async function executeSuggestion(id) {
     } catch (e) { alert('执行失败'); }
 }
 
-window.onload = () => {
-    refreshDashboard();
-    setInterval(refreshDashboard, 60000);
-};
+// 暴露给 common.js 调用
+window.refreshPageData = refreshDashboard;

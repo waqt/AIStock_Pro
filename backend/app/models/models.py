@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, Date, Text, JSON, ForeignKey, Boolean
+from sqlalchemy import Column, Integer, String, Float, DateTime, Date, Text, JSON, ForeignKey, Boolean, UniqueConstraint
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import uuid
@@ -30,10 +30,10 @@ class MarketData(Base):
     close = Column(Float)
     volume = Column(Float)
     amount = Column(Float)
-    
-    # 建立唯一索引防止重复导入
+    change_pct = Column(Float, nullable=True, comment="涨跌幅(%)")
+
     __table_args__ = (
-        {"sqlite_autoincrement": True} # 如果是 SQLite，可以设索引
+        UniqueConstraint('stock_code', 'trade_date', name='uq_market_data_code_date'),
     )
 
 class StockIndicator(Base):

@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+*.pyo
+.env
+backend/logs/
+backend/temp_lab/
+*.log
+.idea/
+.vscode/
+*.egg-info/
+dist/
+build/
+position*/
+Local_data/

@@ -1,16 +1,34 @@
 /**
- * AIStock Pro 全局任务监控组件 V5.0
- * 负责：活跃任务轮询、状态显示、全局停止控制
+ * AIStock Pro 全局基础配置与任务监控 V5.1
  */
 
+const API_BASE = '/api'; // 统一 API 前缀
+
 const TaskMonitor = {
-    pollingInterval: 3000, // 3秒轮询一次
+    pollingInterval: 3000,
     timer: null,
 
     init() {
-        console.log("[🚀] Task Monitor V5.0 Initializing...");
+        console.log("[🚀] Task Monitor V5.1 Initializing...");
         this.createFloatingButton();
         this.startPolling();
+        
+        // 自动初始化页面组件 (如果页面定义了 data-page-id)
+        const pageId = document.body.getAttribute('data-page-id');
+        if (pageId && window.initPageComponents) {
+            window.initPageComponents({ 
+                activeId: pageId, 
+                title: document.title.split('|')[1]?.trim() || "控制台" 
+            });
+        }
+
+        // 自动触发数据加载钩子
+        if (typeof window.refreshPageData === 'function') {
+            console.log(`[🔄] Auto-triggering data refresh for: ${pageId}`);
+            window.refreshPageData();
+            // 每分钟自动刷新一次
+            setInterval(window.refreshPageData, 60000);
+        }
     },
 
     createFloatingButton() {
@@ -27,7 +45,7 @@ const TaskMonitor = {
                 <div class="panel-header">
                     <h3>活跃任务监控</h3>
                     <div class="header-actions">
-                        <button onclick="location.href='/tasks_history.html'" title="历史审计">📜</button>
+                        <button onclick="location.href='history.html'" title="执行历史">📜</button>
                         <button id="close-panel">✖</button>
                     </div>
                 </div>
@@ -41,43 +59,43 @@ const TaskMonitor = {
         // 样式注入
         const style = document.createElement('style');
         style.textContent = `
-            #global-task-widget { position: fixed; bottom: 20px; right: 20px; z-index: 9999; font-family: sans-serif; }
-            #task-fab { 
-                width: 50px; height: 50px; background: #007bff; color: white; border-radius: 50%; 
-                display: flex; align-items: center; justify-content: center; cursor: pointer; 
-                box-shadow: 0 4px 12px rgba(0,0,0,0.15); transition: all 0.3s;
+            #global-task-widget { position: fixed; bottom: 20px; right: 20px; z-index: 9999; }
+            #task-fab {
+                width: 48px; height: 48px; background: var(--accent-blue); color: #fff; border-radius: 50%;
+                display: flex; align-items: center; justify-content: center; cursor: pointer;
+                box-shadow: 0 4px 16px rgba(0,0,0,0.4); transition: all 0.3s;
             }
-            #task-fab:hover { transform: scale(1.1); background: #0056b3; }
-            #active-task-count { 
-                position: absolute; top: -5px; right: -5px; background: #ff4757; 
-                font-size: 10px; padding: 2px 6px; border-radius: 10px; border: 2px solid white;
+            #task-fab:hover { transform: scale(1.1); background: var(--accent-blue); filter: brightness(1.2); }
+            #active-task-count {
+                position: absolute; top: -4px; right: -4px; background: var(--accent-red);
+                font-size: 10px; padding: 2px 6px; border-radius: 10px; color: #fff;
             }
-            #task-monitor-panel { 
-                position: absolute; bottom: 65px; right: 0; width: 320px; background: white; 
-                border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.2); overflow: hidden;
+            #task-monitor-panel {
+                position: absolute; bottom: 60px; right: 0; width: 320px; background: var(--bg-card);
+                border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 8px 24px rgba(0,0,0,0.4); overflow: hidden;
             }
-            .panel-header { background: #f8f9fa; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; }
-            .panel-header h3 { margin: 0; font-size: 14px; color: #333; }
-            .header-actions button { border: none; background: none; cursor: pointer; font-size: 14px; margin-left: 8px; opacity: 0.6; }
-            .header-actions button:hover { opacity: 1; }
+            #task-monitor-panel .panel-header { background: var(--bg-deep); padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); }
+            #task-monitor-panel .panel-header h3 { margin: 0; font-size: 13px; color: var(--text-normal); }
+            #task-monitor-panel .header-actions button { border: none; background: none; cursor: pointer; font-size: 14px; margin-left: 8px; opacity: 0.6; color: var(--text-dim); }
+            #task-monitor-panel .header-actions button:hover { opacity: 1; }
             #active-tasks-list { max-height: 400px; overflow-y: auto; padding: 8px; }
-            .task-item { padding: 12px; border-bottom: 1px solid #f1f1f1; position: relative; }
-            .task-item:last-child { border-bottom: none; }
-            .task-info { display: flex; justify-content: space-between; margin-bottom: 6px; }
-            .task-name { font-weight: bold; font-size: 13px; color: #2f3542; }
-            .task-status { font-size: 11px; padding: 2px 6px; border-radius: 4px; }
-            .status-running { background: #e3f2fd; color: #1976d2; }
-            .status-pending { background: #fff3e0; color: #fb8c00; }
-            .status-stopping { background: #ffebee; color: #d32f2f; }
-            .progress-container { height: 6px; background: #f1f1f1; border-radius: 3px; overflow: hidden; margin: 8px 0; }
-            .progress-bar { height: 100%; background: #2ed573; transition: width 0.5s; }
-            .task-msg { font-size: 11px; color: #747d8c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-            .stop-btn { 
-                margin-top: 8px; width: 100%; padding: 4px; font-size: 11px; 
-                background: #f1f2f6; border: 1px solid #dfe4ea; border-radius: 4px; cursor: pointer;
+            #active-tasks-list .task-item { padding: 12px; border-bottom: 1px solid var(--border-thin); }
+            #active-tasks-list .task-item:last-child { border-bottom: none; }
+            #active-tasks-list .task-info { display: flex; justify-content: space-between; margin-bottom: 6px; }
+            #active-tasks-list .task-name { font-weight: bold; font-size: 12px; color: var(--text-normal); }
+            #active-tasks-list .task-status { font-size: 10px; padding: 2px 6px; border-radius: 4px; }
+            #active-tasks-list .status-running { background: rgba(96,165,250,0.15); color: var(--accent-blue); }
+            #active-tasks-list .status-pending { background: rgba(251,191,36,0.15); color: var(--accent-gold); }
+            #active-tasks-list .status-stopping { background: rgba(239,68,68,0.15); color: var(--accent-red); }
+            #active-tasks-list .progress-container { height: 4px; background: var(--border-color); border-radius: 2px; overflow: hidden; margin: 8px 0; }
+            #active-tasks-list .progress-bar { height: 100%; background: var(--accent-green); transition: width 0.5s; }
+            #active-tasks-list .task-msg { font-size: 10px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            #active-tasks-list .stop-btn {
+                margin-top: 8px; width: 100%; padding: 4px; font-size: 10px;
+                background: transparent; border: 1px solid var(--border-color); border-radius: 4px; cursor: pointer; color: var(--text-dim);
             }
-            .stop-btn:hover { background: #dfe4ea; color: #ff4757; }
-            .empty-state { padding: 40px; text-align: center; color: #a4b0be; font-size: 13px; }
+            #active-tasks-list .stop-btn:hover { border-color: var(--accent-red); color: var(--accent-red); }
+            #active-tasks-list .empty-state { padding: 40px; text-align: center; color: var(--text-micro); font-size: 12px; }
         `;
         document.head.appendChild(style);
 

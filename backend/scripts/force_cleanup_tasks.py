@@ -11,18 +11,18 @@ from dotenv import load_dotenv
 load_dotenv(os.path.join(base_dir, ".env"))
 
 from app.core.database import async_session
-from app.models.models import AnalysisTask
+from app.models.models import TaskExecution
 from sqlalchemy import update
 
 async def force_cleanup():
-    print("[*] Starting Cleanup...")
+    print("[*] Starting Cleanup (V5.0)...")
     try:
         async with async_session() as db:
             print("[*] Database connected. Updating status...")
             await db.execute(
-                update(AnalysisTask).where(AnalysisTask.status.in_(["RUNNING", "PENDING"])).values(
-                    status="CANCELLED", 
-                    result_summary="[FORCE_RESET] Manual Cleanup Done"
+                update(TaskExecution).where(TaskExecution.status.in_(["RUNNING", "PENDING", "STOPPING"])).values(
+                    status="CANCELLED",
+                    result_msg="[FORCE_RESET] Manual Cleanup Done"
                 )
             )
             await db.commit()

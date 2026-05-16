@@ -9,19 +9,19 @@ from dotenv import load_dotenv
 load_dotenv(os.path.join(base_dir, ".env"))
 
 from app.core.database import async_session
-from app.models.models import AnalysisTask
+from app.models.models import TaskExecution
 from sqlalchemy import select
 
 async def audit():
-    print("\n--- TASK DATABASE AUDIT ---")
+    print("\n--- TASK DATABASE AUDIT (V5.0) ---")
     try:
         async with async_session() as db:
-            res = await db.execute(select(AnalysisTask))
+            res = await db.execute(select(TaskExecution))
             tasks = res.scalars().all()
             if not tasks:
-                print("[!] No tasks found in database.")
+                print("[!] No task executions found in database.")
             for t in tasks:
-                print(f"[{t.status}] ID: {t.id} | Type: {t.task_type} | Created: {t.created_at}")
+                print(f"[{t.status}] ID: {t.id} | Code: {t.task_code} | Started: {t.start_time}")
     except Exception as e:
         print(f"[ERROR] Audit failed: {e}")
     print("--- END AUDIT ---\n")

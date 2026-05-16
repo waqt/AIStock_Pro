@@ -6,24 +6,52 @@ from app.core.task_manager import task_manager
 
 @task_manager.register(code="sync_market", name="行情数据同步", description="同步持仓股票的最新行情并重算技术指标")
 async def sync_market_data_task(mode: str = "AUTO", exec_id: str = None):
-    """
-    领域逻辑实现：行情同步任务 (V5.0 注册版)
-    """
+    """V5.1 行情同步任务 — 增量感知 + 节点追踪"""
     async with async_session() as db:
-        # 实例化引擎
         engine = QuantEngine(db)
-        
-        # 实际执行领域层的分析逻辑
         if mode == "PRICE_ONLY":
-            await engine.sync_prices_only(task_id=exec_id)
+            await engine.sync_prices_only(exec_id=exec_id)
         else:
-            await engine.batch_analyze_positions(task_id=exec_id, mode=mode)
+            await engine.batch_sync_and_analyze(exec_id=exec_id, mode=mode)
 
 @task_manager.register(code="calc_indicators", name="指标重算", description="仅针对现有数据重新计算量化指标")
 async def calculate_indicators_task(exec_id: str = None):
-    """
-    领域逻辑实现：指标重算任务
-    """
+    """V5.1 指标重算任务"""
     async with async_session() as db:
         engine = QuantEngine(db)
-        await engine.batch_analyze_positions(task_id=exec_id, mode="INDICATORS_ONLY")
+        from sqlalchemy import select, func
+        from app.models.models import Position, MarketData
+
+        result = await engine.db.execute(select(Position))
+        positions = result.scalars().all()
+        total = len(positions)
+        success = 0
+        skipped = 0
+
+        for idx, pos in enumerate(positions):
+            await asyncio.sleep(0)
+
+            # 检查是否有行情数据
+            has_data = await engine.db.execute(
+                select(func.count(MarketData.id)).where(MarketData.stock_code == pos.stock_code)
+            )
+            if has_data.scalar() == 0:
+                skipped += 1
+                logger.warning(f"[⚠️] {pos.stock_code}: no market data, skipping")
+                continue
+
+            result_data = await engine.calculate_indicators(pos.stock_code)
+            if result_data:
+                success += 1
+
+            if exec_id:
+                await task_manager.update_progress(
+                    exec_id, int(((idx + 1) / total) * 100),
+                    f"指标重算: {idx+1}/{total} | {pos.stock_code} (成功:{success} 跳过:{skipped})"
+                )
+        await engine.db.commit()
+
+        if skipped == total:
+            raise RuntimeError(f"所有 {total} 只股票均无行情数据，请先同步行情")
+        if exec_id:
+            await task_manager.update_progress(exec_id, 100, f"完成: 成功{success}只, 跳过{skipped}只")
