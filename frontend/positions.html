@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>AIStock | 持仓管理</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+</head>
+<body data-page-id="positions">
+    <div class="app-container">
+        <!-- 侧边导航 (由 ui.js 填充) -->
+        <aside class="sidebar"></aside>
+
+        <main class="main-content">
+            <!-- 顶栏 (由 ui.js 填充) -->
+            <div class="top-bar"></div>
+
+            <div class="workspace">
+                <div class="panel">
+                    <div class="panel-header"><span class="panel-title">持仓明细 (Portfolio Details)</span></div>
+                    <div class="panel-body">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>股票名称</th>
+                                    <th style="text-align: right;">持股数量</th>
+                                    <th style="text-align: right;">成本价</th>
+                                    <th style="text-align: right;">现价</th>
+                                    <th style="text-align: right;">市值</th>
+                                    <th style="text-align: right;">盈亏金额</th>
+                                    <th style="text-align: right;">收益率</th>
+                                    <th style="text-align: center;">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="position-list"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-header"><span class="panel-title">资产分布 (Allocation)</span></div>
+                    <div class="panel-body">
+                        <div id="allocation-stats" style="font-size: 12px; color: var(--text-dim);">
+                            <!-- 动态加载 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <!-- 图表弹窗 -->
+    <div id="chart-modal-wrapper" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(4px);">
+        <div style="background: var(--bg-card); width: 80%; max-width: 900px; border-radius: 8px; border: 1px solid var(--border-color); display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+            <div style="padding: 15px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                <span id="chart-modal-title" style="font-weight: bold; font-size: 16px;">个股走势</span>
+                <button onclick="closeChartModal()" style="background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 16px;"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="chart-container" style="width: 100%; height: 500px; padding: 10px;"></div>
+        </div>
+    </div>
+
+    <!-- 任务监控由 common.js 自动注入 -->
+
+    <script src="js/ui.js"></script>
+    <script src="js/common.js"></script>
+    <script>
+        // API_BASE 已在 common.js 中定义
+        async function refreshPositions() {
+            try {
+                const res = await fetch(`${API_BASE}/positions`);
+                const data = await res.json();
+                
+                // 确保数据展示容器存在
+                const statsEl = document.getElementById('page-stats');
+                if (statsEl && !document.getElementById('pos-count')) {
+                    statsEl.innerHTML = `<div class="status-item"><span class="status-label">当前持仓标的:</span> <span class="status-value" id="pos-count">0</span></div>`;
+                }
+                
+                const countEl = document.getElementById('pos-count');
+                if (countEl) countEl.textContent = data.length;
+                
+                const list = document.getElementById('position-list');
+                if (!list) return;
+
+                list.innerHTML = data.map(p => `
+                    <tr>
+                        <td class="ticker">${p.stock_name}<br><small style="color: var(--text-micro);">${p.stock_code}</small></td>
+                        <td style="text-align: right; font-family: var(--font-mono);">${p.volume}</td>
+                        <td style="text-align: right; font-family: var(--font-mono);">¥${Number(p.avg_cost || 0).toFixed(2)}</td>
+                        <td style="text-align: right; font-family: var(--font-mono);">¥${Number(p.current_price || 0).toFixed(2)}</td>
+                        <td style="text-align: right; font-family: var(--font-mono);">¥${Number(p.market_value || 0).toLocaleString()}</td>
+                        <td style="text-align: right; color: ${(p.profit_loss || 0) >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'};">
+                            ${(p.profit_loss || 0) >= 0 ? '+' : ''}${Number(p.profit_loss || 0).toFixed(2)}
+                        </td>
+                        <td style="text-align: right; color: ${(p.profit_loss_ratio || 0) >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'}; font-weight: bold;">
+                            ${(p.profit_loss_ratio || 0) >= 0 ? '+' : ''}${Number(p.profit_loss_ratio || 0).toFixed(2)}%
+                        </td>
+                        <td style="text-align: center;">
+                            <button class="btn-action" style="padding: 4px 10px; font-size: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: var(--text-normal); border-radius: 4px; cursor: pointer;" onclick="showChart('${p.stock_code}', '${p.stock_name}')"><i class="fas fa-chart-bar" style="color: #60a5fa;"></i> 走势</button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (e) {
+                console.error('加载持仓失败:', e);
+            }
+        }
+        async function refreshPrices() {
+            const btn = document.getElementById('btn-refresh-price');
+            if(btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 获取行情中...';
+            }
+            try {
+                const res = await fetch(`${API_BASE}/positions/update-prices`, { method: 'POST' });
+                const data = await res.json();
+                alert(data.message || '行情刷新完成');
+                refreshPositions();
+            } catch (e) {
+                alert('行情刷新失败: ' + e.message);
+            }
+            if(btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-chart-line"></i> 刷新行情';
+            }
+        }
+
+        let myChart = null;
+
+        function closeChartModal() {
+            document.getElementById('chart-modal-wrapper').style.display = 'none';
+        }
+
+        async function showChart(stockCode, stockName) {
+            const modal = document.getElementById('chart-modal-wrapper');
+            modal.style.display = 'flex';
+            document.getElementById('chart-modal-title').innerText = `${stockName} (${stockCode}) - 近期走势 (日K)`;
+            
+            const container = document.getElementById('chart-container');
+            if (!myChart) {
+                myChart = echarts.init(container, 'dark'); // 搭配暗色系统主题
+            }
+            
+            myChart.showLoading({ text: '拼命加载行情中...', color: '#60a5fa', textColor: '#fff', maskColor: 'rgba(0,0,0,0.5)' });
+            
+            try {
+                const res = await fetch(`${API_BASE}/data/daily/${stockCode}?limit=500`);
+                if (!res.ok) throw new Error('行情获取失败');
+                const rawData = await res.json();
+                
+                // 新后端已返回正序数据，无需 reverse
+                const dates = rawData.map(item => item.trade_date);
+                // K线图所需数据格式: [open, close, low, high]
+                const values = rawData.map(item => [item.open, item.close, item.low, item.high]);
+                // 成交量数据格式: [index, volume, sign]
+                const volumes = rawData.map((item, index) => [index, item.volume, item.close >= item.open ? 1 : -1]);
+                
+                const option = {
+                    backgroundColor: 'transparent',
+                    tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
+                    grid: [
+                        { left: '10%', right: '5%', height: '50%' },
+                        { left: '10%', right: '5%', top: '70%', height: '15%' }
+                    ],
+                    xAxis: [
+                        { type: 'category', data: dates, scale: true, boundaryGap: false, axisLine: { onZero: false }, splitLine: { show: false }, min: 'dataMin', max: 'dataMax' },
+                        { type: 'category', gridIndex: 1, data: dates, boundaryGap: false, axisLabel: { show: false }, axisTick: { show: false }, axisLine: { onZero: false }, splitLine: { show: false }, min: 'dataMin', max: 'dataMax' }
+                    ],
+                    yAxis: [
+                        { scale: true, splitArea: { show: true } },
+                        { gridIndex: 1, splitNumber: 2, axisLabel: { show: false }, axisLine: { show: false }, axisTick: { show: false }, splitLine: { show: false } }
+                    ],
+                    dataZoom: [
+                        { type: 'inside', xAxisIndex: [0, 1], start: 50, end: 100 },
+                        { show: true, xAxisIndex: [0, 1], type: 'slider', top: '90%', start: 50, end: 100 }
+                    ],
+                    series: [
+                        {
+                            name: '日K',
+                            type: 'candlestick',
+                            data: values,
+                            itemStyle: { 
+                                color: '#ef5350', // 阳线（红）
+                                color0: '#26a69a', // 阴线（绿）
+                                borderColor: '#ef5350', 
+                                borderColor0: '#26a69a' 
+                            }
+                        },
+                        {
+                            name: '成交量',
+                            type: 'bar',
+                            xAxisIndex: 1,
+                            yAxisIndex: 1,
+                            data: volumes.map(item => {
+                                return {
+                                    value: item[1],
+                                    itemStyle: { color: item[2] > 0 ? '#ef5350' : '#26a69a' }
+                                }
+                            })
+                        }
+                    ]
+                };
+                
+                myChart.setOption(option);
+            } catch (e) {
+                console.error(e);
+                alert('无法加载图表数据，可能暂未同步该股行情');
+            } finally {
+                myChart.hideLoading();
+            }
+        }
+        
+        window.addEventListener('resize', () => {
+            if (myChart) myChart.resize();
+        });
+
+        window.onload = refreshPositions;
+    </script>
+</body>
+</html>

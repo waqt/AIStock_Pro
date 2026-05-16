@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>任务定义管理 - AIStock Pro</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root { --primary: #007bff; --bg: #f4f7f6; --text: #2f3542; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 40px; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .header h1 { margin: 0; font-size: 24px; color: #1e2124; }
+        .card { background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); padding: 24px; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 12px; border-bottom: 2px solid #f1f1f1; color: #747d8c; font-size: 13px; }
+        td { padding: 16px 12px; border-bottom: 1px solid #f1f1f1; font-size: 14px; }
+        .code-tag { font-family: monospace; background: #f1f2f6; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+        .cron-input { width: 120px; padding: 4px 8px; border: 1px solid #dfe4ea; border-radius: 4px; }
+        .btn { padding: 6px 12px; border-radius: 6px; cursor: pointer; border: none; font-size: 13px; transition: 0.2s; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: #0056b3; }
+        .btn-run { background: #2ed573; color: white; }
+        .btn-run:hover { background: #26af5f; }
+        .nav-link { color: var(--primary); text-decoration: none; font-size: 14px; }
+        .nav-link:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚙️ 任务定义注册中心</h1>
+            <div>
+                <a href="/data.html" class="nav-link">返回看板</a> | 
+                <a href="/tasks_history.html" class="nav-link">执行历史</a>
+            </div>
+        </div>
+
+        <div class="card">
+            <table id="definitions-table">
+                <thead>
+                    <tr>
+                        <th>任务名称</th>
+                        <th>唯一标识 (Code)</th>
+                        <th>定时计划 (CRON)</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="definitions-list">
+                    <!-- 动态加载 -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        async function loadDefinitions() {
+            const res = await fetch('/api/system/tasks/definitions');
+            const data = await res.json();
+            const list = document.getElementById('definitions-list');
+            list.innerHTML = data.map(d => `
+                <tr>
+                    <td>
+                        <div style="font-weight:bold">${d.name}</div>
+                        <div style="font-size:11px; color:#a4b0be">${d.description || ''}</div>
+                    </td>
+                    <td><span class="code-tag">${d.code}</span></td>
+                    <td>
+                        <input type="text" class="cron-input" id="cron-${d.code}" value="${d.cron_expr || ''}" placeholder="不自动执行">
+                        <button class="btn btn-primary" onclick="updateCron('${d.code}')"><i class="fas fa-save"></i></button>
+                    </td>
+                    <td>
+                        <span style="color: ${d.is_enabled ? '#2ed573' : '#ff4757'}">
+                            ${d.is_enabled ? '● 已启用' : '○ 已禁用'}
+                        </span>
+                    </td>
+                    <td>
+                        <button class="btn btn-run" onclick="triggerTask('${d.code}')"><i class="fas fa-play"></i> 立即执行</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function updateCron(code) {
+            const cron = document.getElementById(`cron-${code}`).value;
+            const res = await fetch(`/api/system/tasks/definitions/${code}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ cron_expr: cron })
+            });
+            if (res.ok) alert("调度计划更新成功");
+        }
+
+        async function triggerTask(code) {
+            const paramsJson = prompt("请输入执行参数 (JSON格式, 选填)", "{}");
+            if (paramsJson === null) return;
+            
+            try {
+                const params = JSON.parse(paramsJson);
+                const res = await fetch('/api/system/tasks/executions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ task_code: code, params: params })
+                });
+                if (res.ok) {
+                    const task = await res.json();
+                    alert("任务已成功触发，执行ID: " + task.id);
+                } else {
+                    const err = await res.json();
+                    alert("触发失败: " + (err.detail || '未知错误'));
+                }
+            } catch (e) {
+                alert("参数解析错误: " + e.message);
+            }
+        }
+
+        loadDefinitions();
+    </script>
+</body>
+</html>

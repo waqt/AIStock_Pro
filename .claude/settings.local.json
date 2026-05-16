@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\" -Depth 1)",
+      "Bash(Select-Object Mode, Name)",
+      "PowerShell(Get-ChildItem -Path 'E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\frontend' -Recurse -File | ForEach-Object { $_.FullName.Replace\\('E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\', ''\\) })",
+      "PowerShell(Get-ChildItem -Path 'E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\app' -Recurse -File | ForEach-Object { $_.FullName.Replace\\('E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\', ''\\) })",
+      "PowerShell(Get-ChildItem -Path 'E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\app' -Recurse | ForEach-Object { \"$\\($_.Mode\\) $\\($_.FullName.Replace\\('E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\', ''\\)\\)\" })",
+      "PowerShell(Get-ChildItem -Path 'E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\.claude' -Recurse | ForEach-Object { $_.FullName.Replace\\('E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\', ''\\) })",
+      "PowerShell(Get-ChildItem -Path 'E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\backend' -Recurse -File | Sort-Object LastWriteTime -Descending | Select-Object -First 30 | ForEach-Object { \"$\\($_.LastWriteTime.ToString\\('yyyy-MM-dd HH:mm:ss'\\)\\)  $\\($_.FullName.Replace\\('E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\', ''\\)\\)\" })"
+    ]
+  }
+}

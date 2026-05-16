@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIStock | Morning Briefing</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="nav-item" onclick="location.href='index.html'"><i class="fas fa-terminal"></i></div>
+            <div class="nav-item" onclick="location.href='positions.html'"><i class="fas fa-search-dollar"></i></div>
+            <div class="nav-item active"><i class="fas fa-sun"></i></div>
+            <div style="margin-top: auto;"><div class="nav-item"><i class="fas fa-sliders-h"></i></div></div>
+        </aside>
+
+        <main class="main-content">
+            <div class="top-bar">
+                <div class="top-bar-item"><span>MORNING ANALYSIS</span></div>
+                <div style="margin-left: auto;">
+                    <span style="font-size: 11px; color: var(--text-micro); margin-right: 20px;">MARKET STATUS: <span style="color: var(--accent-green);">OPENING PRE-TRADING</span></span>
+                    <button class="btn-micro" onclick="location.href='index.html'">CLOSE</button>
+                </div>
+            </div>
+
+            <div class="workspace" style="grid-template-columns: 1fr;">
+                <div class="panel">
+                    <div class="panel-header">
+                        <span class="panel-title">Daily Market Diagnosis [2026-05-09]</span>
+                    </div>
+                    <div class="panel-body" style="max-width: 900px; margin: 0 auto; padding: 30px;">
+                        <div class="research-entry">
+                            <div class="research-topic" style="font-size: 20px;">市场情绪与策略导向</div>
+                            <div class="research-meta">
+                                <span>AI CONFIDENCE: 88%</span>
+                                <span>RISK LEVEL: LOW-MEDIUM</span>
+                            </div>
+                            <div style="font-size: 13px; line-height: 1.8; color: var(--text-dim);">
+                                今日早盘，AI 引擎识别到显著的资金向<strong>具身智能</strong>与<strong>先进封装</strong>领域回流。
+                                建议维持当前 75% 仓位，重点监控 1.6T 光模块龙头的早盘集合竞价表现。
+                            </div>
+                        </div>
+
+                        <div class="divider-h"></div>
+
+                        <div class="panel-title" style="margin: 20px 0 15px;">核心策略建议</div>
+                        <div class="suggestion-item">
+                            <div class="suggestion-header">
+                                <span class="ticker">FOCUS: TOP-TIER SUPPLY CHAIN</span>
+                                <span class="score-pill">STRATEGIC</span>
+                            </div>
+                            <div class="reason-text">
+                                由于 HBM4 技术瓶颈超预期突破，建议在回撤时增加存储产业链上游设备标的的配置权重。
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>收盘供应链情报 - AIStock</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    --primary: #4f46e5; --primary-hover: #4338ca;
+    --bg: #0f172a; --card-bg: #1e293b; --text-main: #e2e8f0;
+    --text-muted: #94a3b8; --border: #334155;
+    --accent: #38bdf8; --success: #10b981; --danger: #ef4444;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text-main); line-height:1.5; padding:1rem; }
+.container { max-width:900px; margin:0 auto; }
+
+nav { display:flex; align-items:center; gap:1.5rem; padding:1rem 0; margin-bottom:1.5rem; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+nav .logo { font-weight:700; font-size:1.2rem; color:var(--accent); margin-right:auto; }
+nav a { color:var(--text-muted); text-decoration:none; font-size:0.9rem; padding:0.3rem 0.5rem; border-radius:0.4rem; transition:all 0.2s; }
+nav a:hover, nav a.active { color:var(--accent); background:rgba(56,189,248,0.1); }
+
+header { margin-bottom:2rem; }
+h1 { font-size:1.875rem; font-weight:700; margin-bottom:0.25rem; color:var(--accent); }
+.subtitle { color:var(--text-muted); }
+.report-meta { margin-top:0.5rem; font-size:0.85rem; color:var(--text-muted); }
+
+.btn { padding:0.6rem 1.2rem; border-radius:0.5rem; font-weight:600; font-size:0.9rem; cursor:pointer; border:none; transition:all 0.2s; }
+.btn-primary { background:var(--accent); color:#0f172a; }
+.btn-primary:hover { background:#7dd3fc; }
+
+.toolbar { display:flex; gap:0.5rem; margin-bottom:1.5rem; }
+
+.news-card { background:var(--card-bg); border:1px solid var(--border); border-radius:1rem; padding:1.5rem; margin-bottom:1rem; }
+.news-header { display:flex; justify-content:space-between; align-items:start; margin-bottom:1rem; }
+.news-header h3 { font-size:1.15rem; color:var(--accent); }
+.news-tags { display:flex; gap:0.4rem; flex-wrap:wrap; margin:0.5rem 0; }
+.tag { padding:0.2rem 0.6rem; border-radius:99px; font-size:0.75rem; background:rgba(56,189,248,0.15); color:var(--accent); font-weight:500; }
+
+.news-body { margin:0.75rem 0; }
+.news-body .event { font-size:0.95rem; margin-bottom:0.5rem; }
+.news-body .impact { color:var(--text-muted); font-size:0.9rem; }
+
+.related-stocks { margin-top:1rem; padding:0.75rem 1rem; background:rgba(56,189,248,0.05); border-radius:0.5rem; border-left:3px solid var(--accent); }
+.related-stocks h4 { font-size:0.8rem; color:var(--text-muted); margin-bottom:0.5rem; }
+.related-stocks .stock-tag { display:inline-block; padding:0.2rem 0.6rem; margin:0.15rem; background:rgba(16,185,129,0.15); color:var(--success); border-radius:99px; font-size:0.8rem; font-weight:500; }
+
+.loading { text-align:center; padding:3rem; color:var(--text-muted); }
+.empty { text-align:center; padding:3rem; color:var(--text-muted); }
+.error { text-align:center; padding:2rem; color:var(--danger); }
+</style>
+</head>
+<body>
+<div class="container">
+<nav>
+    <span class="logo">📈 AIStock</span>
+    <a href="index.html">首页</a>
+    <a href="import.html">智能导入</a>
+    <a href="positions.html">持仓明细</a>
+    <a href="suggestions.html">调仓建议</a>
+    <a href="data.html">数据管理</a>
+    <a href="morning_report.html">早间报告</a>
+    <a href="closing_report.html" class="active">收盘情报</a>
+</nav>
+
+<header>
+    <h1>🌐 收盘供应链情报汇总</h1>
+    <p class="subtitle">追踪国际科技巨头动态，关联 A/HK 股供应链标的</p>
+    <div class="report-meta"><span id="report-date">--</span></div>
+</header>
+
+<div class="toolbar">
+    <button class="btn btn-primary" id="btn-generate" onclick="generateReport()">⚡ 立即收集情报</button>
+    <button class="btn" style="border:1px solid var(--border);background:var(--card-bg);color:var(--text-main);" onclick="loadReport()">🔄 刷新</button>
+</div>
+
+<div id="content"><div class="loading">正在加载情报...</div></div>
+</div>
+
+<script>
+const API_BASE = 'http://localhost:8000/api';
+
+async function loadReport() {
+    const container = document.getElementById('content');
+    container.innerHTML = '<div class="loading">正在加载情报...</div>';
+
+    try {
+        const res = await fetch(`${API_BASE}/reports/supply-chain`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+
+        if (!data.report_date || data.items.length === 0) {
+            document.getElementById('report-date').textContent = '暂无情报';
+            container.innerHTML = '<div class="empty">📭 今日暂无供应链情报<br><br><button class="btn btn-primary" onclick="generateReport()">立即收集</button></div>';
+            return;
+        }
+
+        document.getElementById('report-date').textContent = `报告日期: ${data.report_date}`;
+        renderContent(data);
+    } catch (err) {
+        container.innerHTML = `<div class="error">加载失败: ${err.message}</div>`;
+    }
+}
+
+function renderContent(data) {
+    const container = document.getElementById('content');
+    const cards = data.items.map(item => `<div class="news-card">
+        <div class="news-header">
+            <h3>🔴 ${item.company_name}</h3>
+            <div class="news-tags"><span class="tag">供应链情报</span></div>
+        </div>
+        <div class="news-body">
+            <div class="event"><strong>最新动态:</strong> ${item.event || '暂无'}</div>
+            <div class="impact"><strong>影响评估:</strong> ${item.impact || '暂无'}</div>
+        </div>
+        ${item.related_stocks && item.related_stocks.length > 0 ? `<div class="related-stocks">
+            <h4>🔗 关联 A 股 / 港股标的:</h4>
+            ${item.related_stocks.map(s => `<span class="stock-tag">${s}</span>`).join('')}
+        </div>` : ''}
+    </div>`).join('');
+
+    container.innerHTML = cards;
+}
+
+async function generateReport() {
+    const btn = document.getElementById('btn-generate');
+    btn.disabled = true; btn.textContent = '收集情报中...';
+    try {
+        const res = await fetch(`${API_BASE}/reports/supply-chain/generate`, { method:'POST' });
+        if (res.ok) { loadReport(); } else { alert('收集失败'); }
+    } catch (err) { alert('请求失败: ' + err.message); }
+    btn.disabled = false; btn.textContent = '⚡ 立即收集情报';
+}
+
+loadReport();
+</script>
+</body>
+</html>
