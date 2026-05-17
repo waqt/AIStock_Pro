@@ -12,6 +12,7 @@ const UI_COMPONENTS = {
             { id: 'definitions', icon: 'fas fa-tasks', label: '任务定义', url: 'definitions.html' },
             { id: 'history', icon: 'fas fa-history', label: '执行历史', url: 'history.html' },
             { id: 'import', icon: 'fas fa-file-import', label: '智能导入', url: 'import.html' },
+            { id: 'research', icon: 'fas fa-brain', label: 'AI 投研', url: 'research.html' },
             { id: 'settings', icon: 'fas fa-cog', label: '系统管理', url: 'settings.html' }
         ];
 
