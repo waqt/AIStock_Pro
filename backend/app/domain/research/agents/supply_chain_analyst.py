@@ -148,21 +148,8 @@ class SupplyChainAnalyst(ResearchAgent):
 - 产能集中度 (全球前3家市占率)
 - 是否有垄断/寡头特征
 
-请输出结构化 JSON:
-{{
-  "layers": [
-    {{
-      "name": "环节名称",
-      "tier": "上游/中游/下游",
-      "barriers": "技术壁垒描述",
-      "global_leaders": [{{"name":"公司","code":"美股代码","market":"US/TW/KR"}}],
-      "a_share_peers": [{{"code":"000001","name":"A股公司"}}],
-      "supply_status": "供不应求/平衡/过剩",
-      "expansion_months": 18,
-      "concentration": "前3家市占率XX%"
-    }}
-  ]
-}}"""
+请输出纯 JSON (不要 Markdown 代码块, 不要任何解释文字).
+JSON 示例: {{"layers":[{{"name":"环节","tier":"上游","barriers":"壁垒","global_leaders":[{{"name":"公司","code":"AAPL","market":"US"}}],"a_share_peers":[{{"code":"000001","name":"公司"}}],"supply_status":"供不应求","expansion_months":18,"concentration":"前3家80%"}}]}}"""
 
         text = await self.provider.chat(prompt)
         return self._extract_json_block(text, "supply_chain")
@@ -309,19 +296,49 @@ class SupplyChainAnalyst(ResearchAgent):
     # ═══ Helpers ══════════════════════════════════
 
     def _extract_json_block(self, text: str, fallback_key: str) -> Dict:
-        """从 LLM 返回中提取 JSON"""
+        """从 LLM 返回中提取 JSON — 处理多种格式"""
+        import re
+        text = text.strip()
+
+        # 1. 去 markdown 代码块 (含中文属性)
+        if "```" in text:
+            # 匹配 ```json ... ``` 或 ``` ... ```
+            m = re.search(r'```(?:json)?\s*([\s\S]*?)```', text)
+            if m:
+                text = m.group(1).strip()
+
+        # 2. 提取第一个 JSON 对象或数组
+        if text.startswith('{'):
+            # 找匹配的结束括号
+            depth = 0
+            end = 0
+            for i, ch in enumerate(text):
+                if ch == '{': depth += 1
+                elif ch == '}':
+                    depth -= 1
+                    if depth == 0:
+                        end = i + 1
+                        break
+            if end > 0:
+                text = text[:end]
+        elif text.startswith('['):
+            depth = 0
+            end = 0
+            for i, ch in enumerate(text):
+                if ch == '[': depth += 1
+                elif ch == ']':
+                    depth -= 1
+                    if depth == 0:
+                        end = i + 1
+                        break
+            if end > 0:
+                text = text[:end]
+
         try:
-            text = text.strip()
-            # 去 markdown 代码块
-            if "```" in text:
-                import re
-                m = re.search(r'```(?:json)?\s*([\s\S]*?)```', text)
-                if m:
-                    text = m.group(1)
             return json.loads(text)
         except json.JSONDecodeError:
             logger.warning(f"[{self.name}] JSON parse failed for {fallback_key}, returning raw")
-            return {"raw_text": text[:500], "step": fallback_key}
+            return {"raw_text": text[:800], "step": fallback_key}
 
     async def load_context(self, ctx: Dict[str, Any]) -> Dict[str, Any]:
         ctx = await super().load_context(ctx)
