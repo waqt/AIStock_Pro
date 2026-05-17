@@ -76,27 +76,6 @@ function renderDeepResearch(items) {
     }).join('');
 }
 
-// 快速同步
-async function triggerSync() {
-    const btn = document.getElementById('btn-sync');
-    if (!btn) return;
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 同步中...';
-    try {
-        const res = await fetch(`${API_BASE}/data/sync/daily/auto`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ type: 'AUTO' })
-        });
-        if (res.ok) refreshDashboard();
-        else Modal.alert('同步失败', '请稍后重试');
-    } catch (e) {
-        Modal.alert('同步失败', e.message);
-    }
-    btn.disabled = false;
-    btn.innerHTML = '<i class="fas fa-sync"></i> 数据同步';
-}
-
 // 生成建议 (占位 — 功能将在后续版本实现)
 async function triggerSuggest() {
     const btn = document.getElementById('btn-suggest');

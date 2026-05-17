@@ -32,8 +32,15 @@ async def get_daily_data(stock_code: str, limit: int = Query(default=500, le=100
             .limit(limit)
         )
         rows = res.scalars().all()
+
+        # 查持仓名称
+        name_res = await db.execute(select(Position.stock_name).where(Position.stock_code == stock_code))
+        stock_name = name_res.scalars().first() or ""
+
         return [
             {
+                "stock_code": stock_code,
+                "stock_name": stock_name,
                 "trade_date": str(r.trade_date),
                 "open": r.open,
                 "high": r.high,

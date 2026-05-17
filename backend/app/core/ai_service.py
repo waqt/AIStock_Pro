@@ -383,7 +383,7 @@ class AIImportService:
             if len(parts) < 3:
                 continue
             item = {
-                "stock_code": parts[0].replace("\"", "").replace("'", ""),
+                "stock_code": AIImportService._normalize_code(parts[0]),
                 "stock_name": parts[1],
                 "shares": int(float(parts[2].replace(",", ""))) if parts[2] else 0,
             }
@@ -466,6 +466,22 @@ class AIImportService:
                 logger.warning(f"[⚠️] Excel row parse error: {e}")
         return results
 
+    # ── Stock Code Normalization ─────────────────
+
+    @staticmethod
+    def _normalize_code(raw: str) -> str:
+        """标准化股票代码: 去除非数字字符, A股补零至6位"""
+        code = re.sub(r'[^0-9]', '', str(raw))
+        if not code:
+            return ''
+        # 港股: 5 位数字
+        if len(code) == 5:
+            return code
+        # A股: 补齐到 6 位 (如 2 → 000002, 651 → 000651)
+        if len(code) < 6:
+            code = code.zfill(6)
+        return code[:6]
+
     # ── Batch Import to DB ──────────────────────
 
     @classmethod
@@ -496,7 +512,7 @@ class AIImportService:
         skipped = 0
         for item in items:
             try:
-                code = str(item.get("stock_code", "")).strip()
+                code = cls._normalize_code(item.get("stock_code", ""))
                 if not code:
                     continue
                 name = item.get("stock_name", "")
@@ -559,7 +575,7 @@ class AIImportService:
 
         for item in items:
             try:
-                code = str(item.get("stock_code", "")).strip()
+                code = cls._normalize_code(item.get("stock_code", ""))
                 if not code:
                     continue
                 name = item.get("stock_name", "")
