@@ -470,19 +470,30 @@ class AIImportService:
 
     @classmethod
     async def batch_import_positions(cls, db: AsyncSession, items: List[Dict], clear_old: bool = False) -> Dict:
-        from app.models.models import Position
+        from app.models.models import Position, MarketData
         cleared = 0
 
         if clear_old:
             res = await db.execute(select(Position))
             old = res.scalars().all()
             cleared = len(old)
-            # synchronize_session='fetch' 确保 ORM identity map 与 DB 同步,
-            # 否则后续 select 可能命中缓存的旧对象, 导致 delete 不生效
             await db.execute(delete(Position).execution_options(synchronize_session='fetch'))
             await db.flush()
 
+        # 预加载所有行情最新价，用于修正导入数据中的现价
+        price_map = {}
+        mkt_res = await db.execute(
+            select(MarketData.stock_code, MarketData.close, MarketData.trade_date)
+            .order_by(MarketData.trade_date.desc())
+        )
+        seen = set()
+        for row in mkt_res:
+            if row.stock_code not in seen:
+                price_map[row.stock_code] = row.close
+                seen.add(row.stock_code)
+
         imported = 0
+        skipped = 0
         for item in items:
             try:
                 code = str(item.get("stock_code", "")).strip()
@@ -491,10 +502,12 @@ class AIImportService:
                 name = item.get("stock_name", "")
                 shares = int(float(item.get("shares", 0))) if item.get("shares") else 0
                 cost = float(item.get("cost_price", item.get("price", 0))) if item.get("cost_price", item.get("price")) else 0.0
-                current = float(item.get("current_price", cost)) if item.get("current_price") else cost
+                # 优先用行情真实价格，AI 返回的截图现价仅作兜底
+                current = price_map.get(code, float(item.get("current_price", cost) or cost))
 
-                # 数字守护
                 if shares <= 0:
+                    logger.warning(f"[⚠️] {code}: shares=0, skipping")
+                    skipped += 1
                     continue
                 if cost <= 0 and current > 0:
                     cost = current
@@ -505,7 +518,8 @@ class AIImportService:
                 pl = mv - (shares * cost)
                 plr = (pl / (shares * cost) * 100) if (shares * cost) > 0 else 0.0
 
-                # Upsert
+                # Upsert: 必须先 flush 确保 identity map 中没有待处理的旧对象
+                await db.flush()
                 res = await db.execute(select(Position).where(Position.stock_code == code))
                 existing = res.scalars().first()
                 if existing:
@@ -518,6 +532,7 @@ class AIImportService:
                     existing.profit_loss_ratio = plr
                     existing.first_buy_date = date.today() if not existing.first_buy_date else existing.first_buy_date
                     existing.updated_at = datetime.now()
+                    logger.info(f"[+] Updated: {code} {name} vol={shares} cost={cost} price={current}")
                 else:
                     db.add(Position(
                         stock_code=code, stock_name=name,
@@ -525,12 +540,13 @@ class AIImportService:
                         market_value=mv, profit_loss=pl, profit_loss_ratio=plr,
                         first_buy_date=date.today()
                     ))
+                    logger.info(f"[+] Inserted: {code} {name} vol={shares} cost={cost} price={current}")
                 imported += 1
             except Exception as e:
                 logger.warning(f"[⚠️] Import position {item.get('stock_code', '?')} error: {e}")
 
         await db.commit()
-        logger.info(f"[✅] Import: {imported} positions (cleared {cleared} old)")
+        logger.info(f"[✅] Import: {imported} positions (cleared {cleared} old, skipped {skipped})")
         return {"success": True, "imported_count": imported, "cleared_count": cleared, "errors": []}
 
     @classmethod
