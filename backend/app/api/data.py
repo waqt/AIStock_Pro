@@ -266,7 +266,7 @@ async def get_stock_detail_health(stock_code: str):
 # 指标注册与查询 (V5.1)
 # ═══════════════════════════════════════════
 
-from app.quant.indicators import INDICATOR_REGISTRY
+from app.domain.quant.engine.indicators import INDICATOR_REGISTRY
 
 
 @router.get("/indicators/registry")

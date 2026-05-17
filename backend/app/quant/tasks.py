@@ -1,6 +1,6 @@
 import asyncio
 from app.framework.database.session import async_session
-from app.quant.engine import QuantEngine
+from app.domain.quant.engine.engine import QuantEngine
 from app.core.ai_service import AIImportService
 from app.framework.logger import logger
 from app.framework.tasks.engine import task_manager

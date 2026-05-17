@@ -5,8 +5,14 @@ from datetime import date, datetime, timedelta
 import asyncio
 
 from app.framework.database.session import async_session
-from app.core.data_service import data_service
 from app.domain.market_data.sources.router import data_router
+
+# 向后兼容
+data_service = type('DataService', (), {
+    'get_daily_data': lambda code, days=120: data_router.get_daily_data(code, days),
+    'get_realtime_quotes': lambda codes: data_router.get_realtime_quotes(codes),
+    'close': lambda: data_router.close_all()
+})()
 from app.domain.quant.engine.indicators import Indicators
 from app.domain.quant.engine.patterns import Patterns
 from app.models.models import StockIndicator, Position, MarketData, TaskExecution
