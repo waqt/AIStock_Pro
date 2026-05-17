@@ -11,7 +11,7 @@ class PositionResponse(BaseModel):
     current_price: Optional[float] = 0.0
     market_value: float
     profit_loss: float
-    profit_loss_ratio: float
+    profit_loss_ratio: Optional[float] = None
     updated_at: Optional[datetime]
     
     model_config = ConfigDict(from_attributes=True)
