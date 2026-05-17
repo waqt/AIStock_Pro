@@ -12,3 +12,4 @@ dist/
 build/
 position*/
 Local_data/
+backend/import_cache.json
