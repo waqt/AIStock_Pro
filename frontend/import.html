@@ -300,8 +300,14 @@
             const selectedIndices = Array.from(document.querySelectorAll('.item-check:checked')).map(c => parseInt(c.dataset.index));
             if (selectedIndices.length === 0) return;
 
-            const selectedItems = selectedIndices.map(i => parsedItems[i]);
-            
+            const selectedItems = selectedIndices.map(i => parsedItems[i]).filter(item =>
+                item && item.stock_code  // 过滤无效行
+            );
+            if (!selectedItems.length) {
+                Modal.alert('提示', '没有有效的股票数据可导入，请检查代码和数量字段。');
+                return;
+            }
+
             if (currentTab === 'position') {
                 const mode = document.querySelector('input[name="import-mode"]:checked').value;
                 const clearOld = mode === 'clear';
