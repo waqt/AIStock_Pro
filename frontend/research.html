@@ -222,6 +222,7 @@
                         .replace(/\|(.+)\|/g, (m) => m.includes('---') ? '' : '<tr>'+m.split('|').filter(c=>c.trim()).map(c=>`<td>${c.trim()}</td>`).join('')+'</tr>');
                 }
 
+                saveCache(d);  // 持久化
                 status.textContent = '扫描完成';
                 document.getElementById('panel-empty').style.display = 'none';
             } catch (e) {
@@ -361,6 +362,7 @@
                     document.getElementById('content-valuation').innerHTML = `<pre>${val.note}</pre>`;
                 }
 
+                saveCache(d);  // 持久化
             } catch (e) {
                 Modal.alert('分析异常', e.message);
             } finally {
@@ -369,6 +371,52 @@
                 document.getElementById('panel-loading').style.display = 'none';
             }
         }
+
+        // ── 持久化 ──
+        const CACHE_KEY = 'aistock_research';
+        function saveCache(d) { try { localStorage.setItem(CACHE_KEY, JSON.stringify({t:Date.now(),d})); } catch(e) {} }
+        function loadCache() { try { const r = localStorage.getItem(CACHE_KEY); return r ? JSON.parse(r).d : null; } catch(e) { return null; } }
+
+        function restoreView(d) {
+            document.getElementById('panel-empty').style.display = 'none';
+            if (d.hot_industries) renderCards(d.hot_industries);
+            if (d.supply_chain) renderLayers(d);
+            if (d.bottleneck) renderBn(d);
+            if (d.temporal) renderTm(d);
+            if (d.briefing) renderBf(d);
+        }
+        function renderCards(items) {
+            const c = document.getElementById('content-scan-industries');
+            document.getElementById('panel-scan-result').style.display = '';
+            c.innerHTML = items.map((ind,i) => `
+                <div style="padding:10px;border-bottom:1px solid var(--border-thin);cursor:pointer;${i===0?'border-left:3px solid var(--accent-gold);padding-left:8px;':''}"
+                     onclick="document.getElementById('research-industry').value='${ind.name||ind.industry||''}';document.getElementById('research-codes').value='${(ind.a_stock_codes||[]).join(',')}';startResearch();">
+                    <div style="display:flex;justify-content:space-between;"><span style="font-weight:600;">${i+1}. ${ind.name||ind.industry||''} <i class="fas fa-search" style="font-size:9px;color:var(--text-micro);"></i></span><span class="score-badge score-high">${ind.score||'?'}/10</span></div>
+                    <div style="font-size:11px;color:var(--text-dim);margin-top:4px;">${ind.reason||''}</div>
+                    ${ind.a_stock_codes?`<div style="font-size:10px;color:var(--accent-blue);">关注: ${ind.a_stock_codes.join(', ')}</div>`:''}</div>`).join('');
+        }
+        function renderLayers(d) {
+            const ls = (d.supply_chain||{}).recursive_layers || (d.supply_chain||{}).layers || [];
+            if (!ls.length) return;
+            document.getElementById('panel-chain').style.display = '';
+            const gc={10:'var(--accent-red)',9:'var(--accent-red)',8:'var(--accent-gold)',7:'var(--accent-gold)'};
+            document.getElementById('content-chain').innerHTML = ls.map(l=>`<div class="chain-layer" style="${(l.expectation_gap_score||0)>=8?'border-left:3px solid var(--accent-red);':''}">
+                <div style="display:flex;justify-content:space-between;"><span><span style="display:inline-block;padding:1px 6px;border-radius:2px;font-size:9px;background:rgba(255,165,2,0.15);color:var(--accent-gold);">L${l.level||'?'}</span> <strong>${l.name||''}</strong></span>${l.expectation_gap_score?`<span class="score-badge" style="color:${gc[l.expectation_gap_score]||'var(--text-dim)'};">预期差 ${l.expectation_gap_score}/10</span>`:''}</div>
+                <div style="font-size:10px;color:var(--text-dim);margin-top:4px;">${l.barriers||''}</div>
+                ${l.gap_reason?`<div style="font-size:10px;color:var(--accent-gold);margin-top:2px;">💡 ${l.gap_reason}</div>`:''}
+                ${l.a_share_peers&&l.a_share_peers.length?`<div style="font-size:9px;color:var(--accent-blue);">A股: ${l.a_share_peers.map(p=>p.name||p.code).join(', ')}</div>`:''}</div>`).join('');
+        }
+        function renderBn(d) { const b=(d.bottleneck||{}); const bl=Array.isArray(b)?b:[]; if(!bl.length)return; document.getElementById('panel-bottleneck').style.display=''; document.getElementById('content-bottleneck').innerHTML=bl.map(b=>`<div style="padding:8px;border-bottom:1px solid var(--border-thin);"><strong>${b.segment||''}</strong> <span class="score-badge score-high">${b.monopoly_score||'?'}/10</span><div style="font-size:11px;color:var(--text-dim);margin-top:4px;">${b.monopoly_root||''}</div>${b.a_share_picks?b.a_share_picks.map(p=>`<div style="font-size:10px;color:var(--accent-blue);">→ ${p.code} ${p.name}: ${p.logic||''}</div>`).join(''):''}</div>`).join(''); }
+        function renderTm(d) { const t=d.temporal||{}; const tl=Array.isArray(t)?t:[]; if(!tl.length||!tl[0].segment)return; document.getElementById('panel-temporal').style.display=''; document.getElementById('content-temporal').innerHTML=`<div style="overflow-x:auto;"><table style="width:100%;font-size:10px;"><tr style="color:var(--text-micro);"><th>环节</th><th>需求增速</th><th>产能利用</th><th>供需缺口</th><th>缺口填补</th><th>景气评分</th><th>热度</th></tr>${tl.map(t=>`<tr><td style="font-weight:600;">${t.segment||''}</td><td>${t.demand_growth||'?'}</td><td>${t.capacity_util||'?'}</td><td style="color:var(--accent-red);">${t.supply_gap||'?'}</td><td>${t.gap_filled||'?'}</td><td>${t.sustainability_score||'?'}/10</td><td style="color:${t.heat_level==='过热'?'var(--accent-red)':(t.heat_level==='偏热'?'var(--accent-gold)':'var(--accent-green)')};">${t.heat_level||'?'}</td></tr>`).join('')}</table></div>`; }
+        function renderBf(d) { if(!d.briefing)return; document.getElementById('panel-summary').style.display=''; document.getElementById('content-summary').innerHTML=d.briefing.replace(/### (.+)/g,'<h3>$1</h3>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>'); }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                const cache = loadCache();
+                if (cache) { restoreView(cache); document.getElementById('scan-status').textContent = '已恢复上次分析'; }
+            }, 300);
+        });
+
     </script>
 </body>
 </html>
