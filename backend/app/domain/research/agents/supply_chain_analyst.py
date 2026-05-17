@@ -78,6 +78,11 @@ class SupplyChainAnalyst(ResearchAgent):
         self._steps.append({"step": 4, "name": "核心标的锁定", "output": step4})
         results["core_targets"] = step4
 
+        # ── Step 3.5: 时间维度分析 ──
+        step35 = await _safe_step("temporal", self._temporal_analysis(ctx, step3))
+        self._steps.append({"step": 4, "name": "景气周期预测", "output": step35})
+        results["temporal"] = step35
+
         step5 = await _safe_step("valuation", self._quantitative_valuation(ctx, step4))
         self._steps.append({"step": 5, "name": "定量估值", "output": step5})
         results["valuation"] = step5
@@ -198,6 +203,46 @@ JSON 示例: {{"layers":[{{"name":"环节","tier":"上游","barriers":"壁垒","
 
         text = await self.provider.chat(prompt)
         return self._extract_json_block(text, "bottleneck")
+
+    async def _temporal_analysis(self, ctx: Dict, bottlenecks: List) -> Dict:
+        """Step 3.5: 时间维度分析 — 景气持续性 + 供需缺口量化 + 产能过剩预警"""
+        bn_list = bottlenecks if isinstance(bottlenecks, list) else []
+        if not bn_list:
+            return {"note": "无瓶颈数据, 跳过时间分析"}
+
+        fundamentals = ctx.get("fundamentals", {})
+
+        # 汇总 PE 数据用于热度判断
+        pe_summary = []
+        for code, f in fundamentals.items():
+            if f.get("pe_ttm") and f["pe_ttm"] > 0:
+                pe_summary.append({"code": code, "name": f.get("name",""), "pe_ttm": f["pe_ttm"], "pb": f.get("pb")})
+
+        prompt = f"""你是一位半导体/科技产业分析师, 擅长产能周期和供需模型。请对以下瓶颈环节做时间维度量化分析。
+
+## 瓶颈环节
+{_json_dumps(bn_list, ensure_ascii=False)}
+
+## A股标的 PE 数据 (用于热度判断)
+{_json_dumps(pe_summary, ensure_ascii=False)}
+
+## 分析任务 (每个环节)
+
+1. **当前需求增速**: 估计年化需求增速 (%)
+2. **当前产能利用率**: 估计全球产能利用率 (%)
+3. **在建产能**: 在建新产能占现有产能的比例 (%)
+4. **新产能投产时间**: 预计新产能何时开始释放 (YYYY-QQ 或 月份数)
+5. **供需缺口**: 当前缺口百分比 (%)
+6. **缺口填补时间**: 缺口何时被填补 (YYYY-QQ 或 月份数)
+7. **产能过剩预警**: 如果新产能继续投入, 何时可能过剩 (YYYY-QQ 或 "暂无风险")
+8. **景气持续性评分** (1-10): 高景气还能持续多久
+9. **热度判断**: 基于 PE 数据和行业生命周期, 判断当前热度是 "合理/偏热/过热"
+
+请输出纯JSON数组:
+[{{"segment":"环节名","demand_growth":"25%","capacity_util":"95%","pipeline_pct":"30%","new_capacity_online":"2026-Q4","supply_gap":"15%","gap_filled":"2027-Q2","overcapacity_risk":"2028-Q1","sustainability_score":7,"sustainability_quarters":6,"heat_level":"合理","heat_reason":"PE30处于历史中位, 行业成长期"}}]"""
+
+        text = await self.provider.chat(prompt)
+        return self._extract_json_block(text, "temporal")
 
     async def _select_core_targets(self, ctx: Dict, bottlenecks: List) -> Dict:
         """Step 4: 锁定核心标的"""

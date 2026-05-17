@@ -123,6 +123,12 @@
                         <div class="panel-body" id="content-bottleneck"></div>
                     </div>
 
+                    <!-- 时间维度 -->
+                    <div class="panel" id="panel-temporal" style="display:none;">
+                        <div class="panel-header"><span class="panel-title">景气周期预测 (时间维度)</span></div>
+                        <div class="panel-body" id="content-temporal"></div>
+                    </div>
+
                     <!-- 估值 -->
                     <div class="panel" id="panel-valuation" style="display:none;">
                         <div class="panel-header"><span class="panel-title">估值分析</span></div>
@@ -309,6 +315,34 @@
                             <div style="color:var(--text-dim);margin-top:4px;">${b.monopoly_root || ''}</div>
                             <div style="color:var(--text-micro);font-size:10px;margin-top:4px;">${b.supply_gap || ''} | ${b.pricing_power || ''}</div>
                         </div>`).join('');
+                }
+
+                // Temporal
+                const tmp = d.temporal || {};
+                const tmpList = Array.isArray(tmp) ? tmp : (tmp.raw_text ? [{raw: tmp.raw_text}] : []);
+                if (tmpList.length && tmpList[0].segment) {
+                    document.getElementById('panel-temporal').style.display = '';
+                    document.getElementById('content-temporal').innerHTML = `
+                        <div style="overflow-x:auto;">
+                        <table style="width:100%;font-size:10px;">
+                        <tr style="color:var(--text-micro);">
+                            <th>环节</th><th>需求增速</th><th>产能利用</th><th>供需缺口</th>
+                            <th>缺口填补</th><th>产能过剩</th><th>景气评分</th><th>热度</th>
+                        </tr>
+                        ${tmpList.map(t => `
+                        <tr>
+                            <td style="font-weight:600;">${t.segment||''}</td>
+                            <td>${t.demand_growth||'?'}</td>
+                            <td>${t.capacity_util||'?'}</td>
+                            <td style="color:var(--accent-red);">${t.supply_gap||'?'}</td>
+                            <td>${t.gap_filled||'?'}</td>
+                            <td style="color:${(t.overcapacity_risk||'').includes('202')?'var(--accent-gold)':'var(--text-dim)'};">${t.overcapacity_risk||'暂无'}</td>
+                            <td><span class="score-badge score-high">${t.sustainability_score||'?'}/10</span></td>
+                            <td style="color:${t.heat_level==='过热'?'var(--accent-red)':(t.heat_level==='偏热'?'var(--accent-gold)':'var(--accent-green)')};">${t.heat_level||'?'}</td>
+                        </tr>
+                        ${t.heat_reason ? `<tr><td colspan="8" style="font-size:9px;color:var(--text-micro);">${t.heat_reason}</td></tr>` : ''}
+                        `).join('')}
+                        </table></div>`;
                 }
 
                 // Valuation
