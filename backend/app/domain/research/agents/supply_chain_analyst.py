@@ -17,8 +17,10 @@ class _SafeEncoder(json.JSONEncoder):
         return super().default(obj)
 
 
-def _json_dumps(obj):
-    return _json_dumps(obj, ensure_ascii=False, cls=_SafeEncoder)
+def _json_dumps(obj, **kwargs):
+    kwargs.setdefault("ensure_ascii", False)
+    kwargs.setdefault("cls", _SafeEncoder)
+    return json.dumps(obj, **kwargs)
 
 
 class SupplyChainAnalyst(ResearchAgent):
