@@ -16,9 +16,7 @@ async def get_tencent_quotes(codes: List[str]) -> Dict[str, dict]:
     for c in codes:
         c = str(c).strip()
         if len(c) == 5:
-            prefixed.append(f"hk{c}")  # 港股
-        elif c.startswith("8"):
-            prefixed.append(f"bj{c}")  # 北交所
+            prefixed.append(f"hk{c}")  # 港股 (5位代码)
         elif c.startswith(("6", "9")):
             prefixed.append(f"sh{c}")
         else:
