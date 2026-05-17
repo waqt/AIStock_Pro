@@ -19,7 +19,15 @@ from app.api import tasks, data, positions, import_api
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
-    description="AIStock Pro - Clean Architecture (DDD)"
+    description="AI 量化分析与投研系统 — A股+港股, OCR导入, 多源行情, 技术指标, 任务引擎, 智能体架构",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_tags=[
+        {"name": "任务管理", "description": "TaskEngine V5.0 — 注册/调度/并发/强杀/定时"},
+        {"name": "数据管理", "description": "多源行情同步, 健康检查, 指标, 汇率, 估值"},
+        {"name": "Positions", "description": "持仓CRUD, 账户资产摘要"},
+        {"name": "AI 导入", "description": "截图OCR (豆包→DeepSeek→Gemini), Excel, 文本解析"},
+    ]
 )
 
 # 1. 中间件与跨域

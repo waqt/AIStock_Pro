@@ -11,7 +11,8 @@ const UI_COMPONENTS = {
             { id: 'data', icon: 'fas fa-server', label: '数据中心', url: 'data.html' },
             { id: 'definitions', icon: 'fas fa-tasks', label: '任务定义', url: 'definitions.html' },
             { id: 'history', icon: 'fas fa-history', label: '执行历史', url: 'history.html' },
-            { id: 'import', icon: 'fas fa-file-import', label: '智能导入', url: 'import.html' }
+            { id: 'import', icon: 'fas fa-file-import', label: '智能导入', url: 'import.html' },
+            { id: 'settings', icon: 'fas fa-cog', label: '系统管理', url: 'settings.html' }
         ];
 
         let html = `
@@ -30,12 +31,7 @@ const UI_COMPONENTS = {
             `;
         });
 
-        html += `
-            </div>
-            <div style="margin-top: auto;">
-                <div class="nav-item" id="nav-settings"><i class="fas fa-cog"></i><span>系统设置</span></div>
-            </div>
-        `;
+        html += `</div>`;
         return html;
     },
 

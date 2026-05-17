@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIStock | 系统管理</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body data-page-id="settings">
+    <div class="app-container">
+        <aside class="sidebar"></aside>
+
+        <main class="main-content">
+            <div class="top-bar"></div>
+
+            <div class="workspace" style="grid-template-columns: 1fr 1fr; gap: 16px; padding: 16px;">
+
+                <!-- 左列：功能清单 -->
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    <div class="panel">
+                        <div class="panel-header"><span class="panel-title">已实现功能 (V5.2)</span></div>
+                        <div class="panel-body" style="font-size: 12px; line-height: 1.8;">
+
+                            <div style="color: var(--accent-blue); font-weight: 600; margin: 8px 0 4px;">市场数据</div>
+                            <div style="color: var(--text-dim);">
+                                ✓ 多源行情同步 (AkShare/Sina 自动降级)<br>
+                                ✓ 增量/全量感知模式<br>
+                                ✓ 数据健康检查 (行情体检+指标体检)<br>
+                                ✓ 宏观市场数据 (汇率+美元指数+金/银/油)<br>
+                                ✓ PE/PB/市值估值同步 (腾讯行情)<br>
+                                ✓ 股票基础信息库 (代码+名称+估值)<br>
+                                ✓ A股日线 + 港股日线 (akshare)<br>
+                                ✓ 数据源优先级看板
+                            </div>
+
+                            <div style="color: var(--accent-blue); font-weight: 600; margin: 8px 0 4px;">持仓管理</div>
+                            <div style="color: var(--text-dim);">
+                                ✓ 持仓列表 + 资产概要<br>
+                                ✓ ECharts K线图 (日线 + 成交量)<br>
+                                ✓ 自动损益计算 (含负成本处理)<br>
+                                ✓ 单条持仓删除<br>
+                                ✓ 智能同步后自动更新现价
+                            </div>
+
+                            <div style="color: var(--accent-blue); font-weight: 600; margin: 8px 0 4px;">智能导入</div>
+                            <div style="color: var(--text-dim);">
+                                ✓ 截图OCR (豆包→DeepSeek→Gemini)<br>
+                                ✓ Excel 上传解析<br>
+                                ✓ 文本粘贴解析<br>
+                                ✓ 覆盖/追加两种模式<br>
+                                ✓ 异步识别 (TaskEngine)<br>
+                                ✓ 预览可编辑 + 代码自动标准化<br>
+                                ✓ 名称自动补全 (StockInfo匹配)
+                            </div>
+
+                            <div style="color: var(--accent-blue); font-weight: 600; margin: 8px 0 4px;">量化分析</div>
+                            <div style="color: var(--text-dim);">
+                                ✓ 技术指标: MA/MACD/RSI/布林带/成交量均线<br>
+                                ✓ 形态识别: Andy123/Joy底部/天量滞涨<br>
+                                ✓ 指标注册表 + 查询API<br>
+                                ✓ 指标重算任务
+                            </div>
+
+                            <div style="color: var(--accent-blue); font-weight: 600; margin: 8px 0 4px;">任务引擎</div>
+                            <div style="color: var(--text-dim);">
+                                ✓ TaskEngine (注册/调度/并发/强杀)<br>
+                                ✓ APScheduler 定时调度<br>
+                                ✓ 执行历史 + 详情 + 灵活清理<br>
+                                ✓ 任务定义注册表<br>
+                                ✓ 启动自愈 (Zombie回收)
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 右列：API + 路线图 -->
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    <div class="panel">
+                        <div class="panel-header"><span class="panel-title">API 文档</span></div>
+                        <div class="panel-body" style="text-align: center; padding: 24px;">
+                            <div style="font-size: 36px; margin-bottom: 12px;">📡</div>
+                            <div style="font-size: 13px; color: var(--text-dim); margin-bottom: 6px;">
+                                34 个 API 端点 · 4 个路由组
+                            </div>
+                            <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                                <a href="/docs" target="_blank" class="btn-action" style="text-decoration: none; border-color: var(--accent-green); color: var(--accent-green);">
+                                    <i class="fas fa-code"></i> Swagger UI
+                                </a>
+                                <a href="/redoc" target="_blank" class="btn-action" style="text-decoration: none; border-color: var(--accent-blue); color: var(--accent-blue);">
+                                    <i class="fas fa-book"></i> ReDoc
+                                </a>
+                            </div>
+                            <div style="margin-top: 16px; font-size: 11px; color: var(--text-micro);">
+                                <div>任务管理: /api/system/tasks/* (10 endpoints)</div>
+                                <div>数据管理: /api/data/* (14 endpoints)</div>
+                                <div>持仓管理: /api/positions/* (3 endpoints)</div>
+                                <div>智能导入: /api/ai/* (9 endpoints)</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel">
+                        <div class="panel-header"><span class="panel-title">待实现 (V2.0 / V3.0)</span></div>
+                        <div class="panel-body" style="font-size: 12px; line-height: 1.8;">
+
+                            <div style="color: var(--accent-gold); font-weight: 600; margin: 4px 0;">V2.0 — 量化策略工程化</div>
+                            <div style="color: var(--text-micro);">
+                                ○ 策略 DSL 引擎 (YAML/Python Dict)<br>
+                                ○ 筹码分布 VAP 算子<br>
+                                ○ DTW 形态相似度回测<br>
+                                ○ 量价背离预警<br>
+                                ○ 资金流向分析 (push2已就绪)<br>
+                                ○ 行业板块轮动<br>
+                                ○ 调仓建议信号引擎<br>
+                                ○ 基本面数据 (财报/研报)
+                            </div>
+
+                            <div style="color: var(--accent-gold); font-weight: 600; margin: 8px 0 4px;">V3.0 — AI 投研智能体</div>
+                            <div style="color: var(--text-micro);">
+                                ○ RAG 事实核查器<br>
+                                ○ 流式研报输出<br>
+                                ○ 供应链景气度分析<br>
+                                ○ 数字侦探 (招聘/专利/中标)<br>
+                                ○ 产业链风险传导图谱<br>
+                                ○ 多模态 AI 分析
+                            </div>
+
+                            <div style="color: var(--accent-gold); font-weight: 600; margin: 8px 0 4px;">待优化</div>
+                            <div style="color: var(--text-micro);">
+                                ○ 全量 A 股基础数据库 (付费 API)<br>
+                                ○ 前端 ECharts 指标叠加 (MA/布林带)<br>
+                                ○ 交易记录管理页面<br>
+                                ○ 系统设置持久化<br>
+                                ○ 冒烟测试覆盖更多场景
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel" style="background: rgba(255,255,255,0.02);">
+                        <div class="panel-body" style="font-size: 11px; color: var(--text-dim); text-align: center;">
+                            <div>AIStock Pro V5.2</div>
+                            <div style="color: var(--text-micro); margin-top: 4px;">DDD + Agent Architecture</div>
+                            <div style="color: var(--text-micro);">Python 3.10+ · FastAPI · MySQL · ECharts</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="js/framework/api.js"></script>
+    <script src="js/framework/modal.js"></script>
+    <script src="js/framework/task_monitor.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/common.js"></script>
+</body>
+</html>
