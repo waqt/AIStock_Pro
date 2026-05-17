@@ -509,9 +509,10 @@ class AIImportService:
                     logger.warning(f"[⚠️] {code}: shares=0, skipping")
                     skipped += 1
                     continue
-                if cost <= 0 and current > 0:
+                # 仅当为零/空值时兜底; 负成本(已收回本金)保持原值
+                if cost == 0 and current > 0:
                     cost = current
-                if current <= 0 and cost > 0:
+                if current == 0 and cost > 0:
                     current = cost
 
                 mv = shares * current
