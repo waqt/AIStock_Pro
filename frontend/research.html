@@ -284,20 +284,29 @@
                     document.getElementById('content-summary').innerHTML = d.summary.replace(/\n/g, '<br>').replace(/##\s*(.+)/g, '<h3>$1</h3>').replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\|(.+)\|/g, (m) => { if (m.includes('---')) return ''; const cells = m.split('|').filter(c => c.trim()); return '<tr>' + cells.map(c => `<td>${c.trim()}</td>`).join('') + '</tr>'; });
                 }
 
-                // Chain
+                // Chain (recursive layers)
                 const chain = d.supply_chain || {};
-                const layers = chain.layers || (chain.raw_text ? [] : []);
+                const layers = chain.recursive_layers || chain.layers || [];
                 if (layers.length || chain.raw_text) {
                     document.getElementById('panel-chain').style.display = '';
                     if (layers.length) {
-                        document.getElementById('content-chain').innerHTML = layers.map(l => `
-                            <div class="chain-layer">
-                                <span class="tier-badge ${l.tier === '上游' ? 'tier-up' : (l.tier === '下游' ? 'tier-down' : 'tier-mid')}">${l.tier || '中游'}</span>
-                                <strong style="margin-left:8px;">${l.name || ''}</strong>
+                        const gapColors = {10:'var(--accent-red)',9:'var(--accent-red)',8:'var(--accent-gold)',7:'var(--accent-gold)',6:'var(--accent-blue)'};
+                        document.getElementById('content-chain').innerHTML = layers.map(l => {
+                            const gapScore = l.expectation_gap_score || 0;
+                            const gapColor = gapColors[gapScore] || 'var(--text-dim)';
+                            const levelBadge = `<span style="display:inline-block;padding:1px 6px;border-radius:2px;font-size:9px;background:rgba(255,165,2,0.15);color:var(--accent-gold);">L${l.level || '?'}</span>`;
+                            return `
+                            <div class="chain-layer" style="${gapScore >= 8 ? 'border-left:3px solid var(--accent-red);' : ''}">
+                                <div style="display:flex;justify-content:space-between;align-items:center;">
+                                    <span>${levelBadge} <strong style="margin-left:4px;">${l.name || ''}</strong></span>
+                                    ${gapScore > 0 ? `<span class="score-badge" style="color:${gapColor};background:rgba(255,165,2,0.1);font-size:10px;">预期差 ${gapScore}/10</span>` : ''}
+                                </div>
                                 <div style="font-size:10px;color:var(--text-dim);margin-top:4px;">${l.barriers || ''}</div>
-                                <div style="font-size:10px;color:var(--text-micro);margin-top:2px;">${l.supply_status || ''} | 扩产${l.expansion_months || '?'}月 | ${l.concentration || ''}</div>
-                            </div>
-                        `).join('');
+                                ${l.gap_reason ? `<div style="font-size:10px;color:var(--accent-gold);margin-top:2px;">💡 ${l.gap_reason}</div>` : ''}
+                                <div style="font-size:9px;color:var(--text-micro);margin-top:2px;">${l.supply_status || ''} | 扩产${l.expansion_months || '?'}月 | ${l.concentration || ''}</div>
+                                ${l.a_share_peers && l.a_share_peers.length ? `<div style="font-size:9px;color:var(--accent-blue);margin-top:2px;">A股: ${l.a_share_peers.map(p=>p.name||p.code).join(', ')}</div>` : ''}
+                            </div>`;
+                        }).join('');
                     } else {
                         document.getElementById('content-chain').innerHTML = `<pre>${chain.raw_text || '供应链映射未成功解析'}</pre>`;
                     }

@@ -146,43 +146,64 @@ class SupplyChainAnalyst(ResearchAgent):
         return self._extract_json_block(text, "prosperity")
 
     async def _map_supply_chain(self, ctx: Dict, signals: Dict) -> Dict:
-        """Step 2: 映射全球供应链层级"""
+        """Step 2: 多级递归穿透 — 从显性瓶颈逐层上探到材料/工艺/设备"""
         industry = ctx.get("industry", "")
         hot_segments = signals.get("hot_segments", [])
 
-        prompt = f"""你是一位全球半导体/科技供应链专家。请为 {industry} 行业绘制完整的全球供应链图谱。
+        prompt = f"""你是一位拥有硅谷硬核技术视角的半导体/材料/设备资深产业专家。请对 {industry} 行业做**多级递归穿透分析**。
 
-## 高景气子环节
+## 高景气子环节 (显性 Layer 1)
 {_json_dumps(hot_segments, ensure_ascii=False)}
 
-## 你的任务
-请按 上游→中游→下游 结构, 列出每个环节的:
-1. 环节名称和技术壁垒
-2. 全球主要公司 (含美股代码/台股代码/韩股代码)
-3. A股映射标的 (如果存在)
-4. 该环节的供需状况 (供不应求/平衡/过剩)
-5. 扩产周期 (月)
+## 核心方法: 多级递归追问
 
-特别关注:
-- 产能集中度 (全球前3家市占率)
-- 是否有垄断/寡头特征
+对每个高景气子环节, **向上游连追 3-4 层"为什么"**:
 
-请输出纯 JSON (不要 Markdown 代码块, 不要任何解释文字).
-JSON 示例: {{"layers":[{{"name":"环节","tier":"上游","barriers":"壁垒","global_leaders":[{{"name":"公司","code":"AAPL","market":"US"}}],"a_share_peers":[{{"code":"000001","name":"公司"}}],"supply_status":"供不应求","expansion_months":18,"concentration":"前3家80%"}}]}}"""
+Layer 1 (显性瓶颈): 市场都知道的技术痛点
+  ↓ 追问: "是什么物理/材料/工艺限制导致了这个瓶颈?"
+Layer 2 (工艺瓶颈): 解决 Layer 1 必须突破的制造工艺
+  ↓ 追问: "这个工艺又依赖什么更上游的材料/设备?"
+Layer 3 (材料/辅材瓶颈): Layer 2 依赖的核心耗材/辅材/零部件
+  ↓ 追问: "这些材料的品质由什么测试/设备保证?"
+Layer 4 (测试与辅具瓶颈): 保证 Layer 3 质量的检测设备/探针/夹具
+
+**案例 (AI算力)**:
+- Layer 1: HBM 高带宽存储 ← 市场热炒, 龙头已被充分定价
+- Layer 2: 混合键合(Hybrid Bonding) ← 16层堆叠必须用, TCB不够
+- Layer 3: 原子级 CMP 抛光液 + ALD 沉积 ← 键合要求表面零缺陷
+- Layer 4: MEMS 探针卡 ← KGD 测试必须, 混合键合对探针损伤零容忍
+- **预期差**: Layer 3/4 的消耗量翻倍, 但估值还在传统半导体周期
+
+## 输出要求
+
+对每个 Layer, 列出:
+1. 环节名称 + 层级 (L1/L2/L3/L4)
+2. 技术壁垒描述 (为什么难做)
+3. 全球主要公司 + A股映射标的
+4. **预期差评分** (1-10): 技术需求增长倍数 vs 当前市场关注度
+5. 预期差理由: 为什么这个环节还没被充分定价
+6. 供需状况 + 扩产周期
+7. 产能集中度
+
+请输出纯 JSON:
+{{"recursive_layers":[{{"level":1,"name":"HBM","barriers":"...","expectation_gap_score":3,"gap_reason":"已被市场充分定价","global_leaders":[{{"name":"SK Hynix","code":"000660","market":"KR"}}],"a_share_peers":[],"supply_status":"供不应求","expansion_months":24,"concentration":"SK+三星+美光 95%"}},{{"level":2,"name":"混合键合","barriers":"...","expectation_gap_score":9,"gap_reason":"市场尚未认知键合从TCB→Hybrid的颠覆性","global_leaders":[],"a_share_peers":[{{"code":"688012","name":"中微公司"}}],"supply_status":"供不应求","expansion_months":18,"concentration":"Besi+ASMPT 80%"}},{{"level":3,"name":"CMP抛光液","barriers":"原子级平整度要求","expectation_gap_score":9,"gap_reason":"消耗量翻倍但估值仍在传统周期","global_leaders":[{{"name":"Cabot","code":"CBT","market":"US"}}],"a_share_peers":[{{"code":"300054","name":"鼎龙股份"}}],"supply_status":"供不应求","expansion_months":12,"concentration":"Cabot+Hitachi+Fujimi 70%"}},{{"level":4,"name":"MEMS探针卡","barriers":"混合键合对探针零损伤要求","expectation_gap_score":10,"gap_reason":"全市场还在抢HBM, 探针卡需求非线性暴增却被忽视","global_leaders":[{{"name":"FormFactor","code":"FORM","market":"US"}}],"a_share_peers":[{{"code":"300567","name":"精测电子"}}],"supply_status":"供不应求","expansion_months":12,"concentration":"FormFactor+Technoprobe 60%"}}]}}"""
 
         text = await self.provider.chat(prompt)
         return self._extract_json_block(text, "supply_chain")
 
     async def _locate_bottleneck(self, ctx: Dict, chain: Dict) -> Dict:
-        """Step 3: 定位供需瓶颈 (垄断性分析)"""
-        layers = chain.get("layers", [])
+        """Step 3: 预期差验证 — 双重过滤 (技术壁垒 + 财务信号)"""
+        layers = chain.get("recursive_layers", chain.get("layers", []))
         fundamentals = ctx.get("fundamentals", {})
         positions = ctx.get("positions", [])
 
-        # 筛选供不应求的环节
-        bottlenecks = [l for l in layers if "供不应求" in l.get("supply_status", "")]
-        if not bottlenecks:
-            bottlenecks = layers[:3]  # fallback
+        # 筛选高预期差环节 (score >= 7, 即尚未被市场充分定价)
+        high_gap = [l for l in layers if l.get("expectation_gap_score", 0) >= 7]
+        if not high_gap:
+            # Fallback: 供不应求的环节
+            high_gap = [l for l in layers if "供不应求" in l.get("supply_status", "")]
+        if not high_gap:
+            high_gap = layers[:4]
 
         # 🔍 搜索瓶颈环节最新动态
         search_queries = [f"{b.get('name','')} 产能 供需 扩产" for b in bottlenecks[:3]]
@@ -204,17 +225,25 @@ JSON 示例: {{"layers":[{{"name":"环节","tier":"上游","barriers":"壁垒","
 ## 持仓数据
 {_json_dumps(positions, ensure_ascii=False, indent=2) if positions else '无'}
 
-## 你的任务
-对每个瓶颈环节, 分析:
-1. **垄断性根源**: 为什么只有少数公司能做? (技术专利/规模效应/客户锁定/原材料控制)
-2. **供需缺口量化**: 当前产能 vs 需求, 缺口多大? 扩产需要多久?
-3. **定价权验证**: 是否观察到"利润增速>营收增速"的垄断特征?
-4. **国产替代可行性**: 中国公司能否进入? 需要多长时间? 哪些A股公司在尝试?
-5. **垄断评分** (1-10分)
-6. **A股受益标的推荐**: 列出最可能受益的A股公司及逻辑
+## 你的任务: 双重过滤
 
-请输出结构化 JSON:
-[{{"segment": "环节名", "monopoly_root": "...", "supply_gap": "...", "pricing_power": "...", "localization_possible": true/false, "monopoly_score": N, "a_share_picks": [{{"code":"","name":"","logic":"..."}}]}}]"""
+**过滤 1 — 技术壁垒审计**
+对每个高预期差环节:
+1. 垄断根源: 技术专利/材料配方/工艺 Know-how/客户认证 (2-3年认证周期)
+2. 全球能做这个的公司有几家? 为什么新进入者极难?
+3. 中国公司切入的路径和时间预估
+
+**过滤 2 — 财务剪刀差验证**
+4. 该环节处于"从小批量试样→大规模放量"的哪个阶段?
+5. 是否观察到: 高端产品营收占比上升 → 毛利率提升 → 利润增速>>营收增速?
+
+**综合输出**:
+6. 垄断评分 (1-10)
+7. 预期差确认: 技术需求增长倍数 vs 市场关注度
+8. A股受益标的 (含切入逻辑和验证信号)
+
+请输出:
+[{{"segment":"环节名","level":2,"monopoly_root":"专利+2年认证","monopoly_score":8,"supply_gap":"缺口15%","pricing_power":"利润增速>营收增速 3倍","localization_status":"A公司已验证通过, 2026Q2放量","a_share_picks":[{{"code":"","name":"","logic":"","verification_signal":"合同负债环比+50%"}}]}}]"""
 
         text = await self.provider.chat(prompt)
         return self._extract_json_block(text, "bottleneck")
@@ -320,20 +349,23 @@ JSON 示例: {{"layers":[{{"name":"环节","tier":"上游","barriers":"壁垒","
                 "score": p.get("score", 5),
             })
 
-        prompt = f"""你是一位买方分析师。请为以下标的做定量估值。
+        prompt = f"""你是一位买方分析师。请为以下标的做定量估值, 遵循**全球坐标系对标**原则。
 
 ## 标的估值数据
 {_json_dumps(valuations, ensure_ascii=False, indent=2)}
 
-## 你的任务
-对每只标的:
-1. 判断当前 PE 处于历史什么分位 (基于你的训练知识)
-2. 给出合理 PE 区间和对应股价区间
-3. 估算上涨空间 (%)
-4. 对标国际龙头, 是否存在估值折价/溢价?
-5. 给出 6-12个月目标价
+## 估值方法
+1. **全球对标**: 为每只标的找到其"物理本尊"(全球做同样业务的对标公司)
+   - 例: 中国探针卡 → 对标 FormFactor (FORM), 中国 CMP 耗材 → 对标 Cabot (CBT)
+2. **估值模型选择**:
+   - 如果是设备/硬件 (重置成本高, 技术迭代快): 用 PEG 模型, 重点捕捉技术跨代溢价
+   - 如果是耗材/零部件 (晶圆厂开工即消耗, 黏性极高): 用 PS→DCF 模型, 赚取稼动率提升的复利
+3. **估值折溢价分析**: 对比对标公司的 PE/PS 倍数, 计算 A 股标的的合理折溢价
+4. **预期差定价**: 如果该标的技术壁垒提升 3 倍, 但估值还在传统周期, 给出合理重估空间
+5. 给出 6-12 个月目标价 + 上涨空间 (%)
 
-请输出结构化 JSON。"""
+请输出:
+[{{"code":"","name":"","global_peer":"对标公司+代码","peer_pe":25,"peer_ps":5,"current_pe":30,"fair_pe":40,"upside_pct":30,"valuation_method":"PEG/PS-DCF","target_price":120,"catalyst":"2026Q2 大客户验证通过"}}]"""
 
         text = await self.provider.chat(prompt)
         return self._extract_json_block(text, "valuation")
