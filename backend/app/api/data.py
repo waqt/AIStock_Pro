@@ -350,10 +350,13 @@ async def sync_forex_rates():
 
 
 @router.post("/stock-list/sync")
-async def sync_stock_list_endpoint():
-    """全量同步 A 股 + 港股代码名称"""
-    from app.domain.market_data.services.stock_list import sync_stock_list
-    count = await sync_stock_list()
+async def sync_stock_list_endpoint(full: bool = False):
+    """同步股票列表。full=true 从东财全量拉取5529只A股, false=增量补充"""
+    from app.domain.market_data.services.stock_list import sync_stock_list, sync_a_stock_list_full
+    if full:
+        count = await sync_a_stock_list_full()
+    else:
+        count = await sync_stock_list()
     return {"success": True, "synced": count}
 
 

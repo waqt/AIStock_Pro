@@ -1,10 +1,64 @@
-"""股票名称补充 — 从 MarketData 已有代码 + Sina 实时查询"""
+"""股票名称补充 — 增量 + 全量 A 股东财同步"""
 import asyncio
 import httpx
 from app.framework.database.session import async_session
 from app.models.models import StockInfo, MarketData, Position
 from sqlalchemy import select, func, distinct
 from app.framework.logger import logger
+
+
+async def sync_a_stock_list_full() -> int:
+    """从东财 clist 全量获取 A 股代码名称 (5529只)"""
+    total = 0
+    page_size = 100
+    transport = httpx.AsyncHTTPTransport(proxy=None, retries=2)
+    headers = {"User-Agent": "Mozilla/5.0", "Referer": "https://data.eastmoney.com/"}
+
+    for page in range(1, 60):  # 最多 60 页
+        url = "http://push2.eastmoney.com/api/qt/clist/get"
+        params = {
+            "pn": str(page), "pz": str(page_size), "po": "1", "np": "1",
+            "ut": "bd1d9ddb04089700cf9c27f6f7426281",
+            "fltt": "2", "invt": "2", "fid": "f3",
+            "fs": "m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23",
+            "fields": "f12,f14",
+        }
+        try:
+            async with httpx.AsyncClient(transport=transport, timeout=15.0, headers=headers) as client:
+                resp = await client.get(url, params=params)
+                if resp.status_code != 200:
+                    logger.warning(f"[A-list] Page {page}: HTTP {resp.status_code}")
+                    break
+                data = resp.json()
+                items = data.get("data", {}).get("diff", [])
+                if not items:
+                    break
+
+                async with async_session() as db:
+                    for item in items:
+                        code = str(item.get("f12", "")).strip()
+                        name = str(item.get("f14", "")).strip()
+                        if not code or not name:
+                            continue
+                        code = code.zfill(6)
+                        exchange = "SH" if code.startswith(("6", "9")) else "SZ"
+                        existing = await db.get(StockInfo, code)
+                        if not existing:
+                            db.add(StockInfo(stock_code=code, stock_name=name, exchange=exchange))
+                            total += 1
+                        elif not existing.stock_name or existing.stock_name == code:
+                            existing.stock_name = name
+                            total += 1
+                    await db.commit()
+
+                logger.info(f"[A-list] Page {page}: {len(items)} stocks (total: {total})")
+                await asyncio.sleep(0.5)
+        except Exception as e:
+            logger.warning(f"[A-list] Page {page} failed: {e}")
+            break
+
+    logger.info(f"[✅] Full A-share sync: {total} stocks")
+    return total
 
 
 async def sync_stock_list():
