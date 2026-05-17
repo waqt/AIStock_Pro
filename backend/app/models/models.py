@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, String, Float, DateTime, Date, Text, JSO
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import uuid
-from app.core.database import Base
+from app.framework.database.session import Base
 
 class Position(Base):
     """持仓数据表"""

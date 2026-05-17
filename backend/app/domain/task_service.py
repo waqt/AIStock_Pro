@@ -2,7 +2,7 @@ from datetime import datetime
 from sqlalchemy import update, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.models import TaskExecution
-from app.core.logger import logger
+from app.framework.logger import logger
 
 class TaskService:
     """领域层任务服务 (V5.0 适配版) — 当前未被引用，保留作为 domain facade"""

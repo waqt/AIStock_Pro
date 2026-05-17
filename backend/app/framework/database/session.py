@@ -1,8 +1,7 @@
-﻿from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
 from app.framework.config import settings
 
-# Async MySQL URL: mysql+aiomysql://user:pass@host:port/dbname
 DATABASE_URL = f"mysql+aiomysql://{settings.DB_USER}:{settings.DB_PASSWORD}@{settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME}"
 
 engine = create_async_engine(
@@ -14,8 +13,8 @@ engine = create_async_engine(
 )
 
 async_session = async_sessionmaker(
-    engine, 
-    class_=AsyncSession, 
+    engine,
+    class_=AsyncSession,
     expire_on_commit=False
 )
 

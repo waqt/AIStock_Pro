@@ -2,10 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Dict, Any, Optional
 
-from app.core.database import get_db
+from app.framework.database.session import get_db
 from app.core.ai_service import AIImportService
-from app.core.task_manager import task_manager
-from app.core.logger import logger
+from app.framework.tasks.engine import task_manager
+from app.framework.logger import logger
 from app.models.schemas import (
     TextParsePayload, BatchImportPayload, BatchImportTradesPayload
 )

@@ -4,7 +4,7 @@ import json
 import pandas as pd
 from typing import List
 from app.core.data_sources.base import DataSourceProtocol
-from app.core.logger import logger
+from app.framework.logger import logger
 
 
 class AkShareSource(DataSourceProtocol):

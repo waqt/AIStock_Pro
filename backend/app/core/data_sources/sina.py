@@ -3,7 +3,7 @@ import httpx
 import json
 import pandas as pd
 from app.core.data_sources.base import DataSourceProtocol
-from app.core.logger import logger
+from app.framework.logger import logger
 
 
 class SinaSource(DataSourceProtocol):

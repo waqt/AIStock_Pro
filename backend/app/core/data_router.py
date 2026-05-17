@@ -5,7 +5,7 @@ import pandas as pd
 from app.core.data_sources.base import DataSourceProtocol, SourceStatus
 from app.core.data_sources.sina import SinaSource
 from app.core.data_sources.akshare import AkShareSource
-from app.core.logger import logger
+from app.framework.logger import logger
 
 
 class DataRouter:
@@ -196,7 +196,7 @@ class DataRouter:
             logger.warning(f"[⚠️] Sina macro fetch failed: {e}")
 
         if result:
-            from app.core.database import async_session
+            from app.framework.database.session import async_session
             from app.models.models import ExchangeRate
             from datetime import datetime as dt
             async with async_session() as db:
@@ -216,7 +216,7 @@ class DataRouter:
         return result
 
         if result:
-            from app.core.database import async_session
+            from app.framework.database.session import async_session
             from app.models.models import ExchangeRate
             from datetime import datetime as dt
             async with async_session() as db:

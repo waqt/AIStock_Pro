@@ -1,9 +1,9 @@
 import asyncio
-from app.core.database import async_session
+from app.framework.database.session import async_session
 from app.quant.engine import QuantEngine
 from app.core.ai_service import AIImportService
-from app.core.logger import logger
-from app.core.task_manager import task_manager
+from app.framework.logger import logger
+from app.framework.tasks.engine import task_manager
 
 @task_manager.register(code="sync_market", name="行情数据同步", description="同步持仓股票的最新行情并重算技术指标")
 async def sync_market_data_task(mode: str = "AUTO", exec_id: str = None):

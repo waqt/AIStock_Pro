@@ -1,4 +1,4 @@
-"""
+﻿"""
 AI 持仓/交易识别与导入服务 V2.0
 支持: 截图 OCR (Gemini Vision → 豆包 → DeepSeek) + 文本解析 + Excel 导入
 """
@@ -10,8 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 import httpx
 from PIL import Image
-from app.core.logger import logger
-from app.core.config import settings, BASE_DIR
+from app.framework.logger import logger
+from app.framework.config import settings, BASE_DIR
 
 CACHE_FILE = os.path.join(BASE_DIR, "import_cache.json")
 

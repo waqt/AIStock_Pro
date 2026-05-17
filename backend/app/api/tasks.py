@@ -2,11 +2,11 @@ from fastapi import APIRouter, HTTPException, Query
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 from sqlalchemy import select, update, delete, desc
-from app.core.database import async_session
+from app.framework.database.session import async_session
 from app.models.models import TaskDefinition, TaskExecution
-from app.core.task_manager import task_manager
-from app.core.scheduler import scheduler
-from app.core.logger import logger
+from app.framework.tasks.engine import task_manager
+from app.framework.tasks.scheduler import scheduler
+from app.framework.logger import logger
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/system/tasks", tags=["任务管理"])

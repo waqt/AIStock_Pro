@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import List
-from app.core.database import get_db
+from app.framework.database.session import get_db
 from app.models.models import Position
 from app.models.schemas import PositionResponse
 

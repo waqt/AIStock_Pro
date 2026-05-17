@@ -1,16 +1,16 @@
-from fastapi import FastAPI
+﻿from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import os
 from datetime import datetime
 
-from app.core.config import settings
-from app.core.database import engine, async_session, Base
-from app.core.logger import logger
+from app.framework.config import settings
+from app.framework.database.session import engine, async_session, Base
+from app.framework.logger import logger
 from app.models.models import TaskExecution
 from sqlalchemy import update, select
-from app.core.task_manager import task_manager
-from app.core.scheduler import scheduler
+from app.framework.tasks.engine import task_manager
+from app.framework.tasks.scheduler import scheduler
 import app.quant.tasks # 显式导入以触发装饰器
 
 # 导入领域路由器

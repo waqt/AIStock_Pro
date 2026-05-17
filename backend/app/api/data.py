@@ -3,11 +3,11 @@ from typing import Optional, List
 from sqlalchemy import select, func
 from datetime import date, timedelta
 
-from app.core.database import async_session
+from app.framework.database.session import async_session
 from app.models.models import MarketData, StockIndicator, Position, ExchangeRate
 from app.core.data_router import data_router
-from app.core.task_manager import task_manager
-from app.core.logger import logger
+from app.framework.tasks.engine import task_manager
+from app.framework.logger import logger
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/data", tags=["数据管理"])

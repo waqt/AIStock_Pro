@@ -12,7 +12,7 @@ class TaskScheduler:
 
     _instance: Optional["TaskScheduler"] = None
     _aps: AsyncIOScheduler
-    _job_registry: Dict[str, dict] = {}  # code → {cron_expr, job_id}
+    _job_registry: Dict[str, dict] = {}
 
     def __new__(cls):
         if cls._instance is None:
@@ -24,10 +24,7 @@ class TaskScheduler:
             self._aps = AsyncIOScheduler(timezone="Asia/Shanghai")
             self._initialized = True
 
-    # ── 生命周期 ──────────────────────────────
-
     async def start(self):
-        """从 DB 加载所有已启用的定时任务并启动调度器"""
         async with async_session() as db:
             res = await db.execute(
                 select(TaskDefinition).where(
@@ -48,10 +45,7 @@ class TaskScheduler:
         self._aps.shutdown(wait=False)
         logger.info("[✅] Scheduler shut down.")
 
-    # ── 作业管理 ──────────────────────────────
-
     def _schedule_one(self, code: str, cron_expr: str, name: str = ""):
-        """内部：注册一个 cron 作业"""
         try:
             job = self._aps.add_job(
                 func=self._fire_task,
@@ -67,7 +61,6 @@ class TaskScheduler:
             logger.error(f"[❌] Failed to schedule {code} ({cron_expr}): {e}")
 
     def _remove_one(self, code: str):
-        """内部：移除一个 cron 作业"""
         job_id = f"cron_{code}"
         try:
             self._aps.remove_job(job_id)
@@ -77,7 +70,6 @@ class TaskScheduler:
         logger.info(f"[-] Removed schedule: {code}")
 
     async def _fire_task(self, code: str):
-        """定时触发回调 — 调用 TaskEngine 执行业务"""
         from app.framework.tasks.engine import task_manager
         logger.info(f"[⏰] Cron fired: {code}")
         try:
@@ -85,10 +77,7 @@ class TaskScheduler:
         except Exception as e:
             logger.error(f"[❌] Cron task {code} failed: {e}")
 
-    # ── 对外接口 ──────────────────────────────
-
     def list_jobs(self) -> List[dict]:
-        """获取所有已注册的定时作业及其下次运行时间"""
         jobs = []
         for code, meta in self._job_registry.items():
             aps_job = self._aps.get_job(meta["job_id"])
@@ -101,7 +90,6 @@ class TaskScheduler:
         return jobs
 
     async def refresh_job(self, code: str):
-        """根据 DB 定义刷新单个作业 (启用/禁用/改 cron)"""
         async with async_session() as db:
             res = await db.execute(select(TaskDefinition).where(TaskDefinition.code == code))
             d = res.scalars().first()
@@ -116,11 +104,9 @@ class TaskScheduler:
             self._remove_one(d.code)
 
     async def refresh_all(self):
-        """重新加载所有作业"""
         for code in list(self._job_registry.keys()):
             self._remove_one(code)
         await self.start()
 
 
-# 全局单例
 scheduler = TaskScheduler()
