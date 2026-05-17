@@ -41,7 +41,7 @@ function renderSuggestions(items) {
                 <td class="ticker">${s.stock_name}<br><small style="color: var(--text-micro);">${s.stock_code}</small></td>
                 <td><span style="color: ${actionColor}; font-weight: bold;">${actionText}</span></td>
                 <td style="text-align: right; font-family: var(--font-mono);">${s.suggested_shares}</td>
-                <td style="text-align: right; font-family: var(--font-mono);">¥${Number(s.current_price).toFixed(2)}</td>
+                <td style="text-align: right; font-family: var(--font-mono);">¥${Number(s.current_price).toFixed(3)}</td>
                 <td style="text-align: right;"><span style="color: var(--accent-gold); font-weight: bold;">${Number(s.score).toFixed(1)}</span></td>
                 <td style="text-align: right;">
                     <button class="btn-action" onclick="executeSuggestion(${s.id})">执行</button>

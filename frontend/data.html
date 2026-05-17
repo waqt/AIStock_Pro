@@ -203,7 +203,7 @@
                             ${s.earliest_date || '—'}<br><span style="color: var(--text-micro);">~ ${s.latest_date || '—'}</span>
                         </td>
                         <td style="text-align: right; font-family: var(--font-mono); font-weight: 600;">
-                            ${s.latest_price ? '¥' + Number(s.latest_price).toFixed(2) : '—'}
+                            ${s.latest_price ? '¥' + Number(s.latest_price).toFixed(3) : '—'}
                         </td>
                         <td style="text-align: center; font-size: 11px;">${statusBadge[s.status] || s.status}</td>
                         <td style="text-align: center;">
