@@ -195,8 +195,7 @@ class QuantEngine:
 
         try:
             # ── 节点 0: 宏观数据同步 ──
-            await data_router.sync_forex_rates()
-            await data_router.sync_market_indices()
+            await data_router.sync_macro_data()
             if exec_id:
                 await task_manager.update_progress(exec_id, 2, "宏观数据同步完成")
 

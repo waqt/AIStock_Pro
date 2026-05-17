@@ -67,14 +67,14 @@ const UI_COMPONENTS = {
         `;
     },
 
-    // 市场数据更新
+    // 市场数据更新 (短代码格式)
     updateMarketTicker: async () => {
         const el = document.getElementById('market-ticker');
         if (!el) return;
         try {
             const res = await fetch('/api/data/forex/rates');
             const data = await res.json();
-            const order = ['USD_IDX', 'USD_CNY', 'HKD_CNY', 'XAU', 'XAG', 'BRENT'];
+            const order = ['DXY', 'USD_CNY', 'HKD_CNY', 'XAU', 'XAG', 'BRENT'];
             el.innerHTML = order.map(k => {
                 const d = data[k];
                 if (!d) return '';
@@ -82,11 +82,10 @@ const UI_COMPONENTS = {
                 const pct = d.change_pct != null ? Number(d.change_pct) : null;
                 const color = pct != null ? (pct >= 0 ? 'var(--accent-green)' : 'var(--accent-red)') : 'var(--text-dim)';
                 const arrow = pct != null ? (pct >= 0 ? '↑' : '↓') : '';
-                const name = d.name || k;
                 const priceStr = k.includes('CNY') ? price.toFixed(4) : (price >= 100 ? price.toFixed(1) : price.toFixed(2));
-                const pctStr = pct != null ? `${arrow}${Math.abs(pct).toFixed(2)}%` : '';
-                return `<span style="color:var(--text-dim);">${name}</span> <span style="color:var(--text-normal);">${priceStr}</span> <span style="color:${color};">${pctStr}</span>`;
-            }).join('<span style="color:var(--border-color); margin:0 2px;">|</span>');
+                const pctStr = pct != null ? ` ${arrow}${Math.abs(pct).toFixed(2)}%` : '';
+                return `<span style="color:var(--text-dim);">${k}</span> <span style="color:var(--text-normal);font-weight:600;">${priceStr}</span><span style="color:${color};">${pctStr}</span>`;
+            }).join('<span style="color:var(--border-color); margin:0 1px;">|</span>');
         } catch(e) { console.error('Ticker update failed:', e); }
     },
 

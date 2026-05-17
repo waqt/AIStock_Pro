@@ -28,7 +28,10 @@
       "Bash(npx skills *)",
       "PowerShell(Write-Output \"=== Cache ===\"; \\(Invoke-WebRequest \"http://127.0.0.1:8001/api/ai/get-cache\" -UseBasicParsing\\).Content; Write-Output \"`n=== Text Parse ===\"; \\(Invoke-WebRequest \"http://127.0.0.1:8001/api/ai/parse-text\" -Method POST -Body '{\"text\":\"600519 贵州茅台 1000 1750.50\"}' -ContentType \"application/json\" -UseBasicParsing\\).Content)",
       "PowerShell($api = \"http://127.0.0.1:8001/api/ai\"; Write-Output \"=== Cache ===\"; try { \\(Invoke-WebRequest \"$api/get-cache\" -UseBasicParsing\\).Content } catch { $_.Exception.Message }; Write-Output \"`n=== Text Parse ===\"; try { $r = Invoke-WebRequest \"$api/parse-text\" -Method POST -Body '{\"text\":\"600519 贵州茅台 1000 1750.50\"}' -ContentType \"application/json\" -UseBasicParsing; $r.Content } catch { $_.Exception.Message })",
-      "PowerShell($body = '{\"items\":[{\"stock_code\":\"000001\",\"stock_name\":\"测试股\",\"shares\":100,\"cost_price\":10.50,\"current_price\":11.20}],\"clear_old\":false}'; \\(Invoke-WebRequest -Uri \"http://127.0.0.1:8000/api/ai/batch-import\" -Method POST -Body $body -ContentType \"application/json\" -UseBasicParsing\\).Content)"
+      "PowerShell($body = '{\"items\":[{\"stock_code\":\"000001\",\"stock_name\":\"测试股\",\"shares\":100,\"cost_price\":10.50,\"current_price\":11.20}],\"clear_old\":false}'; \\(Invoke-WebRequest -Uri \"http://127.0.0.1:8000/api/ai/batch-import\" -Method POST -Body $body -ContentType \"application/json\" -UseBasicParsing\\).Content)",
+      "PowerShell(\\(Invoke-WebRequest -Uri \"http://127.0.0.1:8000/api/data/forex/sync\" -Method POST -UseBasicParsing\\).Content)",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://127.0.0.1:8000/api/data/forex/sync\" -Method POST -UseBasicParsing; $r.Content } catch { Write-Output \"Error: $\\($_.Exception.Message\\)\" })",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://127.0.0.1:8000/api/data/forex/sync\" -Method POST -UseBasicParsing; $r.Content } catch { Write-Output $_.Exception.Message })"
     ]
   }
 }

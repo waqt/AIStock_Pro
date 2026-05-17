@@ -332,7 +332,7 @@ async def get_forex_rates():
 
 @router.post("/forex/sync")
 async def sync_forex_rates():
-    """手动触发汇率同步"""
+    """手动触发宏观数据同步"""
     from app.core.data_router import data_router as dr
-    rates = await dr.sync_forex_rates()
-    return {"success": True, "rates": rates}
+    result = await dr.sync_macro_data()
+    return {"success": True, "data": result}

@@ -130,43 +130,70 @@ class DataRouter:
             except Exception:
                 pass
 
-    # ── 宏观市场数据 ──────────────────────
+    # ── 宏观市场数据 (V5.4: 使用 akshare, 已验证可用) ──
 
-    async def sync_market_indices(self) -> dict:
-        """抓取美元指数/伦敦金/银/布油 最新价"""
+    async def sync_macro_data(self) -> dict:
+        """抓取汇率+美元指数+金/银/油 — 新浪实时行情 (httpx, 已验证)"""
         import httpx
         result = {}
+
+        # 新浪实时行情代码
+        symbols = {
+            'DXY': 'hf_DINIW',       # 美元指数
+            'XAU': 'hf_XAU',         # 伦敦金
+            'XAG': 'hf_XAG',         # 伦敦银
+            'BRENT': 'hf_OIL',       # 布伦特原油
+            'USD_CNY': 'fx_susdcny', # 美元/人民币
+            'HKD_CNY': 'fx_shkdcny', # 港元/人民币
+        }
+
         try:
-            async with httpx.AsyncClient(proxy=None, timeout=10.0) as client:
-                # 东方财富全球期货行情 (含美元指数/伦敦金/银/布油)
-                url = (
-                    "https://push2.eastmoney.com/api/qt/clist/get?"
-                    "np=1&fltt=2&invt=2&fs=m:119,m:120,m:133"
-                    "&fields=f12,f14,f2,f3,f4&fid=f3&pn=1&pz=50&po=1&dect=1"
-                )
+            codes = ','.join(symbols.values())
+            url = f"http://hq.sinajs.cn/list={codes}"
+            headers = {"Referer": "https://finance.sina.com.cn"}
+            async with httpx.AsyncClient(proxy=None, timeout=10.0, headers=headers) as client:
                 resp = await client.get(url)
                 if resp.status_code == 200:
-                    data = resp.json()
-                    items = data.get("data", {}).get("diff", [])
-                    # 名称映射: 东方财富名称 → 我们的key
-                    targets = {
-                        "美元指数": "USD_IDX",
-                        "伦敦金": "XAU",
-                        "伦敦银": "XAG",
-                        "布伦特原油": "BRENT",
-                    }
-                    for item in items:
-                        name = item.get("f14", "")
-                        for keyword, code in targets.items():
-                            if keyword in name:
-                                result[code] = {
-                                    "name": name,
-                                    "price": item.get("f2"),
-                                    "change_pct": item.get("f3"),
-                                    "change_val": item.get("f4"),
-                                }
+                    text = resp.text
+                    for code, sina_code in symbols.items():
+                        pattern = f'var hq_str_{sina_code}='
+                        idx = text.find(pattern)
+                        if idx < 0:
+                            continue
+                        start = text.find('"', idx) + 1
+                        end = text.find('"', start)
+                        if end < 0:
+                            continue
+                        fields = text[start:end].split(',')
+                        if len(fields) < 2:
+                            continue
+
+                        price = None
+                        change_pct = None
+                        if sina_code.startswith('fx_'):
+                            # fx 格式: 时间,最新价,昨收,今开,涨跌额,...,名称,涨跌幅
+                            # fields[1]=最新价, fields[2]=昨收
+                            try:
+                                price = float(fields[1]) if fields[1] and fields[1] != '0.0000000000' else None
+                                prev = float(fields[2]) if len(fields) > 2 and fields[2] else None
+                                if price and prev and prev > 0:
+                                    change_pct = round((price - prev) / prev * 100, 4)
+                            except (ValueError, IndexError):
+                                pass
+                        elif sina_code.startswith('hf_'):
+                            # hf 格式: 最新价,昨结算,今开,最高,最低,...
+                            # fields[0]=最新价, fields[1]=昨结算
+                            try:
+                                price = float(fields[0]) if fields[0] and fields[0] != '0.0000' else None
+                                prev = float(fields[1]) if len(fields) > 1 and fields[1] and fields[1] != '0.0000' else None
+                                if price and prev and prev > 0:
+                                    change_pct = round((price - prev) / prev * 100, 4)
+                            except (ValueError, IndexError):
+                                pass
+                        if price:
+                            result[code] = {'name': code, 'price': price, 'change_pct': change_pct}
         except Exception as e:
-            logger.warning(f"[⚠️] Market indices fetch failed: {e}")
+            logger.warning(f"[⚠️] Sina macro fetch failed: {e}")
 
         if result:
             from app.core.database import async_session
@@ -174,62 +201,41 @@ class DataRouter:
             from datetime import datetime as dt
             async with async_session() as db:
                 for code, info in result.items():
+                    price = info['price']
+                    pct = info.get('change_pct')
                     existing = await db.get(ExchangeRate, code)
-                    rate_data = {"price": info["price"], "change_pct": info["change_pct"], "name": info["name"]}
                     if existing:
-                        existing.rate = info["price"]  # 复用 rate 字段存价格
+                        existing.name = info.get('name', code)
+                        existing.rate = price
+                        existing.change_pct = pct
                         existing.updated_at = dt.now()
                     else:
-                        db.add(ExchangeRate(code=code, rate=info["price"] or 0))
+                        db.add(ExchangeRate(code=code, name=info.get('name', code), rate=price, change_pct=pct))
                 await db.commit()
-            logger.info(f"[✅] Market indices synced: {list(result.keys())}")
+            logger.info(f"[✅] Macro data synced: {list(result.keys())}")
         return result
 
-    # ── 汇率抓取 ──────────────────────────
-
-    async def sync_forex_rates(self) -> dict:
-        """从免费 API 抓取 HKD/USD → CNY 汇率"""
-        import httpx
-        rates = {}
-        try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                resp = await client.get("https://open.er-api.com/v6/latest/CNY")
-                if resp.status_code == 200:
-                    data = resp.json()
-                    usd_cny = data.get("rates", {}).get("USD")
-                    if usd_cny:
-                        rates["USD_CNY"] = round(1 / usd_cny, 4)
-                    hkd_cny = data.get("rates", {}).get("HKD")
-                    if hkd_cny:
-                        rates["HKD_CNY"] = round(1 / hkd_cny, 4)
-        except Exception as e:
-            logger.warning(f"[⚠️] Forex API failed: {e}, trying fallback...")
-            # Fallback: 用固定近似值 (仅紧急情况)
-            rates.setdefault("USD_CNY", 7.20)
-            rates.setdefault("HKD_CNY", 0.92)
-
-        if rates:
+        if result:
             from app.core.database import async_session
             from app.models.models import ExchangeRate
             from datetime import datetime as dt
             async with async_session() as db:
-                names = {"USD_CNY": "美元/人民币", "HKD_CNY": "港元/人民币"}
-                for code, rate in rates.items():
+                for code, info in result.items():
+                    price = info.get('price')
+                    pct = info.get('change_pct')
+                    if price is None:
+                        continue
                     existing = await db.get(ExchangeRate, code)
                     if existing:
-                        existing.rate = rate
-                        existing.name = names.get(code, code)
+                        existing.name = info['name']
+                        existing.rate = price
+                        existing.change_pct = pct
                         existing.updated_at = dt.now()
                     else:
-                        db.add(ExchangeRate(code=code, name=names.get(code, code), rate=rate))
+                        db.add(ExchangeRate(code=code, name=info['name'], rate=price, change_pct=pct))
                 await db.commit()
-            logger.info(f"[✅] Forex rates synced: {rates}")
-        return rates
-
-    def get_forex_rates(self) -> dict:
-        """获取已缓存的汇率 (同步, 供前端调用)"""
-        # 此方法同步返回缓存值, 实际的 DB 查询在 API 层做
-        return {}
+            logger.info(f"[✅] Macro data synced: {list(result.keys())}")
+        return result
 
 
 # 全局单例
