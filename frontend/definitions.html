@@ -175,7 +175,7 @@
         // ── 手动触发 ──
         async function manualTrigger() {
             const code = document.getElementById('trigger-select').value;
-            if (!code) { alert('请选择要执行的任务'); return; }
+            if (!code) { Modal.alert('提示', '请选择要执行的任务'); return; }
 
             const resultEl = document.getElementById('trigger-result');
             resultEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 提交中...';
@@ -208,14 +208,14 @@
                     body: JSON.stringify({ cron_expr: cronExpr === '' ? null : cronExpr, is_enabled: cronExpr !== '' })
                 });
                 if (res.ok) {
-                    alert('定时配置已更新');
+                    Modal.alert('成功', '定时配置已更新');
                     refreshDefinitions();
                 } else {
                     const err = await res.json();
-                    alert('更新失败: ' + (err.detail || '未知错误'));
+                    Modal.alert('更新失败', err.detail || '未知错误');
                 }
             } catch (e) {
-                alert('请求失败: ' + e.message);
+                Modal.alert('请求失败', e.message);
             }
         }
 

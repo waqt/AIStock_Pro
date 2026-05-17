@@ -180,7 +180,7 @@
                 const res = await fetch(`${API_BASE}/system/tasks/executions/history?page=1&limit=100`);
                 const tasks = await res.json();
                 const t = tasks.find(x => x.id === execId);
-                if (!t) { alert('未找到该记录'); return; }
+                if (!t) { Modal.alert('提示', '未找到该记录'); return; }
 
                 const startTime = t.start_time ? new Date(t.start_time).toLocaleString('zh-CN') : '—';
                 const endTime = t.end_time ? new Date(t.end_time).toLocaleString('zh-CN') : '—';
@@ -190,48 +190,48 @@
                     duration = ms < 1000 ? `${ms}ms` : ms < 60000 ? `${(ms/1000).toFixed(1)}s` : `${Math.floor(ms/60000)}m ${Math.floor((ms%60000)/1000)}s`;
                 }
 
-                alert(
-                    `━━━ 任务执行详情 ━━━\n` +
+                Modal.alert(`任务执行详情`,
                     `任务代码: ${t.task_code}\n` +
                     `执行 ID: ${t.id}\n` +
-                    `状态: ${t.status}\n` +
-                    `进度: ${t.progress || 0}%\n` +
-                    `PID: ${t.pid || '—'}\n` +
+                    `状态: ${t.status}  进度: ${t.progress || 0}%\n` +
                     `启动: ${startTime}\n` +
-                    `结束: ${endTime}\n` +
-                    `耗时: ${duration}\n` +
-                    `参数: ${JSON.stringify(t.params || {})}\n` +
+                    `结束: ${endTime}  耗时: ${duration}\n` +
                     `━━━━━━━━━━━━━━━━\n` +
-                    `摘要: ${t.result_msg || '—'}`
+                    `${t.result_msg || '—'}`
                 );
             } catch (e) {
-                alert('加载详情失败: ' + e.message);
+                Modal.alert('加载失败', e.message);
             }
         }
 
         // ── 清理功能 ──
         async function clearOldHistory() {
-            const choice = prompt('清理历史记录：\n输入数字 = 清理N天前的记录\n输入 "all" = 清理全部\n输入 "cancel" = 取消', '7');
-            if (!choice || choice === 'cancel') return;
+            const choice = await Modal.confirm('清理历史记录',
+                '请选择清理方式：\n\n' +
+                '点击"确认" = 清理 7 天前的记录\n' +
+                '点击"取消" = 手动输入');
+            let days = 7;
+            if (!choice) {
+                // 用户选了取消，提供更多选项
+                const mode = await Modal.confirm('清理选项', '点击"确认"=清理全部\n点击"取消"=取消操作');
+                if (mode) {
+                    const ok = await Modal.danger('危险操作', '确认删除全部历史记录？此操作不可撤销！');
+                    if (!ok) return;
+                    days = -1; // 全部
+                } else return;
+            }
 
             try {
-                let url;
-                if (choice.toLowerCase() === 'all') {
-                    if (!confirm('确认删除全部历史记录？此操作不可撤销！')) return;
-                    url = `${API_BASE}/system/tasks/history?all=true`;
-                } else {
-                    const days = parseInt(choice);
-                    if (isNaN(days) || days < 0) { alert('请输入有效数字'); return; }
-                    if (!confirm(`确认删除 ${days} 天前的记录？`)) return;
-                    url = `${API_BASE}/system/tasks/history?days_ago=${days}`;
-                }
+                const url = days === -1
+                    ? `${API_BASE}/system/tasks/history?all=true`
+                    : `${API_BASE}/system/tasks/history?days_ago=${days}`;
                 const res = await fetch(url, { method: 'DELETE' });
                 const data = await res.json();
-                alert(`已清理 ${data.deleted || 0} 条记录`);
+                Modal.alert('清理完成', `已清理 ${data.deleted || 0} 条记录`);
                 currentPage = 1;
                 refreshHistory();
             } catch (e) {
-                alert('清理失败: ' + e.message);
+                Modal.alert('清理失败', e.message);
             }
         }
 

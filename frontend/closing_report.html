@@ -79,7 +79,7 @@ h1 { font-size:1.875rem; font-weight:700; margin-bottom:0.25rem; color:var(--acc
 </div>
 
 <script>
-const API_BASE = 'http://localhost:8000/api';
+const API_BASE = '/api';
 
 async function loadReport() {
     const container = document.getElementById('content');
@@ -128,12 +128,13 @@ async function generateReport() {
     btn.disabled = true; btn.textContent = '收集情报中...';
     try {
         const res = await fetch(`${API_BASE}/reports/supply-chain/generate`, { method:'POST' });
-        if (res.ok) { loadReport(); } else { alert('收集失败'); }
-    } catch (err) { alert('请求失败: ' + err.message); }
+        if (res.ok) { loadReport(); } else { Modal.alert('操作失败', '报告收集失败，请稍后重试'); }
+    } catch (err) { Modal.alert('请求失败', err.message); }
     btn.disabled = false; btn.textContent = '⚡ 立即收集情报';
 }
 
 loadReport();
 </script>
+<script src="js/common.js"></script>
 </body>
 </html>

@@ -115,10 +115,10 @@
             try {
                 const res = await fetch(`${API_BASE}/positions/update-prices`, { method: 'POST' });
                 const data = await res.json();
-                alert(data.message || '行情刷新完成');
+                Modal.alert('操作完成', data.message || '行情刷新完成');
                 refreshPositions();
             } catch (e) {
-                alert('行情刷新失败: ' + e.message);
+                Modal.alert('刷新失败', e.message);
             }
             if(btn) {
                 btn.disabled = false;
@@ -205,7 +205,7 @@
                 myChart.setOption(option);
             } catch (e) {
                 console.error(e);
-                alert('无法加载图表数据，可能暂未同步该股行情');
+                Modal.alert('加载失败', '无法加载图表数据，可能暂未同步该股行情');
             } finally {
                 myChart.hideLoading();
             }

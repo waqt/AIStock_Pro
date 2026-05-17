@@ -139,10 +139,10 @@
 
         async function parseText() {
             const text = document.getElementById('text-input').value;
-            if (!text.trim()) { alert('请先粘贴文本数据'); return; }
-            
+            if (!text.trim()) { Modal.alert('提示', '请先粘贴文本数据'); return; }
+
             if (currentTab === 'trade') {
-                alert('文本解析目前仅支持持仓列表，成交历史请使用截图识别。');
+                Modal.alert('提示', '文本解析目前仅支持持仓列表，成交历史请使用截图识别。');
                 return;
             }
 
@@ -228,7 +228,8 @@
             if (currentTab === 'position') {
                 const mode = document.querySelector('input[name="import-mode"]:checked').value;
                 const clearOld = mode === 'clear';
-                if (!confirm(`确认导入 ${selectedItems.length} 条持仓记录？` + (clearOld ? '\n⚠️ 此操作将清空现有持仓数据！' : ''))) return;
+                const confirmMsg = `确认导入 ${selectedItems.length} 条持仓记录？` + (clearOld ? '\n⚠️ 此操作将清空现有持仓数据！' : '');
+                if (!await Modal.confirm('确认导入', confirmMsg)) return;
 
                 try {
                     const res = await fetch(`${API_BASE}/ai/batch-import`, {
@@ -237,13 +238,13 @@
                         body: JSON.stringify({ items: selectedItems, clear_old: clearOld })
                     });
                     const result = await res.json();
-                    alert(`导入成功！\n新导入: ${result.imported_count} 条` + (clearOld ? `\n已清空旧记录: ${result.cleared_count} 条` : ''));
+                    Modal.alert('导入成功', `新导入: ${result.imported_count} 条` + (clearOld ? `\n已清空旧记录: ${result.cleared_count} 条` : ''));
                     if (result.success) location.href = 'positions.html';
                 } catch (e) {
-                    alert('导入失败: ' + e.message);
+                    Modal.alert('导入失败', e.message);
                 }
             } else {
-                if (!confirm(`确认将这 ${selectedItems.length} 条成交历史导入审计库？`)) return;
+                if (!await Modal.confirm('确认导入', `确认将这 ${selectedItems.length} 条成交历史导入审计库？`)) return;
                 try {
                     const res = await fetch(`${API_BASE}/ai/batch-import-trades`, {
                         method: 'POST',
@@ -251,10 +252,10 @@
                         body: JSON.stringify({ items: selectedItems })
                     });
                     const result = await res.json();
-                    alert(`历史记录导入成功！\n共计: ${result.imported_count} 条记录`);
+                    Modal.alert('导入成功', `历史记录导入成功！\n共计: ${result.imported_count} 条记录`);
                     if (result.success) location.href = 'history.html';
                 } catch (e) {
-                    alert('导入失败: ' + e.message);
+                    Modal.alert('导入失败', e.message);
                 }
             }
         }

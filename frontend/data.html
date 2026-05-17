@@ -227,14 +227,11 @@
                     ? findings.map(f => `${f.name} (score:${f.score})`).join(', ')
                     : '无形态信号';
 
-                alert(
-                    `${stockCode} 数据体检\n` +
-                    `━━━━━━━━━━━━━━━\n` +
+                Modal.alert(`${stockCode} 数据体检`,
                     `行情范围: ${data.data_range?.from || '—'} ~ ${data.data_range?.to || '—'} (${data.data_range?.records || 0}条)\n` +
                     `最新行情: ${data.latest_quote?.trade_date || '—'}\n` +
-                    `  开:${data.latest_quote?.open || '—'} 高:${data.latest_quote?.high || '—'} 低:${data.latest_quote?.low || '—'} 收:${data.latest_quote?.close || '—'}\n` +
-                    `  涨跌幅: ${data.latest_quote?.change_pct != null ? data.latest_quote.change_pct.toFixed(2) + '%' : '—'}\n` +
-                    `━━━━━━━━━━━━━━━\n` +
+                    `开:${data.latest_quote?.open || '—'} 高:${data.latest_quote?.high || '—'} 低:${data.latest_quote?.low || '—'} 收:${data.latest_quote?.close || '—'}\n` +
+                    `涨跌幅: ${data.latest_quote?.change_pct != null ? data.latest_quote.change_pct.toFixed(2) + '%' : '—'}\n\n` +
                     `指标快照: MA5=${snap.ma5 || '—'} MA20=${snap.ma20 || '—'} RSI=${snap.rsi || '—'}\n` +
                     `形态信号: ${fText}`
                 );
