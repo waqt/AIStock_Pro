@@ -1,6 +1,54 @@
 import pandas as pd
 import numpy as np
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
+
+# ═══════════════════════════════════════════
+# 指标注册表 (V5.1)
+# ═══════════════════════════════════════════
+
+INDICATOR_REGISTRY: Dict[str, Dict[str, Any]] = {
+    "ma": {
+        "name": "移动平均线",
+        "category": "趋势",
+        "params": {"periods": [5, 10, 20, 60, 120, 250]},
+        "description": "计算指定周期的收盘价简单移动平均线(SMA)，用于判断趋势方向和支撑/压力位。",
+        "output_fields": ["ma5", "ma10", "ma20", "ma60", "ma120", "ma250"],
+        "chart_overlay": True  # 可叠加到K线主图
+    },
+    "macd": {
+        "name": "MACD 异同移动平均线",
+        "category": "动量",
+        "params": {"fast": 12, "slow": 26, "signal": 9},
+        "description": "快慢均线差值(DIF)与信号线(DEA)的交叉判断买卖点，柱状图反映多空强度。",
+        "output_fields": ["macd", "macd_signal", "macd_hist"],
+        "chart_overlay": False  # 副图显示
+    },
+    "rsi": {
+        "name": "相对强弱指数 RSI",
+        "category": "超买超卖",
+        "params": {"period": 14},
+        "description": "衡量价格变动速度和幅度的震荡指标。RSI>70超买，RSI<30超卖。",
+        "output_fields": ["rsi"],
+        "chart_overlay": False
+    },
+    "bollinger": {
+        "name": "布林带",
+        "category": "波动",
+        "params": {"period": 20, "std_dev": 2},
+        "description": "中轨(MA20)加减标准差构成上下轨，价格触及上轨可能回调，触及下轨可能反弹。",
+        "output_fields": ["bb_upper", "bb_mid", "bb_lower"],
+        "chart_overlay": True
+    },
+    "volume_ma": {
+        "name": "成交量均线",
+        "category": "量能",
+        "params": {"periods": [5, 10, 20]},
+        "description": "成交量移动平均线，放量突破均量线通常意味着资金进场。",
+        "output_fields": ["v_ma5", "v_ma10", "v_ma20"],
+        "chart_overlay": False
+    }
+}
+
 
 class Indicators:
     """标准化技术指标计算算子"""

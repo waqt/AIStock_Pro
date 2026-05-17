@@ -260,3 +260,50 @@ async def get_stock_detail_health(stock_code: str):
                 "findings": indicator.logic_chain if indicator else None
             } if indicator else None
         }
+
+
+# ═══════════════════════════════════════════
+# 指标注册与查询 (V5.1)
+# ═══════════════════════════════════════════
+
+from app.quant.indicators import INDICATOR_REGISTRY
+
+
+@router.get("/indicators/registry")
+async def get_indicator_registry():
+    """获取所有已注册的量化指标及其定义"""
+    return [
+        {
+            "code": code,
+            "name": meta["name"],
+            "category": meta["category"],
+            "params": meta.get("params", {}),
+            "description": meta.get("description", ""),
+            "output_fields": meta.get("output_fields", []),
+            "chart_overlay": meta.get("chart_overlay", False)
+        }
+        for code, meta in INDICATOR_REGISTRY.items()
+    ]
+
+
+@router.get("/indicators/{stock_code}")
+async def get_stock_indicators(stock_code: str):
+    """获取某只股票的最新指标快照"""
+    async with async_session() as db:
+        res = await db.execute(
+            select(StockIndicator)
+            .where(StockIndicator.stock_code == stock_code)
+            .order_by(StockIndicator.analysis_date.desc())
+            .limit(1)
+        )
+        row = res.scalars().first()
+        if not row:
+            return {"stock_code": stock_code, "indicators": None}
+
+        return {
+            "stock_code": stock_code,
+            "analysis_date": str(row.analysis_date) if row.analysis_date else None,
+            "indicator_type": row.indicator_type,
+            "snapshot": row.data_json,
+            "findings": row.logic_chain
+        }
