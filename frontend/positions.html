@@ -102,6 +102,7 @@
                         </td>
                         <td style="text-align: center;">
                             <button class="btn-action" style="padding: 4px 10px; font-size: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: var(--text-normal); border-radius: 4px; cursor: pointer;" onclick="showChart('${p.stock_code}', '${p.stock_name}')"><i class="fas fa-chart-bar" style="color: #60a5fa;"></i> 走势</button>
+                            <button class="btn-action" style="padding: 2px 8px; font-size: 10px; border-color: var(--accent-red); color: var(--accent-red); margin-left: 4px;" onclick="deletePosition('${p.stock_code}', '${p.stock_name}')"><i class="fas fa-trash"></i></button>
                         </td>
                     </tr>
                 `).join('');
@@ -217,6 +218,18 @@
         window.addEventListener('resize', () => {
             if (myChart) myChart.resize();
         });
+
+        async function deletePosition(code, name) {
+            const ok = await Modal.danger('删除持仓', `确认删除 ${name} (${code})？`);
+            if (!ok) return;
+            try {
+                const res = await fetch(`${API_BASE}/positions/${code}`, { method: 'DELETE' });
+                if (res.ok) refreshPositions();
+                else Modal.alert('删除失败', '请稍后重试');
+            } catch (e) {
+                Modal.alert('删除失败', e.message);
+            }
+        }
 
         // 注册刷新钩子
         window.refreshPageData = refreshPositions;

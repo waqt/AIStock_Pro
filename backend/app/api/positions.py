@@ -1,11 +1,12 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from typing import List
 from app.framework.database.session import get_db
 from app.models.models import Position
 from app.models.schemas import PositionResponse
+from app.framework.logger import logger
 
 router = APIRouter(prefix="/api/positions", tags=["Positions"])
 
@@ -35,3 +36,16 @@ async def get_account_summary(db: AsyncSession = Depends(get_db)):
         "market_value": total_market_value,
         "today_profit": total_pl
     }
+
+
+@router.delete("/{stock_code}")
+async def delete_position(stock_code: str, db: AsyncSession = Depends(get_db)):
+    """删除单条持仓"""
+    result = await db.execute(select(Position).where(Position.stock_code == stock_code))
+    pos = result.scalars().first()
+    if not pos:
+        raise HTTPException(status_code=404, detail=f"持仓 {stock_code} 不存在")
+    await db.execute(delete(Position).where(Position.stock_code == stock_code))
+    await db.commit()
+    logger.info(f"[🧹] Deleted position: {stock_code} {pos.stock_name}")
+    return {"message": f"已删除 {stock_code} {pos.stock_name}"}
