@@ -131,6 +131,33 @@ class ResearchDataLoader:
                 for r in rows.scalars().all()
             }
 
+    async def search_industry_stocks(self, keyword: str) -> List[Dict]:
+        """搜索行业内所有标的 (StockInfo.industry 模糊匹配)"""
+        async with async_session() as db:
+            rows = await db.execute(
+                select(StockInfo)
+                .where(StockInfo.industry.isnot(None))
+            )
+            matched = [r for r in rows.scalars().all() if keyword in (r.industry or "")]
+            return [
+                {"code": s.stock_code, "name": s.stock_name, "industry": s.industry,
+                 "pe_ttm": s.pe_ttm, "pb": s.pb, "mcap_yi": s.mcap_yi}
+                for s in matched
+            ]
+
+    async def load_financials(self, codes: List[str]) -> Dict[str, Dict]:
+        """加载财务数据 — 当前返回 PE/PB/市值作为代理指标 (营收/利润待付费API接入)"""
+        return await self.load_fundamentals(codes)
+
+    async def load_capital_flow(self, code: str, days: int = 30) -> List[Dict]:
+        """加载个股资金流向 (主力/散户/超大单)"""
+        try:
+            from app.domain.market_data.sources.push2 import get_capital_flow
+            return await get_capital_flow(code, days)
+        except Exception as e:
+            logger.warning(f"[Capital flow load failed for {code}: {e}]")
+            return []
+
 
 # 全局单例
 data_loader = ResearchDataLoader()
