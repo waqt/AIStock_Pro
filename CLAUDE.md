@@ -2,189 +2,205 @@
 
 ## 项目身份
 
-AIStock Pro 是一套 AI 驱动的量化分析与投资研究系统，面向 A 股 + 港股。系统采用"量化计算 + 本地技能 + 远程 AI"混合动力架构，由 Python 3.10+ 异步引擎驱动。
+AIStock Pro 是一套 AI 驱动的量化分析与投资研究系统，面向 A 股 + 港股。系统采用 DDD 领域驱动 + 智能体架构，由 Python 3.10+ 异步引擎驱动。
 
-- **架构风格**: DDD（领域驱动设计）+ Clean Architecture
-- **版本**: 2.1.0
+- **架构风格**: DDD（领域驱动设计）+ Agent 智能体模式
+- **版本**: V5.2
 - **数据库名**: `aistock_pro`（MySQL, 与旧系统物理隔离）
+- **conda 环境**: `aiteacher` (`D:\develop_env\python_related\anaconda\Anaconda3\envs\aiteacher`)
+- **启动**: 双击 `run_backend.bat` → `http://127.0.0.1:8000`
 
 ## 技术栈
 
 | 层 | 技术 |
 |---|------|
-| Web 框架 | FastAPI 0.110 + Uvicorn |
+| Web 框架 | FastAPI + Uvicorn (--reload 热加载) |
 | 序列化/配置 | Pydantic V2 + pydantic-settings |
 | ORM | SQLAlchemy 2.0 异步 (aiomysql) |
 | 量化计算 | Pandas + NumPy |
 | 前端 | 原生 HTML/CSS/JS + ECharts 5.5 + Font Awesome 6 |
-| AI SDK | anthropic, openai, google-generativeai, langchain |
-| 数据源 | httpx 异步客户端 → 新浪财经 API |
+| AI 提供者 | 豆包 Seed (主) / DeepSeek (Anthropic兼容) / Gemini Vision |
+| 任务调度 | TaskEngine (自研) + APScheduler |
+| 数据源 | httpx 异步 → 新浪/东方财富; akshare 库 (港股) |
+| 图片处理 | Pillow (OCR 前压缩) |
 
 ## 目录结构
 
 ```
 AIStock_Pro/
-├── CLAUDE.md                  # ← 本文件 (Claude Code 自动加载)
+├── CLAUDE.md                              # ← 本文件
+├── run_backend.bat                        # 启动脚本
 ├── backend/
-│   ├── app/
-│   │   ├── api/               # [路由层] 参数校验、调用领域服务，禁止写业务逻辑
-│   │   │   ├── tasks.py       #   /api/system/tasks/*
-│   │   │   ├── data.py        #   /api/data/*
-│   │   │   └── positions.py   #   /api/positions/*
-│   │   ├── core/              # [基础设施层] 配置、DB、日志、任务管理器
-│   │   │   ├── config.py      #   Settings (从 .env 加载)
-│   │   │   ├── database.py    #   async engine + session + get_db 依赖
-│   │   │   ├── logger.py      #   结构化日志
-│   │   │   ├── state.py       #   全局内存状态 (task_stop_events)
-│   │   │   ├── data_service.py#   异步行情数据抓取 (新浪财经)
-│   │   │   └── task_manager.py#   异步任务生命周期管理
-│   │   ├── domain/            # [领域层] 业务逻辑与跨域编排
-│   │   │   └── task_service.py
-│   │   ├── quant/             # [量化层] 指标计算 + 形态识别 + 分析引擎
-│   │   │   ├── indicators.py  #   MA、MACD、RSI、布林带、成交量均线
-│   │   │   ├── patterns.py    #   Andy 123、Joy 底部、顶部天量滞涨
-│   │   │   ├── engine.py      #   QuantEngine: 单股分析 + 批量同步
-│   │   │   └── tasks.py       #   领域任务: sync_market_data_task, calculate_indicators_task
-│   │   ├── agents/            # [规划中] AI Orchestrator 与 Prompt 编排
-│   │   ├── plugins/           # [规划中] 可下载的策略/Skill 插件
-│   │   │   ├── quant/         #   量化算子插件
-│   │   │   └── research/      #   投研分析 Skill
-│   │   └── models/            # [数据模型层] SQLAlchemy ORM 模型
-│   │       ├── models.py      #   Position, MarketData, StockIndicator, etc.
-│   │       └── schemas.py     #   Pydantic 响应模型
-│   ├── scripts/               # 数据库迁移、审计、诊断工具
-│   ├── temp_lab/              # AI 生成实验脚本的临时存放区
+│   ├── .env                               # 环境变量 (API Key, DB 连接)
 │   ├── requirements.txt
-│   └── .env                   # 环境变量 (DB 连接、API Key)
+│   ├── app/
+│   │   ├── main.py                        # 入口: 路由注册 + 启动生命周期
+│   │   ├── framework/                     # [基础设施] 可复用工具, 不包含业务逻辑
+│   │   │   ├── config.py                  #   Settings (pydantic-settings)
+│   │   │   ├── logger.py                  #   结构化日志 (loguru)
+│   │   │   ├── database/
+│   │   │   │   └── session.py             #   async engine + session + get_db
+│   │   │   ├── tasks/
+│   │   │   │   ├── engine.py              #   TaskEngine (注册/调度/强杀/进度)
+│   │   │   │   ├── scheduler.py           #   APScheduler cron 管理
+│   │   │   │   └── api.py                 #   /api/system/tasks/*
+│   │   │   ├── ai/
+│   │   │   │   ├── providers/             #   LLM 提供者
+│   │   │   │   │   ├── base.py            #     AIProviderProtocol
+│   │   │   │   │   ├── doubao.py          #     豆包 Seed API
+│   │   │   │   │   ├── gemini.py          #     Gemini Vision API
+│   │   │   │   │   └── deepseek.py        #     DeepSeek (Anthropic兼容)
+│   │   │   │   └── ocr.py                 #   图片压缩/清理工具
+│   │   │   └── agents/
+│   │   │       └── base.py                #   BaseAgent (所有领域 Agent 的抽象)
+│   │   ├── domain/                        # [领域层] 业务逻辑, 按功能域内聚
+│   │   │   ├── market_data/               #   市场数据领域
+│   │   │   │   ├── api/routes.py          #     /api/data/* + /api/data/health/* + /api/data/forex/*
+│   │   │   │   ├── tasks/sync.py          #     sync_market 任务
+│   │   │   │   ├── services/              #     行情同步 + 健康检查
+│   │   │   │   └── sources/               #     DataSourceProtocol, DataRouter, Sina, AkShare
+│   │   │   ├── portfolio/                 #   持仓管理领域
+│   │   │   │   ├── api/                   #     /api/positions/* + /api/ai/*
+│   │   │   │   ├── tasks/import_tasks.py  #     ai_recognize 任务
+│   │   │   │   └── services/import_service.py # 批量导入写库
+│   │   │   ├── quant/                     #   量化分析领域
+│   │   │   │   ├── api/indicators.py      #     /api/data/indicators/*
+│   │   │   │   ├── tasks/calc.py          #     calc_indicators 任务
+│   │   │   │   ├── engine/                #     indicators, patterns, engine
+│   │   │   │   └── agents/                #     量化智能体 (V2.0)
+│   │   │   ├── research/                  #   投研领域 (V3.0)
+│   │   │   │   └── agents/                #     ResearchAgent + supply_chain
+│   │   │   └── strategy/                  #   量化策略领域 (V2.0)
+│   │   │       └── agents/                #     StrategyAgent
+│   │   ├── api/                           # [路由层] 向后兼容层, 逐渐迁入 domain/
+│   │   │   ├── tasks.py
+│   │   │   ├── data.py
+│   │   │   ├── positions.py
+│   │   │   └── import_api.py
+│   │   ├── core/                          # [遗留] 迁入 framework/ + domain/ 中
+│   │   ├── quant/                         # [遗留] 已迁入 domain/quant/engine/, 原文件保留兼容
+│   │   └── models/                        # [数据模型层] 全局共享
+│   │       ├── models.py                  #   8 张表: Position, MarketData, StockIndicator,
+│   │       │                               #   TaskDefinition, TaskExecution, TradeHistory,
+│   │       │                               #   ExchangeRate, SystemSetting
+│   │       └── schemas.py                 #   Pydantic 响应/请求模型
+│   ├── scripts/                           # 迁移、审计、烟雾测试
+│   │   ├── smoke_test.py                  #   冒烟测试 (16 个关键 API)
+│   │   └── migrate_v5.*.py                #   数据库迁移脚本
+│   ├── logs/                              # 运行日志
+│   └── temp_lab/                          # 实验脚本 (gitignore)
 ├── frontend/
-│   ├── index.html             # 指挥中心首页
-│   ├── positions.html         # 持仓管理 (含 ECharts K线)
-│   ├── suggestions.html       # 调仓建议
-│   ├── research.html          # AI 投研
-│   ├── data.html              # 数据中心
-│   ├── history.html           # 交易审计
-│   ├── import.html            # 智能导入
-│   ├── morning_report.html    # 早盘报告
-│   ├── closing_report.html    # 收盘报告
-│   ├── css/style.css
+│   ├── index.html                         # 指挥中心
+│   ├── positions.html                     # 持仓管理 (ECharts K线)
+│   ├── data.html                          # 数据中心
+│   ├── history.html                       # 执行历史
+│   ├── definitions.html                   # 任务定义
+│   ├── import.html                        # 智能导入 (OCR+Excel+文本)
+│   ├── suggestions.html                   # 调仓建议 (V2.0)
+│   ├── research.html                      # AI 投研 (V3.0)
+│   ├── css/style.css                      # 暗色主题样式
 │   └── js/
-│       ├── ui.js              # 通用 UI 组件 (侧边栏、顶栏、任务监控)
-│       ├── common.js          # 全局常量 API_BASE + 任务轮询 + 账户摘要
-│       └── app.js             # 指挥中心业务逻辑
+│       ├── ui.js                          # 侧边栏+顶栏+市场跑马灯+页面初始化
+│       ├── common.js                      # API_BASE + Modal + TaskMonitor
+│       └── app.js                         # 指挥中心业务逻辑
 └── docs/
-    ├── README.md                      # 文档索引 (导航入口)
-    ├── 01_Requirements/               # 需求与路线图
-    │   ├── MASTER_STRATEGY.md         #   产品迭代路线图 (V1.0→V3.0)
-    │   └── 2026-05-16_Task_V5_Spec.md #   任务引擎 V5.0 需求
-    ├── 02_Architecture/               # 架构设计
-    │   ├── architecture_v2.md         #   系统核心拓扑与 DDD 设计
-    │   └── Task_V5_Engine_Design.md   #   任务引擎 V5.0 详细设计
-    ├── 03_API_Specifications/         # API 与模块规格
-    │   └── data_sync_spec.md          #   数据同步模块规格书 V2.0
-    ├── 04_Frontend_UI/                # 前端设计
-    ├── 05_Engineering/                # 工程规范
-    │   └── engineering_standards.md   #   核心工程标准 V2.0
-    ├── 06_Quant_Research/             # 量化研究
-    └── Archive/                       # 历史归档
+    ├── README.md                          # 文档索引入口
+    ├── 01_Requirements/                   # 需求与路线图
+    ├── 02_Architecture/                   # 架构设计
+    ├── 03_API_Specifications/             # API 规格 + 导入模块
+    ├── 04_Frontend_UI/                    # 前端设计
+    ├── 05_Engineering/                    # 工程规范 + 冒烟测试
+    └── Archive/                           # 历史归档
 ```
 
 ## 架构约束 (硬规则)
 
 ### DDD 分层边界
+
 ```
-api/          → 仅做参数校验 + 调用下层服务 + 返回响应。绝对不写业务逻辑。
-domain/       → 业务编排、跨领域调用。依赖 core/、quant/、models/。
-quant/        → 纯算法：指标计算、形态识别、分析引擎。不依赖 api/。
-core/         → 基础设施：DB、日志、配置、外部 API。不依赖 api/、domain/、quant/。
-models/       → 纯 ORM 模型 + Pydantic Schema。不依赖其他任何业务模块。
+framework/    → 纯基础设施: 配置/日志/DB/任务引擎/AI提供者/Agent基座。
+                不依赖业务模块。允许被所有层导入。
+domain/       → 业务逻辑, 按功能域内聚 (market_data/portfolio/quant/research/strategy)。
+                每个 domain 内部 api/tasks/services/sources 自包含。
+                不同 domain 之间禁止互相导入。编排逻辑在 main.py 处理。
+models/       → ORM 模型 + Pydantic Schema。纯数据结构, 不依赖 framework/ 和 domain/。
+api/          → [过渡期] API 路由文件仍在 api/ 下, 逐步迁入各 domain 的 api/ 子目录。
+core/ + quant/ → [遗留] 原代码已迁入 framework/ + domain/, 原文件保留向后兼容。
+```
+
+### 依赖方向
+```
+domain/  →  framework/  →  models/
+(domain/ 不 import 其他 domain/)
+(api/ 路由 → domain/ 服务)
 ```
 
 ### 违规示例
-- ❌ `api/data.py` 里直接写 `pd.DataFrame` 加工逻辑
-- ❌ `quant/engine.py` 里直接操作 FastAPI `Response` 对象
-- ❌ `core/database.py` 里 import `Position` 进行业务判断
+- ❌ `api/` 里直接写 `pd.DataFrame` 加工逻辑
+- ❌ `domain/quant/` import `domain/portfolio/`
+- ❌ `framework/` import `domain/` 或 `models/` 做业务判断
+- ❌ 裸 `asyncio.create_task()` 绕开 TaskEngine
 
 ## 编码规范
 
 ### 导入
-- **绝对导入**：一律 `from app.core.database import ...`，禁止 `from ..core import ...`
-- **导入顺序**：标准库 → 第三方库 → 本地模块
+- **绝对导入**: 一律 `from app.framework.config import settings`
+- **导入顺序**: 标准库 → 第三方库 → 本地模块
+- **新代码使用 framework/domain 路径**: `from app.domain.market_data.sources.router import data_router`
 
 ### 异步
-- 所有数据库操作必须使用 `async_session` / `AsyncSession`
+- 所有 DB 操作使用 `async_session` / `AsyncSession`
 - I/O 密集型操作（行情抓取、AI 调用）必须异步化
-- 后台任务必须通过 `TaskManager.start_task()` 启动，禁止裸 `asyncio.create_task()`
-
-### 命名
-- 任务状态限定值：`PENDING`、`RUNNING`、`SUCCESS`、`FAILED`、`CANCELLED`
-- ORM 模型统一继承 `Base`（来自 `core.database`）
-- API 路由函数以 `async def` 声明
+- 后台任务通过 `TaskEngine.run_task(task_code, params={...})` 启动
 
 ### 日志
 ```
-[🚀] 系统/模块启动
-[✅] 成功完成
-[❌] 异常/错误 (附带错误详情)
-[⚠️] 逻辑警告
-[🛑] 任务被强杀
-[🧹] 清理/自愈
+[🚀] 系统/模块启动    [✅] 成功完成
+[❌] 异常/错误        [⚠️] 逻辑警告
+[🛑] 任务被强杀       [🧹] 清理/自愈
 ```
 
-## 数据库规则
+## 关键模块速查
 
-- **URL 格式**: `mysql+aiomysql://user:pass@host:port/aistock_pro`
-- **数据库名**: 必须是 `aistock_pro`（与旧系统物理隔离）
-- **引擎配置**: `pool_pre_ping=True`, `pool_size=10`, `max_overflow=20`
-- **模型变更流程**:
-  1. 修改 `backend/app/models/models.py`
-  2. 系统启动时 `Base.metadata.create_all` 会自动建新表（但不做 ALTER）
-  3. 如需 ALTER，在 `backend/scripts/` 中编写迁移脚本
-- **唯一约束**: `Position.stock_code` 必须 unique；`MarketData(stock_code, trade_date)` 组合唯一
-
-## 任务管理
-
-所有后台任务**必须**通过 `TaskManager` 管理：
+### 任务引擎
 ```python
-task_id = await TaskManager.start_task(
-    task_type="操作名称",
-    coro_func=领域任务函数,
-    mode="AUTO"  # 或其他参数
-)
+from app.framework.tasks.engine import task_manager
+task_id = await task_manager.run_task("sync_market", params={"mode": "AUTO"})
 ```
-- 任务函数签名必须为 `async def func(task_id: str, **kwargs)`
-- 任务函数内部必须定期 `await asyncio.sleep(0)` 以响应 KILL 信号
-- 系统启动自愈：自动将残留 `RUNNING`/`PENDING` 任务标记为 `CANCELLED`
+已注册任务: `sync_market`(行情同步), `calc_indicators`(指标重算), `ai_recognize`(AI识别)
 
-## 前端约束
+### 数据源
+```python
+from app.domain.market_data.sources.router import data_router
+# 多源自动降级: AkShare → Sina
+df = await data_router.get_daily_data(stock_code, days=120)
+```
 
-- **加载顺序**: `ui.js` → `common.js` → 页面内联/业务 JS
-- **API_BASE**: 全局变量 `const API_BASE = '/api'` (在 common.js 顶部定义)
-- **页面模板**: 每个页面必须有 `<body data-page-id="xxx">` + `<aside class="sidebar">` + `<div class="top-bar">` + main 内 `<div class="workspace">`
-- **任务监控**: 由 `common.js` 的 `initCommon()` 自动注入到 `body`
-- **ECharts**: 在需要的页面单独引入 CDN script
+### AI 识别
+```python
+from app.core.ai_service import AIImportService  # 待迁入 domain/portfolio/services/
+results = await AIImportService.recognize_stock_image(base64_image)
+```
 
-## 常见陷阱
+### 前端
+- `Modal.alert(title, msg)` / `Modal.confirm(title, msg)` — 暗色弹窗 (common.js)
+- `UI_COMPONENTS.updateMarketTicker()` — 刷新市场跑马灯 (ui.js)
 
-1. **路由未注册** — 新建 API 路由文件后必须在 `main.py` 中 `app.include_router()`
-2. **脚本加载顺序** — 内联 `<script>` 不能引用还未加载的 `common.js` 中定义的变量
-3. **TaskManager 幽灵任务** — 任务 KILL 后数据库状态必须为 `CANCELLED`，否则启动自愈会标记为 zombies
-4. **httpx proxy** — DataService 必须显式设 `proxy=None` 避免系统代理干扰财经 API
-5. **Pydantic V2** — 使用 `pydantic_settings.BaseSettings` 而非 `pydantic.BaseSettings`
-6. **SQLAlchemy async** — 查询必须 `await db.execute(select(...))` 再 `.scalars().all()`
+## 冒烟测试
+
+每次提交前:
+```bash
+python scripts/smoke_test.py
+```
+覆盖 16 个关键 API 端点, 全部 PASS 方可提交。
 
 ## 开发流程
 
-### 新功能开发
-1. 确认需求属于哪个 DDD 层
-2. 如需新表 → 修改 `models.py`  -> 写迁移脚本
-3. 核心逻辑 → `quant/` 或 `domain/`
-4. 暴露接口 → `api/` 新增路由
-5. 前端页面 → 遵循页面模板
-6. `main.py` 注册路由
-7. 端到端验证
-
-### Bug 修复
-1. 复现并定位到具体层 (api/domain/quant/core/models)
-2. 检查是否有连锁影响（同一层的其他调用方）
-3. 修复 + 验证
-4. 如果 Bug 具有代表性 → 更新 `docs/engineering_standards.md`
+1. 确认需求归属领域 (market_data/portfolio/quant/research/strategy)
+2. 如需新表 → 修改 `models/models.py` → 写迁移脚本 `scripts/migrate_v5.X.py`
+3. 业务逻辑 → `domain/<领域>/services/`
+4. 暴露接口 → `domain/<领域>/api/` 或 `api/` (过渡期)
+5. 前端页面 → 遵循模板: `<body data-page-id>` + sidebar + topbar + workspace
+6. `main.py` 注册路由 (如有新增)
+7. `smoke_test.py` 通过
+8. `git commit`
