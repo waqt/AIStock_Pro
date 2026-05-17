@@ -31,8 +31,7 @@ async def recognize_image(payload: Dict[str, Any]):
     try:
         task_id = await task_manager.run_task(
             "ai_recognize",
-            image_base64=image,
-            recognize_type="position"
+            params={"image_base64": image, "recognize_type": "position"}
         )
         return {"success": True, "task_id": task_id, "message": "AI 识别任务已提交，请轮询进度"}
     except Exception as e:
@@ -49,8 +48,7 @@ async def recognize_trades(payload: Dict[str, Any]):
     try:
         task_id = await task_manager.run_task(
             "ai_recognize",
-            image_base64=image,
-            recognize_type="trade"
+            params={"image_base64": image, "recognize_type": "trade"}
         )
         return {"success": True, "task_id": task_id, "message": "AI 识别任务已提交，请轮询进度"}
     except Exception as e:
