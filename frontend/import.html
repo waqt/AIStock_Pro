@@ -40,7 +40,6 @@
                             <input type="file" id="image-input" style="display: none;" onchange="handleImage(this)">
                             <div style="display: flex; gap: 10px; justify-content: center;">
                                 <button class="btn-action" onclick="document.getElementById('image-input').click()"><i class="fas fa-camera"></i> 上传识别</button>
-                                <button class="btn-action" id="btn-restore" onclick="restoreCache()" style="display:none; border-color: var(--accent-gold); color: var(--accent-gold);"><i class="fas fa-undo"></i> 恢复上次</button>
                             </div>
                             <p style="margin-top: 10px; font-size: 11px;">支持券商、雪球、同花顺截图</p>
                         </div>
@@ -267,6 +266,17 @@
             updateSelectCount();
         }
 
+        function showImportError(msg) {
+            const preview = document.getElementById('import-preview');
+            const existing = document.getElementById('import-error-banner');
+            if (existing) existing.remove();
+            const banner = document.createElement('div');
+            banner.id = 'import-error-banner';
+            banner.style.cssText = 'background:rgba(255,71,87,0.08); border:1px solid var(--accent-red); padding:8px 14px; border-radius:4px; margin-bottom:10px; font-size:11px; color:var(--accent-red);';
+            banner.innerHTML = `<i class="fas fa-exclamation-triangle"></i> 导入失败: ${msg} — 数据已保留，修改后可重试`;
+            preview.insertBefore(banner, preview.firstChild);
+        }
+
         function updateSelectCount() {
             const checked = document.querySelectorAll('.item-check:checked').length;
             document.getElementById('select-count').textContent = `已选择 ${checked} 条记录`;
@@ -293,10 +303,15 @@
                         body: JSON.stringify({ items: selectedItems, clear_old: clearOld })
                     });
                     const result = await res.json();
-                    Modal.alert('导入成功', `新导入: ${result.imported_count} 条` + (clearOld ? `\n已清空旧记录: ${result.cleared_count} 条` : ''));
-                    if (result.success) location.href = 'positions.html';
+                    if (result.success) {
+                        await fetch(`${API_BASE}/ai/cache`, { method: 'DELETE' });
+                        Modal.alert('导入成功', `新导入: ${result.imported_count} 条` + (clearOld ? `\n已清空旧记录: ${result.cleared_count} 条` : ''));
+                        location.href = 'positions.html';
+                    } else {
+                        showImportError(result.detail || '导入失败');
+                    }
                 } catch (e) {
-                    Modal.alert('导入失败', e.message);
+                    showImportError(e.message);
                 }
             } else {
                 if (!await Modal.confirm('确认导入', `确认将这 ${selectedItems.length} 条成交历史导入审计库？`)) return;
@@ -307,36 +322,54 @@
                         body: JSON.stringify({ items: selectedItems })
                     });
                     const result = await res.json();
-                    Modal.alert('导入成功', `历史记录导入成功！\n共计: ${result.imported_count} 条记录`);
-                    if (result.success) location.href = 'history.html';
+                    if (result.success) {
+                        await fetch(`${API_BASE}/ai/cache`, { method: 'DELETE' });
+                        Modal.alert('导入成功', `历史记录导入成功！\n共计: ${result.imported_count} 条记录`);
+                        location.href = 'history.html';
+                    } else {
+                        showImportError(result.detail || '导入失败');
+                    }
                 } catch (e) {
-                    Modal.alert('导入失败', e.message);
+                    showImportError(e.message);
                 }
             }
         }
+
+        // ── 缓存管理 ──
+        window.lastCache = null; // {type, data}
 
         async function checkCache() {
             try {
                 const res = await fetch(`${API_BASE}/ai/get-cache`);
                 const result = await res.json();
-                if (result.success && result.data) {
-                    const btn = document.getElementById('btn-restore');
-                    if (btn) btn.style.display = 'inline-block';
-                    window.lastCache = result.data;
+                if (result.success && result.data && result.data.length > 0) {
+                    window.lastCache = { type: result.type || 'position', data: result.data };
+                    // 自动恢复预览
+                    if (window.lastCache.type !== currentTab) {
+                        switchTab(null, window.lastCache.type);
+                    }
+                    setTimeout(() => {
+                        renderPreview(window.lastCache.data);
+                        const preview = document.getElementById('import-preview');
+                        const banner = document.createElement('div');
+                        banner.id = 'cache-banner';
+                        banner.style.cssText = 'background:rgba(251,191,36,0.08); border:1px solid var(--accent-gold); padding:8px 14px; border-radius:4px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; font-size:11px;';
+                        banner.innerHTML = `<span style="color:var(--accent-gold);"><i class="fas fa-undo"></i> 已恢复上次识别的 ${window.lastCache.data.length} 条记录</span>
+                            <button class="btn-action" onclick="clearCache()" style="font-size:10px; padding:2px 8px; border-color:var(--accent-red); color:var(--accent-red);">清除</button>`;
+                        preview.insertBefore(banner, preview.firstChild);
+                    }, 200);
                 }
-            } catch (e) {}
+            } catch (e) { console.error('Cache check failed:', e); }
         }
 
-        async function restoreCache() {
-            if (!window.lastCache) return;
-            const cache = window.lastCache;
-            if (cache.type !== currentTab) {
-                switchTab(cache.type);
-            }
-            setTimeout(() => {
-                renderPreview(cache.data);
-                document.getElementById('import-preview').scrollIntoView({ behavior: 'smooth' });
-            }, 100);
+        async function clearCache() {
+            try {
+                await fetch(`${API_BASE}/ai/cache`, { method: 'DELETE' });
+            } catch (e) {}
+            window.lastCache = null;
+            parsedItems = [];
+            document.getElementById('import-preview').innerHTML = '<div style="color: var(--text-micro); text-align: center; padding: 60px;">等待数据采集输入...</div>';
+            document.getElementById('import-controls').style.display = 'none';
         }
 
         window.onload = checkCache;

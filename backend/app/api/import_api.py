@@ -22,6 +22,13 @@ async def get_cache():
     return {"success": True, "data": cache.get("data"), "type": cache.get("type")}
 
 
+@router.delete("/cache")
+async def clear_cache():
+    """清除导入缓存 (导入成功后调用)"""
+    AIImportService.clear_cache()
+    return {"success": True, "message": "缓存已清除"}
+
+
 # 2. 持仓截图识别 (异步任务)
 @router.post("/recognize-image")
 async def recognize_image(payload: Dict[str, Any]):

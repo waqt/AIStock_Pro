@@ -44,6 +44,12 @@ class AIImportService:
     # ── Cache ────────────────────────────────────
 
     @classmethod
+    def clear_cache(cls):
+        if os.path.exists(CACHE_FILE):
+            os.remove(CACHE_FILE)
+            logger.info("[🧹] Import cache cleared")
+
+    @classmethod
     def get_cache(cls) -> Optional[Dict]:
         if not os.path.exists(CACHE_FILE):
             return None
