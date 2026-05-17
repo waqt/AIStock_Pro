@@ -32,7 +32,7 @@ class SupplyChainAnalyst(ResearchAgent):
         self._steps = []  # 记录每步输出供前端展示
 
     async def analyze(self, context: Dict[str, Any]) -> Dict[str, Any]:
-        """执行完整的5步供应链分析"""
+        """执行完整的5步供应链分析 (每步 45s 超时, 失败不中断)"""
         self._steps = []
         ctx = await self.load_context(context)
         industry = ctx.get("industry", "未指定")
@@ -49,34 +49,42 @@ class SupplyChainAnalyst(ResearchAgent):
             results["data"] = ctx
             return results
 
-        # ── Step 1: 识别高景气信号 (全球) ──
-        step1 = await self._analyze_prosperity_signals(ctx)
+        import asyncio
+
+        async def _safe_step(name, coro):
+            try:
+                return await asyncio.wait_for(coro, timeout=45)
+            except asyncio.TimeoutError:
+                logger.warning(f"[{self.name}] {name} timed out")
+                return {"error": "timeout", "step": name}
+            except Exception as e:
+                logger.warning(f"[{self.name}] {name} failed: {e}")
+                return {"error": str(e), "step": name}
+
+        # ── Step 1-5: 各自超时保护 ──
+        step1 = await _safe_step("prosperity", self._analyze_prosperity_signals(ctx))
         self._steps.append({"step": 1, "name": "景气信号识别", "output": step1})
         results["prosperity_signals"] = step1
 
-        # ── Step 2: 映射全球供应链 ──
-        step2 = await self._map_supply_chain(ctx, step1)
+        step2 = await _safe_step("supply_chain", self._map_supply_chain(ctx, step1))
         self._steps.append({"step": 2, "name": "供应链映射", "output": step2})
         results["supply_chain"] = step2
 
-        # ── Step 3: 定位供需瓶颈 ──
-        step3 = await self._locate_bottleneck(ctx, step2)
+        step3 = await _safe_step("bottleneck", self._locate_bottleneck(ctx, step2))
         self._steps.append({"step": 3, "name": "供需瓶颈定位", "output": step3})
         results["bottleneck"] = step3
 
-        # ── Step 4: 锁定核心标的 ──
-        step4 = await self._select_core_targets(ctx, step3)
+        step4 = await _safe_step("core_targets", self._select_core_targets(ctx, step3))
         self._steps.append({"step": 4, "name": "核心标的锁定", "output": step4})
         results["core_targets"] = step4
 
-        # ── Step 5: 定量估值 ──
-        step5 = await self._quantitative_valuation(ctx, step4)
+        step5 = await _safe_step("valuation", self._quantitative_valuation(ctx, step4))
         self._steps.append({"step": 5, "name": "定量估值", "output": step5})
         results["valuation"] = step5
 
         # ── Summary ──
-        summary = await self._generate_summary(results)
-        results["summary"] = summary
+        summary = await _safe_step("summary", self._generate_summary(results))
+        results["summary"] = summary.get("raw_text", "") if isinstance(summary, dict) else summary
         results["steps"] = self._steps
 
         return results
