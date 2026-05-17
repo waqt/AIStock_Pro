@@ -1,7 +1,8 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, UploadFile, File
 from typing import Optional, List
 from sqlalchemy import select, func
 from datetime import date, timedelta
+import re
 
 from app.framework.database.session import async_session
 from app.models.models import MarketData, StockIndicator, Position, ExchangeRate, StockInfo
@@ -394,3 +395,43 @@ async def search_stocks(q: str = "", limit: int = 20):
             .limit(limit)
         )
         return [{"code": r[0], "name": r[1], "exchange": r[2]} for r in res.all()]
+
+
+@router.post("/stock-list/import-csv")
+async def import_stock_csv(file: UploadFile = File(...)):
+    """上传股票列表 CSV (列: 代码,名称) 导入 stock_info"""
+    if not file.filename.endswith('.csv'):
+        raise HTTPException(status_code=400, detail="仅支持 .csv 格式")
+    try:
+        contents = await file.read()
+        text = contents.decode('utf-8-sig')
+        imported = 0
+        async with async_session() as db:
+            for line in text.strip().split('\n'):
+                parts = [p.strip().strip('"') for p in line.split(',')]
+                if len(parts) < 2:
+                    continue
+                code, name = parts[0], parts[1]
+                if not code or not name or code == '代码':
+                    continue
+                # 标准化代码
+                code = re.sub(r'[^0-9]', '', code)
+                if not code:
+                    continue
+                if len(code) < 6:
+                    code = code.zfill(6)
+                code = code[:6]
+
+                exchange = "SH" if code.startswith(('6','9')) else "SZ"
+                existing = await db.get(StockInfo, code)
+                if not existing:
+                    db.add(StockInfo(stock_code=code, stock_name=name, exchange=exchange))
+                    imported += 1
+                elif not existing.stock_name or existing.stock_name == code:
+                    existing.stock_name = name
+                    imported += 1
+            await db.commit()
+        logger.info(f"[✅] CSV import: {imported} stocks")
+        return {"success": True, "imported": imported}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"导入失败: {str(e)}")
