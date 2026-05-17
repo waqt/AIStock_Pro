@@ -477,7 +477,10 @@ class AIImportService:
             res = await db.execute(select(Position))
             old = res.scalars().all()
             cleared = len(old)
-            await db.execute(delete(Position))
+            # synchronize_session='fetch' 确保 ORM identity map 与 DB 同步,
+            # 否则后续 select 可能命中缓存的旧对象, 导致 delete 不生效
+            await db.execute(delete(Position).execution_options(synchronize_session='fetch'))
+            await db.flush()
 
         imported = 0
         for item in items:
