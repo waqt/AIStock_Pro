@@ -159,5 +159,34 @@ class ResearchDataLoader:
             return []
 
 
+    async def search_web(self, query: str, num: int = 5) -> List[Dict]:
+        """网络搜索 — DuckDuckGo HTML 版 (无需 API Key)"""
+        try:
+            import re, httpx
+            url = "https://html.duckduckgo.com/html/"
+            data = {"q": query}
+            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+            async with httpx.AsyncClient(proxy=None, timeout=10.0, headers=headers) as client:
+                resp = await client.post(url, data=data)
+                if resp.status_code != 200:
+                    return []
+
+                # 解析 HTML 搜索结果
+                results = []
+                # 匹配: <a class="result__a" href="URL">标题</a>
+                links = re.findall(r'<a[^>]*class="result__a"[^>]*href="([^"]*)"[^>]*>(.*?)</a>', resp.text)
+                snippets = re.findall(r'<a[^>]*class="result__snippet"[^>]*>(.*?)</a>', resp.text)
+
+                for i, (url, title) in enumerate(links[:num]):
+                    title_clean = re.sub(r'<[^>]+>', '', title).strip()
+                    snippet = re.sub(r'<[^>]+>', '', snippets[i]).strip() if i < len(snippets) else ""
+                    if title_clean:
+                        results.append({"title": title_clean[:150], "url": url, "snippet": snippet[:300]})
+                return results
+        except Exception as e:
+            logger.warning(f"[Web search failed: {e}]")
+            return []
+
+
 # 全局单例
 data_loader = ResearchDataLoader()

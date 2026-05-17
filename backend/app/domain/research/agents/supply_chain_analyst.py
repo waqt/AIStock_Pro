@@ -114,6 +114,9 @@ class SupplyChainAnalyst(ResearchAgent):
                     trend = "放量" if recent_vol > prev_vol * 1.2 else ("缩量" if recent_vol < prev_vol * 0.8 else "持平")
                     volume_trends.append(f"{code}: {trend} (近期/前期={recent_vol/prev_vol:.2f})")
 
+        # 🔍 实时搜索: 行业最新动态
+        search_results = await self.data_loader.search_web(f"{industry} 行业 最新动态 2025 2026")
+
         prompt = f"""你是一位全球科技产业研究员。请分析 {industry} 行业的高景气信号。
 
 ## 宏观环境
@@ -125,8 +128,11 @@ class SupplyChainAnalyst(ResearchAgent):
 ## 成交量趋势
 {_json_dumps(volume_trends, ensure_ascii=False) if volume_trends else "暂无"}
 
+## 🔍 实时搜索结果
+{_json_dumps(search_results, ensure_ascii=False) if search_results else "搜索不可用, 使用你的训练知识"}
+
 ## 你的任务
-基于你的训练知识(截至2025), 请分析:
+综合以上数据和搜索结果, 请分析:
 1. **国际龙头资本开支**: {industry} 领域全球 Top3 公司(NVDA/TSMC/ASML/Intel等)的最新资本开支计划和扩产动态
 2. **全球资金流向**: 该赛道是否在吸引全球热钱? (参考美股科技ETF资金流入/SOX指数走势)
 3. **产业事件催化**: 近期是否有重大订单、技术突破、政策扶持?
@@ -178,7 +184,16 @@ JSON 示例: {{"layers":[{{"name":"环节","tier":"上游","barriers":"壁垒","
         if not bottlenecks:
             bottlenecks = layers[:3]  # fallback
 
+        # 🔍 搜索瓶颈环节最新动态
+        search_queries = [f"{b.get('name','')} 产能 供需 扩产" for b in bottlenecks[:3]]
+        search_results = {}
+        for b, q in zip(bottlenecks[:3], search_queries):
+            search_results[b.get("name","")] = await self.data_loader.search_web(q)
+
         prompt = f"""你是一位全球供应链投资专家。请深度分析以下供不应求的瓶颈环节。
+
+## 🔍 实时搜索到的行业动态
+{_json_dumps(search_results, ensure_ascii=False)}
 
 ## 瓶颈环节
 {_json_dumps(bottlenecks, ensure_ascii=False, indent=2)}
