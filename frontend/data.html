@@ -57,6 +57,24 @@
                         </div>
                     </div>
 
+                    <!-- 股票列表导入 -->
+                    <div class="panel" style="padding: 14px;">
+                        <div style="font-size: 10px; color: var(--text-micro); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Stock List Import</div>
+                        <input type="file" id="csv-file-input" accept=".csv" style="display:none" onchange="uploadStockCSV(this)">
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn-action" onclick="document.getElementById('csv-file-input').click()" style="font-size: 11px; flex:1; justify-content: center;">
+                                <i class="fas fa-upload"></i> 上传 CSV
+                            </button>
+                            <button class="btn-action" onclick="syncFullStockList()" style="font-size: 11px; flex:1; justify-content: center; border-color: var(--accent-gold); color: var(--accent-gold);">
+                                <i class="fas fa-cloud-download-alt"></i> 全量同步
+                            </button>
+                        </div>
+                        <div id="csv-result" style="font-size: 10px; color: var(--accent-green); margin-top: 6px;"></div>
+                        <div style="font-size: 10px; color: var(--text-micro); margin-top: 6px;">
+                            从东方财富网页导出 CSV (代码+名称), 或点"全量同步"在线拉取
+                        </div>
+                    </div>
+
                     <div style="margin-top: auto;">
                         <button class="btn-action" style="width: 100%; justify-content: center; font-size: 11px;" onclick="location.href='definitions.html'">
                             <i class="fas fa-sliders-h"></i> 任务调度配置
@@ -277,6 +295,48 @@
         }
 
         // ── 页面初始化 ──
+        // ── CSV 上传 ──
+        async function uploadStockCSV(input) {
+            if (!input.files || !input.files[0]) return;
+            const file = input.files[0];
+            const resultEl = document.getElementById('csv-result');
+            resultEl.style.color = 'var(--accent-blue)';
+            resultEl.textContent = '导入中...';
+            const form = new FormData();
+            form.append('file', file);
+            try {
+                const res = await fetch(`${API_BASE}/data/stock-list/import-csv`, { method: 'POST', body: form });
+                const data = await res.json();
+                if (data.success) {
+                    resultEl.style.color = 'var(--accent-green)';
+                    resultEl.textContent = `已导入 ${data.imported} 条股票信息`;
+                } else {
+                    resultEl.style.color = 'var(--accent-red)';
+                    resultEl.textContent = '导入失败: ' + (data.detail || '未知错误');
+                }
+            } catch (e) {
+                resultEl.style.color = 'var(--accent-red)';
+                resultEl.textContent = '网络错误: ' + e.message;
+            }
+        }
+
+        // ── 全量同步 ──
+        async function syncFullStockList() {
+            const resultEl = document.getElementById('csv-result');
+            resultEl.style.color = 'var(--accent-gold)';
+            resultEl.textContent = '全量同步中 (约需30秒)...';
+            try {
+                const res = await fetch(`${API_BASE}/data/stock-list/sync?full=true`, { method: 'POST' });
+                const data = await res.json();
+                resultEl.style.color = 'var(--accent-green)';
+                resultEl.textContent = `全量同步完成: ${data.synced} 条`;
+                updateHealthTable();
+            } catch (e) {
+                resultEl.style.color = 'var(--accent-red)';
+                resultEl.textContent = '同步异常: ' + e.message;
+            }
+        }
+
         function refreshAll() {
             updateSourceStatus();
             updateHealthSummary();
