@@ -235,6 +235,14 @@ class QuantEngine:
                 await self.update_position_pnl(pos.stock_code)
             await self.db.commit()
 
+            # ── 节点 5: 估值同步 ──
+            if exec_id:
+                await task_manager.update_progress(exec_id, 95, "VALUATION: 同步 PE/PB/市值...")
+            from app.domain.market_data.services.valuation import sync_valuation
+            await sync_valuation()
+            if exec_id:
+                await task_manager.update_progress(exec_id, 100, "同步完成")
+
             logger.info("[✅] Batch sync+analyze complete.")
         except asyncio.CancelledError:
             logger.warning(f"[🛑] Task {exec_id} cancelled, rolling back.")

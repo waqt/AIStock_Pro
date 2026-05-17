@@ -105,6 +105,11 @@ class StockInfo(Base):
     exchange = Column(String(5), comment="SH/SZ/HK")
     industry = Column(String(50), nullable=True)
     list_date = Column(Date, nullable=True)
+    pe_ttm = Column(Float, nullable=True, comment="市盈率(TTM)")
+    pb = Column(Float, nullable=True, comment="市净率")
+    mcap_yi = Column(Float, nullable=True, comment="总市值(亿)")
+    float_mcap_yi = Column(Float, nullable=True, comment="流通市值(亿)")
+    turnover_pct = Column(Float, nullable=True, comment="换手率(%)")
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
 
