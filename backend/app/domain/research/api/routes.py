@@ -6,6 +6,7 @@ from typing import List, Optional, Dict, Any
 from app.domain.research.agents.coordinator import ResearchCoordinator
 from app.domain.research.agents.industry_analyst import IndustryAnalyst
 from app.domain.research.agents.supply_chain_analyst import SupplyChainAnalyst
+from app.domain.research.agents.market_scanner import MarketScanner
 from app.domain.research.services.data_loader import data_loader
 from app.framework.logger import logger
 
@@ -77,6 +78,19 @@ async def supply_chain_analysis(req: ResearchRequest):
         return {"success": True, "data": result}
     except Exception as e:
         logger.error(f"[❌] Supply chain analysis failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/scan")
+async def market_scan():
+    """市场主动扫描 — 自动识别热门赛道 + 标的 + 每日简报 (无需参数)"""
+    try:
+        from app.framework.ai.providers.deepseek import DeepSeekProvider
+        scanner = MarketScanner(provider=DeepSeekProvider())
+        result = await scanner.analyze({})
+        return {"success": True, "data": result}
+    except Exception as e:
+        logger.error(f"[❌] Market scan failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

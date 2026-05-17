@@ -40,20 +40,38 @@
 
                 <!-- 左: 查询 + 步骤进度 -->
                 <div style="display: flex; flex-direction: column; gap: 12px;">
+                    <!-- 每日扫描 -->
+                    <div class="panel" style="border-left: 3px solid var(--accent-gold);">
+                        <div class="panel-header"><span class="panel-title">每日市场扫描</span></div>
+                        <div class="panel-body" style="text-align:center;">
+                            <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;">AI 自动扫宏观+资金流+持仓, 发现今日最热赛道</div>
+                            <button class="btn-action" onclick="startScan()" id="btn-scan" style="width:100%;justify-content:center;border-color:var(--accent-gold);color:var(--accent-gold);font-size:14px;padding:12px;">
+                                <i class="fas fa-satellite"></i> 开始扫描
+                            </button>
+                            <div id="scan-status" style="font-size:10px;color:var(--text-micro);margin-top:6px;"></div>
+                        </div>
+                    </div>
+
+                    <!-- 扫描结果: 赛道卡片 -->
+                    <div class="panel" id="panel-scan-result" style="display:none;">
+                        <div class="panel-header"><span class="panel-title">热门赛道</span></div>
+                        <div class="panel-body" id="content-scan-industries"></div>
+                    </div>
+
                     <div class="panel">
-                        <div class="panel-header"><span class="panel-title">投研查询</span></div>
+                        <div class="panel-header"><span class="panel-title">深度供应链分析</span></div>
                         <div class="panel-body">
                             <div class="research-input">
                                 <input type="text" id="research-industry" placeholder="行业或主题 (如: AI算力, 新能源...)" value="AI算力">
                             </div>
                             <div class="research-input">
-                                <input type="text" id="research-codes" placeholder="A股代码 (逗号分隔, 如: 688256,300750)" value="">
+                                <input type="text" id="research-codes" placeholder="A股代码 (逗号分隔)" value="">
                             </div>
                             <button class="btn-action btn-primary" onclick="startResearch()" id="btn-research" style="width:100%; justify-content:center;">
-                                <i class="fas fa-brain"></i> 启动供应链分析
+                                <i class="fas fa-brain"></i> 供应链下钻
                             </button>
                             <div style="font-size: 10px; color: var(--text-micro); margin-top: 8px;">
-                                5步推理: 景气信号→供应链图谱→供需瓶颈→核心标的→定量估值
+                                5步: 景气信号→供应链图谱→供需瓶颈→核心标的→估值
                             </div>
                         </div>
                     </div>
@@ -150,6 +168,62 @@
                 else if (i === idx - 1) badges[i].classList.add('active');
             }
             document.getElementById('step-status').textContent = status || `步骤 ${idx}: ${STEPS[idx-1]}...`;
+        }
+
+        // ── 每日扫描 ──
+        async function startScan() {
+            const btn = document.getElementById('btn-scan');
+            const status = document.getElementById('scan-status');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 扫描中...';
+            status.textContent = '正在收集市场信号...';
+
+            try {
+                const res = await fetch(`${API_BASE}/research/scan`, {
+                    method: 'POST', headers: {'Content-Type':'application/json'}, body: '{}'
+                });
+                const result = await res.json();
+                if (!result.success) { Modal.alert('扫描失败', result.detail || ''); return; }
+                const d = result.data;
+
+                // 赛道卡片
+                const industries = d.hot_industries || [];
+                const panel = document.getElementById('panel-scan-result');
+                const content = document.getElementById('content-scan-industries');
+                panel.style.display = '';
+                if (Array.isArray(industries) && industries.length) {
+                    content.innerHTML = industries.map((ind, idx) => `
+                        <div style="padding:10px;border-bottom:1px solid var(--border-thin);${idx===0?'border-left:3px solid var(--accent-gold);padding-left:8px;':''}">
+                            <div style="display:flex;justify-content:space-between;align-items:center;">
+                                <span style="font-weight:600;">${idx+1}. ${ind.name || ind.industry || ''}</span>
+                                <span class="score-badge score-high">${ind.score || '?'}/10</span>
+                            </div>
+                            <div style="font-size:11px;color:var(--text-dim);margin-top:4px;">${ind.reason || ''}</div>
+                            ${ind.a_stock_codes ? `<div style="font-size:10px;color:var(--accent-blue);margin-top:4px;">关注: ${ind.a_stock_codes.join(', ')}</div>` : ''}
+                        </div>
+                    `).join('');
+                } else {
+                    content.innerHTML = '<div style="color:var(--text-micro);padding:12px;">扫描未识别到热门赛道, 请稍后重试</div>';
+                }
+
+                // 简报
+                if (d.briefing) {
+                    document.getElementById('panel-summary').style.display = '';
+                    document.getElementById('content-summary').innerHTML = d.briefing
+                        .replace(/### (.+)/g, '<h3>$1</h3>')
+                        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                        .replace(/\n/g, '<br>')
+                        .replace(/\|(.+)\|/g, (m) => m.includes('---') ? '' : '<tr>'+m.split('|').filter(c=>c.trim()).map(c=>`<td>${c.trim()}</td>`).join('')+'</tr>');
+                }
+
+                status.textContent = '扫描完成';
+                document.getElementById('panel-empty').style.display = 'none';
+            } catch (e) {
+                status.textContent = '扫描异常: ' + e.message;
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-satellite"></i> 开始扫描';
+            }
         }
 
         async function startResearch() {
