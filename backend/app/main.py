@@ -37,11 +37,9 @@ app.include_router(data.router)
 app.include_router(positions.router)
 app.include_router(import_api.router)
 
-# 3. 挂载前端静态资源 (作为兜底)
-frontend_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend"))
-if os.path.exists(frontend_path):
-    app.mount("/", StaticFiles(directory=frontend_path, html=True), name="static")
-    logger.info(f"[✅] Frontend mounted at root from: {frontend_path}")
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "architecture": "DDD / Clean V5.0"}
 
 @app.on_event("startup")
 async def startup_event():
@@ -101,9 +99,11 @@ async def root():
 async def shutdown_event():
     await scheduler.shutdown()
 
-@app.get("/health")
-async def health_check():
-    return {"status": "healthy", "architecture": "DDD / Clean V5.0"}
+# 3. 挂载前端静态资源 (所有路由定义完之后再挂载, 避免拦截 API)
+frontend_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend"))
+if os.path.exists(frontend_path):
+    app.mount("/", StaticFiles(directory=frontend_path, html=True), name="static")
+    logger.info(f"[✅] Frontend mounted at root from: {frontend_path}")
 
 if __name__ == "__main__":
     import uvicorn
