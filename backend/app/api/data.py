@@ -4,7 +4,7 @@ from sqlalchemy import select, func
 from datetime import date, timedelta
 
 from app.framework.database.session import async_session
-from app.models.models import MarketData, StockIndicator, Position, ExchangeRate
+from app.models.models import MarketData, StockIndicator, Position, ExchangeRate, StockInfo
 from app.domain.market_data.sources.router import data_router
 from app.framework.tasks.engine import task_manager
 from app.framework.logger import logger
@@ -145,9 +145,12 @@ async def get_stocks_health():
         )
         rows = res.all()
 
-        # 批量获取持仓名称 (未在持仓但已有行情数据的股票显示代码)
+        # 批量获取名称 (StockInfo > Position > stock_code)
         pos_res = await db.execute(select(Position.stock_code, Position.stock_name))
-        name_map = {p.stock_code: p.stock_name or p.stock_code for p in pos_res}
+        pos_names = {p.stock_code: p.stock_name for p in pos_res if p.stock_name}
+        info_res = await db.execute(select(StockInfo.stock_code, StockInfo.stock_name))
+        info_names = {s.stock_code: s.stock_name for s in info_res}
+        name_map = {**info_names, **pos_names}  # 持仓名称优先覆盖证券名称
 
         today = date.today()
         result = []
@@ -343,3 +346,25 @@ async def sync_forex_rates():
     from app.domain.market_data.sources.router import data_router as dr
     result = await dr.sync_macro_data()
     return {"success": True, "data": result}
+
+
+@router.post("/stock-list/sync")
+async def sync_stock_list_endpoint():
+    """全量同步 A 股 + 港股代码名称"""
+    from app.domain.market_data.services.stock_list import sync_stock_list
+    count = await sync_stock_list()
+    return {"success": True, "synced": count}
+
+
+@router.get("/stock-list/search")
+async def search_stocks(q: str = "", limit: int = 20):
+    """搜索股票代码或名称 (自动补全)"""
+    async with async_session() as db:
+        res = await db.execute(
+            select(StockInfo.stock_code, StockInfo.stock_name, StockInfo.exchange)
+            .where(
+                StockInfo.stock_code.like(f"%{q}%") | StockInfo.stock_name.like(f"%{q}%")
+            )
+            .limit(limit)
+        )
+        return [{"code": r[0], "name": r[1], "exchange": r[2]} for r in res.all()]

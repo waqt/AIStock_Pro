@@ -97,6 +97,17 @@ class ExchangeRate(Base):
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
 
+class StockInfo(Base):
+    """股票基础信息 — A股+港股全量代码名称"""
+    __tablename__ = "stock_info"
+    stock_code = Column(String(10), primary_key=True)
+    stock_name = Column(String(50), nullable=False)
+    exchange = Column(String(5), comment="SH/SZ/HK")
+    industry = Column(String(50), nullable=True)
+    list_date = Column(Date, nullable=True)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+
 class SystemSetting(Base):
     """系统全局配置"""
     __tablename__ = "system_settings"
