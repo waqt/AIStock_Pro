@@ -138,9 +138,9 @@ async def get_stocks_health():
         )
         rows = res.all()
 
-        # 批量获取持仓名称
+        # 批量获取持仓名称 (未在持仓但已有行情数据的股票显示代码)
         pos_res = await db.execute(select(Position.stock_code, Position.stock_name))
-        name_map = {p.stock_code: p.stock_name for p in pos_res}
+        name_map = {p.stock_code: p.stock_name or p.stock_code for p in pos_res}
 
         today = date.today()
         result = []
@@ -163,7 +163,7 @@ async def get_stocks_health():
 
             result.append({
                 "stock_code": r.stock_code,
-                "stock_name": name_map.get(r.stock_code, ""),
+                "stock_name": name_map.get(r.stock_code, r.stock_code),
                 "latest_date": str(r.latest_date) if r.latest_date else None,
                 "earliest_date": str(r.earliest_date) if r.earliest_date else None,
                 "record_count": r.record_count,

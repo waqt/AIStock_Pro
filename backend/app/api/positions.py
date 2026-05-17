@@ -27,11 +27,11 @@ async def get_account_summary(db: AsyncSession = Depends(get_db)):
     positions = result.scalars().all()
     
     total_market_value = sum(float(p.market_value or 0) for p in positions)
-    # 模拟静态账户数据
+    total_pl = sum(float(p.profit_loss or 0) for p in positions)
     available_cash = 150000.0
     return {
         "total_capital": total_market_value + available_cash,
         "available_cash": available_cash,
         "market_value": total_market_value,
-        "today_profit": sum(float(p.profit_loss or 0) for p in positions) * 0.05
+        "today_profit": total_pl
     }
