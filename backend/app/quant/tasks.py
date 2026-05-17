@@ -1,6 +1,7 @@
 import asyncio
 from app.core.database import async_session
 from app.quant.engine import QuantEngine
+from app.core.ai_service import AIImportService
 from app.core.logger import logger
 from app.core.task_manager import task_manager
 
@@ -55,3 +56,22 @@ async def calculate_indicators_task(exec_id: str = None):
             raise RuntimeError(f"所有 {total} 只股票均无行情数据，请先同步行情")
         if exec_id:
             await task_manager.update_progress(exec_id, 100, f"完成: 成功{success}只, 跳过{skipped}只")
+
+
+@task_manager.register(code="ai_recognize", name="AI 截图识别", description="调用 AI 模型识别持仓/交易截图")
+async def ai_recognize_image_task(exec_id: str = None, image_base64: str = "",
+                                   recognize_type: str = "position"):
+    """V5.2 AI 识别异步任务 — 豆包 → DeepSeek → Gemini 链式调用"""
+    if exec_id:
+        await task_manager.update_progress(exec_id, 5, "正在压缩图片...")
+
+    if recognize_type == "trade":
+        result = await AIImportService.recognize_trade_image(image_base64)
+    else:
+        result = await AIImportService.recognize_stock_image(image_base64)
+
+    if exec_id:
+        if result:
+            await task_manager.update_progress(exec_id, 100, f"识别完成: {len(result)} 条记录")
+        else:
+            raise RuntimeError("所有 AI 引擎均未识别到有效数据，请检查 API Key 配置或截图清晰度")

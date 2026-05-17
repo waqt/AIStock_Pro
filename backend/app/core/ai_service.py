@@ -182,17 +182,78 @@ class AIImportService:
                 return None
 
     @classmethod
+    async def _call_deepseek_vision(cls, image_b64: str, prompt: str) -> Optional[List[Dict]]:
+        """DeepSeek Vision — Anthropic 兼容端点, 支持图片输入"""
+        if not settings.DEEPSEEK_API_KEY:
+            return None
+        base = settings.DEEPSEEK_BASE_URL.rstrip("/")
+        if "anthropic" in base:
+            # Anthropic Messages 格式
+            url = f"{base}/messages"
+            body = {
+                "model": settings.DEEPSEEK_MODEL,
+                "max_tokens": 2048,
+                "messages": [{
+                    "role": "user",
+                    "content": [
+                        {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": image_b64}},
+                        {"type": "text", "text": prompt}
+                    ]
+                }]
+            }
+        else:
+            # OpenAI Chat 格式 (fallback)
+            url = f"{base}/chat/completions"
+            body = {
+                "model": settings.DEEPSEEK_MODEL,
+                "messages": [{"role": "user", "content": [
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}},
+                    {"type": "text", "text": prompt}
+                ]}],
+                "temperature": 0.1,
+                "max_tokens": 2048
+            }
+        headers = {
+            "Authorization": f"Bearer {settings.DEEPSEEK_API_KEY}",
+            "Content-Type": "application/json"
+        }
+        async with httpx.AsyncClient(proxy=None, timeout=30.0) as client:
+            resp = await client.post(url, json=body, headers=headers)
+            if resp.status_code != 200:
+                logger.warning(f"[⚠️] DeepSeek Vision error {resp.status_code}: {resp.text[:150]}")
+                return None
+            data = resp.json()
+            try:
+                if "anthropic" in base:
+                    text = "".join(b.get("text", "") for b in data["content"] if b["type"] == "text")
+                else:
+                    text = data["choices"][0]["message"]["content"]
+                return cls._extract_json(text)
+            except (KeyError, IndexError, TypeError) as e:
+                logger.warning(f"[⚠️] DeepSeek Vision parse error: {e}")
+                return None
+
+    @classmethod
     async def _call_deepseek_text(cls, prompt: str) -> Optional[List[Dict]]:
         """DeepSeek 文本模式 — 用于文本提示的结构化提取"""
         if not settings.DEEPSEEK_API_KEY:
             return None
-        url = f"{settings.DEEPSEEK_BASE_URL.rstrip('/')}/chat/completions"
-        body = {
-            "model": settings.DEEPSEEK_MODEL,
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.1,
-            "max_tokens": 2048
-        }
+        base = settings.DEEPSEEK_BASE_URL.rstrip("/")
+        if "anthropic" in base:
+            url = f"{base}/messages"
+            body = {
+                "model": settings.DEEPSEEK_MODEL,
+                "max_tokens": 2048,
+                "messages": [{"role": "user", "content": prompt}]
+            }
+        else:
+            url = f"{base}/chat/completions"
+            body = {
+                "model": settings.DEEPSEEK_MODEL,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.1,
+                "max_tokens": 2048
+            }
         headers = {
             "Authorization": f"Bearer {settings.DEEPSEEK_API_KEY}",
             "Content-Type": "application/json"
@@ -204,30 +265,41 @@ class AIImportService:
                 return None
             data = resp.json()
             try:
-                return cls._extract_json(data["choices"][0]["message"]["content"])
-            except (KeyError, IndexError):
+                if "anthropic" in base:
+                    text = "".join(b.get("text", "") for b in data["content"] if b["type"] == "text")
+                else:
+                    text = data["choices"][0]["message"]["content"]
+                return cls._extract_json(text)
+            except (KeyError, IndexError, TypeError):
                 return None
 
     # ── Public Recognition Methods ───────────────
 
     @classmethod
     async def recognize_stock_image(cls, image_base64: str) -> List[Dict]:
-        """识别持仓截图: Gemini → 豆包 → 返回空列表"""
+        """识别持仓截图: 豆包 → DeepSeek → Gemini"""
         b64_clean = cls._clean_base64(image_base64)
         b64_compressed = cls._compress_image(b64_clean)
 
-        # 1. Gemini Vision (primary)
-        result = await cls._call_gemini_vision(b64_compressed, cls.POSITION_PROMPT)
-        if result:
-            cls._save_cache(result, "position")
-            logger.info(f"[+] Gemini recognized {len(result)} positions")
-            return result
-
-        # 2. 豆包 (fallback)
+        # 1. 豆包 (primary, 国内直连)
         result = await cls._call_doubao_vision(b64_compressed, cls.POSITION_PROMPT)
         if result:
             cls._save_cache(result, "position")
             logger.info(f"[+] Doubao recognized {len(result)} positions")
+            return result
+
+        # 2. DeepSeek Vision (fallback, anthropic 兼容模式)
+        result = await cls._call_deepseek_vision(b64_compressed, cls.POSITION_PROMPT)
+        if result:
+            cls._save_cache(result, "position")
+            logger.info(f"[+] DeepSeek recognized {len(result)} positions")
+            return result
+
+        # 3. Gemini (需 VPN, 最后兜底)
+        result = await cls._call_gemini_vision(b64_compressed, cls.POSITION_PROMPT)
+        if result:
+            cls._save_cache(result, "position")
+            logger.info(f"[+] Gemini recognized {len(result)} positions")
             return result
 
         logger.error("[❌] All AI providers failed for position recognition")
@@ -235,16 +307,21 @@ class AIImportService:
 
     @classmethod
     async def recognize_trade_image(cls, image_base64: str) -> List[Dict]:
-        """识别交易截图: Gemini → 豆包 → 返回空列表"""
+        """识别交易截图: 豆包 → DeepSeek → Gemini"""
         b64_clean = cls._clean_base64(image_base64)
         b64_compressed = cls._compress_image(b64_clean)
 
-        result = await cls._call_gemini_vision(b64_compressed, cls.TRADE_PROMPT)
+        result = await cls._call_doubao_vision(b64_compressed, cls.TRADE_PROMPT)
         if result:
             cls._save_cache(result, "trade")
             return result
 
-        result = await cls._call_doubao_vision(b64_compressed, cls.TRADE_PROMPT)
+        result = await cls._call_deepseek_vision(b64_compressed, cls.TRADE_PROMPT)
+        if result:
+            cls._save_cache(result, "trade")
+            return result
+
+        result = await cls._call_gemini_vision(b64_compressed, cls.TRADE_PROMPT)
         if result:
             cls._save_cache(result, "trade")
             return result

@@ -118,7 +118,6 @@
             if (!input.files || !input.files[0]) return;
             const file = input.files[0];
             const statusEl = document.getElementById('import-preview');
-            statusEl.innerHTML = '<div style="text-align:center; padding:50px; color:var(--accent-blue);"><i class="fas fa-spinner fa-spin fa-2x"></i><br><br>AI 正在深度解析截图...</div>';
             document.getElementById('import-controls').style.display = 'none';
 
             const reader = new FileReader();
@@ -126,17 +125,39 @@
                 const base64Data = e.target.result;
                 const endpoint = currentTab === 'position' ? '/ai/recognize-image' : '/ai/recognize-trades';
                 try {
+                    // 1. 提交异步识别任务
+                    statusEl.innerHTML = '<div style="text-align:center; padding:50px; color:var(--accent-blue);"><i class="fas fa-spinner fa-spin fa-2x"></i><br><br>AI 识别任务已提交，正在处理...</div>';
                     const res = await fetch(`${API_BASE}${endpoint}`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ image: base64Data })
                     });
                     const result = await res.json();
-                    if (result.success && result.data) {
-                        renderPreview(result.data);
-                    } else {
-                        statusEl.innerHTML = `<div style="text-align:center; padding:30px; color:var(--accent-red);">解析失败: ${result.detail || '识别结果异常'}</div>`;
+                    if (!result.success || !result.task_id) {
+                        statusEl.innerHTML = `<div style="text-align:center; padding:30px; color:var(--accent-red);">提交失败: ${result.detail || '未知错误'}</div>`;
+                        return;
                     }
+                    const taskId = result.task_id;
+                    statusEl.innerHTML = `<div style="text-align:center; padding:50px; color:var(--accent-blue);"><i class="fas fa-spinner fa-spin fa-2x"></i><br><br>AI 正在深度解析截图...<br><small style="color:var(--text-micro);">任务: ${taskId.substring(0,8)}...</small></div>`;
+
+                    // 2. 轮询缓存，等待识别完成
+                    let attempts = 0;
+                    const maxAttempts = 60; // 最多等 90s
+                    while (attempts < maxAttempts) {
+                        await new Promise(r => setTimeout(r, 1500));
+                        attempts++;
+                        try {
+                            const cacheRes = await fetch(`${API_BASE}/ai/get-cache`);
+                            const cacheData = await cacheRes.json();
+                            if (cacheData.success && cacheData.data && cacheData.data.length > 0) {
+                                statusEl.innerHTML = `<div style="text-align:center; padding:20px; color:var(--accent-green);"><i class="fas fa-check-circle"></i> 识别完成: ${cacheData.data.length} 条记录</div>`;
+                                await new Promise(r => setTimeout(r, 300));
+                                renderPreview(cacheData.data);
+                                return;
+                            }
+                        } catch (pollErr) { /* ignore poll errors */ }
+                    }
+                    statusEl.innerHTML = '<div style="text-align:center; padding:30px; color:var(--accent-red);">识别超时，请重试</div>';
                 } catch (e) {
                     statusEl.innerHTML = `<div style="text-align:center; padding:30px; color:var(--accent-red);">网络请求失败: ${e.message}</div>`;
                 }

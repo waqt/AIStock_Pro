@@ -4,6 +4,7 @@ from typing import List, Dict, Any, Optional
 
 from app.core.database import get_db
 from app.core.ai_service import AIImportService
+from app.core.task_manager import task_manager
 from app.core.logger import logger
 from app.models.schemas import (
     TextParsePayload, BatchImportPayload, BatchImportTradesPayload
@@ -21,29 +22,37 @@ async def get_cache():
     return {"success": True, "data": cache.get("data"), "type": cache.get("type")}
 
 
-# 2. 持仓截图识别
+# 2. 持仓截图识别 (异步任务)
 @router.post("/recognize-image")
 async def recognize_image(payload: Dict[str, Any]):
     image = payload.get("image", "")
     if not image:
         raise HTTPException(status_code=400, detail="未提供图片数据")
     try:
-        results = await AIImportService.recognize_stock_image(image)
-        return {"success": True, "data": results, "message": f"识别到 {len(results)} 条持仓记录"}
+        task_id = await task_manager.run_task(
+            "ai_recognize",
+            image_base64=image,
+            recognize_type="position"
+        )
+        return {"success": True, "task_id": task_id, "message": "AI 识别任务已提交，请轮询进度"}
     except Exception as e:
         logger.error(f"[❌] Image recognition error: {e}")
         raise HTTPException(status_code=500, detail=f"识别引擎异常: {str(e)}")
 
 
-# 3. 交易截图识别
+# 3. 交易截图识别 (异步任务)
 @router.post("/recognize-trades")
 async def recognize_trades(payload: Dict[str, Any]):
     image = payload.get("image", "")
     if not image:
         raise HTTPException(status_code=400, detail="未提供图片数据")
     try:
-        results = await AIImportService.recognize_trade_image(image)
-        return {"success": True, "data": results, "message": f"识别到 {len(results)} 条交易记录"}
+        task_id = await task_manager.run_task(
+            "ai_recognize",
+            image_base64=image,
+            recognize_type="trade"
+        )
+        return {"success": True, "task_id": task_id, "message": "AI 识别任务已提交，请轮询进度"}
     except Exception as e:
         logger.error(f"[❌] Trade image recognition error: {e}")
         raise HTTPException(status_code=500, detail=f"识别引擎异常: {str(e)}")
