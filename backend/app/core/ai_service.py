@@ -126,7 +126,7 @@ class AIImportService:
         }
         # 代理支持
         proxy = settings.HTTPS_PROXY or settings.HTTP_PROXY or None
-        async with httpx.AsyncClient(proxy=proxy, timeout=30.0) as client:
+        async with httpx.AsyncClient(proxy=proxy, timeout=60.0) as client:
             resp = await client.post(url, json=body)
             if resp.status_code != 200:
                 logger.error(f"[❌] Gemini API error {resp.status_code}: {resp.text[:200]}")
@@ -141,9 +141,10 @@ class AIImportService:
 
     @classmethod
     async def _call_doubao_vision(cls, image_b64: str, prompt: str) -> Optional[List[Dict]]:
-        """豆包 Seed API — 备选 OCR"""
+        """豆包 Seed API — 主 OCR 引擎 (国内直连)"""
         if not settings.DOUBAO_API_KEY:
             return None
+        logger.info(f"[+] Calling Doubao API (image: {len(image_b64)//1024}KB, model: {settings.DOUBAO_MODEL})...")
         url = f"{settings.DOUBAO_BASE_URL.rstrip('/')}/responses"
         body = {
             "model": settings.DOUBAO_MODEL,
@@ -159,27 +160,48 @@ class AIImportService:
             "Authorization": f"Bearer {settings.DOUBAO_API_KEY}",
             "Content-Type": "application/json"
         }
-        async with httpx.AsyncClient(proxy=None, timeout=30.0) as client:
+        async with httpx.AsyncClient(proxy=None, timeout=90.0) as client:
             resp = await client.post(url, json=body, headers=headers)
             if resp.status_code != 200:
-                logger.warning(f"[⚠️] Doubao API error {resp.status_code}: {resp.text[:150]}")
+                logger.warning(f"[⚠️] Doubao API error {resp.status_code}: {resp.text[:200]}")
                 return None
             data = resp.json()
+            text = cls._extract_doubao_text(data)
+            if not text:
+                logger.warning("[⚠️] Doubao returned empty text content")
+                return None
+            return cls._extract_json(text)
+
+    @staticmethod
+    def _extract_doubao_text(data: dict) -> str:
+        """从豆包 Responses API 返回中提取文本 (级联回退)"""
+        # 1. Responses API 格式: output[] -> content[] -> type=output_text
+        if "output" in data:
+            output = data["output"]
+            if isinstance(output, list):
+                for item in output:
+                    if isinstance(item, dict):
+                        content = item.get("content", [])
+                        if isinstance(content, list):
+                            for block in content:
+                                if isinstance(block, dict) and block.get("type") == "output_text":
+                                    return block.get("text", "")
+                        elif isinstance(content, str):
+                            return content
+                        if "text" in item:
+                            return item["text"]
+            elif isinstance(output, str):
+                return output
+        # 2. 兼容 OpenAI Chat 格式
+        if "choices" in data:
             try:
-                # 处理 Responses API 格式
-                output = data.get("output", [])
-                if isinstance(output, list) and len(output) > 0:
-                    content = output[0].get("content", [])
-                    for c in content:
-                        if c.get("type") == "output_text":
-                            return cls._extract_json(c["text"])
-                # 兼容 OpenAI Chat 格式
-                if "choices" in data:
-                    return cls._extract_json(data["choices"][0]["message"]["content"])
-                return None
-            except (KeyError, IndexError, TypeError) as e:
-                logger.warning(f"[⚠️] Doubao parse error: {e}")
-                return None
+                return data["choices"][0]["message"].get("content", "")
+            except (IndexError, KeyError):
+                pass
+        # 3. 顶层 output_text 兜底
+        if "output_text" in data:
+            return data["output_text"]
+        return ""
 
     @classmethod
     async def _call_deepseek_vision(cls, image_b64: str, prompt: str) -> Optional[List[Dict]]:
@@ -217,7 +239,7 @@ class AIImportService:
             "Authorization": f"Bearer {settings.DEEPSEEK_API_KEY}",
             "Content-Type": "application/json"
         }
-        async with httpx.AsyncClient(proxy=None, timeout=30.0) as client:
+        async with httpx.AsyncClient(proxy=None, timeout=60.0) as client:
             resp = await client.post(url, json=body, headers=headers)
             if resp.status_code != 200:
                 logger.warning(f"[⚠️] DeepSeek Vision error {resp.status_code}: {resp.text[:150]}")
@@ -258,7 +280,7 @@ class AIImportService:
             "Authorization": f"Bearer {settings.DEEPSEEK_API_KEY}",
             "Content-Type": "application/json"
         }
-        async with httpx.AsyncClient(proxy=None, timeout=30.0) as client:
+        async with httpx.AsyncClient(proxy=None, timeout=60.0) as client:
             resp = await client.post(url, json=body, headers=headers)
             if resp.status_code != 200:
                 logger.warning(f"[⚠️] DeepSeek API error {resp.status_code}: {resp.text[:150]}")
@@ -279,27 +301,33 @@ class AIImportService:
     async def recognize_stock_image(cls, image_base64: str) -> List[Dict]:
         """识别持仓截图: 豆包 → DeepSeek → Gemini"""
         b64_clean = cls._clean_base64(image_base64)
+        logger.info(f"[+] Image cleaned, size: {len(b64_clean)//1024}KB")
         b64_compressed = cls._compress_image(b64_clean)
+        logger.info(f"[+] Image compressed: {len(b64_compressed)//1024}KB")
 
         # 1. 豆包 (primary, 国内直连)
+        import time; t0 = time.time()
         result = await cls._call_doubao_vision(b64_compressed, cls.POSITION_PROMPT)
         if result:
             cls._save_cache(result, "position")
-            logger.info(f"[+] Doubao recognized {len(result)} positions")
+            logger.info(f"[✅] Doubao recognized {len(result)} positions in {time.time()-t0:.1f}s")
             return result
+        logger.warning(f"[⚠️] Doubao failed ({time.time()-t0:.1f}s), trying DeepSeek...")
 
-        # 2. DeepSeek Vision (fallback, anthropic 兼容模式)
+        # 2. DeepSeek Vision (fallback)
+        t0 = time.time()
         result = await cls._call_deepseek_vision(b64_compressed, cls.POSITION_PROMPT)
         if result:
             cls._save_cache(result, "position")
-            logger.info(f"[+] DeepSeek recognized {len(result)} positions")
+            logger.info(f"[✅] DeepSeek recognized {len(result)} positions in {time.time()-t0:.1f}s")
             return result
+        logger.warning(f"[⚠️] DeepSeek failed ({time.time()-t0:.1f}s), trying Gemini...")
 
         # 3. Gemini (需 VPN, 最后兜底)
         result = await cls._call_gemini_vision(b64_compressed, cls.POSITION_PROMPT)
         if result:
             cls._save_cache(result, "position")
-            logger.info(f"[+] Gemini recognized {len(result)} positions")
+            logger.info(f"[✅] Gemini recognized {len(result)} positions")
             return result
 
         logger.error("[❌] All AI providers failed for position recognition")
@@ -314,13 +342,17 @@ class AIImportService:
         result = await cls._call_doubao_vision(b64_compressed, cls.TRADE_PROMPT)
         if result:
             cls._save_cache(result, "trade")
+            logger.info(f"[✅] Doubao recognized {len(result)} trades")
             return result
 
+        logger.warning("[⚠️] Doubao failed, trying DeepSeek...")
         result = await cls._call_deepseek_vision(b64_compressed, cls.TRADE_PROMPT)
         if result:
             cls._save_cache(result, "trade")
+            logger.info(f"[✅] DeepSeek recognized {len(result)} trades")
             return result
 
+        logger.warning("[⚠️] DeepSeek failed, trying Gemini...")
         result = await cls._call_gemini_vision(b64_compressed, cls.TRADE_PROMPT)
         if result:
             cls._save_cache(result, "trade")

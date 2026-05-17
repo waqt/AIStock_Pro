@@ -5,7 +5,7 @@
 const API_BASE = '/api'; // 统一 API 前缀
 
 const TaskMonitor = {
-    pollingInterval: 3000,
+    pollingInterval: 8000,
     timer: null,
 
     init() {
