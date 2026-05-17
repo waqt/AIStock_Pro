@@ -6,35 +6,252 @@
     <title>AIStock | AI 投研</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .research-input { display: flex; gap: 10px; margin-bottom: 16px; }
+        .research-input input { flex: 1; background: #000; border: 1px solid var(--border-color); color: #fff; padding: 10px 14px; border-radius: 4px; font-size: 13px; }
+        .step-progress { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+        .step-badge { padding: 4px 10px; border-radius: 3px; font-size: 10px; background: var(--border-color); color: var(--text-micro); }
+        .step-badge.active { background: var(--accent-blue); color: #000; }
+        .step-badge.done { background: rgba(46,213,115,0.15); color: var(--accent-green); }
+        .result-block { margin-bottom: 16px; }
+        .result-block pre { font-size: 11px; line-height: 1.6; white-space: pre-wrap; color: var(--text-dim); max-height: 300px; overflow-y: auto; }
+        .score-badge { display: inline-block; padding: 2px 8px; border-radius: 3px; font-weight: 700; }
+        .score-high { background: rgba(46,213,115,0.15); color: var(--accent-green); }
+        .summary-box { background: rgba(255,255,255,0.03); border: 1px solid var(--accent-gold); padding: 16px; border-radius: 6px; font-size: 13px; line-height: 1.8; }
+        .summary-box h2,.summary-box h3 { color: var(--accent-gold); font-size: 14px; margin: 12px 0 6px; }
+        .summary-box table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 11px; }
+        .summary-box th { text-align: left; color: var(--text-micro); padding: 4px 8px; border-bottom: 1px solid var(--border-thin); }
+        .summary-box td { padding: 4px 8px; color: var(--text-dim); border-bottom: 1px solid var(--border-thin); }
+        .chain-layer { background: rgba(255,255,255,0.02); border: 1px solid var(--border-thin); border-radius: 4px; padding: 12px; margin-bottom: 8px; }
+        .chain-layer .tier-badge { display: inline-block; padding: 1px 6px; border-radius: 2px; font-size: 10px; }
+        .tier-up { background: rgba(112,161,255,0.15); color: var(--accent-blue); }
+        .tier-mid { background: rgba(255,165,2,0.15); color: var(--accent-gold); }
+        .tier-down { background: rgba(46,213,115,0.15); color: var(--accent-green); }
+    </style>
 </head>
 <body data-page-id="research">
     <div class="app-container">
         <aside class="sidebar"></aside>
+
         <main class="main-content">
             <div class="top-bar"></div>
-            <div class="workspace" style="grid-template-columns: 1fr;">
-                <div class="panel">
-                    <div class="panel-header"><span class="panel-title">AI 深度投研分析 (Intelligence Engine)</span></div>
-                    <div class="panel-body" style="text-align: center; padding: 80px 40px;">
-                        <div style="font-size: 48px; margin-bottom: 20px; opacity: 0.3;">&#129504;</div>
-                        <div style="font-size: 16px; font-weight: 600; color: var(--text-normal); margin-bottom: 10px;">AI 投研分析引擎即将上线</div>
-                        <div style="font-size: 12px; color: var(--text-dim); line-height: 1.8;">
-                            将接入 LLM 进行多维度深度分析:<br>
-                            · 单股基本面 + 技术面综合研判<br>
-                            · 产业链景气度分析 (供应链传导)<br>
-                            · RAG 事实核查 — AI 分析前先验证数据真实性<br>
-                            · 多模态研报输出 — 支持流式生成与追问<br><br>
-                            预计上线: V3.0
+
+            <div class="workspace" style="grid-template-columns: 380px 1fr; gap: 16px; padding: 16px;">
+
+                <!-- 左: 查询 + 步骤进度 -->
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    <div class="panel">
+                        <div class="panel-header"><span class="panel-title">投研查询</span></div>
+                        <div class="panel-body">
+                            <div class="research-input">
+                                <input type="text" id="research-industry" placeholder="行业或主题 (如: AI算力, 新能源...)" value="AI算力">
+                            </div>
+                            <div class="research-input">
+                                <input type="text" id="research-codes" placeholder="A股代码 (逗号分隔, 如: 688256,300750)" value="">
+                            </div>
+                            <button class="btn-action btn-primary" onclick="startResearch()" id="btn-research" style="width:100%; justify-content:center;">
+                                <i class="fas fa-brain"></i> 启动供应链分析
+                            </button>
+                            <div style="font-size: 10px; color: var(--text-micro); margin-top: 8px;">
+                                5步推理: 景气信号→供应链图谱→供需瓶颈→核心标的→定量估值
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 步骤进度 -->
+                    <div class="panel">
+                        <div class="panel-header"><span class="panel-title">分析进度</span></div>
+                        <div class="panel-body">
+                            <div class="step-progress" id="step-progress">
+                                <span class="step-badge">1 景气信号</span>
+                                <span class="step-badge">2 供应链</span>
+                                <span class="step-badge">3 瓶颈定位</span>
+                                <span class="step-badge">4 标的锁定</span>
+                                <span class="step-badge">5 估值</span>
+                            </div>
+                            <div id="step-status" style="font-size:11px;color:var(--text-dim);">等待查询...</div>
+                        </div>
+                    </div>
+
+                    <!-- 景气评分 -->
+                    <div class="panel">
+                        <div class="panel-header"><span class="panel-title">景气度评分</span></div>
+                        <div class="panel-body" style="text-align:center;">
+                            <div id="prosperity-score" style="font-size:48px;font-weight:800;color:var(--text-micro);">—</div>
+                            <div id="hot-segments" style="font-size:10px;color:var(--text-dim);margin-top:8px;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 右: 结果展示 -->
+                <div style="display: flex; flex-direction: column; gap: 16px;">
+                    <!-- Summary -->
+                    <div class="panel" id="panel-summary" style="display:none;">
+                        <div class="panel-header"><span class="panel-title">CIO 投资建议</span></div>
+                        <div class="panel-body">
+                            <div class="summary-box" id="content-summary"></div>
+                        </div>
+                    </div>
+
+                    <!-- 供应链 -->
+                    <div class="panel" id="panel-chain" style="display:none;">
+                        <div class="panel-header"><span class="panel-title">供应链图谱</span></div>
+                        <div class="panel-body" id="content-chain"></div>
+                    </div>
+
+                    <!-- 瓶颈 -->
+                    <div class="panel" id="panel-bottleneck" style="display:none;">
+                        <div class="panel-header"><span class="panel-title">瓶颈环节 + 核心标的</span></div>
+                        <div class="panel-body" id="content-bottleneck"></div>
+                    </div>
+
+                    <!-- 估值 -->
+                    <div class="panel" id="panel-valuation" style="display:none;">
+                        <div class="panel-header"><span class="panel-title">估值分析</span></div>
+                        <div class="panel-body" id="content-valuation"></div>
+                    </div>
+
+                    <!-- 加载中 -->
+                    <div class="panel" id="panel-loading" style="display:none;">
+                        <div class="panel-body" style="text-align:center;padding:40px;">
+                            <i class="fas fa-spinner fa-spin fa-2x" style="color:var(--accent-blue);margin-bottom:12px;"></i>
+                            <div style="color:var(--text-dim);font-size:12px;">AI 正在深度分析供应链...<br><small id="loading-step" style="color:var(--text-micro);">这可能需要 60-90 秒</small></div>
+                        </div>
+                    </div>
+
+                    <!-- 空状态 -->
+                    <div class="panel" id="panel-empty">
+                        <div class="panel-body" style="text-align:center;padding:60px;">
+                            <div style="font-size:40px;margin-bottom:12px;opacity:0.3;">&#129504;</div>
+                            <div style="color:var(--text-dim);font-size:12px;">
+                                输入行业关键词, AI 将从全球供应链视角分析:<br>
+                                高景气信号 → 供应链结构 → 供需瓶颈 → 垄断标的 → 估值潜力
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </main>
     </div>
+
     <script src="js/framework/api.js"></script>
     <script src="js/framework/modal.js"></script>
     <script src="js/framework/task_monitor.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/common.js"></script>
+    <script>
+        const STEPS = ['景气信号','供应链','瓶颈定位','标的锁定','估值分析'];
+
+        function setStep(idx, status) {
+            const badges = document.querySelectorAll('#step-progress .step-badge');
+            for (let i = 0; i < badges.length; i++) {
+                badges[i].classList.remove('active', 'done');
+                if (i < idx - 1) badges[i].classList.add('done');
+                else if (i === idx - 1) badges[i].classList.add('active');
+            }
+            document.getElementById('step-status').textContent = status || `步骤 ${idx}: ${STEPS[idx-1]}...`;
+        }
+
+        async function startResearch() {
+            const industry = document.getElementById('research-industry').value.trim();
+            if (!industry) { Modal.alert('提示', '请输入行业或主题'); return; }
+
+            const codes = document.getElementById('research-codes').value.split(',').map(s => s.trim()).filter(Boolean);
+            const btn = document.getElementById('btn-research');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 分析中...';
+
+            // 隐藏空状态
+            document.getElementById('panel-empty').style.display = 'none';
+            document.getElementById('panel-loading').style.display = '';
+            ['panel-summary','panel-chain','panel-bottleneck','panel-valuation'].forEach(id => {
+                document.getElementById(id).style.display = 'none';
+            });
+
+            try {
+                setStep(1, '正在识别全球高景气信号...');
+                const res = await fetch(`${API_BASE}/research/supply-chain`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question: industry, stock_codes: codes, industry, include_portfolio: true })
+                });
+                const result = await res.json();
+                if (!result.success) { Modal.alert('分析失败', result.detail || JSON.stringify(result)); return; }
+
+                const d = result.data;
+                const steps = d.steps || [];
+
+                // 渲染步骤进度
+                for (let i = 0; i < steps.length; i++) {
+                    setStep(i + 1, steps[i].name);
+                }
+                setStep(6, '分析完成');
+                document.getElementById('loading-step').textContent = '分析完成';
+
+                // Step 1: 景气度
+                const p = d.prosperity_signals || {};
+                if (p.prosperity_score && document.getElementById('prosperity-score')) {
+                    document.getElementById('prosperity-score').textContent = p.prosperity_score + '/10';
+                    document.getElementById('prosperity-score').style.color = p.prosperity_score >= 7 ? 'var(--accent-green)' : (p.prosperity_score >= 4 ? 'var(--accent-gold)' : 'var(--accent-red)');
+                }
+                if (p.hot_segments) {
+                    document.getElementById('hot-segments').innerHTML = p.hot_segments.map(s => `<span style="margin:2px;">#${s}</span>`).join(' ');
+                }
+
+                // Summary
+                if (d.summary) {
+                    document.getElementById('panel-summary').style.display = '';
+                    document.getElementById('content-summary').innerHTML = d.summary.replace(/\n/g, '<br>').replace(/##\s*(.+)/g, '<h3>$1</h3>').replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\|(.+)\|/g, (m) => { if (m.includes('---')) return ''; const cells = m.split('|').filter(c => c.trim()); return '<tr>' + cells.map(c => `<td>${c.trim()}</td>`).join('') + '</tr>'; });
+                }
+
+                // Chain
+                const chain = d.supply_chain || {};
+                const layers = chain.layers || (chain.raw_text ? [] : []);
+                if (layers.length || chain.raw_text) {
+                    document.getElementById('panel-chain').style.display = '';
+                    if (layers.length) {
+                        document.getElementById('content-chain').innerHTML = layers.map(l => `
+                            <div class="chain-layer">
+                                <span class="tier-badge ${l.tier === '上游' ? 'tier-up' : (l.tier === '下游' ? 'tier-down' : 'tier-mid')}">${l.tier || '中游'}</span>
+                                <strong style="margin-left:8px;">${l.name || ''}</strong>
+                                <div style="font-size:10px;color:var(--text-dim);margin-top:4px;">${l.barriers || ''}</div>
+                                <div style="font-size:10px;color:var(--text-micro);margin-top:2px;">${l.supply_status || ''} | 扩产${l.expansion_months || '?'}月 | ${l.concentration || ''}</div>
+                            </div>
+                        `).join('');
+                    } else {
+                        document.getElementById('content-chain').innerHTML = `<pre>${chain.raw_text || '供应链映射未成功解析'}</pre>`;
+                    }
+                }
+
+                // Bottleneck
+                const bn = d.bottleneck || {};
+                const bnList = Array.isArray(bn) ? bn : (bn.raw_text ? [{raw: bn.raw_text}] : []);
+                if (bnList.length) {
+                    document.getElementById('panel-bottleneck').style.display = '';
+                    document.getElementById('content-bottleneck').innerHTML = bnList.map(b => b.raw
+                        ? `<pre>${b.raw}</pre>`
+                        : `<div style="font-size:12px;padding:8px;border-bottom:1px solid var(--border-thin);">
+                            <strong>${b.segment || ''}</strong> <span class="score-badge score-high">垄断评分 ${b.monopoly_score || '?'}/10</span>
+                            <div style="color:var(--text-dim);margin-top:4px;">${b.monopoly_root || ''}</div>
+                            <div style="color:var(--text-micro);font-size:10px;margin-top:4px;">${b.supply_gap || ''} | ${b.pricing_power || ''}</div>
+                        </div>`).join('');
+                }
+
+                // Valuation
+                const val = d.valuation || {};
+                if (val.note) {
+                    document.getElementById('panel-valuation').style.display = '';
+                    document.getElementById('content-valuation').innerHTML = `<pre>${val.note}</pre>`;
+                }
+
+            } catch (e) {
+                Modal.alert('分析异常', e.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-brain"></i> 启动供应链分析';
+                document.getElementById('panel-loading').style.display = 'none';
+            }
+        }
+    </script>
 </body>
 </html>
