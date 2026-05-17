@@ -34,23 +34,20 @@ function initCommon() {
         });
     }
 
-    // 账户概要
+    // 账户概要 (页面加载时查一次)
     updateAccountSummary();
-    setInterval(updateAccountSummary, 60000);
 
-    // 任务监控启动 (TaskMonitor 定义在 framework/task_monitor.js)
+    // 任务监控 (仅面板打开时查询)
     if (typeof TaskMonitor !== 'undefined') TaskMonitor.init();
 
-    // 页面数据自动刷新钩子
+    // 页面数据钩子 (仅加载时查一次)
     if (typeof window.refreshPageData === 'function') {
         window.refreshPageData();
-        setInterval(window.refreshPageData, 60000);
     }
 
-    // 市场跑马灯 (UI_COMPONENTS 定义在 ui.js)
+    // 市场跑马灯 (仅加载时查一次)
     if (typeof UI_COMPONENTS !== 'undefined' && UI_COMPONENTS.updateMarketTicker) {
         UI_COMPONENTS.updateMarketTicker();
-        setInterval(() => UI_COMPONENTS.updateMarketTicker(), 30000);
     }
 }
 

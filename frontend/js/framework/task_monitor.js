@@ -2,12 +2,9 @@
  * 任务监控浮窗 — 右下角按钮 + 面板
  */
 const TaskMonitor = {
-    pollingInterval: 8000,
-    timer: null,
 
     init() {
         this.createFloatingButton();
-        this.startPolling();
     },
 
     createFloatingButton() {
@@ -63,16 +60,13 @@ const TaskMonitor = {
 
         document.getElementById('task-fab').onclick = () => {
             const panel = document.getElementById('task-monitor-panel');
-            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+            const isOpen = panel.style.display === 'block';
+            panel.style.display = isOpen ? 'none' : 'block';
+            if (!isOpen) this.fetchActiveTasks();  // 打开时查询一次
         };
         document.getElementById('close-panel').onclick = () => {
             document.getElementById('task-monitor-panel').style.display = 'none';
         };
-    },
-
-    async startPolling() {
-        this.fetchActiveTasks();
-        this.timer = setInterval(() => this.fetchActiveTasks(), this.pollingInterval);
     },
 
     async fetchActiveTasks() {
