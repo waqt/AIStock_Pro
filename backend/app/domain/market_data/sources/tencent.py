@@ -40,27 +40,32 @@ async def get_tencent_quotes(codes: List[str]) -> Dict[str, dict]:
         try:
             raw_code = line.split("=")[0].split("_")[-1]
             vals = line.split('"')[1].split("~")
-            if len(vals) < 53:
+            if len(vals) < 10:
+                continue
                 continue
             code = raw_code[2:]  # 去 sh/sz/bj/hk 前缀
+            def sf(v):  # safe float
+                try: return float(v) if v else 0.0
+                except ValueError: return 0.0
+
             result[code] = {
                 "name": vals[1],
-                "price": float(vals[3]) if vals[3] else 0.0,
-                "last_close": float(vals[4]) if vals[4] else 0.0,
-                "change_pct": float(vals[32]) if vals[32] else 0.0,
-                "high": float(vals[33]) if vals[33] else 0.0,
-                "low": float(vals[34]) if vals[34] else 0.0,
-                "amount_wan": float(vals[37]) if vals[37] else 0.0,
-                "turnover_pct": float(vals[38]) if vals[38] else 0.0,
-                "pe_ttm": float(vals[39]) if vals[39] else 0.0,
-                "amplitude_pct": float(vals[43]) if vals[43] else 0.0,
-                "mcap_yi": float(vals[44]) if vals[44] else 0.0,
-                "float_mcap_yi": float(vals[45]) if vals[45] else 0.0,
-                "pb": float(vals[46]) if vals[46] else 0.0,
-                "limit_up": float(vals[47]) if vals[47] else 0.0,
-                "limit_down": float(vals[48]) if vals[48] else 0.0,
-                "vol_ratio": float(vals[49]) if vals[49] else 0.0,
-                "pe_static": float(vals[52]) if vals[52] else 0.0,
+                "price": sf(vals[3]),
+                "last_close": sf(vals[4]),
+                "change_pct": sf(vals[32]),
+                "high": sf(vals[33]),
+                "low": sf(vals[34]),
+                "amount_wan": sf(vals[37]),
+                "turnover_pct": sf(vals[38]),
+                "pe_ttm": sf(vals[39]),
+                "amplitude_pct": sf(vals[43]),
+                "mcap_yi": sf(vals[44]),
+                "float_mcap_yi": sf(vals[45]),
+                "pb": sf(vals[46]),
+                "limit_up": sf(vals[47]),
+                "limit_down": sf(vals[48]),
+                "vol_ratio": sf(vals[49]),
+                "pe_static": sf(vals[52]),
             }
         except (ValueError, IndexError):
             continue
