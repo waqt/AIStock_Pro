@@ -6,6 +6,7 @@ import asyncio
 
 from app.core.database import async_session
 from app.core.data_service import data_service
+from app.core.data_router import data_router
 from app.quant.indicators import Indicators
 from app.quant.patterns import Patterns
 from app.models.models import StockIndicator, Position, MarketData, TaskExecution
@@ -169,9 +170,13 @@ class QuantEngine:
         if position:
             position.current_price = price
             position.market_value = float(position.volume) * price
-            position.profit_loss = position.market_value - (float(position.volume) * float(position.avg_cost))
+            cost_basis = float(position.volume) * float(position.avg_cost)
+            position.profit_loss = position.market_value - cost_basis
+            # 负成本(已收回本金): 损益金额正确, 比率无意义
             if float(position.avg_cost) > 0:
-                position.profit_loss_ratio = (position.profit_loss / (float(position.volume) * float(position.avg_cost))) * 100
+                position.profit_loss_ratio = (position.profit_loss / cost_basis) * 100
+            else:
+                position.profit_loss_ratio = None
             position.updated_at = datetime.now()
         return True
 
@@ -181,14 +186,19 @@ class QuantEngine:
 
     async def batch_sync_and_analyze(self, exec_id: str = None, mode: str = "AUTO"):
         """
-        批量同步 + 分析 (V5.1 节点追踪版)
-        节点: FETCHING → CALCULATING → SAVING → UPDATING_POSITIONS
+        批量同步 + 分析 (V5.2 节点追踪版)
+        节点: FX → FETCHING → CALCULATING → SAVING → UPDATING_POSITIONS
         """
         result = await self.db.execute(select(Position))
         positions = result.scalars().all()
         total = len(positions)
 
         try:
+            # ── 节点 0: 汇率同步 ──
+            await data_router.sync_forex_rates()
+            if exec_id:
+                await task_manager.update_progress(exec_id, 2, "汇率同步完成")
+
             # ── 节点 1: FETCHING ──
             for idx, pos in enumerate(positions):
                 await asyncio.sleep(0)

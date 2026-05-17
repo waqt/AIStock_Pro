@@ -4,7 +4,7 @@ from sqlalchemy import select, func
 from datetime import date, timedelta
 
 from app.core.database import async_session
-from app.models.models import MarketData, StockIndicator, Position
+from app.models.models import MarketData, StockIndicator, Position, ExchangeRate
 from app.core.data_router import data_router
 from app.core.task_manager import task_manager
 from app.core.logger import logger
@@ -307,3 +307,24 @@ async def get_stock_indicators(stock_code: str):
             "snapshot": row.data_json,
             "findings": row.logic_chain
         }
+
+
+# ═══════════════════════════════════════════
+# 汇率查询 (V5.2)
+# ═══════════════════════════════════════════
+
+@router.get("/forex/rates")
+async def get_forex_rates():
+    """获取 HKD/USD → CNY 汇率"""
+    async with async_session() as db:
+        res = await db.execute(select(ExchangeRate))
+        rows = res.scalars().all()
+        return {r.code: {"rate": r.rate, "updated_at": str(r.updated_at)} for r in rows}
+
+
+@router.post("/forex/sync")
+async def sync_forex_rates():
+    """手动触发汇率同步"""
+    from app.core.data_router import data_router as dr
+    rates = await dr.sync_forex_rates()
+    return {"success": True, "rates": rates}

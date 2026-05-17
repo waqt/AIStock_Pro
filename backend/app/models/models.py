@@ -87,6 +87,14 @@ class TradeHistory(Base):
     strategy_id = Column(String(50)) # 记录是由哪个策略触发的
     notes = Column(Text, nullable=True, comment="备注")
 
+class ExchangeRate(Base):
+    """汇率数据 — HKD/USD → CNY"""
+    __tablename__ = "exchange_rates"
+    code = Column(String(10), primary_key=True)  # HKD_CNY, USD_CNY
+    rate = Column(Float, nullable=False)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+
 class SystemSetting(Base):
     """系统全局配置"""
     __tablename__ = "system_settings"

@@ -130,6 +130,50 @@ class DataRouter:
             except Exception:
                 pass
 
+    # ── 汇率抓取 ──────────────────────────
+
+    async def sync_forex_rates(self) -> dict:
+        """从免费 API 抓取 HKD/USD → CNY 汇率"""
+        import httpx
+        rates = {}
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get("https://open.er-api.com/v6/latest/CNY")
+                if resp.status_code == 200:
+                    data = resp.json()
+                    usd_cny = data.get("rates", {}).get("USD")
+                    if usd_cny:
+                        rates["USD_CNY"] = round(1 / usd_cny, 4)
+                    hkd_cny = data.get("rates", {}).get("HKD")
+                    if hkd_cny:
+                        rates["HKD_CNY"] = round(1 / hkd_cny, 4)
+        except Exception as e:
+            logger.warning(f"[⚠️] Forex API failed: {e}, trying fallback...")
+            # Fallback: 用固定近似值 (仅紧急情况)
+            rates.setdefault("USD_CNY", 7.20)
+            rates.setdefault("HKD_CNY", 0.92)
+
+        if rates:
+            from app.core.database import async_session
+            from app.models.models import ExchangeRate
+            from datetime import datetime as dt
+            async with async_session() as db:
+                for code, rate in rates.items():
+                    existing = await db.get(ExchangeRate, code)
+                    if existing:
+                        existing.rate = rate
+                        existing.updated_at = dt.now()
+                    else:
+                        db.add(ExchangeRate(code=code, rate=rate))
+                await db.commit()
+            logger.info(f"[✅] Forex rates synced: {rates}")
+        return rates
+
+    def get_forex_rates(self) -> dict:
+        """获取已缓存的汇率 (同步, 供前端调用)"""
+        # 此方法同步返回缓存值, 实际的 DB 查询在 API 层做
+        return {}
+
 
 # 全局单例
 data_router = DataRouter()

@@ -515,8 +515,10 @@ class AIImportService:
                     current = cost
 
                 mv = shares * current
-                pl = mv - (shares * cost)
-                plr = (pl / (shares * cost) * 100) if (shares * cost) > 0 else 0.0
+                cost_basis = shares * cost
+                pl = mv - cost_basis
+                # 负成本(如金风科技): 损益金额正确, 但比率无意义, 置 null
+                plr = (pl / cost_basis * 100) if cost_basis > 0 else None
 
                 # Upsert: 必须先 flush 确保 identity map 中没有待处理的旧对象
                 await db.flush()
