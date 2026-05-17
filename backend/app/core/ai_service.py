@@ -486,8 +486,17 @@ class AIImportService:
 
     @classmethod
     async def batch_import_positions(cls, db: AsyncSession, items: List[Dict], clear_old: bool = False) -> Dict:
-        from app.models.models import Position, MarketData
+        from app.models.models import Position, MarketData, StockInfo
         cleared = 0
+
+        # 预加载股票代码对照表 (名称→代码, 支持模糊匹配)
+        info_res = await db.execute(select(StockInfo.stock_code, StockInfo.stock_name))
+        code_by_name = {}  # 精确匹配
+        code_fuzzy = []    # (name, code) 模糊匹配
+        for row in info_res.all():
+            if row[1]:
+                code_by_name[row[1].strip()] = row[0]
+                code_fuzzy.append((row[1].strip(), row[0]))
 
         if clear_old:
             res = await db.execute(select(Position))
@@ -513,9 +522,21 @@ class AIImportService:
         for item in items:
             try:
                 code = cls._normalize_code(item.get("stock_code", ""))
+                name = item.get("stock_name", "").strip()
+
+                # 自动补全: 无代码时用名称匹配 StockInfo 表
+                if not code and name:
+                    if name in code_by_name:
+                        code = code_by_name[name]
+                    else:
+                        for s_name, s_code in code_fuzzy:
+                            if name in s_name or s_name in name:
+                                code = s_code
+                                break
                 if not code:
+                    logger.warning(f"[Drop] no code for: {name}")
                     continue
-                name = item.get("stock_name", "")
+
                 shares = int(float(item.get("shares", 0))) if item.get("shares") else 0
                 cost = float(item.get("cost_price", item.get("price", 0))) if item.get("cost_price", item.get("price")) else 0.0
                 # 优先用行情真实价格，AI 返回的截图现价仅作兜底
