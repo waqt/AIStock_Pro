@@ -14,7 +14,7 @@ from app.core.scheduler import scheduler
 import app.quant.tasks # 显式导入以触发装饰器
 
 # 导入领域路由器
-from app.api import tasks, data, positions
+from app.api import tasks, data, positions, import_api
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -35,6 +35,7 @@ app.add_middleware(
 app.include_router(tasks.router)
 app.include_router(data.router)
 app.include_router(positions.router)
+app.include_router(import_api.router)
 
 # 3. 挂载前端静态资源 (作为兜底)
 frontend_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend"))

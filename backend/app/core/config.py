@@ -18,9 +18,20 @@ class Settings(BaseSettings):
     DB_PASSWORD: str = "123456"
     DB_NAME: str = "aistock_pro"
     
-    # API Keys
+    # AI API Keys
     GEMINI_API_KEY: Optional[str] = None
+    GEMINI_MODEL: str = "gemini-2.0-flash"
+    DEEPSEEK_API_KEY: Optional[str] = None
+    DEEPSEEK_BASE_URL: str = "https://api.deepseek.com"
+    DEEPSEEK_MODEL: str = "deepseek-chat"
+    DOUBAO_API_KEY: Optional[str] = None
+    DOUBAO_BASE_URL: str = "https://ark.cn-beijing.volces.com/api/v3"
+    DOUBAO_MODEL: str = "doubao-seed-2-0-mini-260428"
     TUSHARE_TOKEN: Optional[str] = None
+
+    # Proxy (for Gemini etc.)
+    HTTP_PROXY: Optional[str] = None
+    HTTPS_PROXY: Optional[str] = None
     
     model_config = SettingsConfigDict(
         env_file=ENV_PATH,

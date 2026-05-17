@@ -41,6 +41,43 @@ class TaskDefinitionResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+# ── Import Schemas (V5.2) ─────────────────
+
+class RecognizedPositionItem(BaseModel):
+    stock_code: str
+    stock_name: str = ""
+    shares: int = 0
+    cost_price: float = 0.0
+    current_price: float = 0.0
+
+class RecognizedTradeItem(BaseModel):
+    stock_code: str
+    stock_name: str = ""
+    trade_type: str = "BUY"
+    shares: int = 0
+    price: float = 0.0
+    trade_date: Optional[str] = None
+
+class ImagePayload(BaseModel):
+    image: str
+
+class TextParsePayload(BaseModel):
+    text: str
+
+class BatchImportPayload(BaseModel):
+    items: List[Dict[str, Any]]
+    clear_old: bool = True
+
+class BatchImportTradesPayload(BaseModel):
+    items: List[Dict[str, Any]]
+
+class ImportResultResponse(BaseModel):
+    success: bool = True
+    imported_count: int = 0
+    cleared_count: int = 0
+    errors: List[str] = []
+
+
 class IndicatorResponse(BaseModel):
     stock_code: str
     indicator_type: str

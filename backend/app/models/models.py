@@ -16,6 +16,7 @@ class Position(Base):
     market_value = Column(Float, default=0.0)
     profit_loss = Column(Float, default=0.0)
     profit_loss_ratio = Column(Float, default=0.0)
+    first_buy_date = Column(Date, nullable=True, comment="首次买入日期")
     updated_at = Column(DateTime, default=datetime.now)
 
 class MarketData(Base):
@@ -79,8 +80,12 @@ class TradeHistory(Base):
     action = Column(String(10)) # BUY, SELL
     price = Column(Float)
     volume = Column(Integer)
+    amount = Column(Float, default=0.0, comment="成交金额")
+    commission = Column(Float, default=0.0, comment="手续费")
+    stamp_tax = Column(Float, default=0.0, comment="印花税")
     trade_date = Column(DateTime, default=datetime.now)
     strategy_id = Column(String(50)) # 记录是由哪个策略触发的
+    notes = Column(Text, nullable=True, comment="备注")
 
 class SystemSetting(Base):
     """系统全局配置"""

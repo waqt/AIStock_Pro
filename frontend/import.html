@@ -44,6 +44,13 @@
                             </div>
                             <p style="margin-top: 10px; font-size: 11px;">支持券商、雪球、同花顺截图</p>
                         </div>
+                        <div style="flex: 1; border: 2px dashed var(--border-thin); padding: 14px; text-align: center; color: var(--text-dim); border-radius: 8px; display: flex; flex-direction: column; justify-content: center; height: 120px;">
+                            <input type="file" id="excel-input" style="display: none;" accept=".xlsx,.xls" onchange="handleExcel(this)">
+                            <button class="btn-action" onclick="document.getElementById('excel-input').click()" style="border-color: var(--accent-green); width: fit-content; margin: 0 auto;">
+                                <i class="fas fa-file-excel"></i> 上传 Excel
+                            </button>
+                            <p style="margin-top: 8px; font-size: 11px;">.xlsx / .xls 表格</p>
+                        </div>
                         <div style="flex: 2; display: flex; flex-direction: column; gap: 10px;">
                             <textarea id="text-input" placeholder="或在此粘贴文本列表..." style="width: 100%; height: 80px; background: #000; border: 1px solid var(--border-thin); color: #fff; padding: 10px; font-family: var(--font-mono); border-radius: 4px; resize: none;"></textarea>
                             <button class="btn-action" onclick="parseText()" style="border-color: var(--accent-blue); width: fit-content; padding: 5px 20px;">解析文本内容</button>
@@ -135,6 +142,33 @@
                 }
             };
             reader.readAsDataURL(file);
+        }
+
+        async function handleExcel(input) {
+            if (!input.files || !input.files[0]) return;
+            const file = input.files[0];
+            const statusEl = document.getElementById('import-preview');
+            statusEl.innerHTML = '<div style="text-align:center; padding:50px; color:var(--accent-green);"><i class="fas fa-spinner fa-spin fa-2x"></i><br><br>解析 Excel 文件中...</div>';
+            document.getElementById('import-controls').style.display = 'none';
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('sheet_type', currentTab);
+
+            try {
+                const res = await fetch(`${API_BASE}/ai/upload-excel`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await res.json();
+                if (result.success && result.data && result.data.length > 0) {
+                    renderPreview(result.data);
+                } else {
+                    statusEl.innerHTML = `<div style="text-align:center; padding:30px; color:var(--accent-red);">解析失败: ${result.detail || '未识别到有效数据'}</div>`;
+                }
+            } catch (e) {
+                statusEl.innerHTML = `<div style="text-align:center; padding:30px; color:var(--accent-red);">网络请求失败: ${e.message}</div>`;
+            }
         }
 
         async function parseText() {
