@@ -34,7 +34,9 @@
       "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://127.0.0.1:8000/api/data/forex/sync\" -Method POST -UseBasicParsing; $r.Content } catch { Write-Output $_.Exception.Message })",
       "PowerShell(\\(Invoke-WebRequest \"http://127.0.0.1:8000/api/positions\" -UseBasicParsing\\).Content)",
       "PowerShell(try { $r = Invoke-WebRequest \"http://127.0.0.1:8000/api/positions\" -UseBasicParsing; $data = $r.Content | ConvertFrom-Json; Write-Output \"Count: $\\($data.Count\\)\"; $data | Select-Object stock_code,stock_name,volume,avg_cost,profit_loss_ratio | Format-Table -AutoSize } catch { Write-Output $_.Exception.Message })",
-      "PowerShell(\\(Invoke-WebRequest \"http://127.0.0.1:8000/health\" -UseBasicParsing\\).Content)"
+      "PowerShell(\\(Invoke-WebRequest \"http://127.0.0.1:8000/health\" -UseBasicParsing\\).Content)",
+      "Bash(chmod +x \"E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\.git\\\\hooks\\\\pre-commit\")",
+      "PowerShell(bash \"E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\.git\\\\hooks\\\\pre-commit\")"
     ]
   }
 }

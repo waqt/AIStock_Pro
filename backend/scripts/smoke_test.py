@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from typing import Callable, List
 import httpx
 
-BASE = "http://127.0.0.1:8000"
+BASE = os.environ.get("SMOKE_HOST", "http://127.0.0.1:8000")
 PASS = 0
 FAIL = 0
 
