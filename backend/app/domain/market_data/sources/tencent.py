@@ -14,9 +14,11 @@ async def get_tencent_quotes(codes: List[str]) -> Dict[str, dict]:
     # 构造腾讯前缀
     prefixed = []
     for c in codes:
-        c = str(c).strip()
-        if len(c) == 5:
-            prefixed.append(f"hk{c}")  # 港股 (5位代码)
+        c = str(c).strip().upper()
+        if c.startswith("US") or c.startswith("us"):
+            prefixed.append(c.lower())  # 美股: usNVDA, usTSM
+        elif len(c) == 5:
+            prefixed.append(f"hk{c}")   # 港股
         elif c.startswith(("6", "9")):
             prefixed.append(f"sh{c}")
         else:

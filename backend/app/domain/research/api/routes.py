@@ -5,6 +5,7 @@ from typing import List, Optional, Dict, Any
 
 from app.domain.research.agents.coordinator import ResearchCoordinator
 from app.domain.research.agents.industry_analyst import IndustryAnalyst
+from app.domain.research.agents.supply_chain_analyst import SupplyChainAnalyst
 from app.domain.research.services.data_loader import data_loader
 from app.framework.logger import logger
 
@@ -61,6 +62,22 @@ async def get_positions_data():
 async def get_macro_data():
     """获取宏观数据"""
     return await data_loader.load_macro()
+
+
+@router.post("/supply-chain")
+async def supply_chain_analysis(req: ResearchRequest):
+    """供应链深度分析 — 5步推理: 景气信号→供应链图谱→瓶颈→标的→估值"""
+    try:
+        from app.framework.ai.providers.deepseek import DeepSeekProvider
+        provider = DeepSeekProvider()
+        analyst = SupplyChainAnalyst(provider=provider)
+        context = {"question": req.question, "stock_codes": req.stock_codes,
+                   "industry": req.industry or req.question, "include_portfolio": req.include_portfolio}
+        result = await analyst.analyze(context)
+        return {"success": True, "data": result}
+    except Exception as e:
+        logger.error(f"[❌] Supply chain analysis failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/data/stock/{code}")
