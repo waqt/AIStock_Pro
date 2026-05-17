@@ -356,6 +356,32 @@ async def sync_stock_list_endpoint():
     return {"success": True, "synced": count}
 
 
+@router.post("/valuation/sync")
+async def sync_valuation_endpoint():
+    """手动触发估值同步 (PE/PB/市值)"""
+    from app.domain.market_data.services.valuation import sync_valuation
+    count = await sync_valuation()
+    return {"success": True, "synced": count}
+
+
+@router.get("/valuation/positions")
+async def get_position_valuation():
+    """获取持仓估值数据"""
+    async with async_session() as db:
+        res = await db.execute(
+            select(StockInfo.stock_code, StockInfo.stock_name, StockInfo.pe_ttm,
+                   StockInfo.pb, StockInfo.mcap_yi, StockInfo.float_mcap_yi,
+                   StockInfo.turnover_pct, StockInfo.updated_at)
+            .where(StockInfo.pe_ttm.isnot(None))
+        )
+        return [
+            {"code": r[0], "name": r[1], "pe_ttm": r[2], "pb": r[3],
+             "mcap_yi": r[4], "float_mcap_yi": r[5], "turnover_pct": r[6],
+             "updated_at": str(r[7]) if r[7] else None}
+            for r in res.all()
+        ]
+
+
 @router.get("/stock-list/search")
 async def search_stocks(q: str = "", limit: int = 20):
     """搜索股票代码或名称 (自动补全)"""

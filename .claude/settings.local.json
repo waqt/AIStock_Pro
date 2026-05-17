@@ -39,7 +39,8 @@
       "PowerShell(bash \"E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\.git\\\\hooks\\\\pre-commit\")",
       "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://127.0.0.1:8000/api/data/stock-list/sync\" -Method POST -UseBasicParsing; $r.Content } catch { Write-Output $_.Exception.Message })",
       "WebFetch(domain:raw.githubusercontent.com)",
-      "PowerShell($body = '{\"items\":[{\"stock_code\":\"600519\",\"stock_name\":\"TEST贵州\",\"shares\":100,\"cost_price\":1800,\"current_price\":1820}],\"clear_old\":false}'; try { $r = Invoke-WebRequest -Uri \"http://127.0.0.1:8000/api/ai/batch-import\" -Method POST -Body $body -ContentType \"application/json\" -UseBasicParsing; Write-Output $r.Content } catch { Write-Output $_.Exception.Message })"
+      "PowerShell($body = '{\"items\":[{\"stock_code\":\"600519\",\"stock_name\":\"TEST贵州\",\"shares\":100,\"cost_price\":1800,\"current_price\":1820}],\"clear_old\":false}'; try { $r = Invoke-WebRequest -Uri \"http://127.0.0.1:8000/api/ai/batch-import\" -Method POST -Body $body -ContentType \"application/json\" -UseBasicParsing; Write-Output $r.Content } catch { Write-Output $_.Exception.Message })",
+      "PowerShell(Write-Output \"=== Fix HK names ===\"; try { $r = Invoke-WebRequest -Uri \"http://127.0.0.1:8000/api/data/stock-list/sync\" -Method POST -UseBasicParsing; Write-Output $r.Content } catch { Write-Output $_.Exception.Message }; Write-Output \"`n=== Valuation Sync ===\"; try { $r2 = Invoke-WebRequest -Uri \"http://127.0.0.1:8000/api/data/valuation/sync\" -UseBasicParsing; Write-Output $r2.Content } catch { Write-Output $_.Exception.Message })"
     ]
   }
 }

@@ -63,7 +63,30 @@ async def sync_stock_list():
 
         await db.commit()
 
-    # 4. 也补充 Position 中没有但 StockInfo 中也没有的名称
+    # 4. 港股名称修正: Sina 返回英文, 用 akshare 换中文
+    try:
+        def _hk_names():
+            import akshare as ak
+            try:
+                df = ak.stock_hk_spot_em()
+                return {str(r["代码"]).strip(): str(r["名称"]).strip() for _, r in df.iterrows()}
+            except Exception:
+                return {}
+
+        hk_map = await asyncio.to_thread(_hk_names)
+        if hk_map:
+            async with async_session() as db:
+                for code, cname in hk_map.items():
+                    existing = await db.get(StockInfo, code)
+                    if existing and existing.exchange == "HK":
+                        existing.stock_name = cname
+                        total += 1
+                await db.commit()
+            logger.info(f"[✅] Fixed {len(hk_map)} HK names to Chinese")
+    except Exception as e:
+        logger.warning(f"[HK name fix failed: {e}]")
+
+    # 5. 补充 Position 中的名称
     async with async_session() as db:
         pos_res = await db.execute(select(Position.stock_code, Position.stock_name).where(Position.stock_name.isnot(None)))
         for code, name in pos_res.all():
