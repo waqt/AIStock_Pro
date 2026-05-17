@@ -5,7 +5,7 @@ from datetime import date, timedelta
 
 from app.framework.database.session import async_session
 from app.models.models import MarketData, StockIndicator, Position, ExchangeRate
-from app.core.data_router import data_router
+from app.domain.market_data.sources.router import data_router
 from app.framework.tasks.engine import task_manager
 from app.framework.logger import logger
 from pydantic import BaseModel
@@ -333,6 +333,6 @@ async def get_forex_rates():
 @router.post("/forex/sync")
 async def sync_forex_rates():
     """手动触发宏观数据同步"""
-    from app.core.data_router import data_router as dr
+    from app.domain.market_data.sources.router import data_router as dr
     result = await dr.sync_macro_data()
     return {"success": True, "data": result}

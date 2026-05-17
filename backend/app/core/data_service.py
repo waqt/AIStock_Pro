@@ -5,7 +5,7 @@
 """
 import pandas as pd
 from typing import List
-from app.core.data_router import data_router
+from app.domain.market_data.sources.router import data_router
 
 
 class DataService:

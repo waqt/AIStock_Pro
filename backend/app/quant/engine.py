@@ -6,7 +6,7 @@ import asyncio
 
 from app.framework.database.session import async_session
 from app.core.data_service import data_service
-from app.core.data_router import data_router
+from app.domain.market_data.sources.router import data_router
 from app.quant.indicators import Indicators
 from app.quant.patterns import Patterns
 from app.models.models import StockIndicator, Position, MarketData, TaskExecution
