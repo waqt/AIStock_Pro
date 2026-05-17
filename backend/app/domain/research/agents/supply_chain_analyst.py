@@ -3,10 +3,22 @@
 全球视角: 覆盖 A股/美股/台股/韩股, LLM 补全球行业知识
 """
 import json
+from decimal import Decimal
 from typing import Dict, Any, List
 from app.domain.research.agents.base import ResearchAgent
 from app.domain.research.services.data_loader import data_loader
 from app.framework.logger import logger
+
+
+class _SafeEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)
+        return super().default(obj)
+
+
+def _json_dumps(obj):
+    return _json_dumps(obj, ensure_ascii=False, cls=_SafeEncoder)
 
 
 class SupplyChainAnalyst(ResearchAgent):
@@ -90,13 +102,13 @@ class SupplyChainAnalyst(ResearchAgent):
         prompt = f"""你是一位全球科技产业研究员。请分析 {industry} 行业的高景气信号。
 
 ## 宏观环境
-{json.dumps(macro, ensure_ascii=False)}
+{_json_dumps(macro, ensure_ascii=False)}
 
 ## A股映射标的估值
-{json.dumps(pe_list, ensure_ascii=False) if pe_list else "暂无A股映射数据"}
+{_json_dumps(pe_list, ensure_ascii=False) if pe_list else "暂无A股映射数据"}
 
 ## 成交量趋势
-{json.dumps(volume_trends, ensure_ascii=False) if volume_trends else "暂无"}
+{_json_dumps(volume_trends, ensure_ascii=False) if volume_trends else "暂无"}
 
 ## 你的任务
 基于你的训练知识(截至2025), 请分析:
@@ -120,7 +132,7 @@ class SupplyChainAnalyst(ResearchAgent):
         prompt = f"""你是一位全球半导体/科技供应链专家。请为 {industry} 行业绘制完整的全球供应链图谱。
 
 ## 高景气子环节
-{json.dumps(hot_segments, ensure_ascii=False)}
+{_json_dumps(hot_segments, ensure_ascii=False)}
 
 ## 你的任务
 请按 上游→中游→下游 结构, 列出每个环节的:
@@ -167,13 +179,13 @@ class SupplyChainAnalyst(ResearchAgent):
         prompt = f"""你是一位全球供应链投资专家。请深度分析以下供不应求的瓶颈环节。
 
 ## 瓶颈环节
-{json.dumps(bottlenecks, ensure_ascii=False, indent=2)}
+{_json_dumps(bottlenecks, ensure_ascii=False, indent=2)}
 
 ## A股映射基本面
-{json.dumps({c: f for c, f in fundamentals.items() if f.get('pe_ttm')}, ensure_ascii=False)}
+{_json_dumps({c: f for c, f in fundamentals.items() if f.get('pe_ttm')}, ensure_ascii=False)}
 
 ## 持仓数据
-{json.dumps(positions, ensure_ascii=False, indent=2) if positions else '无'}
+{_json_dumps(positions, ensure_ascii=False, indent=2) if positions else '无'}
 
 ## 你的任务
 对每个瓶颈环节, 分析:
@@ -216,7 +228,7 @@ class SupplyChainAnalyst(ResearchAgent):
         prompt = f"""你是一位投资组合经理。请从以下候选中选出 3-5 只最值得配置的标的。
 
 ## 候选标的
-{json.dumps(picks_with_data, ensure_ascii=False, indent=2)}
+{_json_dumps(picks_with_data, ensure_ascii=False, indent=2)}
 
 ## 选择标准
 1. 在供应链瓶颈环节中占据最核心位置
@@ -254,7 +266,7 @@ class SupplyChainAnalyst(ResearchAgent):
         prompt = f"""你是一位买方分析师。请为以下标的做定量估值。
 
 ## 标的估值数据
-{json.dumps(valuations, ensure_ascii=False, indent=2)}
+{_json_dumps(valuations, ensure_ascii=False, indent=2)}
 
 ## 你的任务
 对每只标的:
@@ -274,7 +286,7 @@ class SupplyChainAnalyst(ResearchAgent):
         prompt = f"""你是一位首席投资官(CIO)。请基于以下分析结果, 生成最终投资建议。
 
 ## 分析报告
-{json.dumps({
+{_json_dumps({
     "prosperity": results.get("prosperity_signals"),
     "core_picks": results.get("core_targets"),
     "valuation": results.get("valuation"),
