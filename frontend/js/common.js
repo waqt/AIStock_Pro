@@ -26,8 +26,13 @@ const TaskMonitor = {
         if (typeof window.refreshPageData === 'function') {
             console.log(`[🔄] Auto-triggering data refresh for: ${pageId}`);
             window.refreshPageData();
-            // 每分钟自动刷新一次
             setInterval(window.refreshPageData, 60000);
+        }
+
+        // 市场数据跑马灯
+        if (window.initPageComponents && window.UI_COMPONENTS && window.UI_COMPONENTS.updateMarketTicker) {
+            UI_COMPONENTS.updateMarketTicker();
+            setInterval(() => UI_COMPONENTS.updateMarketTicker(), 30000);
         }
     },
 

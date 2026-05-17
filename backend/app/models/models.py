@@ -88,10 +88,12 @@ class TradeHistory(Base):
     notes = Column(Text, nullable=True, comment="备注")
 
 class ExchangeRate(Base):
-    """汇率数据 — HKD/USD → CNY"""
+    """汇率与宏观指数 — HKD_CNY, USD_CNY, USD_IDX, XAU, XAG, BRENT"""
     __tablename__ = "exchange_rates"
-    code = Column(String(10), primary_key=True)  # HKD_CNY, USD_CNY
-    rate = Column(Float, nullable=False)
+    code = Column(String(20), primary_key=True)  # HKD_CNY, USD_CNY, USD_IDX, XAU, XAG, BRENT
+    name = Column(String(50), nullable=True, comment="显示名称")
+    rate = Column(Float, nullable=False, comment="最新价")
+    change_pct = Column(Float, nullable=True, comment="涨跌幅(%)")
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
 

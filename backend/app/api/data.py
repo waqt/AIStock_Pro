@@ -315,11 +315,19 @@ async def get_stock_indicators(stock_code: str):
 
 @router.get("/forex/rates")
 async def get_forex_rates():
-    """获取 HKD/USD → CNY 汇率"""
+    """获取汇率 + 宏观指数 (汇率/美元指数/金/银/油)"""
     async with async_session() as db:
         res = await db.execute(select(ExchangeRate))
         rows = res.scalars().all()
-        return {r.code: {"rate": r.rate, "updated_at": str(r.updated_at)} for r in rows}
+        return {
+            r.code: {
+                "name": r.name or r.code,
+                "price": r.rate,
+                "change_pct": r.change_pct,
+                "updated_at": str(r.updated_at) if r.updated_at else None
+            }
+            for r in rows
+        }
 
 
 @router.post("/forex/sync")

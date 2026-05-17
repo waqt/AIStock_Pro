@@ -194,10 +194,11 @@ class QuantEngine:
         total = len(positions)
 
         try:
-            # ── 节点 0: 汇率同步 ──
+            # ── 节点 0: 宏观数据同步 ──
             await data_router.sync_forex_rates()
+            await data_router.sync_market_indices()
             if exec_id:
-                await task_manager.update_progress(exec_id, 2, "汇率同步完成")
+                await task_manager.update_progress(exec_id, 2, "宏观数据同步完成")
 
             # ── 节点 1: FETCHING ──
             for idx, pos in enumerate(positions):

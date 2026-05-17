@@ -130,6 +130,61 @@ class DataRouter:
             except Exception:
                 pass
 
+    # ── 宏观市场数据 ──────────────────────
+
+    async def sync_market_indices(self) -> dict:
+        """抓取美元指数/伦敦金/银/布油 最新价"""
+        import httpx
+        result = {}
+        try:
+            async with httpx.AsyncClient(proxy=None, timeout=10.0) as client:
+                # 东方财富全球期货行情 (含美元指数/伦敦金/银/布油)
+                url = (
+                    "https://push2.eastmoney.com/api/qt/clist/get?"
+                    "np=1&fltt=2&invt=2&fs=m:119,m:120,m:133"
+                    "&fields=f12,f14,f2,f3,f4&fid=f3&pn=1&pz=50&po=1&dect=1"
+                )
+                resp = await client.get(url)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    items = data.get("data", {}).get("diff", [])
+                    # 名称映射: 东方财富名称 → 我们的key
+                    targets = {
+                        "美元指数": "USD_IDX",
+                        "伦敦金": "XAU",
+                        "伦敦银": "XAG",
+                        "布伦特原油": "BRENT",
+                    }
+                    for item in items:
+                        name = item.get("f14", "")
+                        for keyword, code in targets.items():
+                            if keyword in name:
+                                result[code] = {
+                                    "name": name,
+                                    "price": item.get("f2"),
+                                    "change_pct": item.get("f3"),
+                                    "change_val": item.get("f4"),
+                                }
+        except Exception as e:
+            logger.warning(f"[⚠️] Market indices fetch failed: {e}")
+
+        if result:
+            from app.core.database import async_session
+            from app.models.models import ExchangeRate
+            from datetime import datetime as dt
+            async with async_session() as db:
+                for code, info in result.items():
+                    existing = await db.get(ExchangeRate, code)
+                    rate_data = {"price": info["price"], "change_pct": info["change_pct"], "name": info["name"]}
+                    if existing:
+                        existing.rate = info["price"]  # 复用 rate 字段存价格
+                        existing.updated_at = dt.now()
+                    else:
+                        db.add(ExchangeRate(code=code, rate=info["price"] or 0))
+                await db.commit()
+            logger.info(f"[✅] Market indices synced: {list(result.keys())}")
+        return result
+
     # ── 汇率抓取 ──────────────────────────
 
     async def sync_forex_rates(self) -> dict:
@@ -158,13 +213,15 @@ class DataRouter:
             from app.models.models import ExchangeRate
             from datetime import datetime as dt
             async with async_session() as db:
+                names = {"USD_CNY": "美元/人民币", "HKD_CNY": "港元/人民币"}
                 for code, rate in rates.items():
                     existing = await db.get(ExchangeRate, code)
                     if existing:
                         existing.rate = rate
+                        existing.name = names.get(code, code)
                         existing.updated_at = dt.now()
                     else:
-                        db.add(ExchangeRate(code=code, rate=rate))
+                        db.add(ExchangeRate(code=code, name=names.get(code, code), rate=rate))
                 await db.commit()
             logger.info(f"[✅] Forex rates synced: {rates}")
         return rates

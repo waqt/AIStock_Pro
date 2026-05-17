@@ -55,16 +55,39 @@ const UI_COMPONENTS = {
                     <span class="status-label">当日盈亏:</span>
                     <span class="status-value" id="today-profit">¥0.00</span>
                 </div>
-                <div class="status-item">
-                    <span class="status-label">AI 状态:</span>
-                    <span class="status-value" id="ai-status" style="color: var(--accent-green);">在线</span>
-                </div>
             </div>
             <div class="top-bar-actions">
                 <button class="btn-action" onclick="triggerSync()" id="btn-sync"><i class="fas fa-sync"></i> 同步</button>
                 <button class="btn-action btn-primary" onclick="triggerSuggest()" id="btn-suggest"><i class="fas fa-magic"></i> 建议</button>
             </div>
+            <!-- 市场数据跑马灯 -->
+            <div id="market-ticker" style="display:flex; gap:24px; padding:4px 0; font-size:10px; font-family:var(--font-mono); overflow-x:auto; white-space:nowrap; border-top:1px solid var(--border-thin);">
+                <span style="color:var(--text-micro)">加载中...</span>
+            </div>
         `;
+    },
+
+    // 市场数据更新
+    updateMarketTicker: async () => {
+        const el = document.getElementById('market-ticker');
+        if (!el) return;
+        try {
+            const res = await fetch('/api/data/forex/rates');
+            const data = await res.json();
+            const order = ['USD_IDX', 'USD_CNY', 'HKD_CNY', 'XAU', 'XAG', 'BRENT'];
+            el.innerHTML = order.map(k => {
+                const d = data[k];
+                if (!d) return '';
+                const price = Number(d.price || 0);
+                const pct = d.change_pct != null ? Number(d.change_pct) : null;
+                const color = pct != null ? (pct >= 0 ? 'var(--accent-green)' : 'var(--accent-red)') : 'var(--text-dim)';
+                const arrow = pct != null ? (pct >= 0 ? '↑' : '↓') : '';
+                const name = d.name || k;
+                const priceStr = k.includes('CNY') ? price.toFixed(4) : (price >= 100 ? price.toFixed(1) : price.toFixed(2));
+                const pctStr = pct != null ? `${arrow}${Math.abs(pct).toFixed(2)}%` : '';
+                return `<span style="color:var(--text-dim);">${name}</span> <span style="color:var(--text-normal);">${priceStr}</span> <span style="color:${color};">${pctStr}</span>`;
+            }).join('<span style="color:var(--border-color); margin:0 2px;">|</span>');
+        } catch(e) { console.error('Ticker update failed:', e); }
     },
 
     // 任务监控组件
@@ -118,3 +141,4 @@ function initPageComponents(options = {}) {
 
 // 导出到全局
 window.initPageComponents = initPageComponents;
+window.UI_COMPONENTS = UI_COMPONENTS;
