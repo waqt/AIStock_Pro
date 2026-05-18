@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     DOUBAO_MODEL: str = "doubao-seed-2-0-mini-260428"
     TUSHARE_TOKEN: Optional[str] = None
 
+    # Web Search (Brave Search API — free 2000 queries/month)
+    BRAVE_API_KEY: Optional[str] = None
+
     # Proxy (for Gemini etc.)
     HTTP_PROXY: Optional[str] = None
     HTTPS_PROXY: Optional[str] = None

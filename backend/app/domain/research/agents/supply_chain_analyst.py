@@ -114,8 +114,11 @@ class SupplyChainAnalyst(ResearchAgent):
                     trend = "放量" if recent_vol > prev_vol * 1.2 else ("缩量" if recent_vol < prev_vol * 0.8 else "持平")
                     volume_trends.append(f"{code}: {trend} (近期/前期={recent_vol/prev_vol:.2f})")
 
-        # 🔍 实时搜索: 行业最新动态
-        search_results = await self.data_loader.search_web(f"{industry} 行业 最新动态 2025 2026")
+        # 🔍 多轮深研: 行业最新动态
+        research = await self.data_loader.deep_research(
+            f"{industry} 全球 capex 资本开支 最新动态 2025 2026", rounds=2
+        )
+        search_results = research.get("sources", [])
 
         prompt = f"""你是一位全球科技产业研究员。请分析 {industry} 行业的高景气信号。
 
@@ -133,6 +136,7 @@ class SupplyChainAnalyst(ResearchAgent):
 
 ## 你的任务
 综合以上数据和搜索结果, 请分析:
+**重要: 引用搜索结果时请附带来源 URL, 格式为 [来源标题](URL)**
 1. **国际龙头资本开支**: {industry} 领域全球 Top3 公司(NVDA/TSMC/ASML/Intel等)的最新资本开支计划和扩产动态
 2. **全球资金流向**: 该赛道是否在吸引全球热钱? (参考美股科技ETF资金流入/SOX指数走势)
 3. **产业事件催化**: 近期是否有重大订单、技术突破、政策扶持?
@@ -224,6 +228,8 @@ Layer 4 (测试与辅具瓶颈): 保证 Layer 3 质量的检测设备/探针/夹
 
 ## 持仓数据
 {_json_dumps(positions, ensure_ascii=False, indent=2) if positions else '无'}
+
+**重要: 引用搜索结果/数据源时请附带 URL, 格式为 [来源](URL)**
 
 ## 你的任务: 双重硬核过滤 — 借鉴 Gemini Deep Research 方法论
 

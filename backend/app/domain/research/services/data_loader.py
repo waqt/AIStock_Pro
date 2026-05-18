@@ -160,23 +160,49 @@ class ResearchDataLoader:
 
 
     async def search_web(self, query: str, num: int = 5) -> List[Dict]:
-        """网络搜索 — DuckDuckGo HTML 版 (无需 API Key)"""
+        """网络搜索 — Brave Search API (优先) → DDG (兜底)"""
+        from app.framework.config import settings
+
+        # 1. Brave Search (付费 Key, 高质量结果)
+        if settings.BRAVE_API_KEY:
+            try:
+                import httpx
+                url = "https://api.search.brave.com/res/v1/web/search"
+                headers = {
+                    "Accept": "application/json",
+                    "Accept-Encoding": "gzip",
+                    "X-Subscription-Token": settings.BRAVE_API_KEY,
+                }
+                params = {"q": query, "count": min(num, 10)}
+                async with httpx.AsyncClient(proxy=None, timeout=10.0) as client:
+                    resp = await client.get(url, headers=headers, params=params)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        results = []
+                        for r in (data.get("web", {}).get("results", []) or [])[:num]:
+                            results.append({
+                                "title": r.get("title", "")[:150],
+                                "url": r.get("url", ""),
+                                "snippet": r.get("description", "")[:400],
+                            })
+                        if results:
+                            return results
+            except Exception as e:
+                logger.warning(f"[Brave search failed: {e}]")
+
+        # 2. DDG 兜底 (无需 Key)
         try:
             import re, httpx
             url = "https://html.duckduckgo.com/html/"
             data = {"q": query}
-            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
-            async with httpx.AsyncClient(proxy=None, timeout=10.0, headers=headers) as client:
+            async with httpx.AsyncClient(proxy=None, timeout=10.0,
+                    headers={"User-Agent": "Mozilla/5.0"}) as client:
                 resp = await client.post(url, data=data)
                 if resp.status_code != 200:
                     return []
-
-                # 解析 HTML 搜索结果
                 results = []
-                # 匹配: <a class="result__a" href="URL">标题</a>
                 links = re.findall(r'<a[^>]*class="result__a"[^>]*href="([^"]*)"[^>]*>(.*?)</a>', resp.text)
                 snippets = re.findall(r'<a[^>]*class="result__snippet"[^>]*>(.*?)</a>', resp.text)
-
                 for i, (url, title) in enumerate(links[:num]):
                     title_clean = re.sub(r'<[^>]+>', '', title).strip()
                     snippet = re.sub(r'<[^>]+>', '', snippets[i]).strip() if i < len(snippets) else ""
@@ -184,8 +210,32 @@ class ResearchDataLoader:
                         results.append({"title": title_clean[:150], "url": url, "snippet": snippet[:300]})
                 return results
         except Exception as e:
-            logger.warning(f"[Web search failed: {e}]")
+            logger.warning(f"[DDG search failed: {e}]")
             return []
+
+    async def deep_research(self, query: str, rounds: int = 3) -> Dict:
+        """多轮深研 — 初始搜索 → 提取关键线索 → 逐轮深入"""
+        all_sources = []
+        current_query = query
+
+        for r in range(rounds):
+            results = await self.search_web(current_query, num=5)
+            if not results:
+                break
+            all_sources.append({"round": r + 1, "query": current_query, "results": results})
+            # 从结果中提取关键词做下一轮搜索
+            if r < rounds - 1:
+                keywords = []
+                for res in results[:3]:
+                    words = res.get("snippet", "").split()[:5]
+                    keywords.extend(words)
+                if keywords:
+                    # 用前3个最长的词作为下轮搜索关键词
+                    long_words = sorted(set(w for w in keywords if len(w) > 3), key=len, reverse=True)[:3]
+                    current_query = f"{query} {' '.join(long_words)}"
+
+        return {"original_query": query, "rounds": rounds, "sources": all_sources,
+                "total_sources": sum(len(s["results"]) for s in all_sources)}
 
 
 # 全局单例
