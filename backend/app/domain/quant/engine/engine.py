@@ -6,13 +6,6 @@ import asyncio
 
 from app.framework.database.session import async_session
 from app.domain.market_data.sources.router import data_router
-
-# 向后兼容
-data_service = type('DataService', (), {
-    'get_daily_data': lambda code, days=120: data_router.get_daily_data(code, days),
-    'get_realtime_quotes': lambda codes: data_router.get_realtime_quotes(codes),
-    'close': lambda: data_router.close_all()
-})()
 from app.domain.quant.engine.indicators import Indicators
 from app.domain.quant.engine.patterns import Patterns
 from app.models.models import StockIndicator, Position, MarketData, TaskExecution
@@ -53,7 +46,7 @@ class QuantEngine:
             # else: 无历史数据 → 全量抓取 (days=500)
 
         # 2. 抓取行情
-        df = await data_service.get_daily_data(stock_code, days=days_to_fetch)
+        df = await data_router.get_daily_data(stock_code, days=days_to_fetch)
         if df.empty:
             return 0
 
@@ -261,7 +254,7 @@ class QuantEngine:
         for idx, pos in enumerate(positions):
             await asyncio.sleep(0)
             try:
-                df = await data_service.get_daily_data(pos.stock_code, days=1)
+                df = await data_router.get_daily_data(pos.stock_code, days=1)
                 if not df.empty:
                     price = float(df.iloc[-1]['close'])
                     pos.current_price = price
