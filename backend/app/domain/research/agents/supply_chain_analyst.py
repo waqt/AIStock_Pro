@@ -189,8 +189,8 @@ Layer 4 (测试与辅具瓶颈): 保证 Layer 3 质量的检测设备/探针/夹
 6. 供需状况 + 扩产周期
 7. 产能集中度
 
-请输出纯 JSON:
-{{"recursive_layers":[{{"level":1,"name":"HBM","barriers":"...","expectation_gap_score":3,"gap_reason":"已被市场充分定价","global_leaders":[{{"name":"SK Hynix","code":"000660","market":"KR"}}],"a_share_peers":[],"supply_status":"供不应求","expansion_months":24,"concentration":"SK+三星+美光 95%"}},{{"level":2,"name":"混合键合","barriers":"...","expectation_gap_score":9,"gap_reason":"市场尚未认知键合从TCB→Hybrid的颠覆性","global_leaders":[],"a_share_peers":[{{"code":"688012","name":"中微公司"}}],"supply_status":"供不应求","expansion_months":18,"concentration":"Besi+ASMPT 80%"}},{{"level":3,"name":"CMP抛光液","barriers":"原子级平整度要求","expectation_gap_score":9,"gap_reason":"消耗量翻倍但估值仍在传统周期","global_leaders":[{{"name":"Cabot","code":"CBT","market":"US"}}],"a_share_peers":[{{"code":"300054","name":"鼎龙股份"}}],"supply_status":"供不应求","expansion_months":12,"concentration":"Cabot+Hitachi+Fujimi 70%"}},{{"level":4,"name":"MEMS探针卡","barriers":"混合键合对探针零损伤要求","expectation_gap_score":10,"gap_reason":"全市场还在抢HBM, 探针卡需求非线性暴增却被忽视","global_leaders":[{{"name":"FormFactor","code":"FORM","market":"US"}}],"a_share_peers":[{{"code":"300567","name":"精测电子"}}],"supply_status":"供不应求","expansion_months":12,"concentration":"FormFactor+Technoprobe 60%"}}]}}"""
+请输出纯JSON数组 (不要Markdown, 不要解释):
+[{{"level":1,"name":"HBM","barriers":"TSV堆叠技术","gap_score":3,"gap_reason":"已被市场充分定价","global_leader":"SK Hynix(000660.KR)","a_share_code":"","supply":"供不应求","expand_mo":24,"concentration":"SK+三星+美光95%"}},{{"level":2,"name":"混合键合","barriers":"原子级对准+铜-铜键合","gap_score":9,"gap_reason":"市场未认知TCB→Hybrid键合的颠覆性","global_leader":"Besi(BESI.AS)","a_share_code":"688012","supply":"供不应求","expand_mo":18,"concentration":"Besi+ASMPT 80%"}},{{"level":3,"name":"CMP抛光液","barriers":"原子级平整度, 缺陷零容忍","gap_score":9,"gap_reason":"消耗量翻倍但估值仍在传统周期","global_leader":"Cabot(CBT.US)","a_share_code":"300054","supply":"供不应求","expand_mo":12,"concentration":"Cabot+Hitachi 70%"}},{{"level":4,"name":"量检测设备","barriers":"纳米缺陷检测, 混合键合无探针损伤","gap_score":10,"gap_reason":"全市场抢HBM, 量检测需求暴增被忽视","global_leader":"KLA Corp(KLAC.US)","a_share_code":"688361","supply":"供不应求","expand_mo":12,"concentration":"KLA+Onto+Camtek 85%"}}]"""
 
         text = await self.provider.chat(prompt)
         return self._extract_json_block(text, "supply_chain")
@@ -210,9 +210,9 @@ Layer 4 (测试与辅具瓶颈): 保证 Layer 3 质量的检测设备/探针/夹
             high_gap = layers[:4]
 
         # 🔍 搜索瓶颈环节最新动态
-        search_queries = [f"{b.get('name','')} 产能 供需 扩产" for b in bottlenecks[:3]]
+        search_queries = [f"{b.get('name','')} 产能 供需 扩产" for b in high_gap[:3]]
         search_results = {}
-        for b, q in zip(bottlenecks[:3], search_queries):
+        for b, q in zip(high_gap[:3], search_queries):
             search_results[b.get("name","")] = await self.data_loader.search_web(q)
 
         prompt = f"""你是一位全球供应链投资专家。请深度分析以下供不应求的瓶颈环节。
@@ -221,7 +221,7 @@ Layer 4 (测试与辅具瓶颈): 保证 Layer 3 质量的检测设备/探针/夹
 {_json_dumps(search_results, ensure_ascii=False)}
 
 ## 瓶颈环节
-{_json_dumps(bottlenecks, ensure_ascii=False, indent=2)}
+{_json_dumps(high_gap, ensure_ascii=False, indent=2)}
 
 ## A股映射基本面
 {_json_dumps({c: f for c, f in fundamentals.items() if f.get('pe_ttm')}, ensure_ascii=False)}
@@ -260,9 +260,9 @@ Layer 4 (测试与辅具瓶颈): 保证 Layer 3 质量的检测设备/探针/夹
         text = await self.provider.chat(prompt)
         return self._extract_json_block(text, "bottleneck")
 
-    async def _temporal_analysis(self, ctx: Dict, bottlenecks: List) -> Dict:
+    async def _temporal_analysis(self, ctx: Dict, high_gap: List) -> Dict:
         """Step 3.5: 时间维度分析 — 景气持续性 + 供需缺口量化 + 产能过剩预警"""
-        bn_list = bottlenecks if isinstance(bottlenecks, list) else []
+        bn_list = high_gap if isinstance(high_gap, list) else []
         if not bn_list:
             return {"note": "无瓶颈数据, 跳过时间分析"}
 
@@ -300,10 +300,10 @@ Layer 4 (测试与辅具瓶颈): 保证 Layer 3 质量的检测设备/探针/夹
         text = await self.provider.chat(prompt)
         return self._extract_json_block(text, "temporal")
 
-    async def _select_core_targets(self, ctx: Dict, bottlenecks: List) -> Dict:
+    async def _select_core_targets(self, ctx: Dict, high_gap: List) -> Dict:
         """Step 4: 锁定核心标的"""
         all_picks = []
-        for b in bottlenecks if isinstance(bottlenecks, list) else []:
+        for b in high_gap if isinstance(high_gap, list) else []:
             all_picks.extend(b.get("a_share_picks", []))
 
         if not all_picks:
