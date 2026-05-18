@@ -37,7 +37,7 @@ class DoubaoProvider(AIProviderProtocol):
             text = self._extract_text(resp.json())
             return self._parse_json(text) if text else None
 
-    async def chat(self, prompt: str) -> Optional[str]:
+    async def chat(self, prompt: str, max_tokens: int = 4096) -> Optional[str]:
         return None  # 豆包 chat 待实现
 
     @staticmethod

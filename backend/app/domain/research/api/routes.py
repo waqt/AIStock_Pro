@@ -6,6 +6,11 @@ from typing import List, Optional, Dict, Any
 from app.domain.research.agents.coordinator import ResearchCoordinator
 from app.domain.research.agents.industry_analyst import IndustryAnalyst
 from app.domain.research.agents.supply_chain_analyst import SupplyChainAnalyst
+from app.domain.research.agents.supply_chain_hacker import SupplyChainHacker
+from app.domain.research.agents.financial_auditor import FinancialAuditor
+from app.domain.research.agents.human_capital_detective import HumanCapitalDetective
+from app.domain.research.agents.global_capex_scanner import GlobalCapexScanner
+from app.domain.research.agents.dag_orchestrator import DAGOrchestrator
 from app.domain.research.agents.market_scanner import MarketScanner
 from app.domain.research.services.data_loader import data_loader
 from app.framework.logger import logger
@@ -33,9 +38,25 @@ def _get_coordinator():
 
 # ── 端点 ────────────────────────────
 
+@router.post("/analyze-v4")
+async def research_analyze_v4(req: ResearchRequest):
+    """V4.0 DAG 编排 — 5专家并行管道, 完整投研报告"""
+    try:
+        from app.framework.ai.providers.deepseek import DeepSeekProvider
+        provider = DeepSeekProvider()
+        orchestrator = DAGOrchestrator(provider=provider)
+        context = {"question": req.question, "stock_codes": req.stock_codes,
+                   "industry": req.industry or req.question, "include_portfolio": req.include_portfolio}
+        result = await orchestrator.analyze(context)
+        return {"success": True, "data": result}
+    except Exception as e:
+        logger.error(f"[❌] DAG pipeline failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/analyze")
 async def research_analyze(req: ResearchRequest):
-    """多智能体联合投研分析 (同步)"""
+    """V3.0 多智能体联合投研分析 (同步, 向后兼容)"""
     try:
         coordinator = _get_coordinator()
         context = {"question": req.question, "stock_codes": req.stock_codes,
@@ -78,6 +99,64 @@ async def supply_chain_analysis(req: ResearchRequest):
         return {"success": True, "data": result}
     except Exception as e:
         logger.error(f"[❌] Supply chain analysis failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/supply-chain-hacker")
+async def supply_chain_hacker_analysis(req: ResearchRequest):
+    """V4.0 供应链降维穿透 — 纯瓶颈定位 + 标的映射 (不含财务/估值)"""
+    try:
+        from app.framework.ai.providers.deepseek import DeepSeekProvider
+        provider = DeepSeekProvider()
+        hacker = SupplyChainHacker(provider=provider)
+        context = {"question": req.question, "stock_codes": req.stock_codes,
+                   "industry": req.industry or req.question, "include_portfolio": req.include_portfolio}
+        result = await hacker.analyze(context)
+        return {"success": True, "data": result}
+    except Exception as e:
+        logger.error(f"[❌] Supply chain hacker failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/audit/human-capital")
+async def audit_human_capital(req: ResearchRequest):
+    """V4.0 人力资本审计 — 单只股票研发团队背景穿透"""
+    code = (req.stock_codes or [None])[0]
+    if not code:
+        raise HTTPException(status_code=400, detail="需要至少一个 stock_code")
+    try:
+        from app.framework.ai.providers.deepseek import DeepSeekProvider
+        detective = HumanCapitalDetective(provider=DeepSeekProvider())
+        result = await detective.analyze({"stock_code": code, "stock_name": req.industry or code})
+        return {"success": True, "data": result}
+    except Exception as e:
+        logger.error(f"[❌] Human capital audit failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/audit/financial/{stock_code}")
+async def audit_financial(stock_code: str):
+    """V4.0 财务审计 — 单只股票 8Q 剪刀差 + 四连击 (无需 AI)"""
+    try:
+        auditor = FinancialAuditor()
+        result = await auditor.analyze({"stock_code": stock_code, "stock_name": stock_code})
+        return {"success": True, "data": result}
+    except Exception as e:
+        logger.error(f"[❌] Financial audit failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/capex-scan")
+async def global_capex_scan(req: ResearchRequest):
+    """V4.0 全球 CapEx 扫描 — MAG7 资本开支计划 → 景气方向"""
+    try:
+        from app.framework.ai.providers.deepseek import DeepSeekProvider
+        scanner = GlobalCapexScanner(provider=DeepSeekProvider())
+        context = {"industry": req.industry or "", "question": req.question}
+        result = await scanner.analyze(context)
+        return {"success": True, "data": result}
+    except Exception as e:
+        logger.error(f"[❌] Global capex scan failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

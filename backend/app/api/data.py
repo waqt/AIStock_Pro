@@ -68,7 +68,7 @@ async def trigger_auto_sync(request: SyncRequest):
 @router.post("/sync/daily/{stock_code}")
 async def trigger_single_sync(stock_code: str):
     """触发单股同步 + 指标计算"""
-    exec_id = await task_manager.run_task("sync_market", {"mode": "AUTO"})
+    exec_id = await task_manager.run_task("sync_market", {"mode": "AUTO", "target_codes": [stock_code]})
     return {"message": f"{stock_code} 同步已加入队列", "task_id": exec_id}
 
 
@@ -122,10 +122,17 @@ async def get_health_overview():
         )
         ind_count = ind_res.scalars().first() or 0
 
+        # 有估值数据的股票数
+        val_res = await db.execute(
+            select(func.count(StockInfo.stock_code)).where(StockInfo.pe_ttm.isnot(None))
+        )
+        val_count = val_res.scalars().first() or 0
+
         return {
             "synced_stocks": stock_count,
             "latest_sync_date": str(latest_date) if latest_date else None,
             "indicators_coverage": ind_count,
+            "valuation_coverage": val_count,
             "status": "HEALTHY" if latest_date and (date.today() - latest_date).days <= 3 else "STALE"
         }
 
@@ -154,12 +161,18 @@ async def get_stocks_health():
         name_map = {**info_names, **pos_names}  # 持仓名称优先覆盖证券名称
 
         today = date.today()
+        weekday = today.weekday()  # 0=Mon, 6=Sun
         result = []
         for r in rows:
             gap = (today - r.latest_date).days if r.latest_date else 999
+            # 周末感知: 最近交易日是周五, 在周一gap=3仍是最新数据
             if gap <= 1:
                 status = "HEALTHY"
-            elif gap <= 3:
+            elif weekday == 0 and gap <= 3:  # 周一: 周五数据 gap=3 正常
+                status = "HEALTHY"
+            elif weekday == 1 and gap <= 4:  # 周二: 容忍周一假期场景
+                status = "HEALTHY"
+            elif gap <= 5:
                 status = "STALE"
             else:
                 status = "GAP"

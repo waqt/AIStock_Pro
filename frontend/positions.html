@@ -30,6 +30,7 @@
                                     <th style="text-align: right;">市值</th>
                                     <th style="text-align: right;">盈亏金额</th>
                                     <th style="text-align: right;">收益率</th>
+                                    <th style="text-align: right;">总市值</th>
                                     <th style="text-align: center;">操作</th>
                                 </tr>
                             </thead>
@@ -99,6 +100,9 @@
                         </td>
                         <td style="text-align: right; color: ${(p.profit_loss_ratio || 0) >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'}; font-weight: bold;">
                             ${p.profit_loss_ratio != null ? ((p.profit_loss_ratio >= 0 ? '+' : '') + Number(p.profit_loss_ratio).toFixed(3) + '%') : '—'}
+                        </td>
+                        <td style="text-align: right; font-family: var(--font-mono);">
+                            ${p.mcap_yi != null ? Math.round(p.mcap_yi).toLocaleString() + '亿' : '—'}
                         </td>
                         <td style="text-align: center;">
                             <button class="btn-action" style="padding: 4px 10px; font-size: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: var(--text-normal); border-radius: 4px; cursor: pointer;" onclick="showChart('${p.stock_code}', '${p.stock_name}')"><i class="fas fa-chart-bar" style="color: #60a5fa;"></i> 走势</button>

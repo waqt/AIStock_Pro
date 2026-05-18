@@ -146,8 +146,142 @@ class ResearchDataLoader:
             ]
 
     async def load_financials(self, codes: List[str]) -> Dict[str, Dict]:
-        """加载财务数据 — 当前返回 PE/PB/市值作为代理指标 (营收/利润待付费API接入)"""
+        """加载财务数据 — PE/PB/市值"""
         return await self.load_fundamentals(codes)
+
+    async def load_financial_statements(self, code: str, periods: int = 8) -> Dict[str, Any]:
+        """获取单只股票连续 N 个季度的三大表核心字段 (V4.0 数据底座)
+
+        Args:
+            code: 股票代码 (6位如 600519, 或含前缀如 SH600519)
+            periods: 季度数, 默认 8Q
+
+        Returns:
+            {"code": "600519", "quarters": [
+                {"report_date": "2024-03-31", "revenue": ..., "profit": ...,
+                 "op_cashflow": ..., "inventory": ..., "contract_liability": ...},
+                ...
+            ]}
+        """
+        import pandas as pd
+        from app.framework.config import settings
+
+        prefix = self._code_to_akshare_prefix(code)
+        if not prefix:
+            logger.warning(f"[Financial] Unsupported code format: {code}")
+            return {"code": code, "quarters": [], "error": "Unsupported code format"}
+
+        try:
+            # 在线程池中运行同步 akshare 调用
+            loop = __import__('asyncio').get_event_loop()
+
+            # 1. 季度利润表 → 营业总收入、净利润
+            income_df = await loop.run_in_executor(
+                None, self._fetch_income_sheet, prefix)
+            # 2. 季度现金流量表 → 经营活动现金流量净额
+            cashflow_df = await loop.run_in_executor(
+                None, self._fetch_cashflow_sheet, prefix)
+            # 3. 资产负债表 → 存货、合同负债
+            balance_df = await loop.run_in_executor(
+                None, self._fetch_balance_sheet, prefix)
+
+            if income_df is None or income_df.empty:
+                return {"code": code, "quarters": [], "error": "No financial data available"}
+
+            # 合并三表, 取最近 N 个季度
+            merged = self._merge_financial_sheets(income_df, cashflow_df, balance_df, periods)
+            quarters = []
+            for _, row in merged.iterrows():
+                quarters.append({
+                    "report_date": str(row.get("REPORT_DATE", ""))[:10],
+                    "revenue": float(row.get("revenue", 0) or 0),
+                    "profit": float(row.get("profit", 0) or 0),
+                    "op_cashflow": float(row.get("op_cashflow", 0) or 0),
+                    "inventory": float(row.get("inventory", 0) or 0),
+                    "contract_liability": float(row.get("contract_liability", 0) or 0),
+                })
+
+            logger.info(f"[Financial] Loaded {len(quarters)} quarters for {code}")
+            return {"code": code, "quarters": quarters}
+
+        except Exception as e:
+            logger.warning(f"[Financial] load_financial_statements({code}) failed: {e}")
+            return {"code": code, "quarters": [], "error": str(e)}
+
+    @staticmethod
+    def _code_to_akshare_prefix(code: str) -> Optional[str]:
+        """转换股票代码为 akshare 前缀格式"""
+        c = str(code).strip().upper()
+        if c.startswith("SH") or c.startswith("SZ") or c.startswith("BJ"):
+            return c
+        if len(c) == 6:
+            if c.startswith(("6", "9")):
+                return f"SH{c}"
+            elif c.startswith(("0", "2", "3")):
+                return f"SZ{c}"
+            elif c.startswith(("4", "8")):
+                return f"BJ{c}"
+        return None
+
+    @staticmethod
+    def _fetch_income_sheet(prefix: str):
+        """获取单季度利润表 → 营业收入 / 归母净利润"""
+        import akshare as ak
+        import pandas as pd
+        df = ak.stock_profit_sheet_by_quarterly_em(symbol=prefix)
+        df = df.rename(columns={
+            "OPERATE_INCOME": "revenue",
+            "PARENT_NETPROFIT": "profit",
+        })
+        df["REPORT_DATE"] = pd.to_datetime(df["REPORT_DATE"])
+        return df[["REPORT_DATE", "revenue", "profit"]].dropna(subset=["revenue"])
+
+    @staticmethod
+    def _fetch_cashflow_sheet(prefix: str):
+        """获取单季度现金流量表 → 经营活动现金流量净额"""
+        import akshare as ak
+        import pandas as pd
+        df = ak.stock_cash_flow_sheet_by_quarterly_em(symbol=prefix)
+        df = df.rename(columns={"NETCASH_OPERATE": "op_cashflow"})
+        df["REPORT_DATE"] = pd.to_datetime(df["REPORT_DATE"])
+        return df[["REPORT_DATE", "op_cashflow"]]
+
+    @staticmethod
+    def _fetch_balance_sheet(prefix: str):
+        """获取资产负债表(按报告期) → 存货 / 合同负债"""
+        import akshare as ak
+        import pandas as pd
+        df = ak.stock_balance_sheet_by_report_em(symbol=prefix)
+        df = df.rename(columns={
+            "INVENTORY": "inventory",
+            "CONTRACT_LIAB": "contract_liability",
+        })
+        df["REPORT_DATE"] = pd.to_datetime(df["REPORT_DATE"])
+        cols = ["REPORT_DATE"]
+        if "inventory" in df.columns:
+            cols.append("inventory")
+        if "contract_liability" in df.columns:
+            cols.append("contract_liability")
+        return df[cols] if len(cols) > 1 else None
+
+    @staticmethod
+    def _merge_financial_sheets(income_df, cashflow_df, balance_df, periods: int):
+        """合并三表, 取最近 N 个季度"""
+        import pandas as pd
+        merged = income_df.sort_values("REPORT_DATE")
+        if cashflow_df is not None and not cashflow_df.empty:
+            merged = merged.merge(cashflow_df, on="REPORT_DATE", how="left")
+        else:
+            merged["op_cashflow"] = 0
+        if balance_df is not None and not balance_df.empty:
+            merged = merged.merge(balance_df, on="REPORT_DATE", how="left")
+        else:
+            merged["inventory"] = 0
+            merged["contract_liability"] = 0
+        for col in ["op_cashflow", "inventory", "contract_liability"]:
+            if col not in merged.columns:
+                merged[col] = 0
+        return merged.tail(periods)
 
     async def load_capital_flow(self, code: str, days: int = 30) -> List[Dict]:
         """加载个股资金流向 (主力/散户/超大单)"""
@@ -160,10 +294,38 @@ class ResearchDataLoader:
 
 
     async def search_web(self, query: str, num: int = 5) -> List[Dict]:
-        """网络搜索 — Brave Search API (优先) → DDG (兜底)"""
+        """网络搜索 — DDG (免费优先) → Brave Search (付费兜底)
+        通过 Clash 代理 (127.0.0.1:7890) 访问海外服务, 绕过 GFW 阻断。
+        """
         from app.framework.config import settings
+        CLASH_PROXY = "http://127.0.0.1:7890"
 
-        # 1. Brave Search (付费 Key, 高质量结果)
+        # 1. DDG 优先 (免费, 已验证可用)
+        try:
+            import re, httpx
+            url = "https://html.duckduckgo.com/html/"
+            data = {"q": query}
+            async with httpx.AsyncClient(proxy=CLASH_PROXY, timeout=15.0,
+                    headers={"User-Agent": "Mozilla/5.0"}) as client:
+                resp = await client.post(url, data=data)
+                if resp.status_code == 200:
+                    results = []
+                    links = re.findall(r'<a[^>]*class="result__a"[^>]*href="([^"]*)"[^>]*>(.*?)</a>', resp.text)
+                    snippets = re.findall(r'<a[^>]*class="result__snippet"[^>]*>(.*?)</a>', resp.text)
+                    for i, (url, title) in enumerate(links[:num]):
+                        title_clean = re.sub(r'<[^>]+>', '', title).strip()
+                        snippet = re.sub(r'<[^>]+>', '', snippets[i]).strip() if i < len(snippets) else ""
+                        if title_clean:
+                            results.append({"title": title_clean[:150], "url": url, "snippet": snippet[:300]})
+                    if results:
+                        logger.info(f"[DDG search OK: {len(results)} results for '{query[:40]}']")
+                        return results
+                else:
+                    logger.warning(f"[DDG returned {resp.status_code}]")
+        except Exception as e:
+            logger.warning(f"[DDG search failed: {type(e).__name__}: {e}]")
+
+        # 2. Brave Search 兜底 (付费 Key, 结构化结果)
         if settings.BRAVE_API_KEY:
             try:
                 import httpx
@@ -174,7 +336,7 @@ class ResearchDataLoader:
                     "X-Subscription-Token": settings.BRAVE_API_KEY,
                 }
                 params = {"q": query, "count": min(num, 10)}
-                async with httpx.AsyncClient(proxy=None, timeout=10.0) as client:
+                async with httpx.AsyncClient(proxy=CLASH_PROXY, timeout=15.0) as client:
                     resp = await client.get(url, headers=headers, params=params)
                     if resp.status_code == 200:
                         data = resp.json()
@@ -186,32 +348,14 @@ class ResearchDataLoader:
                                 "snippet": r.get("description", "")[:400],
                             })
                         if results:
+                            logger.info(f"[Brave search OK: {len(results)} results for '{query[:40]}']")
                             return results
+                    else:
+                        logger.warning(f"[Brave search HTTP {resp.status_code}: {resp.text[:100]}]")
             except Exception as e:
-                logger.warning(f"[Brave search failed: {e}]")
+                logger.warning(f"[Brave search failed: {type(e).__name__}: {e}]")
 
-        # 2. DDG 兜底 (无需 Key)
-        try:
-            import re, httpx
-            url = "https://html.duckduckgo.com/html/"
-            data = {"q": query}
-            async with httpx.AsyncClient(proxy=None, timeout=10.0,
-                    headers={"User-Agent": "Mozilla/5.0"}) as client:
-                resp = await client.post(url, data=data)
-                if resp.status_code != 200:
-                    return []
-                results = []
-                links = re.findall(r'<a[^>]*class="result__a"[^>]*href="([^"]*)"[^>]*>(.*?)</a>', resp.text)
-                snippets = re.findall(r'<a[^>]*class="result__snippet"[^>]*>(.*?)</a>', resp.text)
-                for i, (url, title) in enumerate(links[:num]):
-                    title_clean = re.sub(r'<[^>]+>', '', title).strip()
-                    snippet = re.sub(r'<[^>]+>', '', snippets[i]).strip() if i < len(snippets) else ""
-                    if title_clean:
-                        results.append({"title": title_clean[:150], "url": url, "snippet": snippet[:300]})
-                return results
-        except Exception as e:
-            logger.warning(f"[DDG search failed: {e}]")
-            return []
+        return []
 
     async def deep_research(self, query: str, rounds: int = 3) -> Dict:
         """多轮深研 — 初始搜索 → 提取关键线索 → 逐轮深入"""

@@ -12,8 +12,11 @@ class PositionResponse(BaseModel):
     market_value: float
     profit_loss: float
     profit_loss_ratio: Optional[float] = None
+    pe_ttm: Optional[float] = None
+    pb: Optional[float] = None
+    mcap_yi: Optional[float] = None
     updated_at: Optional[datetime]
-    
+
     model_config = ConfigDict(from_attributes=True)
 
 class TaskExecutionResponse(BaseModel):

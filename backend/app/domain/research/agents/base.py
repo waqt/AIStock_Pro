@@ -62,3 +62,43 @@ class ResearchAgent(BaseAgent):
 
     async def stream(self, context: Dict[str, Any]):
         raise NotImplementedError
+
+    @staticmethod
+    def parse_json(text: str) -> Any:
+        """共享 JSON 解析器 — 处理 markdown 代码块 + 括号计数截断"""
+        import json, re
+        text = text.strip()
+        if "```" in text:
+            m = re.search(r'```(?:json)?\s*([\s\S]*?)```', text)
+            if m:
+                text = m.group(1).strip()
+        if text.startswith('{'):
+            depth = 0
+            end = 0
+            for i, ch in enumerate(text):
+                if ch == '{':
+                    depth += 1
+                elif ch == '}':
+                    depth -= 1
+                    if depth == 0:
+                        end = i + 1
+                        break
+            if end > 0:
+                text = text[:end]
+        elif text.startswith('['):
+            depth = 0
+            end = 0
+            for i, ch in enumerate(text):
+                if ch == '[':
+                    depth += 1
+                elif ch == ']':
+                    depth -= 1
+                    if depth == 0:
+                        end = i + 1
+                        break
+            if end > 0:
+                text = text[:end]
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            return {"raw_text": text[:800]}

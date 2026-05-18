@@ -27,6 +27,24 @@
         .tier-up { background: rgba(112,161,255,0.15); color: var(--accent-blue); }
         .tier-mid { background: rgba(255,165,2,0.15); color: var(--accent-gold); }
         .tier-down { background: rgba(46,213,115,0.15); color: var(--accent-green); }
+        /* V3.0 core stocks table */
+        .core-stocks-table { width: 100%; border-collapse: collapse; font-size: 11px; font-family: var(--font-mono); }
+        .core-stocks-table th { background: rgba(255,255,255,0.04); color: var(--text-micro); padding: 6px 8px; text-align: left; border-bottom: 2px solid var(--border-color); white-space: nowrap; position: sticky; top: 0; }
+        .core-stocks-table td { padding: 6px 8px; border-bottom: 1px solid var(--border-thin); color: var(--text-dim); white-space: nowrap; }
+        .core-stocks-table tr:hover td { background: rgba(255,255,255,0.03); }
+        .core-stocks-table .stock-name { color: #fff; font-weight: 600; font-family: var(--font-main); }
+        .core-stocks-table .moat-tag { display: inline-block; padding: 1px 5px; border-radius: 2px; font-size: 9px; }
+        .moat-tech { background: rgba(112,161,255,0.15); color: var(--accent-blue); }
+        .moat-oligopoly { background: rgba(46,213,115,0.15); color: var(--accent-green); }
+        .moat-substitute { background: rgba(255,165,2,0.15); color: var(--accent-gold); }
+        .moat-standard { background: rgba(255,107,107,0.15); color: var(--accent-red); }
+        .gap-bar { display: inline-block; height: 3px; border-radius: 2px; min-width: 4px; background: var(--border-color); vertical-align: middle; margin-right: 4px; }
+        .risk-tag { display: inline-block; padding: 1px 6px; border-radius: 2px; font-size: 10px; margin: 2px; }
+        .risk-high { background: rgba(255,107,107,0.15); color: var(--accent-red); }
+        .risk-mid { background: rgba(255,165,2,0.15); color: var(--accent-gold); }
+        .risk-low { background: rgba(46,213,115,0.15); color: var(--accent-green); }
+        .peer-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; border-bottom: 1px solid var(--border-thin); font-size: 11px; }
+        .watchlist-item { display: inline-block; padding: 2px 8px; margin: 2px; border-radius: 3px; font-size: 10px; background: rgba(255,255,255,0.04); border: 1px solid var(--border-thin); color: var(--text-dim); }
     </style>
 </head>
 <body data-page-id="research">
@@ -76,27 +94,25 @@
                         </div>
                     </div>
 
-                    <!-- 步骤进度 -->
+                    <!-- 步骤进度 V3.0 -->
                     <div class="panel">
                         <div class="panel-header"><span class="panel-title">分析进度</span></div>
                         <div class="panel-body">
                             <div class="step-progress" id="step-progress">
-                                <span class="step-badge">1 景气信号</span>
-                                <span class="step-badge">2 供应链</span>
-                                <span class="step-badge">3 瓶颈定位</span>
-                                <span class="step-badge">4 标的锁定</span>
-                                <span class="step-badge">5 估值</span>
+                                <span class="step-badge">Phase1 迭代深研</span>
+                                <span class="step-badge">自检补搜</span>
+                                <span class="step-badge">Phase2 结构化报告</span>
                             </div>
                             <div id="step-status" style="font-size:11px;color:var(--text-dim);">等待查询...</div>
                         </div>
                     </div>
 
-                    <!-- 景气评分 -->
+                    <!-- 行业标签 -->
                     <div class="panel">
-                        <div class="panel-header"><span class="panel-title">景气度评分</span></div>
+                        <div class="panel-header"><span class="panel-title">当前分析</span></div>
                         <div class="panel-body" style="text-align:center;">
-                            <div id="prosperity-score" style="font-size:48px;font-weight:800;color:var(--text-micro);">—</div>
-                            <div id="hot-segments" style="font-size:10px;color:var(--text-dim);margin-top:8px;"></div>
+                            <div id="current-industry" style="font-size:16px;font-weight:700;color:var(--text-dim);">—</div>
+                            <div id="stock-count" style="font-size:10px;color:var(--text-micro);margin-top:4px;"></div>
                         </div>
                     </div>
                 </div>
@@ -105,34 +121,49 @@
                 <div style="display: flex; flex-direction: column; gap: 16px;">
                     <!-- Summary -->
                     <div class="panel" id="panel-summary" style="display:none;">
-                        <div class="panel-header"><span class="panel-title">CIO 投资建议</span></div>
+                        <div class="panel-header"><span class="panel-title">核心结论</span></div>
                         <div class="panel-body">
                             <div class="summary-box" id="content-summary"></div>
                         </div>
                     </div>
 
-                    <!-- 供应链 -->
-                    <div class="panel" id="panel-chain" style="display:none;">
-                        <div class="panel-header"><span class="panel-title">供应链图谱</span></div>
-                        <div class="panel-body" id="content-chain"></div>
+                    <!-- V3.0 核心标的表 -->
+                    <div class="panel" id="panel-core-stocks" style="display:none;">
+                        <div class="panel-header">
+                            <span class="panel-title">核心标的</span>
+                            <span style="font-size:10px;color:var(--text-micro);" id="core-stocks-count"></span>
+                        </div>
+                        <div class="panel-body" style="overflow-x:auto;max-height:500px;overflow-y:auto;" id="content-core-stocks"></div>
                     </div>
 
-                    <!-- 瓶颈 -->
-                    <div class="panel" id="panel-bottleneck" style="display:none;">
-                        <div class="panel-header"><span class="panel-title">瓶颈环节 + 核心标的</span></div>
-                        <div class="panel-body" id="content-bottleneck"></div>
+                    <!-- 供应链图谱 V3.0 -->
+                    <div class="panel" id="panel-chain" style="display:none;">
+                        <div class="panel-header"><span class="panel-title">供应链下钻 (L1→L4)</span></div>
+                        <div class="panel-body" id="content-chain"></div>
                     </div>
 
                     <!-- 时间维度 -->
                     <div class="panel" id="panel-temporal" style="display:none;">
-                        <div class="panel-header"><span class="panel-title">景气周期预测 (时间维度)</span></div>
+                        <div class="panel-header"><span class="panel-title">景气周期预测</span></div>
                         <div class="panel-body" id="content-temporal"></div>
                     </div>
 
-                    <!-- 估值 -->
-                    <div class="panel" id="panel-valuation" style="display:none;">
-                        <div class="panel-header"><span class="panel-title">估值分析</span></div>
-                        <div class="panel-body" id="content-valuation"></div>
+                    <!-- 全球对标 -->
+                    <div class="panel" id="panel-peers" style="display:none;">
+                        <div class="panel-header"><span class="panel-title">全球对标估值</span></div>
+                        <div class="panel-body" id="content-peers"></div>
+                    </div>
+
+                    <!-- 风险提示 -->
+                    <div class="panel" id="panel-risks" style="display:none;">
+                        <div class="panel-header"><span class="panel-title">风险警示</span></div>
+                        <div class="panel-body" id="content-risks"></div>
+                    </div>
+
+                    <!-- 跟踪指标 -->
+                    <div class="panel" id="panel-watchlist" style="display:none;">
+                        <div class="panel-header"><span class="panel-title">后续跟踪指标</span></div>
+                        <div class="panel-body" id="content-watchlist"></div>
                     </div>
 
                     <!-- 加载中 -->
@@ -164,7 +195,7 @@
     <script src="js/ui.js"></script>
     <script src="js/common.js"></script>
     <script>
-        const STEPS = ['景气信号','供应链','瓶颈定位','标的锁定','估值分析'];
+        const STEPS_V3 = ['Phase1 迭代深研', '自检补搜', 'Phase2 结构化报告'];
 
         function setStep(idx, status) {
             const badges = document.querySelectorAll('#step-progress .step-badge');
@@ -173,7 +204,14 @@
                 if (i < idx - 1) badges[i].classList.add('done');
                 else if (i === idx - 1) badges[i].classList.add('active');
             }
-            document.getElementById('step-status').textContent = status || `步骤 ${idx}: ${STEPS[idx-1]}...`;
+            document.getElementById('step-status').textContent = status || `${STEPS_V3[idx-1] || ''}...`;
+        }
+
+        function hideAllPanels() {
+            ['panel-summary','panel-core-stocks','panel-chain','panel-temporal','panel-peers','panel-risks','panel-watchlist'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = 'none';
+            });
         }
 
         // ── 每日扫描 ──
@@ -192,14 +230,14 @@
                 if (!result.success) { Modal.alert('扫描失败', result.detail || ''); return; }
                 const d = result.data;
 
-                // 赛道卡片
                 const industries = d.hot_industries || [];
                 const panel = document.getElementById('panel-scan-result');
                 const content = document.getElementById('content-scan-industries');
                 panel.style.display = '';
                 if (Array.isArray(industries) && industries.length) {
                     content.innerHTML = industries.map((ind, idx) => `
-                        <div style="padding:10px;border-bottom:1px solid var(--border-thin);${idx===0?'border-left:3px solid var(--accent-gold);padding-left:8px;':''}">
+                        <div style="padding:10px;border-bottom:1px solid var(--border-thin);cursor:pointer;${idx===0?'border-left:3px solid var(--accent-gold);padding-left:8px;':''}"
+                             onclick="document.getElementById('research-industry').value='${(ind.name||ind.industry||'').replace(/'/g,"\\'")}';startResearch();">
                             <div style="display:flex;justify-content:space-between;align-items:center;">
                                 <span style="font-weight:600;">${idx+1}. ${ind.name || ind.industry || ''}</span>
                                 <span class="score-badge score-high">${ind.score || '?'}/10</span>
@@ -212,17 +250,12 @@
                     content.innerHTML = '<div style="color:var(--text-micro);padding:12px;">扫描未识别到热门赛道, 请稍后重试</div>';
                 }
 
-                // 简报
                 if (d.briefing) {
                     document.getElementById('panel-summary').style.display = '';
-                    document.getElementById('content-summary').innerHTML = d.briefing
-                        .replace(/### (.+)/g, '<h3>$1</h3>')
-                        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-                        .replace(/\n/g, '<br>')
-                        .replace(/\|(.+)\|/g, (m) => m.includes('---') ? '' : '<tr>'+m.split('|').filter(c=>c.trim()).map(c=>`<td>${c.trim()}</td>`).join('')+'</tr>');
+                    document.getElementById('content-summary').innerHTML = mdToHtml(d.briefing);
                 }
 
-                saveCache(d);  // 持久化
+                saveCache(d);
                 status.textContent = '扫描完成';
                 document.getElementById('panel-empty').style.display = 'none';
             } catch (e) {
@@ -233,6 +266,7 @@
             }
         }
 
+        // ── V3.0 供应链下钻 ──
         async function startResearch() {
             const industry = document.getElementById('research-industry').value.trim();
             if (!industry) { Modal.alert('提示', '请输入行业或主题'); return; }
@@ -242,15 +276,16 @@
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 分析中...';
 
-            // 隐藏空状态
             document.getElementById('panel-empty').style.display = 'none';
             document.getElementById('panel-loading').style.display = '';
-            ['panel-summary','panel-chain','panel-bottleneck','panel-valuation'].forEach(id => {
-                document.getElementById(id).style.display = 'none';
-            });
+            document.getElementById('current-industry').textContent = industry;
+            document.getElementById('stock-count').textContent = '';
+            hideAllPanels();
 
             try {
-                setStep(1, '正在识别全球高景气信号...');
+                setStep(1, 'Phase 1: 搜索 → LLM分析 → 自检缺口...');
+                document.getElementById('loading-step').textContent = 'Phase 1/2: 迭代深研 (3轮搜索→分析→自检)';
+
                 const res = await fetch(`${API_BASE}/research/supply-chain`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -260,116 +295,240 @@
                 if (!result.success) { Modal.alert('分析失败', result.detail || JSON.stringify(result)); return; }
 
                 const d = result.data;
-                const steps = d.steps || [];
 
-                // 渲染步骤进度
-                for (let i = 0; i < steps.length; i++) {
-                    setStep(i + 1, steps[i].name);
-                }
-                setStep(6, '分析完成');
-                document.getElementById('loading-step').textContent = '分析完成';
+                // V3.0 or legacy format detection
+                const isV3 = d.core_stocks || d.supply_chain_map;
 
-                // Step 1: 景气度
-                const p = d.prosperity_signals || {};
-                if (p.prosperity_score && document.getElementById('prosperity-score')) {
-                    document.getElementById('prosperity-score').textContent = p.prosperity_score + '/10';
-                    document.getElementById('prosperity-score').style.color = p.prosperity_score >= 7 ? 'var(--accent-green)' : (p.prosperity_score >= 4 ? 'var(--accent-gold)' : 'var(--accent-red)');
-                }
-                if (p.hot_segments) {
-                    document.getElementById('hot-segments').innerHTML = p.hot_segments.map(s => `<span style="margin:2px;">#${s}</span>`).join(' ');
+                if (isV3) {
+                    setStep(3, 'Phase 2: 结构化深度报告生成完成');
+                    document.getElementById('loading-step').textContent = '报告生成完成';
+                    renderV3(d);
+                } else {
+                    // Legacy format fallback
+                    setStep(5, 'Legacy 分析完成');
+                    document.getElementById('loading-step').textContent = '分析完成';
+                    renderLegacy(d);
                 }
 
-                // Summary
-                if (d.summary) {
-                    document.getElementById('panel-summary').style.display = '';
-                    document.getElementById('content-summary').innerHTML = d.summary.replace(/\n/g, '<br>').replace(/##\s*(.+)/g, '<h3>$1</h3>').replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\|(.+)\|/g, (m) => { if (m.includes('---')) return ''; const cells = m.split('|').filter(c => c.trim()); return '<tr>' + cells.map(c => `<td>${c.trim()}</td>`).join('') + '</tr>'; });
-                }
+                document.getElementById('stock-count').textContent =
+                    (d.core_stocks || []).length ? `锁定 ${d.core_stocks.length} 只核心标的` : '';
 
-                // Chain (recursive layers)
-                const chain = d.supply_chain || {};
-                const layers = chain.recursive_layers || chain.layers || [];
-                if (layers.length || chain.raw_text) {
-                    document.getElementById('panel-chain').style.display = '';
-                    if (layers.length) {
-                        const gapColors = {10:'var(--accent-red)',9:'var(--accent-red)',8:'var(--accent-gold)',7:'var(--accent-gold)',6:'var(--accent-blue)'};
-                        document.getElementById('content-chain').innerHTML = layers.map(l => {
-                            const gapScore = l.expectation_gap_score || 0;
-                            const gapColor = gapColors[gapScore] || 'var(--text-dim)';
-                            const levelBadge = `<span style="display:inline-block;padding:1px 6px;border-radius:2px;font-size:9px;background:rgba(255,165,2,0.15);color:var(--accent-gold);">L${l.level || '?'}</span>`;
-                            return `
-                            <div class="chain-layer" style="${gapScore >= 8 ? 'border-left:3px solid var(--accent-red);' : ''}">
-                                <div style="display:flex;justify-content:space-between;align-items:center;">
-                                    <span>${levelBadge} <strong style="margin-left:4px;">${l.name || ''}</strong></span>
-                                    ${gapScore > 0 ? `<span class="score-badge" style="color:${gapColor};background:rgba(255,165,2,0.1);font-size:10px;">预期差 ${gapScore}/10</span>` : ''}
-                                </div>
-                                <div style="font-size:10px;color:var(--text-dim);margin-top:4px;">${l.barriers || ''}</div>
-                                ${l.gap_reason ? `<div style="font-size:10px;color:var(--accent-gold);margin-top:2px;">💡 ${l.gap_reason}</div>` : ''}
-                                <div style="font-size:9px;color:var(--text-micro);margin-top:2px;">${l.supply_status || ''} | 扩产${l.expansion_months || '?'}月 | ${l.concentration || ''}</div>
-                                ${l.a_share_peers && l.a_share_peers.length ? `<div style="font-size:9px;color:var(--accent-blue);margin-top:2px;">A股: ${l.a_share_peers.map(p=>p.name||p.code).join(', ')}</div>` : ''}
-                            </div>`;
-                        }).join('');
-                    } else {
-                        document.getElementById('content-chain').innerHTML = `<pre>${chain.raw_text || '供应链映射未成功解析'}</pre>`;
-                    }
-                }
-
-                // Bottleneck
-                const bn = d.bottleneck || {};
-                const bnList = Array.isArray(bn) ? bn : (bn.raw_text ? [{raw: bn.raw_text}] : []);
-                if (bnList.length) {
-                    document.getElementById('panel-bottleneck').style.display = '';
-                    document.getElementById('content-bottleneck').innerHTML = bnList.map(b => b.raw
-                        ? `<pre>${b.raw}</pre>`
-                        : `<div style="font-size:12px;padding:8px;border-bottom:1px solid var(--border-thin);">
-                            <strong>${b.segment || ''}</strong> <span class="score-badge score-high">垄断评分 ${b.monopoly_score || '?'}/10</span>
-                            <div style="color:var(--text-dim);margin-top:4px;">${b.monopoly_root || ''}</div>
-                            <div style="color:var(--text-micro);font-size:10px;margin-top:4px;">${b.supply_gap || ''} | ${b.pricing_power || ''}</div>
-                        </div>`).join('');
-                }
-
-                // Temporal
-                const tmp = d.temporal || {};
-                const tmpList = Array.isArray(tmp) ? tmp : (tmp.raw_text ? [{raw: tmp.raw_text}] : []);
-                if (tmpList.length && tmpList[0].segment) {
-                    document.getElementById('panel-temporal').style.display = '';
-                    document.getElementById('content-temporal').innerHTML = `
-                        <div style="overflow-x:auto;">
-                        <table style="width:100%;font-size:10px;">
-                        <tr style="color:var(--text-micro);">
-                            <th>环节</th><th>需求增速</th><th>产能利用</th><th>供需缺口</th>
-                            <th>缺口填补</th><th>产能过剩</th><th>景气评分</th><th>热度</th>
-                        </tr>
-                        ${tmpList.map(t => `
-                        <tr>
-                            <td style="font-weight:600;">${t.segment||''}</td>
-                            <td>${t.demand_growth||'?'}</td>
-                            <td>${t.capacity_util||'?'}</td>
-                            <td style="color:var(--accent-red);">${t.supply_gap||'?'}</td>
-                            <td>${t.gap_filled||'?'}</td>
-                            <td style="color:${(t.overcapacity_risk||'').includes('202')?'var(--accent-gold)':'var(--text-dim)'};">${t.overcapacity_risk||'暂无'}</td>
-                            <td><span class="score-badge score-high">${t.sustainability_score||'?'}/10</span></td>
-                            <td style="color:${t.heat_level==='过热'?'var(--accent-red)':(t.heat_level==='偏热'?'var(--accent-gold)':'var(--accent-green)')};">${t.heat_level||'?'}</td>
-                        </tr>
-                        ${t.heat_reason ? `<tr><td colspan="8" style="font-size:9px;color:var(--text-micro);">${t.heat_reason}</td></tr>` : ''}
-                        `).join('')}
-                        </table></div>`;
-                }
-
-                // Valuation
-                const val = d.valuation || {};
-                if (val.note) {
-                    document.getElementById('panel-valuation').style.display = '';
-                    document.getElementById('content-valuation').innerHTML = `<pre>${val.note}</pre>`;
-                }
-
-                saveCache(d);  // 持久化
+                saveCache(d);
             } catch (e) {
                 Modal.alert('分析异常', e.message);
             } finally {
                 btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-brain"></i> 启动供应链分析';
+                btn.innerHTML = '<i class="fas fa-brain"></i> 供应链下钻';
                 document.getElementById('panel-loading').style.display = 'none';
             }
+        }
+
+        // ═══ V3.0 渲染 ═══════════════════════════════════
+
+        function renderV3(d) {
+            // Summary
+            if (d.summary) {
+                document.getElementById('panel-summary').style.display = '';
+                document.getElementById('content-summary').innerHTML = mdToHtml(d.summary);
+            }
+
+            // Core Stocks (the main feature)
+            if (d.core_stocks && d.core_stocks.length) {
+                renderCoreStocks(d.core_stocks);
+            }
+
+            // Supply Chain Map
+            if (d.supply_chain_map && d.supply_chain_map.length) {
+                renderSupplyChainMap(d.supply_chain_map);
+            }
+
+            // Temporal
+            if (d.temporal && d.temporal.length) {
+                renderTemporalV3(d.temporal);
+            }
+
+            // Valuation Peers
+            if (d.valuation_peers && d.valuation_peers.length) {
+                renderPeers(d.valuation_peers);
+            }
+
+            // Risk Alerts
+            if (d.risk_alerts && d.risk_alerts.length) {
+                renderRisks(d.risk_alerts);
+            }
+
+            // Watchlist
+            if (d.watchlist && d.watchlist.length) {
+                renderWatchlist(d.watchlist);
+            }
+        }
+
+        function renderCoreStocks(stocks) {
+            document.getElementById('panel-core-stocks').style.display = '';
+            document.getElementById('core-stocks-count').textContent = `(${stocks.length} 只)`;
+
+            const moatClass = {
+                '技术垄断': 'moat-tech', '寡头格局': 'moat-oligopoly',
+                '国产替代': 'moat-substitute', '标准制定': 'moat-standard'
+            };
+
+            const rows = stocks.map(s => {
+                const upside = s.upside || '';
+                const upsideColor = upside.includes('-') ? 'var(--accent-red)' : 'var(--accent-green)';
+                const moatType = s.moat_type || '';
+                const mc = moatClass[moatType] || 'moat-tech';
+                const scissorOk = (s.scissor_gap || {}).verdict || '';
+
+                return `<tr>
+                    <td style="color:var(--accent-blue);">${escHtml(s.code||'')}</td>
+                    <td class="stock-name">${escHtml(s.name||'')}</td>
+                    <td>${escHtml(s.revenue||'')}</td>
+                    <td style="color:${(s.profit_growth||'').startsWith('-')?'var(--accent-red)':'var(--accent-green)'};">${escHtml(s.profit_growth||'')}</td>
+                    <td>${escHtml(s.gross_margin||'')}</td>
+                    <td>${escHtml(s.peer_pe||'')}</td>
+                    <td>${escHtml(s.market_cap||'')}</td>
+                    <td>${escHtml(s.target_mcap||'')}</td>
+                    <td style="color:${upsideColor};">${escHtml(upside)}</td>
+                    <td><span class="moat-tag ${mc}">${escHtml(moatType)}</span></td>
+                    <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;" title="${escHtml(s.moat||'')}">${escHtml((s.moat||'').slice(0,30))}${(s.moat||'').length>30?'…':''}</td>
+                    <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;" title="${escHtml(s.key_tech||'')}">${escHtml((s.key_tech||'').slice(0,25))}${(s.key_tech||'').length>25?'…':''}</td>
+                    <td>${escHtml(s.global_peer||'')}</td>
+                    <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;" title="${escHtml(s.risk||'')}">${escHtml((s.risk||'').slice(0,25))}${(s.risk||'').length>25?'…':''}</td>
+                </tr>`;
+            }).join('');
+
+            document.getElementById('content-core-stocks').innerHTML = `
+                <table class="core-stocks-table">
+                    <thead><tr>
+                        <th>代码</th><th>名称</th><th>营收</th><th>利润增速</th><th>毛利率</th><th>对标PE</th>
+                        <th>市值</th><th>目标市值</th><th>上涨空间</th><th>护城河</th>
+                        <th>护城河原因</th><th>核心技术</th><th>全球对标</th><th>风险</th>
+                    </tr></thead>
+                    <tbody>${rows}</tbody>
+                </table>`;
+        }
+
+        function renderSupplyChainMap(map) {
+            document.getElementById('panel-chain').style.display = '';
+            const gapColors = {10:'var(--accent-red)',9:'var(--accent-red)',8:'var(--accent-gold)',7:'var(--accent-gold)',6:'var(--accent-blue)'};
+            const levelNames = {1:'L1 显性瓶颈', 2:'L2 工艺瓶颈', 3:'L3 材料瓶颈', 4:'L4 设备/测试瓶颈'};
+
+            document.getElementById('content-chain').innerHTML = map.map(m => {
+                const gs = m.gap_score || 0;
+                const gapColor = gapColors[gs] || 'var(--text-dim)';
+                const barWidth = Math.min(gs * 10, 100);
+                return `<div class="chain-layer" style="${gs>=8?'border-left:3px solid var(--accent-red);':''}">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <span>
+                            <span style="display:inline-block;padding:1px 6px;border-radius:2px;font-size:9px;background:rgba(255,165,2,0.15);color:var(--accent-gold);">${levelNames[m.level]||'L'+m.level}</span>
+                            <strong style="margin-left:4px;">${escHtml(m.name||'')}</strong>
+                        </span>
+                        <span style="display:flex;align-items:center;gap:6px;">
+                            <span class="gap-bar" style="width:${barWidth}px;background:${gapColor};"></span>
+                            <span class="score-badge" style="color:${gapColor};background:rgba(255,165,2,0.1);font-size:10px;">预期差 ${gs}/10</span>
+                        </span>
+                    </div>
+                    ${m.gap_reason ? `<div style="font-size:10px;color:var(--accent-gold);margin-top:4px;">${escHtml(m.gap_reason)}</div>` : ''}
+                </div>`;
+            }).join('');
+        }
+
+        function renderTemporalV3(temporal) {
+            if (!temporal.length || !temporal[0].segment) return;
+            document.getElementById('panel-temporal').style.display = '';
+            document.getElementById('content-temporal').innerHTML = `
+                <div style="overflow-x:auto;">
+                <table style="width:100%;font-size:10px;">
+                <tr style="color:var(--text-micro);">
+                    <th>环节</th><th>需求增速</th><th>供需缺口</th><th>缺口填补</th><th>产能过剩风险</th><th>热度</th>
+                </tr>
+                ${temporal.map(t => `
+                <tr>
+                    <td style="font-weight:600;">${escHtml(t.segment||'')}</td>
+                    <td>${escHtml(t.demand_growth||'?')}</td>
+                    <td style="color:var(--accent-red);">${escHtml(t.supply_gap||'?')}</td>
+                    <td>${escHtml(t.gap_filled||'?')}</td>
+                    <td style="color:${(t.overcapacity_risk||'').includes('202')?'var(--accent-gold)':'var(--text-dim)'};">${escHtml(t.overcapacity_risk||'暂无')}</td>
+                    <td style="color:${t.heat_level==='过热'?'var(--accent-red)':(t.heat_level==='偏热'?'var(--accent-gold)':'var(--accent-green)')};">${escHtml(t.heat_level||'?')}</td>
+                </tr>`).join('')}
+                </table></div>`;
+        }
+
+        function renderPeers(peers) {
+            document.getElementById('panel-peers').style.display = '';
+            document.getElementById('content-peers').innerHTML = peers.map(p => `
+                <div class="peer-row">
+                    <span><strong>${escHtml(p.name||'')}</strong> <span style="color:var(--text-micro);font-size:10px;">${escHtml(p.code||'')} ${escHtml(p.exchange||'')}</span></span>
+                    <span style="color:var(--text-dim);">PE ${p.pe||'?'}x | PS ${p.ps||'?'}x</span>
+                    <span style="font-size:10px;color:var(--text-micro);">${escHtml(p.relevance||'')}</span>
+                </div>
+            `).join('');
+        }
+
+        function renderRisks(risks) {
+            document.getElementById('panel-risks').style.display = '';
+            document.getElementById('content-risks').innerHTML = risks.map(r => {
+                const sevClass = r.severity === '高' ? 'risk-high' : (r.severity === '中' ? 'risk-mid' : 'risk-low');
+                return `<span class="risk-tag ${sevClass}">${escHtml(r.type||'')}: ${escHtml(r.description||'')}</span>`;
+            }).join(' ');
+        }
+
+        function renderWatchlist(items) {
+            document.getElementById('panel-watchlist').style.display = '';
+            document.getElementById('content-watchlist').innerHTML = items.map(item =>
+                `<span class="watchlist-item">${escHtml(item)}</span>`
+            ).join(' ');
+        }
+
+        // ═══ Legacy 兼容 ═════════════════════════════════
+
+        function renderLegacy(d) {
+            if (d.prosperity_signals) {
+                const p = d.prosperity_signals;
+                document.getElementById('current-industry').textContent =
+                    (p.hot_segments||[]).join(' / ') || d.industry || '';
+                document.getElementById('stock-count').textContent = '景气评分: ' + (p.prosperity_score||'?') + '/10';
+            }
+            if (d.summary) {
+                document.getElementById('panel-summary').style.display = '';
+                document.getElementById('content-summary').innerHTML = mdToHtml(d.summary);
+            }
+            if (d.supply_chain) {
+                const ls = d.supply_chain.recursive_layers || d.supply_chain.layers || [];
+                if (ls.length) {
+                    document.getElementById('panel-chain').style.display = '';
+                    const gc = {10:'var(--accent-red)',9:'var(--accent-red)',8:'var(--accent-gold)',7:'var(--accent-gold)'};
+                    document.getElementById('content-chain').innerHTML = ls.map(l => `
+                        <div class="chain-layer" style="${(l.expectation_gap_score||0)>=8?'border-left:3px solid var(--accent-red);':''}">
+                            <div style="display:flex;justify-content:space-between;">
+                                <span><span style="display:inline-block;padding:1px 6px;border-radius:2px;font-size:9px;background:rgba(255,165,2,0.15);color:var(--accent-gold);">L${l.level||'?'}</span> <strong>${escHtml(l.name||'')}</strong></span>
+                                ${l.expectation_gap_score?`<span class="score-badge" style="color:${gc[l.expectation_gap_score]||'var(--text-dim)'};">预期差 ${l.expectation_gap_score}/10</span>`:''}
+                            </div>
+                            <div style="font-size:10px;color:var(--text-dim);margin-top:4px;">${escHtml(l.barriers||'')}</div>
+                            ${l.gap_reason?`<div style="font-size:10px;color:var(--accent-gold);margin-top:2px;">${escHtml(l.gap_reason)}</div>`:''}
+                            ${l.a_share_peers&&l.a_share_peers.length?`<div style="font-size:9px;color:var(--accent-blue);">A股: ${l.a_share_peers.map(p=>escHtml(p.name||p.code)).join(', ')}</div>`:''}
+                        </div>`).join('');
+                }
+            }
+            if (d.temporal) {
+                const tl = Array.isArray(d.temporal) ? d.temporal : [];
+                if (tl.length && tl[0].segment) renderTemporalV3(tl);
+            }
+        }
+
+        // ═══ 工具函数 ═══════════════════════════════════
+
+        function mdToHtml(md) {
+            return md
+                .replace(/### (.+)/g, '<h3>$1</h3>')
+                .replace(/## (.+)/g, '<h2>$1</h2>')
+                .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\n/g, '<br>');
+        }
+
+        function escHtml(s) {
+            if (!s) return '';
+            return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
         }
 
         // ── 持久化 ──
@@ -379,36 +538,30 @@
 
         function restoreView(d) {
             document.getElementById('panel-empty').style.display = 'none';
-            if (d.hot_industries) renderCards(d.hot_industries);
-            if (d.supply_chain) renderLayers(d);
-            if (d.bottleneck) renderBn(d);
-            if (d.temporal) renderTm(d);
-            if (d.briefing) renderBf(d);
+            if (d.hot_industries) {
+                const c = document.getElementById('content-scan-industries');
+                document.getElementById('panel-scan-result').style.display = '';
+                c.innerHTML = d.hot_industries.map((ind,i) => `
+                    <div style="padding:10px;border-bottom:1px solid var(--border-thin);cursor:pointer;${i===0?'border-left:3px solid var(--accent-gold);padding-left:8px;':''}"
+                         onclick="document.getElementById('research-industry').value='${(ind.name||ind.industry||'').replace(/'/g,"\\'")}';startResearch();">
+                        <div style="display:flex;justify-content:space-between;"><span style="font-weight:600;">${i+1}. ${ind.name||ind.industry||''}</span><span class="score-badge score-high">${ind.score||'?'}/10</span></div>
+                        <div style="font-size:11px;color:var(--text-dim);margin-top:4px;">${ind.reason||''}</div>
+                    </div>`).join('');
+            }
+
+            const isV3 = d.core_stocks || d.supply_chain_map;
+            if (isV3) {
+                renderV3(d);
+                document.getElementById('current-industry').textContent = d.industry || '';
+                document.getElementById('stock-count').textContent = (d.core_stocks||[]).length ? `锁定 ${d.core_stocks.length} 只标的` : '';
+            } else if (d.supply_chain || d.bottleneck || d.temporal || d.briefing) {
+                renderLegacy(d);
+                if (d.briefing) {
+                    document.getElementById('panel-summary').style.display = '';
+                    document.getElementById('content-summary').innerHTML = mdToHtml(d.briefing);
+                }
+            }
         }
-        function renderCards(items) {
-            const c = document.getElementById('content-scan-industries');
-            document.getElementById('panel-scan-result').style.display = '';
-            c.innerHTML = items.map((ind,i) => `
-                <div style="padding:10px;border-bottom:1px solid var(--border-thin);cursor:pointer;${i===0?'border-left:3px solid var(--accent-gold);padding-left:8px;':''}"
-                     onclick="document.getElementById('research-industry').value='${ind.name||ind.industry||''}';document.getElementById('research-codes').value='${(ind.a_stock_codes||[]).join(',')}';startResearch();">
-                    <div style="display:flex;justify-content:space-between;"><span style="font-weight:600;">${i+1}. ${ind.name||ind.industry||''} <i class="fas fa-search" style="font-size:9px;color:var(--text-micro);"></i></span><span class="score-badge score-high">${ind.score||'?'}/10</span></div>
-                    <div style="font-size:11px;color:var(--text-dim);margin-top:4px;">${ind.reason||''}</div>
-                    ${ind.a_stock_codes?`<div style="font-size:10px;color:var(--accent-blue);">关注: ${ind.a_stock_codes.join(', ')}</div>`:''}</div>`).join('');
-        }
-        function renderLayers(d) {
-            const ls = (d.supply_chain||{}).recursive_layers || (d.supply_chain||{}).layers || [];
-            if (!ls.length) return;
-            document.getElementById('panel-chain').style.display = '';
-            const gc={10:'var(--accent-red)',9:'var(--accent-red)',8:'var(--accent-gold)',7:'var(--accent-gold)'};
-            document.getElementById('content-chain').innerHTML = ls.map(l=>`<div class="chain-layer" style="${(l.expectation_gap_score||0)>=8?'border-left:3px solid var(--accent-red);':''}">
-                <div style="display:flex;justify-content:space-between;"><span><span style="display:inline-block;padding:1px 6px;border-radius:2px;font-size:9px;background:rgba(255,165,2,0.15);color:var(--accent-gold);">L${l.level||'?'}</span> <strong>${l.name||''}</strong></span>${l.expectation_gap_score?`<span class="score-badge" style="color:${gc[l.expectation_gap_score]||'var(--text-dim)'};">预期差 ${l.expectation_gap_score}/10</span>`:''}</div>
-                <div style="font-size:10px;color:var(--text-dim);margin-top:4px;">${l.barriers||''}</div>
-                ${l.gap_reason?`<div style="font-size:10px;color:var(--accent-gold);margin-top:2px;">💡 ${l.gap_reason}</div>`:''}
-                ${l.a_share_peers&&l.a_share_peers.length?`<div style="font-size:9px;color:var(--accent-blue);">A股: ${l.a_share_peers.map(p=>p.name||p.code).join(', ')}</div>`:''}</div>`).join('');
-        }
-        function renderBn(d) { const b=(d.bottleneck||{}); const bl=Array.isArray(b)?b:[]; if(!bl.length)return; document.getElementById('panel-bottleneck').style.display=''; document.getElementById('content-bottleneck').innerHTML=bl.map(b=>`<div style="padding:8px;border-bottom:1px solid var(--border-thin);"><strong>${b.segment||''}</strong> <span class="score-badge score-high">${b.monopoly_score||'?'}/10</span><div style="font-size:11px;color:var(--text-dim);margin-top:4px;">${b.monopoly_root||''}</div>${b.a_share_picks?b.a_share_picks.map(p=>`<div style="font-size:10px;color:var(--accent-blue);">→ ${p.code} ${p.name}: ${p.logic||''}</div>`).join(''):''}</div>`).join(''); }
-        function renderTm(d) { const t=d.temporal||{}; const tl=Array.isArray(t)?t:[]; if(!tl.length||!tl[0].segment)return; document.getElementById('panel-temporal').style.display=''; document.getElementById('content-temporal').innerHTML=`<div style="overflow-x:auto;"><table style="width:100%;font-size:10px;"><tr style="color:var(--text-micro);"><th>环节</th><th>需求增速</th><th>产能利用</th><th>供需缺口</th><th>缺口填补</th><th>景气评分</th><th>热度</th></tr>${tl.map(t=>`<tr><td style="font-weight:600;">${t.segment||''}</td><td>${t.demand_growth||'?'}</td><td>${t.capacity_util||'?'}</td><td style="color:var(--accent-red);">${t.supply_gap||'?'}</td><td>${t.gap_filled||'?'}</td><td>${t.sustainability_score||'?'}/10</td><td style="color:${t.heat_level==='过热'?'var(--accent-red)':(t.heat_level==='偏热'?'var(--accent-gold)':'var(--accent-green)')};">${t.heat_level||'?'}</td></tr>`).join('')}</table></div>`; }
-        function renderBf(d) { if(!d.briefing)return; document.getElementById('panel-summary').style.display=''; document.getElementById('content-summary').innerHTML=d.briefing.replace(/### (.+)/g,'<h3>$1</h3>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>'); }
 
         document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => {

@@ -40,7 +40,7 @@ class GeminiProvider(AIProviderProtocol):
             except (KeyError, IndexError):
                 return None
 
-    async def chat(self, prompt: str) -> Optional[str]:
+    async def chat(self, prompt: str, max_tokens: int = 4096) -> Optional[str]:
         return None
 
     @staticmethod

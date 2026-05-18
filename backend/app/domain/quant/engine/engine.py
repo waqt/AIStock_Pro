@@ -40,9 +40,15 @@ class QuantEngine:
             latest_date = res.scalars().first()
             if latest_date:
                 gap = (date.today() - latest_date).days
+                weekday = date.today().weekday()
+                # 跳过逻辑 (考虑周末):
+                # gap<=1: 今天/昨天数据, 总是最新
+                # 周一 gap<=2: 周六/日数据(实际不存在), 周五数据gap=3需同步
                 if gap <= 1:
-                    return 0  # 已是最新
-                days_to_fetch = max(gap + 5, 10)  # 多抓几天防止节假日断层
+                    return 0
+                if weekday == 0 and gap <= 2:
+                    return 0
+                days_to_fetch = max(gap + 5, 10)
             # else: 无历史数据 → 全量抓取 (days=500)
 
         # 2. 抓取行情
@@ -183,13 +189,17 @@ class QuantEngine:
     # 批量任务入口
     # ═══════════════════════════════════════════
 
-    async def batch_sync_and_analyze(self, exec_id: str = None, mode: str = "AUTO"):
+    async def batch_sync_and_analyze(self, exec_id: str = None, mode: str = "AUTO", target_codes: list = None):
         """
         批量同步 + 分析 (V5.2 节点追踪版)
         节点: FX → FETCHING → CALCULATING → SAVING → UPDATING_POSITIONS
+        target_codes: 可选, 指定要同步的股票代码列表; 为None则同步全部持仓
         """
         result = await self.db.execute(select(Position))
         positions = result.scalars().all()
+        if target_codes:
+            target_set = set(target_codes)
+            positions = [p for p in positions if p.stock_code in target_set]
         total = len(positions)
 
         try:
@@ -233,6 +243,14 @@ class QuantEngine:
                     )
                 await self.update_position_pnl(pos.stock_code)
             await self.db.commit()
+
+            # ── 节点 5: VALUATION ──
+            if exec_id:
+                await task_manager.update_progress(exec_id, 95, "VALUATION: syncing PE/PB/mcap...")
+            from app.domain.market_data.services.valuation import sync_valuation
+            val_count = await sync_valuation()
+            if exec_id:
+                await task_manager.update_progress(exec_id, 100, f"估值同步完成: {val_count}只")
 
             logger.info("[✅] Batch sync+analyze complete.")
         except asyncio.CancelledError:

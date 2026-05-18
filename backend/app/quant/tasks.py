@@ -6,14 +6,14 @@ from app.framework.logger import logger
 from app.framework.tasks.engine import task_manager
 
 @task_manager.register(code="sync_market", name="行情数据同步", description="同步持仓股票的最新行情并重算技术指标")
-async def sync_market_data_task(mode: str = "AUTO", exec_id: str = None):
+async def sync_market_data_task(mode: str = "AUTO", exec_id: str = None, target_codes: list = None):
     """V5.1 行情同步任务 — 增量感知 + 节点追踪"""
     async with async_session() as db:
         engine = QuantEngine(db)
         if mode == "PRICE_ONLY":
             await engine.sync_prices_only(exec_id=exec_id)
         else:
-            await engine.batch_sync_and_analyze(exec_id=exec_id, mode=mode)
+            await engine.batch_sync_and_analyze(exec_id=exec_id, mode=mode, target_codes=target_codes)
 
 @task_manager.register(code="calc_indicators", name="指标重算", description="仅针对现有数据重新计算量化指标")
 async def calculate_indicators_task(exec_id: str = None):
