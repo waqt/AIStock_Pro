@@ -118,7 +118,11 @@ class SupplyChainAnalyst(ResearchAgent):
         research = await self.data_loader.deep_research(
             f"{industry} 全球 capex 资本开支 最新动态 2025 2026", rounds=2
         )
-        search_results = research.get("sources", [])
+        # 扁平化搜索结果: [{title, url, snippet}]
+        search_refs = []
+        for src in research.get("sources", []):
+            for r in src.get("results", []):
+                search_refs.append({"title": r.get("title",""), "url": r.get("url",""), "snippet": r.get("snippet","")[:200]})
 
         prompt = f"""你是一位全球科技产业研究员。请分析 {industry} 行业的高景气信号。
 
@@ -131,8 +135,8 @@ class SupplyChainAnalyst(ResearchAgent):
 ## 成交量趋势
 {_json_dumps(volume_trends, ensure_ascii=False) if volume_trends else "暂无"}
 
-## 🔍 实时搜索结果
-{_json_dumps(search_results, ensure_ascii=False) if search_results else "搜索不可用, 使用你的训练知识"}
+## 🔍 网络实时搜索结果 ({len(search_refs)} 条)
+{_json_dumps(search_refs[:8], ensure_ascii=False) if search_refs else "搜索不可用, 使用你的训练知识"}
 
 ## 你的任务
 综合以上数据和搜索结果, 请分析:
@@ -154,10 +158,22 @@ class SupplyChainAnalyst(ResearchAgent):
         industry = ctx.get("industry", "")
         hot_segments = signals.get("hot_segments", [])
 
+        # 🔍 搜索供应链最新动态
+        sc_research = await self.data_loader.deep_research(
+            f"{industry} 供应链 上游 材料 设备 工艺瓶颈", rounds=2
+        )
+        sc_refs = []
+        for src in sc_research.get("sources", []):
+            for r in src.get("results", []):
+                sc_refs.append({"title": r.get("title",""), "url": r.get("url",""), "snippet": r.get("snippet","")[:200]})
+
         prompt = f"""你是一位拥有硅谷硬核技术视角的半导体/材料/设备资深产业专家。请对 {industry} 行业做**多级递归穿透分析**。
 
 ## 高景气子环节 (显性 Layer 1)
 {_json_dumps(hot_segments, ensure_ascii=False)}
+
+## 🔍 供应链实时搜索结果 ({len(sc_refs)} 条)
+{_json_dumps(sc_refs[:6], ensure_ascii=False) if sc_refs else "搜索暂不可用"}
 
 ## 核心方法: 多级递归追问
 
@@ -210,15 +226,19 @@ Layer 4 (测试与辅具瓶颈): 保证 Layer 3 质量的检测设备/探针/夹
             high_gap = layers[:4]
 
         # 🔍 搜索瓶颈环节最新动态
-        search_queries = [f"{b.get('name','')} 产能 供需 扩产" for b in high_gap[:3]]
-        search_results = {}
-        for b, q in zip(high_gap[:3], search_queries):
-            search_results[b.get("name","")] = await self.data_loader.search_web(q)
+        search_refs = []
+        for b in high_gap[:3]:
+            name = b.get("name","")
+            if name:
+                results = await self.data_loader.search_web(f"{name} 产能 供需 扩产 技术壁垒")
+                for r in results:
+                    r["segment"] = name
+                    search_refs.append(r)
 
         prompt = f"""你是一位全球供应链投资专家。请深度分析以下供不应求的瓶颈环节。
 
-## 🔍 实时搜索到的行业动态
-{_json_dumps(search_results, ensure_ascii=False)}
+## 🔍 实时搜索到的行业动态 ({len(search_refs)} 条)
+{_json_dumps(search_refs[:8], ensure_ascii=False)}
 
 ## 瓶颈环节
 {_json_dumps(high_gap, ensure_ascii=False, indent=2)}
