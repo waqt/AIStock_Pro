@@ -113,6 +113,21 @@ class StockInfo(Base):
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
 
+class StrategySignal(Base):
+    """策略信号持久化 — 每策略每次执行的结果"""
+    __tablename__ = "strategy_signals"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    stock_code = Column(String(20), index=True)
+    strategy_name = Column(String(50))
+    strategy_category = Column(String(20), default="traditional")  # traditional | ai_chain
+    signal = Column(String(10))  # BUY / SELL / HOLD
+    confidence = Column(Float, default=0.5)
+    reasoning = Column(Text, default="")
+    indicators_snapshot = Column(JSON, default=dict)
+    decision_date = Column(Date, index=True)
+    generated_at = Column(DateTime, default=datetime.now)
+
+
 class SystemSetting(Base):
     """系统全局配置"""
     __tablename__ = "system_settings"
