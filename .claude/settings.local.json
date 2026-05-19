@@ -1,4 +1,26 @@
 {
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ \"${CLAUDE_TOOL_USE_FILE_PATH: -3}\" = \".py\" ]; then cd E:/workspace/AIResearch/AIStock_Pro/backend && D:/develop_env/python_related/anaconda/Anaconda3/envs/aiteacher/python.exe -m py_compile \"${CLAUDE_TOOL_USE_FILE_PATH}\" 2>&1 | head -3; fi"
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ \"${CLAUDE_TOOL_USE_FILE_PATH: -3}\" = \".py\" ]; then cd E:/workspace/AIResearch/AIStock_Pro/backend && D:/develop_env/python_related/anaconda/Anaconda3/envs/aiteacher/python.exe -m py_compile \"${CLAUDE_TOOL_USE_FILE_PATH}\" 2>&1 | head -3; fi"
+          }
+        ]
+      }
+    ]
+  },
   "permissions": {
     "allow": [
       "Bash(Get-ChildItem -Path \"E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\" -Depth 1)",
@@ -45,7 +67,42 @@
       "PowerShell(Write-Output \"=== Fix HK names ===\"; try { $r = Invoke-WebRequest -Uri \"http://127.0.0.1:8000/api/data/stock-list/sync\" -Method POST -UseBasicParsing; Write-Output $r.Content } catch { Write-Output $_.Exception.Message }; Write-Output \"`n=== Valuation ===\"; try { $r2 = Invoke-WebRequest -Uri \"http://127.0.0.1:8000/api/data/valuation/sync\" -Method POST -UseBasicParsing; Write-Output $r2.Content } catch { Write-Output $_.Exception.Message })",
       "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://127.0.0.1:8000/api/data/stock-list/sync\" -Method POST -UseBasicParsing; Write-Output $r.Content } catch { Write-Output $_.Exception.Message })",
       "WebSearch",
-      "PowerShell(Write-Output \"Starting full A-share sync...\"; try { $r = Invoke-WebRequest -Uri \"http://127.0.0.1:8000/api/data/stock-list/sync?full=true\" -Method POST -UseBasicParsing; Write-Output $r.Content } catch { Write-Output $_.Exception.Message })"
+      "PowerShell(Write-Output \"Starting full A-share sync...\"; try { $r = Invoke-WebRequest -Uri \"http://127.0.0.1:8000/api/data/stock-list/sync?full=true\" -Method POST -UseBasicParsing; Write-Output $r.Content } catch { Write-Output $_.Exception.Message })",
+      "PowerShell(netsh winhttp *)",
+      "PowerShell([System.Net.WebRequest]::GetSystemWebProxy\\(\\).GetProxy\\(\"http://www.google.com\"\\))",
+      "PowerShell(Get-Content *)",
+      "PowerShell($body = '{\"industry\":\"AI芯片\",\"stock_codes\":[],\"include_portfolio\":false}'; $r = Invoke-WebRequest -Uri \"http://127.0.0.1:8000/api/research/supply-chain\" -Method POST -ContentType \"application/json\" -Body $body -UseBasicParsing; $r.Content)",
+      "PowerShell(try { $r = Invoke-RestMethod -Uri \"http://127.0.0.1:57995/configs\" -Method PUT -Body '{\"path\":\"C:\\\\Users\\\\86157\\\\.config\\\\clash\\\\profiles\\\\1772757846546.yml\"}' -ContentType \"application/json\"; Write-Output \"Reload requested: $\\($r\\)\" } catch { Write-Output \"API failed: $_\" })",
+      "PowerShell($body = '{\"industry\":\"人形机器人\",\"stock_codes\":[],\"include_portfolio\":false}'; $r = Invoke-WebRequest -Uri \"http://127.0.0.1:8000/api/research/supply-chain\" -Method POST -ContentType \"application/json\" -Body $body -UseBasicParsing; $r.Content)",
+      "PowerShell($body = '{}'; $r = Invoke-WebRequest -Uri \"http://127.0.0.1:8000/api/positions\" -Method GET -UseBasicParsing; $r.Content)",
+      "PowerShell($r = Invoke-WebRequest -Uri \"http://127.0.0.1:8000/api/data/health/market\" -Method GET -UseBasicParsing; $r.Content)",
+      "PowerShell($r = Invoke-WebRequest -Uri \"http://127.0.0.1:8000/api/data/health\" -Method GET -UseBasicParsing; $r.Content)",
+      "PowerShell($r = Invoke-WebRequest -Uri \"http://127.0.0.1:8000/api/data/health/overview\" -Method GET -UseBasicParsing; $r.Content)",
+      "PowerShell($r = Invoke-WebRequest -Uri \"http://127.0.0.1:8000/api/data/health/stocks\" -Method GET -UseBasicParsing; $r.Content)",
+      "PowerShell($codes = @\\('688602', '688652', '688620', '688012', '688261', '688002', '300750', '512400'\\); foreach \\($c in $codes\\) { $r = Invoke-RestMethod -Uri \"http://127.0.0.1:8000/api/data/stock-list/search?q=$c\" -Method GET; $match = $r | Where-Object { $_.stock_code -eq $c }; Write-Output \"$c -> $\\($match.stock_name\\) \\($\\($match.exchange\\)\\)\" })",
+      "PowerShell($codes = @\\('688602', '688652', '688620', '688012'\\); foreach \\($c in $codes\\) { try { $r = Invoke-RestMethod -Uri \"http://127.0.0.1:8000/api/research/data/stock/$c\" -Method GET -TimeoutSec 10; Write-Output \"$c -> $\\($r.fundamentals.stock_name\\) | PE:$\\($r.fundamentals.pe_ttm\\) | MCAP:$\\($r.fundamentals.mcap_yi\\)\" } catch { Write-Output \"$c -> ERROR: $_\" } })",
+      "Bash(curl -s \"http://127.0.0.1:8000/api/research/reports?limit=5\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('success:', d['success']\\); print\\('count:', len\\(d['data']\\)\\)\")",
+      "Bash(curl -s \"http://127.0.0.1:8000/research.html\")",
+      "Bash(curl -s -I \"http://127.0.0.1:8000/research.html\")",
+      "Bash(curl -s -X POST http://127.0.0.1:8000/api/research/supply-chain-hacker/level -H \"Content-Type: application/json\" -d @/tmp/lvl_test.json --max-time 120)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); r=d['data']; print\\('Level:', r.get\\('level_name'\\)\\); print\\('Assets:', len\\(r.get\\('all_assets',[]\\)\\)\\); print\\('Overview:', \\(r.get\\('overview',''\\)[:100]\\)\\); [print\\(f'  {a.get\\(\\\\\"name\\\\\",\\\\\"?\\\\\"\\)} \\({a.get\\(\\\\\"code\\\\\",\\\\\"?\\\\\"\\)}\\) role={a.get\\(\\\\\"role\\\\\",\\\\\"?\\\\\"\\)} moat={a.get\\(\\\\\"moat_score\\\\\",\\\\\"?\\\\\"\\)}'\\) for a in r.get\\('all_assets',[]\\)[:8]]\")",
+      "Bash(dir \"E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\Local_data\\\\研究方法\")",
+      "PowerShell($content = Get-Content \"E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\backend\\\\app\\\\domain\\\\research\\\\agents\\\\supply_chain_hacker.py\" -Raw; $idx = $content.IndexOf\\('watchlist'\\); Write-Output \"Found at char: $idx\"; $content.Substring\\([Math]::Max\\(0,$idx-10\\), 60\\) -replace \"`t\", \"[TAB]\" -replace \" \", \"[SP]\")",
+      "Bash(curl -s http://127.0.0.1:8000/api/quant/indicators/registry)",
+      "Bash(curl -s http://127.0.0.1:8000/api/quant/strategies)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\)['data']; print\\(f'Strategies: {len\\(d\\)}'\\); [print\\(f'  {s[\\\\\"name\\\\\"]} \\({s[\\\\\"category\\\\\"]}\\)'\\) for s in d]\")",
+      "Bash(curl -s -X POST http://127.0.0.1:8000/api/quant/decide/688012 --max-time 120)",
+      "Bash(python -c ' *)",
+      "Bash(curl -s http://127.0.0.1:8000/api/quant/indicators/688012)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\)['data']; print\\(json.dumps\\(d['indicators'], indent=2, ensure_ascii=False\\)[:800] if d else 'no data'\\)\")",
+      "Bash(curl -s http://127.0.0.1:8000/api/quant/strategies/aggressive_short)",
+      "Bash(curl -s -X POST http://127.0.0.1:8000/api/quant/decide/portfolio --max-time 60)",
+      "Bash(curl -s http://127.0.0.1:8000/api/positions)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f'Positions: {len\\(d\\)}'\\)\")",
+      "Bash(curl -s -X POST \"http://127.0.0.1:8000/api/quant/indicators/compute/688012\" --max-time 30)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\)['data']; print\\(f'computed: {d[\\\\\"computed\\\\\"]} indicators'\\); print\\('names:', d.get\\('indicators',[]\\)[:10]\\)\")",
+      "Bash(curl -s -X POST http://127.0.0.1:8000/api/quant/decide/688012 --max-time 90)"
     ]
   }
 }
