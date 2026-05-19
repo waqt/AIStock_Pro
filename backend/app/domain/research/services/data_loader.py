@@ -192,14 +192,23 @@ class ResearchDataLoader:
             merged = self._merge_financial_sheets(income_df, cashflow_df, balance_df, periods)
             quarters = []
             for _, row in merged.iterrows():
-                quarters.append({
+                q = {
                     "report_date": str(row.get("REPORT_DATE", ""))[:10],
                     "revenue": float(row.get("revenue", 0) or 0),
                     "profit": float(row.get("profit", 0) or 0),
+                    "operate_cost": float(row.get("operate_cost", 0) or 0),
+                    "sale_expense": float(row.get("sale_expense", 0) or 0),
+                    "manage_expense": float(row.get("manage_expense", 0) or 0),
                     "op_cashflow": float(row.get("op_cashflow", 0) or 0),
                     "inventory": float(row.get("inventory", 0) or 0),
                     "contract_liability": float(row.get("contract_liability", 0) or 0),
-                })
+                    "accounts_receivable": float(row.get("accounts_receivable", 0) or 0),
+                    "total_assets": float(row.get("total_assets", 0) or 0),
+                    "current_assets": float(row.get("current_assets", 0) or 0),
+                    "fixed_assets": float(row.get("fixed_assets", 0) or 0),
+                    "total_liabilities": float(row.get("total_liabilities", 0) or 0),
+                }
+                quarters.append(q)
 
             logger.info(f"[Financial] Loaded {len(quarters)} quarters for {code}")
             return {"code": code, "quarters": quarters}
@@ -225,16 +234,20 @@ class ResearchDataLoader:
 
     @staticmethod
     def _fetch_income_sheet(prefix: str):
-        """获取单季度利润表 → 营业收入 / 归母净利润"""
+        """获取单季度利润表 → 营收/利润/营业成本/销售费用/管理费用"""
         import akshare as ak
         import pandas as pd
         df = ak.stock_profit_sheet_by_quarterly_em(symbol=prefix)
         df = df.rename(columns={
             "OPERATE_INCOME": "revenue",
             "PARENT_NETPROFIT": "profit",
+            "OPERATE_COST": "operate_cost",
+            "SALE_EXPENSE": "sale_expense",
+            "MANAGE_EXPENSE": "manage_expense",
         })
         df["REPORT_DATE"] = pd.to_datetime(df["REPORT_DATE"])
-        return df[["REPORT_DATE", "revenue", "profit"]].dropna(subset=["revenue"])
+        cols = ["REPORT_DATE", "revenue", "profit", "operate_cost", "sale_expense", "manage_expense"]
+        return df[[c for c in cols if c in df.columns]].dropna(subset=["revenue"])
 
     @staticmethod
     def _fetch_cashflow_sheet(prefix: str):
@@ -248,21 +261,24 @@ class ResearchDataLoader:
 
     @staticmethod
     def _fetch_balance_sheet(prefix: str):
-        """获取资产负债表(按报告期) → 存货 / 合同负债"""
+        """获取资产负债表(按报告期) → 存货/合同负债/应收/总资产/流动资产/固定资产/总负债"""
         import akshare as ak
         import pandas as pd
         df = ak.stock_balance_sheet_by_report_em(symbol=prefix)
         df = df.rename(columns={
             "INVENTORY": "inventory",
             "CONTRACT_LIAB": "contract_liability",
+            "ACCOUNTS_RECE": "accounts_receivable",
+            "TOTAL_ASSETS": "total_assets",
+            "CURRENT_ASSET_BALANCE": "current_assets",
+            "FIXED_ASSET": "fixed_assets",
+            "TOTAL_LIABILITIES": "total_liabilities",
         })
         df["REPORT_DATE"] = pd.to_datetime(df["REPORT_DATE"])
-        cols = ["REPORT_DATE"]
-        if "inventory" in df.columns:
-            cols.append("inventory")
-        if "contract_liability" in df.columns:
-            cols.append("contract_liability")
-        return df[cols] if len(cols) > 1 else None
+        cols = ["REPORT_DATE", "inventory", "contract_liability",
+                "accounts_receivable", "total_assets", "current_assets",
+                "fixed_assets", "total_liabilities"]
+        return df[[c for c in cols if c in df.columns]]
 
     @staticmethod
     def _merge_financial_sheets(income_df, cashflow_df, balance_df, periods: int):

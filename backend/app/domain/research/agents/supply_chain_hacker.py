@@ -165,7 +165,17 @@ class SupplyChainHacker(ResearchAgent):
   "risk_alerts": [
     {{"type": "地缘/技术替代/供需反转/政策", "severity": "高/中/低", "description": "..."}}
   ],
-  "watchlist": ["关键跟踪指标1", "指标2"]
+  "watchlist": ["关键跟踪指标1", "指标2"],
+  "moat_window": {{
+    "longest_months": 36, "shortest_months": 6,
+    "bottleneck_layer": "最脆弱层级", "decay_signals": ["信号1", "信号2"],
+    "defense_strength": "STRONG/MODERATE/WEAK"
+  }},
+  "crowding_assessment": {{
+    "consensus_level": "HIGH/MEDIUM/LOW",
+    "turnover_signal": "正常/异常放大/极端",
+    "crowding_verdict": "AVOID/CAUTIOUS/OK", "reason": "判断依据"
+  }}
 }}
 
 gap_score 评分标准:

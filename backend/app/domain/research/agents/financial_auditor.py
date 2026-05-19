@@ -217,6 +217,19 @@ class FinancialAuditor(ResearchAgent):
             score -= 5
             flags.append("⚠️ 经营现金流/利润偏低")
 
+        # ── 7. Beneish M-Score 造假检测 ──
+        m_score_result = self._beneish_m_score(quarters)
+        m_score = m_score_result.get("m_score")
+        if m_score is not None:
+            if m_score > -1.78:
+                score -= 25
+                flags.append(f"🚨 Beneish M-Score={m_score:.2f} (>-1.78): 财报造假概率较高")
+            elif m_score > -2.5:
+                score -= 5
+                flags.append(f"⚠️ Beneish M-Score={m_score:.2f}: 处于灰色区域, 需关注")
+            else:
+                flags.append(f"✅ Beneish M-Score={m_score:.2f}: 造假概率低")
+
         # 判决
         if score >= 60:
             verdict = "PASS"
@@ -229,6 +242,7 @@ class FinancialAuditor(ResearchAgent):
             "verdict": verdict,
             "score": score,
             "flags": flags,
+            "beneish": m_score_result,
             "scissor": {
                 "latest_gap_pct": latest_gap,
                 "scissor_quarters_count": len(scissor_quarters),
@@ -246,6 +260,85 @@ class FinancialAuditor(ResearchAgent):
         }
 
     # ═══ 工具 ═════════════════════════════════════
+
+    @staticmethod
+    def _safe_div(a, b):
+        return a / b if b and b != 0 else 0
+
+    def _beneish_m_score(self, quarters: List[Dict]) -> Dict:
+        """计算 Beneish M-Score — 财报造假概率 (8变量模型)
+        M > -1.78 → 高概率造假  |  -2.5 < M < -1.78 → 灰色区域  |  M < -2.5 → 低概率
+        """
+        if len(quarters) < 6:
+            return {"m_score": None, "error": "Need >=6 quarters for YoY comparison"}
+
+        t = quarters[-1]   # current period (latest quarter or TTM)
+        t1 = quarters[-5]  # prior year same quarter (for quarterly) or quarters[-2] for sequential
+
+        # Use YoY comparison (same quarter last year)
+        rev_t = t.get("revenue", 0) or 0
+        rev_t1 = t1.get("revenue", 0) or 0
+        profit_t = t.get("profit", 0) or 0
+        ocf_t = t.get("op_cashflow", 0) or 0
+        ar_t = t.get("accounts_receivable", 0) or 0
+        ar_t1 = t1.get("accounts_receivable", 0) or 0
+        cost_t = t.get("operate_cost", 0) or 0
+        cost_t1 = t1.get("operate_cost", 0) or 0
+        ta_t = t.get("total_assets", 0) or 0
+        ta_t1 = t1.get("total_assets", 0) or 0
+        ca_t = t.get("current_assets", 0) or 0
+        ca_t1 = t1.get("current_assets", 0) or 0
+        fa_t = t.get("fixed_assets", 0) or 0
+        fa_t1 = t1.get("fixed_assets", 0) or 0
+        tl_t = t.get("total_liabilities", 0) or 0
+        tl_t1 = t1.get("total_liabilities", 0) or 0
+        sga_t = (t.get("sale_expense", 0) or 0) + (t.get("manage_expense", 0) or 0)
+        sga_t1 = (t1.get("sale_expense", 0) or 0) + (t1.get("manage_expense", 0) or 0)
+
+        # 1. DSRI: Days Sales in Receivables Index
+        dsri = self._safe_div(self._safe_div(ar_t, rev_t), self._safe_div(ar_t1, rev_t1))
+
+        # 2. GMI: Gross Margin Index
+        gm_t = self._safe_div(rev_t - cost_t, rev_t)
+        gm_t1 = self._safe_div(rev_t1 - cost_t1, rev_t1)
+        gmi = self._safe_div(gm_t1, gm_t) if gm_t != 0 else 1
+
+        # 3. AQI: Asset Quality Index
+        aq_t = 1 - self._safe_div(ca_t + fa_t, ta_t) if ta_t != 0 else 0
+        aq_t1 = 1 - self._safe_div(ca_t1 + fa_t1, ta_t1) if ta_t1 != 0 else 0
+        aqi = self._safe_div(aq_t, aq_t1) if aq_t1 != 0 else 1
+
+        # 4. SGI: Sales Growth Index
+        sgi = self._safe_div(rev_t, rev_t1)
+
+        # 5. DEPI: Depreciation Index — approximated (no direct depreciation data)
+        depi = 1  # neutral assumption
+
+        # 6. SGAI: SG&A Expense Index
+        sgai = self._safe_div(self._safe_div(sga_t, rev_t), self._safe_div(sga_t1, rev_t1))
+
+        # 7. TATA: Total Accruals to Total Assets
+        tata = self._safe_div(profit_t - ocf_t, ta_t)
+
+        # 8. LVGI: Leverage Index
+        lvgi = self._safe_div(self._safe_div(tl_t, ta_t), self._safe_div(tl_t1, ta_t1))
+
+        # M-Score
+        m = (-4.84 + 0.920 * dsri + 0.528 * gmi + 0.404 * aqi
+             + 0.892 * sgi + 0.115 * depi - 0.172 * sgai
+             + 4.679 * tata - 0.327 * lvgi)
+
+        return {
+            "m_score": round(m, 3),
+            "threshold": -1.78,
+            "interpretation": "高概率造假" if m > -1.78 else ("灰色区域" if m > -2.5 else "低概率"),
+            "components": {
+                "dsri": round(dsri, 3), "gmi": round(gmi, 3),
+                "aqi": round(aqi, 3), "sgi": round(sgi, 3),
+                "depi": depi, "sgai": round(sgai, 3),
+                "tata": round(tata, 4), "lvgi": round(lvgi, 3),
+            }
+        }
 
     @staticmethod
     def _pct(current: float, base: float) -> Optional[float]:
