@@ -191,8 +191,9 @@ class QuantEngine:
 
     async def batch_sync_and_analyze(self, exec_id: str = None, mode: str = "AUTO", target_codes: list = None):
         """
-        批量同步 + 分析 (V5.2 节点追踪版)
-        节点: FX → FETCHING → CALCULATING → SAVING → UPDATING_POSITIONS
+        批量同步 (数据同步与指标计算已分离)
+        节点: FX → FETCHING → SAVING → UPDATING_POSITIONS → VALUATION
+        指标计算独立: POST /api/quant/indicators/compute
         target_codes: 可选, 指定要同步的股票代码列表; 为None则同步全部持仓
         """
         result = await self.db.execute(select(Position))
@@ -221,33 +222,23 @@ class QuantEngine:
                     )
                 await self.sync_market_data(pos.stock_code, mode=mode)
 
-            # ── 节点 2: CALCULATING ──
-            for idx, pos in enumerate(positions):
-                await asyncio.sleep(0)
-                if exec_id:
-                    await task_manager.update_progress(
-                        exec_id, 25 + int(((idx + 1) / total) * 25),
-                        f"CALCULATING: {idx+1}/{total} | {pos.stock_code}"
-                    )
-                await self.calculate_indicators(pos.stock_code)
-
-            # ── 节点 3: SAVING ──
+            # ── 节点 2: SAVING ──
             await self.db.commit()
             if exec_id:
-                await task_manager.update_progress(exec_id, 75, "SAVING: 落库完成")
+                await task_manager.update_progress(exec_id, 50, "SAVING: 落库完成")
 
-            # ── 节点 4: UPDATING_POSITIONS ──
+            # ── 节点 3: UPDATING_POSITIONS ──
             for idx, pos in enumerate(positions):
                 await asyncio.sleep(0)
                 if exec_id:
                     await task_manager.update_progress(
-                        exec_id, 75 + int(((idx + 1) / total) * 25),
+                        exec_id, 50 + int(((idx + 1) / total) * 25),
                         f"UPDATING_POSITIONS: {idx+1}/{total} | {pos.stock_code}"
                     )
                 await self.update_position_pnl(pos.stock_code)
             await self.db.commit()
 
-            # ── 节点 5: VALUATION ──
+            # ── 节点 4: VALUATION ──
             if exec_id:
                 await task_manager.update_progress(exec_id, 95, "VALUATION: syncing PE/PB/mcap...")
             from app.domain.market_data.services.valuation import sync_valuation

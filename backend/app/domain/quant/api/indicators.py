@@ -1,5 +1,6 @@
-"""指标API — 查询指标库和单股指标"""
-from fastapi import APIRouter
+"""指标API — 查询/计算指标"""
+from fastapi import APIRouter, Query
+from typing import Optional, List
 from app.domain.quant.indicators import INDICATOR_REGISTRY
 
 router = APIRouter(prefix="/api/quant/indicators", tags=["Quant-Indicators"])
@@ -38,3 +39,43 @@ async def get_stock_indicators(stock_code: str):
                 "patterns": row.logic_chain,
             }
         }
+
+
+# ═══ 指标计算 ═══════════════════════════════
+
+@router.post("/compute/{stock_code}")
+async def compute_indicators(
+    stock_code: str,
+    names: Optional[str] = Query(None, description="逗号分隔的指标名, 空=全部"),
+):
+    """计算单只股票的指标 (可选择指定算子), 结果持久化到 StockIndicator"""
+    from app.domain.quant.engine.indicator_runner import IndicatorRunner
+    indicator_names = [n.strip() for n in names.split(",") if n.strip()] if names else None
+    result = await IndicatorRunner.compute_single(stock_code, indicator_names)
+    return {"success": True, "data": result}
+
+
+@router.post("/compute")
+async def compute_indicators_batch(
+    codes: Optional[str] = Query(None, description="逗号分隔的股票代码"),
+    names: Optional[str] = Query(None, description="逗号分隔的指标名, 空=全部"),
+):
+    """批量计算指标 — 默认全部持仓, 可选指定股票+指标"""
+    from app.domain.quant.engine.indicator_runner import IndicatorRunner
+    from app.framework.database.session import async_session
+    from app.models.models import Position
+    from sqlalchemy import select
+
+    if codes:
+        stock_codes = [c.strip() for c in codes.split(",") if c.strip()]
+    else:
+        async with async_session() as db:
+            res = await db.execute(select(Position.stock_code))
+            stock_codes = [r[0] for r in res.all()]
+
+    if not stock_codes:
+        return {"success": True, "data": {"message": "无持仓或无指定股票"}}
+
+    indicator_names = [n.strip() for n in names.split(",") if n.strip()] if names else None
+    result = await IndicatorRunner.compute_batch(stock_codes, indicator_names)
+    return {"success": True, "data": result}

@@ -103,6 +103,20 @@
                         </div>
                     </div>
 
+                    <!-- 手动单票同步 -->
+                    <div class="panel" style="padding:10px;">
+                        <div style="display:flex;gap:6px;align-items:center;">
+                            <input type="text" id="manual-stock-input" placeholder="输入股票代码 (如 688012)"
+                                style="flex:1;background:#000;border:1px solid var(--border-color);color:#fff;padding:6px 10px;border-radius:4px;font-size:12px;">
+                            <button class="btn-action" onclick="syncManualStock()" style="white-space:nowrap;font-size:11px;padding:6px 12px;">
+                                <i class="fas fa-sync-alt"></i> 同步
+                            </button>
+                            <button class="btn-action" onclick="computeIndicators()" style="white-space:nowrap;font-size:11px;padding:6px 12px;border-color:var(--accent-blue);color:var(--accent-blue);">
+                                <i class="fas fa-calculator"></i> 算指标
+                            </button>
+                        </div>
+                    </div>
+
                     <!-- 行情体检表 -->
                     <div class="panel" style="flex: 1;">
                         <div class="panel-header">
@@ -268,6 +282,33 @@
             } catch (e) {
                 addLog(`Failed to load detail: ${e.message}`, 'error');
             }
+        }
+
+        // ── 手动单票同步 ──
+        async function syncManualStock() {
+            const code = document.getElementById('manual-stock-input').value.trim();
+            if (!code) { addLog('请输入股票代码', 'warn'); return; }
+            addLog(`正在同步 ${code} (行情+估值)...`, 'info');
+            try {
+                const res = await fetch(`${API_BASE}/data/sync/daily/${code}`, { method: 'POST' });
+                const data = await res.json();
+                addLog(`${code} ${data.message || '同步完成'}`, 'success');
+                updateHealthTable();
+            } catch(e) { addLog(`${code} 同步失败: ${e.message}`, 'error'); }
+        }
+
+        // ── 手动指标计算 ──
+        async function computeIndicators() {
+            const code = document.getElementById('manual-stock-input').value.trim();
+            if (!code) { addLog('请输入股票代码', 'warn'); return; }
+            addLog(`正在计算 ${code} 技术指标...`, 'info');
+            try {
+                const res = await fetch(`${API_BASE}/quant/indicators/compute/${code}`, { method: 'POST' });
+                const data = await res.json();
+                const r = data.data || {};
+                if (r.error) { addLog(`${code} 计算失败: ${r.error}`, 'error'); }
+                else { addLog(`${code} 完成: ${r.computed||0} 个指标`, 'success'); }
+            } catch(e) { addLog(`${code} 计算异常: ${e.message}`, 'error'); }
         }
 
         // ── 同步公共数据 (汇率/黄金/原油) ──
