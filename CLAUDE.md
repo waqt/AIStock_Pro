@@ -37,7 +37,7 @@ backend/app/
 │   │   ├── sources/               # Sina/AkShare/Tencent/Push2
 │   │   ├── services/              # valuation.py (PE/PB/市值), stock_list.py
 │   │   └── api/                   # (空, 路由在 app/api/data.py)
-│   ├── research/                  # ★ AI 投研 V4.0 — 5专家 DAG 管道
+│   ├── research/                  # ★ AI 投研 V4.0 DAG管道 + V3.0遗留
 │   │   ├── agents/
 │   │   │   ├── base.py            #   ResearchAgent + parse_json()
 │   │   │   ├── market_scanner.py  #   每日市场扫描 (Web实时数据)
@@ -53,7 +53,7 @@ backend/app/
 │   │   │   └── report_store.py    #   研报 JSON 文件持久化
 │   │   └── api/routes.py          #   /api/research/*
 │   └── quant/                     # ★ 量化模块 V1.0
-│       ├── indicators/            #   17个算子 (每文件一算子, 装饰器自注册)
+│       ├── indicators/            #   16个算子 (每文件一算子, 装饰器自注册)
 │       │   ├── trend/             #   MA, MACD, KDJ
 │       │   ├── momentum/          #   RSI, ATR, CCI
 │       │   ├── volatility/        #   Bollinger, Bollinger Width
@@ -69,10 +69,10 @@ backend/app/
 │       │   └── indicator_runner.py # 指标计算引擎 (快照/历史/增量)
 │       └── api/                   #   /api/quant/*
 ├── api/                           # 过渡期路由 (data.py/positions.py)
-└── models/                        # 数据模型 (11张表)
+└── models/                        # 数据模型 (10张表)
     └── models.py                  # Position, MarketData, StockIndicator,
-                                   #   StockInfo, StrategySignal, ExchangeRate, ...
-frontend/
+                                   #   StockInfo, StrategySignal, ExchangeRate,
+                                   #   TaskDefinition, TaskExecution, TradeHistory, SystemSetting
 ├── index.html                     # 指挥中心
 ├── positions.html                 # 持仓管理
 ├── research.html                  # AI 投研 (V4.0 DAG报告渲染)
@@ -84,13 +84,17 @@ frontend/
 
 ## V4.0 投研 MAS 架构
 
-### Agent 矩阵 (6个)
+### Agent 矩阵
 
 ```
-MarketScanner (侦察) → 独立运行, 发现赛道
-GlobalCapexScanner ──┐
-                      ├──→ [FinancialAuditor || HumanCapitalDetective] ──→ ValuationPricer ──→ Report
-SupplyChainHacker ───┘        (并行交叉验证)                         (综合定价)        (CIO报告)
+V4.0 DAG 管道 (6个):
+  MarketScanner (侦察) → 独立运行, 发现赛道
+  GlobalCapexScanner ──┐
+                        ├──→ [FinancialAuditor || HumanCapitalDetective] ──→ ValuationPricer ──→ Report
+  SupplyChainHacker ───┘        (并行交叉验证)                         (综合定价)        (CIO报告)
+
+V3.0 遗留 (3个, 向后兼容):
+  SupplyChainAnalyst, IndustryAnalyst, ResearchCoordinator
 ```
 
 | Agent | 职责 | API |
