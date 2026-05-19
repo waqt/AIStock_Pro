@@ -1,6 +1,6 @@
 """
-MarketScanner — AI 主动发现引擎
-无需输入, 自动扫宏观/资金流/持仓数据, 用 LLM 识别热门赛道并生成每日简报
+MarketScanner V4.0 — AI 主动发现引擎 (Web 实时版)
+零参数, 纯新鲜数据: Web搜索→LLM识别热门赛道→生成每日简报
 """
 import asyncio, json
 from decimal import Decimal
@@ -9,6 +9,7 @@ from app.domain.research.agents.base import ResearchAgent
 from app.domain.research.services.data_loader import data_loader
 from app.framework.logger import logger
 
+
 class _SafeEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, Decimal): return float(obj)
@@ -16,8 +17,9 @@ class _SafeEncoder(json.JSONEncoder):
 
 def _j(obj): return json.dumps(obj, ensure_ascii=False, cls=_SafeEncoder)
 
+
 class MarketScanner(ResearchAgent):
-    """主动发现智能体 — 每天扫市场找机会"""
+    """主动发现智能体 V4.0 — 实时扫描市场, 纯新鲜数据"""
 
     def __init__(self, provider=None):
         super().__init__(provider=provider, data_loader=data_loader)
@@ -28,7 +30,7 @@ class MarketScanner(ResearchAgent):
         if not self.provider:
             return {"error": "No AI provider"}
 
-        # Step 1: 收集全局信号 (本地数据, 无 LLM)
+        # Step 1: Web 搜索收集实时市场信号
         signals = await self._collect_signals(ctx)
 
         # Step 2: LLM 识别热门赛道
@@ -40,117 +42,119 @@ class MarketScanner(ResearchAgent):
         return {
             "agent": self.name,
             "macro": signals["macro"],
-            "portfolio_summary": signals["portfolio_summary"],
-            "volume_alerts": signals["volume_alerts"],
+            "market_pulse": signals["market_pulse"],
+            "search_sources": signals["search_sources"],
             "hot_industries": industries,
             "briefing": briefing,
         }
 
-    async def _collect_signals(self, ctx: Dict) -> Dict:
-        """收集全局市场信号"""
-        macro = ctx.get("macro", {})
-        positions = ctx.get("positions", [])
-        fundamentals = ctx.get("fundamentals", {})
-        market_data = ctx.get("market_data", {})
+    # ═══ Step 1: 实时信号收集 (Web搜索) ═══════════
 
-        # 持仓概要
-        pos_summary = {
-            "count": len(positions),
-            "total_value": sum(p.get("market_value", 0) or 0 for p in positions),
-            "stocks": [{
-                "code": p["stock_code"], "name": p.get("stock_name",""),
-                "pe_ttm": fundamentals.get(p["stock_code"], {}).get("pe_ttm"),
-                "pb": fundamentals.get(p["stock_code"], {}).get("pb"),
-                "change_pct": None,  # filled below
-                "volume_alert": False,
-            } for p in positions[:20]]
+    async def _collect_signals(self, ctx: Dict) -> Dict:
+        """4 角度并行搜索实时市场数据"""
+        queries = {
+            "market": "A股 今日热点板块 资金流向 领涨概念 龙虎榜 2026",
+            "macro": "中国央行货币政策 美联储 汇率 宏观要闻 今日 2026",
+            "flow": "北向资金 主力资金净流入 行业板块 成交量异动 2026",
+            "global": "全球股市 美股 港股 大宗商品 黄金 原油 今日 2026",
         }
 
-        # 成交量异动检测
-        volume_alerts = []
-        for code, rows in market_data.items():
-            if len(rows) < 10: continue
-            recent = sum(r.get("volume", 0) for r in rows[:3])
-            prev = sum(r.get("volume", 0) for r in rows[3:6])
-            if prev > 0 and recent > prev * 1.3:
-                volume_alerts.append({
-                    "code": code,
-                    "ratio": round(recent / prev, 2),
-                    "recent_vol": recent,
+        search_results = {}
+        for key, query in queries.items():
+            items = []
+            for r in await self.data_loader.search_web(query, num=4):
+                items.append({
+                    "title": r.get("title", ""),
+                    "url": r.get("url", ""),
+                    "snippet": r.get("snippet", "")[:250],
                 })
-                # mark in summary
-                for s in pos_summary["stocks"]:
-                    if s["code"] == code:
-                        s["volume_alert"] = True
-                        s["change_pct"] = rows[0].get("change_pct") if rows else None
+            search_results[key] = items
+
+        # 本地宏观数据作为补充
+        macro = ctx.get("macro", {})
 
         return {
             "macro": macro,
-            "portfolio_summary": {
-                "count": pos_summary["count"],
-                "total_value": pos_summary["total_value"],
-                "top5": pos_summary["stocks"][:5],
+            "market_pulse": {
+                "market_news": search_results.get("market", []),
+                "flow_news": search_results.get("flow", []),
+                "global_news": search_results.get("global", []),
             },
-            "volume_alerts": volume_alerts[:10],
+            "macro_news": search_results.get("macro", []),
+            "search_sources": sum(len(v) for v in search_results.values()),
         }
 
+    # ═══ Step 2: LLM 识别热门赛道 ═══════════════
+
     async def _identify_hot_industries(self, signals: Dict) -> List[Dict]:
-        """LLM 识别当前最热赛道"""
-        prompt = f"""你是一位全球宏观策略师。请基于以下市场信号, 识别当前 A 股最值得关注的 3-5 个行业/投资主题。
+        prompt = f"""你是 A 股市场策略师。基于以下实时市场数据, 识别当前最值得关注的 3-5 个行业/主题。
 
-## 宏观环境
+## 市场热点与资金流
+{_j(signals['market_pulse']['market_news'])}
+
+## 资金流向
+{_j(signals['market_pulse']['flow_news'])}
+
+## 全球市场
+{_j(signals['market_pulse']['global_news'])}
+
+## 汇率/大宗
 {_j(signals['macro'])}
-
-## 持仓概要
-{_j(signals['portfolio_summary'])}
-
-## 成交量异动 (放量>30%)
-{_j(signals['volume_alerts'])}
 
 ## 要求
-1. 每个行业给出: name, score(1-10), reason(核心逻辑), a_stock_codes(相关A股代码列表)
-2. 结合全球宏观环境(美联储/央行政策/大宗商品/地缘政治)判断行业景气度
-3. 优先关注有成交量异动支撑的行业
-4. 优先关注持仓中已有的行业(可持续跟踪)
+1. 每个行业: name(行业名称), score(1-10 景气评分), reason(核心逻辑, 引用搜索结果中的具体数据), global_drivers(全球驱动因素), a_stock_codes(A股映射代码列表)
+2. 优先关注有资金流入支撑的行业
+3. 区分短期热点(事件驱动) vs 中期趋势(产业逻辑)
+4. 如果搜索结果中提到具体股票代码, 必须包含在 a_stock_codes 中
 
-请输出纯 JSON 数组, 不要 Markdown:
-[{{"name":"AI算力","score":9,"reason":"NVIDIA Blackwell量产+TSMC CoWoS扩产","global_drivers":"英伟达/台积电capex创新高","a_stock_codes":["688256","300308"]}}]"""
+请输出纯 JSON 数组:
+[{{"name":"AI算力","score":9,"type":"中期趋势","reason":"英伟达B200量产+...","global_drivers":"MAG7 capex +40%","a_stock_codes":["688256","300308"]}}]"""
 
         text = await self._safe_call(prompt)
-        return self._parse_json(text)
+        return self.parse_json(text)
+
+    # ═══ Step 3: 每日简报 ═══════════════════════
 
     async def _generate_briefing(self, signals: Dict, industries: List) -> str:
-        """生成每日简报"""
-        prompt = f"""你是一位资深投资顾问。请基于以下数据生成今日投资简报。
+        prompt = f"""你是资深投资顾问。基于实时数据生成今日 A 股投资简报。
 
-## 宏观环境
-{_j(signals['macro'])}
+## 宏观要闻
+{_j(signals['macro_news'][:4])}
 
-## 持仓 (Top 5)
-{_j(signals['portfolio_summary'].get('top5', []))}
+## 全球市场
+{_j(signals['market_pulse']['global_news'][:3])}
 
 ## 热门赛道
 {_j(industries)}
 
+## 资金流
+{_j(signals['market_pulse']['flow_news'][:3])}
+
 ## 输出格式 (Markdown)
 ### 今日市场环境
-(2-3句宏观定调)
+(2-3句宏观定调 + 全球联动)
 
 ### 热门赛道 TOP 3
-| 排名 | 行业 | 景气评分 | 核心逻辑 | 关注标的 |
-|------|------|---------|---------|---------|
+| 排名 | 行业 | 类型 | 景气评分 | 核心逻辑 | 关注标的 |
+|------|------|------|---------|---------|---------|
+
+### 资金面信号
+(北向/主力资金动向, 1-2句)
 
 ### 操作建议
-(基于持仓的调仓建议)
+(基于当前市场环境的策略建议, 1-2句)
 
 ### 风险提示
-(1-2句今日需要关注的风险事件)"""
+(今日需要关注的宏观/政策/地缘风险, 1-2句)"""
 
         return await self._safe_call(prompt)
 
+    # ═══ 工具 ═══════════════════════════════════
+
     async def _safe_call(self, prompt: str) -> str:
         try:
-            return await asyncio.wait_for(self.provider.chat(prompt), timeout=45) or ""
+            return await asyncio.wait_for(
+                self.provider.chat(prompt, max_tokens=2048), timeout=45) or ""
         except asyncio.TimeoutError:
             logger.warning("[MarketScanner] LLM call timed out")
             return "分析超时, 请重试"
@@ -158,11 +162,17 @@ class MarketScanner(ResearchAgent):
             logger.warning(f"[MarketScanner] LLM call failed: {e}")
             return f"分析异常: {e}"
 
-    def _parse_json(self, text: str) -> List:
-        import re
-        text = text.strip()
-        if "```" in text:
-            m = re.search(r'```(?:json)?\s*([\s\S]*?)```', text)
-            if m: text = m.group(1).strip()
-        try: return json.loads(text)
-        except: return [{"raw": text[:300]}]
+    # ═══ 基类实现 ═══════════════════════════════
+
+    async def load_context(self, ctx: Dict[str, Any]) -> Dict[str, Any]:
+        ctx = await super().load_context(ctx)
+        ctx["macro"] = await self.data_loader.load_macro()
+        return ctx
+
+    @staticmethod
+    def build_prompt(ctx):
+        return "MarketScanner V4.0"
+
+    @staticmethod
+    async def stream(ctx):
+        yield "streaming not implemented"
