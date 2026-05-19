@@ -3,6 +3,12 @@
  * 加载顺序: api.js → modal.js → common.js → ui.js → page-specific
  */
 
+function escHtml(s) {
+    if (!s) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+
 // 账户概要 (所有页面显示)
 async function updateAccountSummary() {
     try {
