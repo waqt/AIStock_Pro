@@ -70,6 +70,12 @@
                                     <button class="btn-action" onclick="runDecision()" style="font-size:11px;flex:1;justify-content:center;">单股</button>
                                     <button class="btn-action" onclick="runPortfolio()" id="btn-portfolio" style="font-size:11px;flex:1;justify-content:center;">全部持仓</button>
                                 </div>
+                                <div style="margin-top:6px;">
+                                    <button class="btn-action" onclick="computeAllIndicators()" id="btn-compute-all"
+                                        style="font-size:11px;width:100%;justify-content:center;border-color:var(--accent-blue);color:var(--accent-blue);">
+                                        <i class="fas fa-calculator"></i> 全量计算指标
+                                    </button>
+                                </div>
                                 <div id="decision-status" style="font-size:10px;color:var(--text-micro);margin-top:6px;text-align:center;">输入代码后点击决策</div>
                             </div>
                         </div>
@@ -215,6 +221,20 @@
             const code = document.getElementById('stock-input').value.trim();
             if (!code) { Modal.alert('提示', '请输入股票代码'); return; }
             await doDecide(code);
+        }
+
+        async function computeAllIndicators() {
+            const btn = document.getElementById('btn-compute-all');
+            const status = document.getElementById('decision-status');
+            btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 计算中...';
+            status.textContent = '批量计算全部持仓指标...';
+            try {
+                const res = await fetch(`${API_BASE}/quant/indicators/compute`, { method: 'POST' });
+                const d = await res.json();
+                const r = d.data || {};
+                status.textContent = `完成: ${r.stocks||0}只, ${r.total_computed||0}个指标`;
+            } catch(e) { status.textContent = '计算异常: ' + e.message; }
+            finally { btn.disabled = false; btn.innerHTML = '<i class="fas fa-calculator"></i> 全量计算指标'; }
         }
 
         async function runPortfolio() {
