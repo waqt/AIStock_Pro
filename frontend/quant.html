@@ -227,12 +227,12 @@
             const btn = document.getElementById('btn-compute-all');
             const status = document.getElementById('decision-status');
             btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 计算中...';
-            status.textContent = '批量计算全部持仓指标...';
+            status.textContent = '批量全量历史计算中 (约需1-3分钟)...';
             try {
-                const res = await fetch(`${API_BASE}/quant/indicators/compute`, { method: 'POST' });
+                const res = await fetch(`${API_BASE}/quant/indicators/compute?mode=historical`, { method: 'POST' });
                 const d = await res.json();
                 const r = d.data || {};
-                status.textContent = `完成: ${r.stocks||0}只, ${r.total_computed||0}个指标`;
+                status.textContent = `完成: ${r.stocks_processed||0}只, 模式=${r.mode||'?'}`;
             } catch(e) { status.textContent = '计算异常: ' + e.message; }
             finally { btn.disabled = false; btn.innerHTML = '<i class="fas fa-calculator"></i> 全量计算指标'; }
         }

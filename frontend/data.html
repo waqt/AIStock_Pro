@@ -114,6 +114,9 @@
                             <button class="btn-action" onclick="computeIndicators()" style="white-space:nowrap;font-size:11px;padding:6px 12px;border-color:var(--accent-blue);color:var(--accent-blue);">
                                 <i class="fas fa-calculator"></i> 算指标
                             </button>
+                            <button class="btn-action" onclick="computeHistorical()" style="white-space:nowrap;font-size:11px;padding:6px 12px;border-color:var(--accent-gold);color:var(--accent-gold);">
+                                <i class="fas fa-history"></i> 历史
+                            </button>
                         </div>
                     </div>
 
@@ -301,14 +304,28 @@
         async function computeIndicators() {
             const code = document.getElementById('manual-stock-input').value.trim();
             if (!code) { addLog('请输入股票代码', 'warn'); return; }
-            addLog(`正在计算 ${code} 技术指标...`, 'info');
+            addLog(`正在计算 ${code} 最新指标...`, 'info');
             try {
-                const res = await fetch(`${API_BASE}/quant/indicators/compute/${code}`, { method: 'POST' });
+                const res = await fetch(`${API_BASE}/quant/indicators/compute/${code}?mode=snapshot`, { method: 'POST' });
                 const data = await res.json();
                 const r = data.data || {};
-                if (r.error) { addLog(`${code} 计算失败: ${r.error}`, 'error'); }
+                if (r.error) { addLog(`${code} 失败: ${r.error}`, 'error'); }
                 else { addLog(`${code} 完成: ${r.computed||0} 个指标`, 'success'); }
-            } catch(e) { addLog(`${code} 计算异常: ${e.message}`, 'error'); }
+            } catch(e) { addLog(`${code} 异常: ${e.message}`, 'error'); }
+        }
+
+        // ── 历史指标计算 ──
+        async function computeHistorical() {
+            const code = document.getElementById('manual-stock-input').value.trim();
+            if (!code) { addLog('请输入股票代码', 'warn'); return; }
+            addLog(`正在逐日计算 ${code} 全量历史指标 (约需30-60秒)...`, 'info');
+            try {
+                const res = await fetch(`${API_BASE}/quant/indicators/compute/${code}?mode=historical`, { method: 'POST' });
+                const data = await res.json();
+                const r = data.data || {};
+                if (r.error) { addLog(`${code} 失败: ${r.error}`, 'error'); }
+                else { addLog(`${code} 完成: ${r.days_computed||0} 天指标已存储`, 'success'); }
+            } catch(e) { addLog(`${code} 异常: ${e.message}`, 'error'); }
         }
 
         // ── 同步公共数据 (汇率/黄金/原油) ──
