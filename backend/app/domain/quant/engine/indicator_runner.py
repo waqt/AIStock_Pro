@@ -40,11 +40,16 @@ class IndicatorRunner:
     @staticmethod
     async def compute_historical(stock_code: str, indicator_names: List[str] = None,
                                  start_date: str = None) -> dict:
-        """对每根日K线计算指标, 每条独立持久化。start_date 为空则全量"""
+        """批量计算全量历史指标并批量写入 (向量化, 非逐日循环)"""
         async with async_session() as db:
             df = await IndicatorRunner._load_df(db, stock_code)
             if df is None or df.empty:
                 return {"stock_code": stock_code, "error": "No market data", "computed": 0}
+
+            # 一次性计算全部指标时间序列 (向量化)
+            all_series = IndicatorRunner._run_indicators_full(df, indicator_names)
+            if not all_series:
+                return {"stock_code": stock_code, "computed": 0}
 
             # 清理旧数据
             if not start_date:
@@ -52,33 +57,35 @@ class IndicatorRunner:
                     delete(StockIndicator).where(StockIndicator.stock_code == stock_code))
                 await db.commit()
 
-            # 逐日计算 (滚动窗口保证长周期指标准确)
-            min_days = 60  # 最少需要60天数据才开始存 (MA60等需要)
-            stored = 0
+            # 批量写入: 每个交易日一条记录
+            min_days = 60
+            batch = []
             for i in range(min_days, len(df)):
                 trade_dt = df.iloc[i]["trade_date"]
                 if hasattr(trade_dt, 'date'):
                     trade_dt = trade_dt.date()
                 if start_date and str(trade_dt) < start_date:
                     continue
-
-                # 用截至当日的全部数据计算
-                window_df = df.iloc[:i + 1]
-                day_results = IndicatorRunner._run_indicators(window_df, indicator_names)
-                if not day_results:
-                    continue
-
-                # 清理当天已有记录, 再写入
-                await db.execute(delete(StockIndicator).where(and_(
-                    StockIndicator.stock_code == stock_code,
-                    StockIndicator.analysis_date == trade_dt)))
-                db.add(StockIndicator(stock_code=stock_code, indicator_type="DAILY",
+                day_results = {}
+                for name, series in all_series.items():
+                    val = series.iloc[i]
+                    if pd.notna(val):
+                        day_results[name] = float(val)
+                    # 前一值
+                    if i >= 1:
+                        prev_val = series.iloc[i - 1]
+                        if pd.notna(prev_val):
+                            day_results[f"_prev_{name}"] = float(prev_val)
+                day_results["price"] = float(df.iloc[i]["close"])
+                batch.append(StockIndicator(
+                    stock_code=stock_code, indicator_type="DAILY",
                     data_json=day_results, logic_chain={}, analysis_date=trade_dt))
-                stored += 1
+            if batch:
+                db.add_all(batch)
+                await db.commit()
 
-            await db.commit()
-            logger.info(f"[IndicatorRunner] Historical: {stock_code} -> {stored} days stored")
-            return {"stock_code": stock_code, "days_computed": stored, "mode": "historical"}
+            logger.info(f"[IndicatorRunner] Historical: {stock_code} -> {len(batch)} days stored")
+            return {"stock_code": stock_code, "days_computed": len(batch), "mode": "historical"}
 
     # ═══ 增量模式 ═════════════════════════════
 
@@ -145,6 +152,25 @@ class IndicatorRunner:
             "low": float(r.low or 0), "close": float(r.close or 0),
             "volume": float(r.volume or 0),
         } for r in rows])
+
+    @staticmethod
+    def _run_indicators_full(df: pd.DataFrame, indicator_names: List[str] = None) -> dict:
+        """批量计算全部指标, 返回每个指标的完整时间序列 (dict of Series)"""
+        all_series = {}
+        for name, cls in INDICATOR_REGISTRY.items():
+            if indicator_names and name not in indicator_names:
+                continue
+            try:
+                missing = [f for f in cls.requires if f not in df.columns]
+                if missing: continue
+                output = cls.compute(df)
+                for k, v in output.items():
+                    if hasattr(v, 'iloc'):
+                        all_series[k] = v
+                    # 跳过标量输出 (如 chip_pattern 的 dict)
+            except Exception as e:
+                logger.warning(f"[IndicatorRunner] {name} full: {e}")
+        return all_series
 
     @staticmethod
     def _run_indicators(df: pd.DataFrame, indicator_names: List[str] = None) -> dict:

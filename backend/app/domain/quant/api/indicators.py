@@ -74,6 +74,7 @@ async def clear_indicators(stock_code: str):
 async def indicator_coverage(stock_code: str):
     """查询某只股票的指标覆盖日期范围"""
     from app.framework.database.session import async_session
+    from app.models.models import StockIndicator
     from sqlalchemy import select, func
     async with async_session() as db:
         res = await db.execute(
