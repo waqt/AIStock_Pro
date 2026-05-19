@@ -299,7 +299,7 @@
                 setStep(1, 'Phase 1: 搜索 → LLM分析 → 自检缺口...');
                 document.getElementById('loading-step').textContent = 'Phase 1/2: 迭代深研 (3轮搜索→分析→自检)';
 
-                const res = await fetch(`${API_BASE}/research/supply-chain`, {
+                const res = await fetch(`${API_BASE}/research/analyze-v4`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ question: industry, stock_codes: codes, industry, include_portfolio: true })
@@ -309,15 +309,19 @@
 
                 const d = result.data;
 
-                // V3.0 or legacy format detection
+                // Format detection: DAG(V4.0) > V3.0 > Legacy
+                const isDAG = d.top_picks || d.detail;
                 const isV3 = d.core_stocks || d.supply_chain_map;
 
-                if (isV3) {
+                if (isDAG) {
+                    setStep(3, 'DAG管道完成: 5Agent并行分析');
+                    document.getElementById('loading-step').textContent = '报告生成完成';
+                    renderDagReport(d);
+                } else if (isV3) {
                     setStep(3, 'Phase 2: 结构化深度报告生成完成');
                     document.getElementById('loading-step').textContent = '报告生成完成';
                     renderV3(d);
                 } else {
-                    // Legacy format fallback
                     setStep(5, 'Legacy 分析完成');
                     document.getElementById('loading-step').textContent = '分析完成';
                     renderLegacy(d);
@@ -337,7 +341,169 @@
             }
         }
 
-        // ═══ V3.0 渲染 ═══════════════════════════════════
+        // ═══ V4.0 DAG 报告渲染 ════════════════════════
+
+        function renderDagReport(d) {
+            hideAllPanels();
+            const detail = d.detail || {};
+            const sc = detail.supply_chain || {};
+            const chain = sc.supply_chain_map || [];
+
+            // 1. Final Summary
+            if (d.final_summary) {
+                document.getElementById('panel-summary').style.display = '';
+                document.getElementById('content-summary').innerHTML = mdToHtml(d.final_summary);
+            }
+
+            // 2. Top Picks + Portfolio Allocation
+            if (d.top_picks && d.top_picks.length) {
+                renderTopPicks(d.top_picks, d.portfolio_allocation);
+            }
+
+            // 3. Supply Chain Map with level_assets (expandable)
+            if (chain.length) {
+                renderDagSupplyChain(chain);
+            }
+
+            // 4. Per-stock audit results
+            const audits = detail.audits || [];
+            if (audits.length) {
+                renderDagAudits(audits);
+            }
+
+            // 5. Key Risks + Catalysts
+            if (d.key_risks || d.catalysts_to_watch) {
+                document.getElementById('panel-risks').style.display = '';
+                let html = '';
+                if (d.key_risks && d.key_risks.length) {
+                    html += '<div style="font-weight:600;color:var(--accent-red);margin-bottom:4px;">关键风险</div>';
+                    html += d.key_risks.map(r => `<div style="font-size:11px;color:var(--text-dim);padding:2px 0;">• ${escHtml(r)}</div>`).join('');
+                }
+                if (d.catalysts_to_watch && d.catalysts_to_watch.length) {
+                    html += '<div style="font-weight:600;color:var(--accent-green);margin:8px 0 4px;">待观察催化剂</div>';
+                    html += d.catalysts_to_watch.map(c => `<div style="font-size:11px;color:var(--text-dim);padding:2px 0;">• ${escHtml(c)}</div>`).join('');
+                }
+                if (d.timeline) {
+                    html += `<div style="font-size:10px;color:var(--text-micro);margin-top:6px;">时间线: ${escHtml(d.timeline)}</div>`;
+                }
+                document.getElementById('content-risks').innerHTML = html;
+            }
+
+            // 6. Pipeline stats
+            if (d.pipeline_stats) {
+                const ps = d.pipeline_stats;
+                document.getElementById('stock-count').textContent =
+                    `${ps.core_stocks||0}只标的 | ${ps.stocks_audited||0}审计 | ${ps.stocks_priced||0}定价`;
+            }
+
+            // 7. Raw detail available for drill-down
+            window._dagDetail = detail;
+        }
+
+        function renderTopPicks(picks, alloc) {
+            document.getElementById('panel-core-stocks').style.display = '';
+            const allocMap = {};
+            if (alloc) alloc.forEach(a => { allocMap[a.code] = a; });
+
+            document.getElementById('content-core-stocks').innerHTML = `
+                <table class="core-stocks-table">
+                    <thead><tr>
+                        <th>排名</th><th>代码</th><th>名称</th><th>判断</th><th>置信度</th><th>仓位</th><th>角色</th>
+                    </tr></thead>
+                    <tbody>${picks.map((p,i) => {
+                        const a = allocMap[p.code] || {};
+                        return `<tr>
+                            <td style="color:var(--accent-gold);font-weight:700;">#${i+1}</td>
+                            <td style="color:var(--accent-blue);">${escHtml(p.code||'')}</td>
+                            <td class="stock-name">${escHtml(p.name||'')}</td>
+                            <td style="color:${p.verdict==='BUY'?'var(--accent-green)':'var(--text-dim)'};">${escHtml(p.verdict||'')}</td>
+                            <td>${escHtml(p.conviction||'')}</td>
+                            <td>${a.weight_pct||''}%</td>
+                            <td style="font-size:10px;color:var(--text-micro);">${escHtml(a.role||'')}</td>
+                        </tr>`;
+                    }).join('')}</tbody>
+                </table>
+            `;
+        }
+
+        function renderDagSupplyChain(chain) {
+            document.getElementById('panel-chain').style.display = '';
+            const gapColors = {10:'var(--accent-red)',9:'var(--accent-red)',8:'var(--accent-gold)',7:'var(--accent-gold)'};
+            const levelNames = {1:'L1 显性瓶颈', 2:'L2 工艺瓶颈', 3:'L3 材料瓶颈', 4:'L4 设备/测试瓶颈'};
+
+            document.getElementById('content-chain').innerHTML = chain.map(m => {
+                const gs = m.gap_score || 0;
+                const gapColor = gapColors[gs] || 'var(--text-dim)';
+                const assets = m.level_assets || [];
+                const assetRows = assets.length ? assets.map(a => `
+                    <tr>
+                        <td>${escHtml(a.code||'')}</td>
+                        <td style="color:#fff;">${escHtml(a.name||'')}</td>
+                        <td style="font-size:10px;">${escHtml(a.role||'')}</td>
+                        <td>${escHtml(a.market_share_est||'')}</td>
+                        <td>${escHtml(a.tech_level||'')}</td>
+                        <td>${a.moat_score||'?'}/10</td>
+                    </tr>`).join('') : '';
+
+                return `<div class="chain-layer" style="${gs>=8?'border-left:3px solid var(--accent-red);':''}">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <span>
+                            <span style="display:inline-block;padding:1px 6px;border-radius:2px;font-size:9px;background:rgba(255,165,2,0.15);color:var(--accent-gold);">${levelNames[m.level]||'L'+m.level}</span>
+                            <strong style="margin-left:4px;">${escHtml(m.name||'')}</strong>
+                        </span>
+                        <span style="display:flex;align-items:center;gap:6px;">
+                            <span class="gap-bar" style="width:${Math.min(gs*10,100)}px;background:${gapColor};"></span>
+                            <span class="score-badge" style="color:${gapColor};background:rgba(255,165,2,0.1);font-size:10px;">预期差 ${gs}/10</span>
+                        </span>
+                    </div>
+                    <div style="font-size:10px;color:var(--text-dim);margin-top:4px;">${escHtml(m.gap_reason||'')}</div>
+                    <div style="font-size:9px;color:var(--text-micro);margin-top:2px;">
+                        市场规模: ${escHtml(m.market_size_est||'?')} | 国产化率: ${escHtml(m.localization_rate||'?')} | 代差: ${escHtml(m.tech_generation_gap||'?')}
+                    </div>
+                    ${assetRows ? `
+                    <div style="margin-top:6px;">
+                        <div style="font-size:10px;color:var(--text-micro);margin-bottom:2px;">该层资产 (${assets.length}家):</div>
+                        <table style="width:100%;font-size:10px;">
+                            <tr style="color:var(--text-micro);"><th>代码</th><th>名称</th><th>角色</th><th>市占率</th><th>技术</th><th>垄断</th></tr>
+                            ${assetRows}
+                        </table>
+                    </div>` : ''}
+                </div>`;
+            }).join('');
+        }
+
+        function renderDagAudits(audits) {
+            document.getElementById('panel-temporal').style.display = '';
+            document.getElementById('content-temporal').innerHTML = `
+                <div class="panel-header" style="padding:0;margin-bottom:8px;">
+                    <span class="panel-title">交叉审计 (Financial + Human Capital)</span>
+                </div>
+                ${audits.map(a => {
+                    const fa = a.financial || {};
+                    const hc = a.human_capital || {};
+                    const faVerdict = fa.verdict || '?';
+                    const hcVerdict = hc.verdict || '?';
+                    const faColor = faVerdict === 'PASS' ? 'var(--accent-green)' : (faVerdict === 'FAIL' ? 'var(--accent-red)' : 'var(--accent-gold)');
+                    const hcColor = hcVerdict === 'STRONG' ? 'var(--accent-green)' : (hcVerdict === 'WEAK' ? 'var(--accent-red)' : 'var(--accent-gold)');
+                    const faFlags = (fa.flags || []).slice(0, 3);
+                    const hcScore = hc.human_capital_score || '?';
+
+                    return `<div class="chain-layer">
+                        <div style="display:flex;justify-content:space-between;">
+                            <strong>${escHtml(a.code||'')} ${escHtml(a.name||'')}</strong>
+                            <span>
+                                <span style="color:${faColor};font-size:10px;">财务:${faVerdict}(${fa.score||'?'})</span>
+                                <span style="margin-left:8px;color:${hcColor};font-size:10px;">人力:${hcVerdict}(${hcScore})</span>
+                            </span>
+                        </div>
+                        ${faFlags.length ? `<div style="font-size:10px;color:var(--text-dim);margin-top:4px;">${faFlags.map(f=>escHtml(f)).join('<br>')}</div>` : ''}
+                        ${hc.key_personnel_risk ? `<div style="font-size:10px;color:var(--accent-gold);margin-top:2px;">关键人风险: ${escHtml(hc.key_personnel_risk)}</div>` : ''}
+                    </div>`;
+                }).join('')}
+            `;
+        }
+
+        // ═══ V3.0 渲染 (Legacy 兼容) ═══════════════════
 
         function renderV3(d) {
             // Summary
@@ -573,8 +739,13 @@
                     </div>`).join('');
             }
 
+            const isDAG = d.top_picks || d.detail;
             const isV3 = d.core_stocks || d.supply_chain_map;
-            if (isV3) {
+            if (isDAG) {
+                renderDagReport(d);
+                document.getElementById('current-industry').textContent = d.industry || '';
+                document.getElementById('stock-count').textContent = '';
+            } else if (isV3) {
                 renderV3(d);
                 document.getElementById('current-industry').textContent = d.industry || '';
                 document.getElementById('stock-count').textContent = (d.core_stocks||[]).length ? `锁定 ${d.core_stocks.length} 只标的` : '';
@@ -626,8 +797,10 @@
                 document.getElementById('panel-empty').style.display = 'none';
                 document.getElementById('current-industry').textContent = d.industry || report.industry || '';
                 document.getElementById('stock-count').textContent = (d.core_stocks||[]).length ? (d.core_stocks.length + ' 只标的') : '';
+                const isDAG = d.top_picks || d.detail;
                 const isV3 = d.core_stocks || d.supply_chain_map;
-                if (isV3) renderV3(d);
+                if (isDAG) renderDagReport(d);
+                else if (isV3) renderV3(d);
                 else renderLegacy(d);
             } catch(e) {
                 Modal.alert('加载失败', e.message);
