@@ -203,10 +203,11 @@ class QuantEngine:
         total = len(positions)
 
         try:
-            # ── 节点 0: 宏观数据同步 ──
-            await data_router.sync_macro_data()
-            if exec_id:
-                await task_manager.update_progress(exec_id, 2, "宏观数据同步完成")
+            # ── 节点 0: 宏观数据同步 (仅全量同步时, 单股跳过) ──
+            if not target_codes:
+                await data_router.sync_macro_data()
+                if exec_id:
+                    await task_manager.update_progress(exec_id, 2, "宏观数据同步完成")
 
             # ── 节点 1: FETCHING ──
             for idx, pos in enumerate(positions):
