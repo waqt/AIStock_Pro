@@ -9,9 +9,24 @@
         .signal-buy  { color: #2ed573; font-weight: 700; }
         .signal-sell { color: #ff4757; font-weight: 700; }
         .signal-hold { color: #a0a0a0; }
-        .vote-bar { height: 6px; border-radius: 3px; display: inline-block; }
-        .strategy-row { padding: 6px 10px; border-bottom: 1px solid var(--border-thin); font-size: 12px; display: flex; justify-content: space-between; align-items: center; }
+        .tab-nav { display: flex; gap: 0; margin-bottom: 12px; border-bottom: 1px solid var(--border-color); }
+        .tab-btn { padding: 8px 16px; background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 13px; border-bottom: 2px solid transparent; transition: all 0.2s; }
+        .tab-btn:hover { color: #fff; }
+        .tab-btn.active { color: #fff; border-bottom-color: var(--accent-blue); }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+        .card { background: rgba(255,255,255,0.02); border: 1px solid var(--border-thin); border-radius: 4px; padding: 12px; margin-bottom: 8px; }
+        .card-title { font-size: 13px; color: #fff; font-weight: 600; }
+        .card-meta { font-size: 10px; color: var(--text-micro); margin-top: 4px; }
+        .card-desc { font-size: 11px; color: var(--text-dim); margin-top: 6px; line-height: 1.5; }
+        .badge { display: inline-block; padding: 1px 6px; border-radius: 2px; font-size: 9px; }
+        .badge-trend { background: rgba(112,161,255,0.15); color: var(--accent-blue); }
+        .badge-momentum { background: rgba(46,213,115,0.15); color: var(--accent-green); }
+        .badge-volatility { background: rgba(255,165,2,0.15); color: var(--accent-gold); }
+        .badge-volume { background: rgba(255,107,107,0.15); color: var(--accent-red); }
+        .badge-crowding { background: rgba(162,155,254,0.15); color: #a29bfe; }
         .result-card { background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 6px; padding: 14px; margin-bottom: 10px; }
+        .strategy-row { padding: 6px 10px; border-bottom: 1px solid var(--border-thin); font-size: 12px; display: flex; justify-content: space-between; align-items: center; }
     </style>
 </head>
 <body data-page-id="quant">
@@ -20,72 +35,64 @@
         <main class="main-content">
             <div class="top-bar"></div>
             <div class="workspace" style="grid-template-columns: 340px 1fr; gap: 14px; padding: 14px;">
-                <!-- Left: Control Panel -->
+
+                <!-- Left: Tabs for Indicators / Strategies / Decision -->
                 <div style="display:flex;flex-direction:column;gap:10px;">
-                    <div class="panel">
-                        <div class="panel-header"><span class="panel-title">决策引擎</span></div>
-                        <div class="panel-body">
-                            <div style="display:flex;gap:8px;margin-bottom:10px;">
-                                <input type="text" id="stock-input" placeholder="股票代码 (如 688012)" value="688012"
-                                    style="flex:1;background:#000;border:1px solid var(--border-color);color:#fff;padding:8px 10px;border-radius:4px;font-size:13px;">
-                                <button class="btn-action btn-primary" onclick="runDecision()" id="btn-decide" style="white-space:nowrap;">
-                                    <i class="fas fa-play"></i> 决策
-                                </button>
-                            </div>
-                            <div style="display:flex;gap:6px;">
-                                <button class="btn-action" onclick="runDecision()" style="font-size:11px;flex:1;justify-content:center;">
-                                    <i class="fas fa-chart-bar"></i> 单股
-                                </button>
-                                <button class="btn-action" onclick="runPortfolio()" id="btn-portfolio" style="font-size:11px;flex:1;justify-content:center;">
-                                    <i class="fas fa-layer-group"></i> 全部持仓
-                                </button>
-                            </div>
-                            <div id="decision-status" style="font-size:10px;color:var(--text-micro);margin-top:6px;text-align:center;">输入代码后点击决策</div>
-                        </div>
+                    <div class="tab-nav">
+                        <button class="tab-btn active" onclick="switchTab('indicators')">算子清单</button>
+                        <button class="tab-btn" onclick="switchTab('strategies')">策略清单</button>
+                        <button class="tab-btn" onclick="switchTab('decide')">决策中心</button>
                     </div>
 
-                    <div class="panel">
-                        <div class="panel-header">
-                            <span class="panel-title">已注册策略</span>
-                            <span id="strategy-count" style="font-size:10px;color:var(--text-micro);"></span>
-                        </div>
-                        <div class="panel-body" id="strategy-list" style="max-height:300px;overflow-y:auto;">
-                            <div style="color:var(--text-micro);font-size:11px;text-align:center;">加载中...</div>
-                        </div>
+                    <!-- Tab 1: Indicators -->
+                    <div class="tab-panel active" id="tab-indicators" style="display:flex;flex-direction:column;gap:8px;max-height:70vh;overflow-y:auto;">
+                        <div id="indicator-list" style="color:var(--text-micro);font-size:11px;text-align:center;">加载中...</div>
                     </div>
 
-                    <div class="panel">
-                        <div class="panel-header"><span class="panel-title">历史信号</span></div>
-                        <div class="panel-body" id="history-list" style="max-height:250px;overflow-y:auto;">
-                            <div style="color:var(--text-micro);font-size:11px;text-align:center;">—</div>
+                    <!-- Tab 2: Strategies -->
+                    <div class="tab-panel" id="tab-strategies" style="display:none;flex-direction:column;gap:8px;max-height:70vh;overflow-y:auto;">
+                        <div id="strategy-list-full" style="color:var(--text-micro);font-size:11px;text-align:center;">加载中...</div>
+                    </div>
+
+                    <!-- Tab 3: Decision Center -->
+                    <div class="tab-panel" id="tab-decide" style="display:none;flex-direction:column;gap:10px;">
+                        <div class="panel">
+                            <div class="panel-header"><span class="panel-title">决策引擎</span></div>
+                            <div class="panel-body">
+                                <div style="display:flex;gap:8px;margin-bottom:10px;">
+                                    <input type="text" id="stock-input" placeholder="股票代码 (如 688012)" value="688012"
+                                        style="flex:1;background:#000;border:1px solid var(--border-color);color:#fff;padding:8px 10px;border-radius:4px;font-size:13px;">
+                                    <button class="btn-action btn-primary" onclick="runDecision()" id="btn-decide" style="white-space:nowrap;">
+                                        <i class="fas fa-play"></i> 决策
+                                    </button>
+                                </div>
+                                <div style="display:flex;gap:6px;">
+                                    <button class="btn-action" onclick="runDecision()" style="font-size:11px;flex:1;justify-content:center;">单股</button>
+                                    <button class="btn-action" onclick="runPortfolio()" id="btn-portfolio" style="font-size:11px;flex:1;justify-content:center;">全部持仓</button>
+                                </div>
+                                <div id="decision-status" style="font-size:10px;color:var(--text-micro);margin-top:6px;text-align:center;">输入代码后点击决策</div>
+                            </div>
                         </div>
+                        <div id="decision-result-area"></div>
                     </div>
                 </div>
 
-                <!-- Right: Results -->
-                <div style="display:flex;flex-direction:column;gap:10px;">
+                <!-- Right: Detail / Results -->
+                <div style="display:flex;flex-direction:column;gap:10px;" id="right-panel">
                     <div class="panel" id="panel-empty">
                         <div class="panel-body" style="text-align:center;padding:60px;">
                             <div style="font-size:36px;margin-bottom:10px;opacity:0.3;">&#128202;</div>
-                            <div style="color:var(--text-dim);font-size:12px;">输入股票代码, 多策略并行分析, 加权投票决策</div>
+                            <div style="color:var(--text-dim);font-size:12px;">左侧选择功能，右侧展示详情</div>
                         </div>
                     </div>
-
-                    <div class="panel" id="panel-result" style="display:none;">
-                        <div class="panel-header">
-                            <span class="panel-title">决策结果</span>
-                            <span id="result-stock" style="font-size:11px;color:var(--text-micro);"></span>
-                        </div>
-                        <div class="panel-body">
-                            <div class="result-card" id="final-card"></div>
-                            <div id="strategy-table"></div>
-                        </div>
+                    <div class="panel" id="panel-detail" style="display:none;">
+                        <div class="panel-header"><span class="panel-title" id="detail-title">详情</span></div>
+                        <div class="panel-body" id="detail-content"></div>
                     </div>
-
                     <div class="panel" id="panel-loading" style="display:none;">
                         <div class="panel-body" style="text-align:center;padding:30px;">
                             <i class="fas fa-spinner fa-spin" style="color:var(--accent-blue);font-size:20px;"></i>
-                            <div style="color:var(--text-dim);font-size:12px;margin-top:8px;">策略分析中...</div>
+                            <div style="color:var(--text-dim);font-size:12px;margin-top:8px;">分析中...</div>
                         </div>
                     </div>
                 </div>
@@ -99,23 +106,111 @@
     <script src="js/ui.js"></script>
     <script src="js/common.js"></script>
     <script>
+        let currentTab = 'indicators';
+
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-panel').forEach(p => { p.style.display = 'none'; p.classList.remove('active'); });
+            document.querySelector(`.tab-panel#tab-${tab}`).classList.add('active');
+            document.querySelector(`.tab-panel#tab-${tab}`).style.display = 'flex';
+            document.querySelectorAll('.tab-btn').forEach(b => {
+                if (b.textContent.includes(tab === 'indicators' ? '算子' : tab === 'strategies' ? '策略' : '决策')) b.classList.add('active');
+            });
+            if (tab === 'indicators') loadIndicators();
+            if (tab === 'strategies') loadStrategies();
+            if (tab === 'decide') {
+                document.getElementById('panel-empty').style.display = '';
+                document.getElementById('panel-detail').style.display = 'none';
+            }
+        }
+
+        // ═══ Indicators Tab ═══
+        async function loadIndicators() {
+            const el = document.getElementById('indicator-list');
+            try {
+                const res = await fetch(`${API_BASE}/quant/indicators/registry`);
+                const data = await res.json();
+                const list = data.data || [];
+                const catNames = {trend:'趋势', momentum:'动量', volatility:'波动', volume:'量能', crowding:'拥挤度'};
+                const catBadges = {trend:'badge-trend', momentum:'badge-momentum', volatility:'badge-volatility', volume:'badge-volume', crowding:'badge-crowding'};
+                el.innerHTML = list.map(i => `
+                    <div class="card" onclick="showIndicatorDetail('${i.name}')" style="cursor:pointer;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <span class="card-title">${i.name}</span>
+                            <span class="badge ${catBadges[i.category]||'badge-trend'}">${catNames[i.category]||i.category}</span>
+                        </div>
+                        <div class="card-meta">依赖: ${(i.requires||[]).join(', ') || '无'} → 输出: ${(i.output||[]).join(', ')}</div>
+                        <div class="card-desc">
+                            参数: ${Object.entries(i.params||{}).map(([k,v])=>`${k}=${JSON.stringify(v)}`).join(', ') || '无'}
+                        </div>
+                    </div>
+                `).join('');
+                if (!list.length) el.innerHTML = '<div style="color:var(--text-micro);text-align:center;padding:20px;">暂无算子</div>';
+            } catch(e) { el.innerHTML = '<div style="color:var(--accent-red);">加载失败</div>'; }
+        }
+
+        function showIndicatorDetail(name) {
+            const list = document.querySelectorAll('#indicator-list .card');
+            const names = Array.from(document.querySelectorAll('#indicator-list .card-title')).map(e=>e.textContent);
+            const idx = names.indexOf(name);
+            if (idx < 0) return;
+            const card = list[idx];
+            document.getElementById('panel-empty').style.display = 'none';
+            document.getElementById('panel-detail').style.display = '';
+            document.getElementById('detail-title').textContent = '算子: ' + name;
+            document.getElementById('detail-content').innerHTML = card.outerHTML;
+            document.getElementById('right-panel').scrollIntoView({behavior:'smooth'});
+        }
+
+        // ═══ Strategies Tab ═══
         async function loadStrategies() {
+            const el = document.getElementById('strategy-list-full');
             try {
                 const res = await fetch(`${API_BASE}/quant/strategies`);
                 const data = await res.json();
                 const list = data.data || [];
-                document.getElementById('strategy-count').textContent = `(${list.length})`;
-                document.getElementById('strategy-list').innerHTML = list.map(s => `
-                    <div class="strategy-row">
-                        <span>
-                            <span style="color:${s.category==='ai_chain'?'var(--accent-gold)':'var(--accent-blue)'};font-size:10px;">[${s.category==='ai_chain'?'AI':'传统'}]</span>
-                            ${s.name}
-                        </span>
-                        <span style="font-size:10px;color:var(--text-micro);">${(s.required_indicators||[]).slice(0,3).join(', ')}</span>
-                    </div>`).join('');
+                el.innerHTML = list.map(s => `
+                    <div class="card" onclick="showStrategyDetail('${s.name}')" style="cursor:pointer;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <span class="card-title">${s.name}</span>
+                            <span class="badge ${s.category==='ai_chain'?'badge-crowding':'badge-momentum'}">${s.category==='ai_chain'?'AI链':'传统量化'}</span>
+                        </div>
+                        <div class="card-desc">${s.description||''}</div>
+                        <div class="card-meta">依赖指标: ${(s.required_indicators||[]).join(', ') || '无'}</div>
+                    </div>
+                `).join('');
+                if (!list.length) el.innerHTML = '<div style="color:var(--text-micro);text-align:center;padding:20px;">暂无策略</div>';
+            } catch(e) { el.innerHTML = '<div style="color:var(--accent-red);">加载失败</div>'; }
+        }
+
+        async function showStrategyDetail(name) {
+            document.getElementById('panel-empty').style.display = 'none';
+            document.getElementById('panel-detail').style.display = '';
+            document.getElementById('detail-title').textContent = '策略: ' + name;
+            try {
+                const res = await fetch(`${API_BASE}/quant/strategies/${name}`);
+                const d = await res.json();
+                const s = d.data || {};
+                const isAI = s.category === 'ai_chain' || s.logic_chain;
+                document.getElementById('detail-content').innerHTML = `
+                    <div class="card">
+                        <div class="card-title">${s.name||name}</div>
+                        <div class="card-meta">
+                            <span class="badge ${isAI?'badge-crowding':'badge-momentum'}">${isAI?'AI链':'传统量化'}</span>
+                            ${s.persona ? ` | 角色: ${s.persona}` : ''}
+                            ${s.temperature != null ? ` | Temperature: ${s.temperature}` : ''}
+                        </div>
+                        <div class="card-desc" style="margin-top:8px;">${s.description||''}</div>
+                        ${s.logic_chain ? `<pre style="font-size:10px;color:var(--text-dim);background:rgba(0,0,0,0.3);padding:10px;border-radius:4px;margin-top:8px;white-space:pre-wrap;max-height:300px;overflow-y:auto;">${escHtml(s.logic_chain)}</pre>` : ''}
+                        <div class="card-meta" style="margin-top:8px;">依赖指标: ${(s.required_indicators||[]).join(', ') || '无'}</div>
+                    </div>
+                `;
+                document.getElementById('right-panel').scrollIntoView({behavior:'smooth'});
             } catch(e) { console.error(e); }
         }
 
+        // ═══ Decision Tab ═══
         async function runDecision() {
             const code = document.getElementById('stock-input').value.trim();
             if (!code) { Modal.alert('提示', '请输入股票代码'); return; }
@@ -124,97 +219,107 @@
 
         async function runPortfolio() {
             const btn = document.getElementById('btn-portfolio');
+            const status = document.getElementById('decision-status');
             btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            status.textContent = '批量决策中...';
+            document.getElementById('panel-empty').style.display = 'none';
+            document.getElementById('panel-detail').style.display = '';
+            document.getElementById('detail-title').textContent = '全部持仓决策';
             try {
                 const res = await fetch(`${API_BASE}/quant/decide/portfolio`, { method: 'POST' });
-                const data = await res.json();
-                if (!data.success) { Modal.alert('失败', data.detail||''); return; }
-                const reports = data.data || [];
-                document.getElementById('panel-empty').style.display = 'none';
-                document.getElementById('panel-result').style.display = '';
-                document.getElementById('strategy-table').innerHTML = reports.map(r => {
-                    const sigClass = r.final_signal === 'BUY' ? 'signal-buy' : (r.final_signal === 'SELL' ? 'signal-sell' : 'signal-hold');
-                    return `<div style="padding:6px;border-bottom:1px solid var(--border-thin);font-size:12px;">
-                        <span>${r.stock_code}</span>
-                        <span class="${sigClass}">${r.final_signal}</span>
-                        <span style="color:var(--text-micro);margin-left:8px;">${r.vote_summary.buy_count}B/${r.vote_summary.sell_count}S</span>
-                    </div>`;
-                }).join('');
-                document.getElementById('result-stock').textContent = `(${reports.length} 只)`;
-                document.getElementById('final-card').innerHTML = '<span style="color:var(--text-dim);">批量决策完成, 详见下表</span>';
-            } catch(e) { Modal.alert('异常', e.message); }
+                const resp = await res.json();
+                if (!resp.success) { Modal.alert('失败', resp.detail||JSON.stringify(resp)); return; }
+                const reports = Array.isArray(resp.data) ? resp.data : [];
+                if (!reports.length) {
+                    document.getElementById('detail-content').innerHTML = '<div style="color:var(--text-dim);padding:20px;">无持仓数据</div>';
+                    return;
+                }
+                document.getElementById('detail-content').innerHTML = `
+                    <div style="display:flex;flex-wrap:wrap;gap:8px;">${reports.map(r => {
+                        const sc = r.final_signal === 'BUY' ? 'signal-buy' : (r.final_signal === 'SELL' ? 'signal-sell' : 'signal-hold');
+                        return `<div class="card" style="min-width:160px;flex:1;" onclick="showSingleResult('${r.stock_code}')" title="点击查看详情">
+                            <span style="font-weight:600;">${r.stock_code}</span>
+                            <span class="${sc}" style="margin-left:8px;">${r.final_signal}</span>
+                            <div style="font-size:10px;color:var(--text-micro);">${r.vote_summary.buy_count}B/${r.vote_summary.sell_count}S</div>
+                        </div>`;
+                    }).join('')}</div>
+                    <div style="font-size:10px;color:var(--text-micro);margin-top:8px;">点击卡片查看单股详情</div>
+                `;
+                status.textContent = `完成 ${reports.length} 只`;
+            } catch(e) { status.textContent = '异常: ' + e.message; }
             finally { btn.disabled = false; btn.innerHTML = '<i class="fas fa-layer-group"></i> 全部持仓'; }
         }
 
         async function doDecide(code) {
             const btn = document.getElementById('btn-decide');
             const status = document.getElementById('decision-status');
-            btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 分析中...';
+            btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
             status.textContent = '策略并行执行中...';
             document.getElementById('panel-empty').style.display = 'none';
-            document.getElementById('panel-loading').style.display = '';
-            document.getElementById('panel-result').style.display = 'none';
-
+            document.getElementById('panel-detail').style.display = '';
             try {
                 const res = await fetch(`${API_BASE}/quant/decide/${code}`, { method: 'POST' });
-                const data = await res.json();
-                if (!data.success) { Modal.alert('决策失败', data.detail||JSON.stringify(data)); return; }
-                renderResult(data.data);
-                status.textContent = '决策完成';
-                loadHistory(code);
-            } catch(e) {
-                status.textContent = '异常: ' + e.message;
-            } finally {
-                btn.disabled = false; btn.innerHTML = '<i class="fas fa-play"></i> 决策';
-                document.getElementById('panel-loading').style.display = 'none';
-            }
+                const resp = await res.json();
+                if (!resp.success) { Modal.alert('决策失败', resp.detail||JSON.stringify(resp)); return; }
+                showSingleResult(code, resp.data);
+                status.textContent = '完成';
+                document.getElementById('detail-title').textContent = `决策: ${code}`;
+            } catch(e) { status.textContent = '异常: ' + e.message; }
+            finally { btn.disabled = false; btn.innerHTML = '<i class="fas fa-play"></i> 决策'; }
         }
 
-        function renderResult(d) {
-            document.getElementById('panel-result').style.display = '';
-            document.getElementById('result-stock').textContent = `${d.stock_code} | ${d.decision_date}`;
+        async function showSingleResult(code, d) {
+            if (!d) {
+                try {
+                    const res = await fetch(`${API_BASE}/quant/decide/${code}`, { method: 'POST' });
+                    const resp = await res.json();
+                    d = resp.data;
+                } catch(e) { return; }
+            }
+            if (!d) return;
+            document.getElementById('panel-empty').style.display = 'none';
+            document.getElementById('panel-detail').style.display = '';
+            document.getElementById('detail-title').textContent = `决策: ${d.stock_code} | ${d.decision_date}`;
 
-            // Final card
             const sigClass = d.final_signal === 'BUY' ? 'signal-buy' : (d.final_signal === 'SELL' ? 'signal-sell' : 'signal-hold');
-            const vs = d.vote_summary;
-            const total = vs.buy_score + vs.sell_score + 0.01;
-            const buyPct = Math.round(vs.buy_score / total * 100);
-            const sellPct = Math.round(vs.sell_score / total * 100);
+            const vs = d.vote_summary || {};
+            const total = (vs.buy_score||0) + (vs.sell_score||0) + 0.01;
+            const buyPct = Math.round((vs.buy_score||0) / total * 100);
+            const sellPct = Math.round((vs.sell_score||0) / total * 100);
             let riskHtml = '';
-            if (d.risk_flags.chip_risk) riskHtml += ' <span style="color:var(--accent-gold);font-size:10px;">[筹码风险]</span>';
-            if (d.risk_flags.crowding_risk) riskHtml += ' <span style="color:var(--accent-red);font-size:10px;">[拥挤风险]</span>';
+            const rf = d.risk_flags || {};
+            if (rf.chip_risk) riskHtml += ' <span style="color:var(--accent-gold);font-size:10px;">[筹码风险]</span>';
+            if (rf.crowding_risk) riskHtml += ' <span style="color:var(--accent-red);font-size:10px;">[拥挤风险]</span>';
 
-            document.getElementById('final-card').innerHTML = `
-                <div style="display:flex;justify-content:space-between;align-items:center;">
-                    <span style="font-size:24px;font-weight:800;" class="${sigClass}">${d.final_signal}</span>
-                    <span style="font-size:12px;color:var(--text-dim);">置信度: ${d.final_confidence}</span>
+            document.getElementById('detail-content').innerHTML = `
+                <div class="result-card">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <span style="font-size:24px;font-weight:800;" class="${sigClass}">${d.final_signal||'?'}</span>
+                        <span style="font-size:12px;color:var(--text-dim);">置信度: ${d.final_confidence||0}</span>
+                    </div>
+                    <div style="margin-top:8px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+                        <span style="font-size:11px;color:var(--accent-green);">买 ${vs.buy_count||0}票 (${vs.buy_score||0})</span>
+                        <span style="font-size:11px;color:var(--accent-red);">卖 ${vs.sell_count||0}票 (${vs.sell_score||0})</span>
+                        <span style="font-size:11px;color:var(--text-micro);">持 ${vs.hold_count||0}票</span>
+                        ${riskHtml}
+                    </div>
+                    <div style="margin-top:6px;background:rgba(255,255,255,0.05);border-radius:4px;height:8px;display:flex;overflow:hidden;">
+                        <div style="width:${buyPct}%;background:var(--accent-green);"></div>
+                        <div style="width:${sellPct}%;background:var(--accent-red);"></div>
+                    </div>
+                    <div style="font-size:10px;color:var(--text-micro);margin-top:6px;">${vs.decision_logic||''}</div>
                 </div>
-                <div style="margin-top:8px;display:flex;gap:12px;align-items:center;">
-                    <span style="font-size:11px;color:var(--accent-green);">买 ${vs.buy_count}票 (${vs.buy_score})</span>
-                    <span style="font-size:11px;color:var(--accent-red);">卖 ${vs.sell_count}票 (${vs.sell_score})</span>
-                    <span style="font-size:11px;color:var(--text-micro);">持 ${vs.hold_count}票</span>
-                    ${riskHtml}
-                </div>
-                <div style="margin-top:6px;background:rgba(255,255,255,0.05);border-radius:4px;height:8px;display:flex;overflow:hidden;">
-                    <div style="width:${buyPct}%;background:var(--accent-green);"></div>
-                    <div style="width:${sellPct}%;background:var(--accent-red);"></div>
-                </div>
-                <div style="font-size:10px;color:var(--text-micro);margin-top:6px;">${vs.decision_logic}</div>
-            `;
-
-            // Strategy table
-            document.getElementById('strategy-table').innerHTML = `
-                <table style="width:100%;font-size:11px;">
+                <table style="width:100%;font-size:11px;margin-top:8px;">
                     <thead><tr style="color:var(--text-micro);">
                         <th>策略</th><th>类型</th><th>信号</th><th>置信度</th><th>判断依据</th>
                     </tr></thead>
-                    <tbody>${d.strategy_results.map(s => {
+                    <tbody>${(d.strategy_results||[]).map(s => {
                         const sc = s.signal === 'BUY' ? 'signal-buy' : (s.signal === 'SELL' ? 'signal-sell' : 'signal-hold');
                         return `<tr>
-                            <td>${s.strategy_name}</td>
+                            <td>${s.strategy_name||''}</td>
                             <td style="font-size:10px;color:var(--text-micro);">${s.category==='ai_chain'?'AI链':'传统'}</td>
-                            <td class="${sc}">${s.signal}</td>
-                            <td>${s.confidence}</td>
+                            <td class="${sc}">${s.signal||'?'}</td>
+                            <td>${s.confidence||0}</td>
                             <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-dim);">${s.reasoning||''}</td>
                         </tr>`;
                     }).join('')}</tbody>
@@ -222,28 +327,9 @@
             `;
         }
 
-        async function loadHistory(code) {
-            try {
-                const res = await fetch(`${API_BASE}/quant/signals?stock_code=${code}&limit=20`);
-                const data = await res.json();
-                const signals = data.data || [];
-                if (!signals.length) {
-                    document.getElementById('history-list').innerHTML = '<div style="color:var(--text-micro);font-size:11px;text-align:center;">暂无历史信号</div>';
-                    return;
-                }
-                document.getElementById('history-list').innerHTML = signals.map(s => {
-                    const sc = s.signal === 'BUY' ? 'signal-buy' : (s.signal === 'SELL' ? 'signal-sell' : 'signal-hold');
-                    return `<div class="strategy-row">
-                        <span>${s.strategy_name} <span class="${sc}">${s.signal}</span></span>
-                        <span style="font-size:9px;color:var(--text-micro);">${(s.generated_at||'').slice(0,16)}</span>
-                    </div>`;
-                }).join('');
-            } catch(e) { console.error(e); }
-        }
+        function escHtml(s) { if (!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            loadStrategies();
-        });
+        document.addEventListener('DOMContentLoaded', () => { loadIndicators(); });
     </script>
 </body>
 </html>
