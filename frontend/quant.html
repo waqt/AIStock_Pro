@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>AIStock | 量化决策</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .signal-buy  { color: #2ed573; font-weight: 700; }
+        .signal-sell { color: #ff4757; font-weight: 700; }
+        .signal-hold { color: #a0a0a0; }
+        .vote-bar { height: 6px; border-radius: 3px; display: inline-block; }
+        .strategy-row { padding: 6px 10px; border-bottom: 1px solid var(--border-thin); font-size: 12px; display: flex; justify-content: space-between; align-items: center; }
+        .result-card { background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 6px; padding: 14px; margin-bottom: 10px; }
+    </style>
+</head>
+<body data-page-id="quant">
+    <div class="app-container">
+        <aside class="sidebar"></aside>
+        <main class="main-content">
+            <div class="top-bar"></div>
+            <div class="workspace" style="grid-template-columns: 340px 1fr; gap: 14px; padding: 14px;">
+                <!-- Left: Control Panel -->
+                <div style="display:flex;flex-direction:column;gap:10px;">
+                    <div class="panel">
+                        <div class="panel-header"><span class="panel-title">决策引擎</span></div>
+                        <div class="panel-body">
+                            <div style="display:flex;gap:8px;margin-bottom:10px;">
+                                <input type="text" id="stock-input" placeholder="股票代码 (如 688012)" value="688012"
+                                    style="flex:1;background:#000;border:1px solid var(--border-color);color:#fff;padding:8px 10px;border-radius:4px;font-size:13px;">
+                                <button class="btn-action btn-primary" onclick="runDecision()" id="btn-decide" style="white-space:nowrap;">
+                                    <i class="fas fa-play"></i> 决策
+                                </button>
+                            </div>
+                            <div style="display:flex;gap:6px;">
+                                <button class="btn-action" onclick="runDecision()" style="font-size:11px;flex:1;justify-content:center;">
+                                    <i class="fas fa-chart-bar"></i> 单股
+                                </button>
+                                <button class="btn-action" onclick="runPortfolio()" id="btn-portfolio" style="font-size:11px;flex:1;justify-content:center;">
+                                    <i class="fas fa-layer-group"></i> 全部持仓
+                                </button>
+                            </div>
+                            <div id="decision-status" style="font-size:10px;color:var(--text-micro);margin-top:6px;text-align:center;">输入代码后点击决策</div>
+                        </div>
+                    </div>
+
+                    <div class="panel">
+                        <div class="panel-header">
+                            <span class="panel-title">已注册策略</span>
+                            <span id="strategy-count" style="font-size:10px;color:var(--text-micro);"></span>
+                        </div>
+                        <div class="panel-body" id="strategy-list" style="max-height:300px;overflow-y:auto;">
+                            <div style="color:var(--text-micro);font-size:11px;text-align:center;">加载中...</div>
+                        </div>
+                    </div>
+
+                    <div class="panel">
+                        <div class="panel-header"><span class="panel-title">历史信号</span></div>
+                        <div class="panel-body" id="history-list" style="max-height:250px;overflow-y:auto;">
+                            <div style="color:var(--text-micro);font-size:11px;text-align:center;">—</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Results -->
+                <div style="display:flex;flex-direction:column;gap:10px;">
+                    <div class="panel" id="panel-empty">
+                        <div class="panel-body" style="text-align:center;padding:60px;">
+                            <div style="font-size:36px;margin-bottom:10px;opacity:0.3;">&#128202;</div>
+                            <div style="color:var(--text-dim);font-size:12px;">输入股票代码, 多策略并行分析, 加权投票决策</div>
+                        </div>
+                    </div>
+
+                    <div class="panel" id="panel-result" style="display:none;">
+                        <div class="panel-header">
+                            <span class="panel-title">决策结果</span>
+                            <span id="result-stock" style="font-size:11px;color:var(--text-micro);"></span>
+                        </div>
+                        <div class="panel-body">
+                            <div class="result-card" id="final-card"></div>
+                            <div id="strategy-table"></div>
+                        </div>
+                    </div>
+
+                    <div class="panel" id="panel-loading" style="display:none;">
+                        <div class="panel-body" style="text-align:center;padding:30px;">
+                            <i class="fas fa-spinner fa-spin" style="color:var(--accent-blue);font-size:20px;"></i>
+                            <div style="color:var(--text-dim);font-size:12px;margin-top:8px;">策略分析中...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="js/framework/api.js"></script>
+    <script src="js/framework/modal.js"></script>
+    <script src="js/framework/task_monitor.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/common.js"></script>
+    <script>
+        async function loadStrategies() {
+            try {
+                const res = await fetch(`${API_BASE}/quant/strategies`);
+                const data = await res.json();
+                const list = data.data || [];
+                document.getElementById('strategy-count').textContent = `(${list.length})`;
+                document.getElementById('strategy-list').innerHTML = list.map(s => `
+                    <div class="strategy-row">
+                        <span>
+                            <span style="color:${s.category==='ai_chain'?'var(--accent-gold)':'var(--accent-blue)'};font-size:10px;">[${s.category==='ai_chain'?'AI':'传统'}]</span>
+                            ${s.name}
+                        </span>
+                        <span style="font-size:10px;color:var(--text-micro);">${(s.required_indicators||[]).slice(0,3).join(', ')}</span>
+                    </div>`).join('');
+            } catch(e) { console.error(e); }
+        }
+
+        async function runDecision() {
+            const code = document.getElementById('stock-input').value.trim();
+            if (!code) { Modal.alert('提示', '请输入股票代码'); return; }
+            await doDecide(code);
+        }
+
+        async function runPortfolio() {
+            const btn = document.getElementById('btn-portfolio');
+            btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            try {
+                const res = await fetch(`${API_BASE}/quant/decide/portfolio`, { method: 'POST' });
+                const data = await res.json();
+                if (!data.success) { Modal.alert('失败', data.detail||''); return; }
+                const reports = data.data || [];
+                document.getElementById('panel-empty').style.display = 'none';
+                document.getElementById('panel-result').style.display = '';
+                document.getElementById('strategy-table').innerHTML = reports.map(r => {
+                    const sigClass = r.final_signal === 'BUY' ? 'signal-buy' : (r.final_signal === 'SELL' ? 'signal-sell' : 'signal-hold');
+                    return `<div style="padding:6px;border-bottom:1px solid var(--border-thin);font-size:12px;">
+                        <span>${r.stock_code}</span>
+                        <span class="${sigClass}">${r.final_signal}</span>
+                        <span style="color:var(--text-micro);margin-left:8px;">${r.vote_summary.buy_count}B/${r.vote_summary.sell_count}S</span>
+                    </div>`;
+                }).join('');
+                document.getElementById('result-stock').textContent = `(${reports.length} 只)`;
+                document.getElementById('final-card').innerHTML = '<span style="color:var(--text-dim);">批量决策完成, 详见下表</span>';
+            } catch(e) { Modal.alert('异常', e.message); }
+            finally { btn.disabled = false; btn.innerHTML = '<i class="fas fa-layer-group"></i> 全部持仓'; }
+        }
+
+        async function doDecide(code) {
+            const btn = document.getElementById('btn-decide');
+            const status = document.getElementById('decision-status');
+            btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 分析中...';
+            status.textContent = '策略并行执行中...';
+            document.getElementById('panel-empty').style.display = 'none';
+            document.getElementById('panel-loading').style.display = '';
+            document.getElementById('panel-result').style.display = 'none';
+
+            try {
+                const res = await fetch(`${API_BASE}/quant/decide/${code}`, { method: 'POST' });
+                const data = await res.json();
+                if (!data.success) { Modal.alert('决策失败', data.detail||JSON.stringify(data)); return; }
+                renderResult(data.data);
+                status.textContent = '决策完成';
+                loadHistory(code);
+            } catch(e) {
+                status.textContent = '异常: ' + e.message;
+            } finally {
+                btn.disabled = false; btn.innerHTML = '<i class="fas fa-play"></i> 决策';
+                document.getElementById('panel-loading').style.display = 'none';
+            }
+        }
+
+        function renderResult(d) {
+            document.getElementById('panel-result').style.display = '';
+            document.getElementById('result-stock').textContent = `${d.stock_code} | ${d.decision_date}`;
+
+            // Final card
+            const sigClass = d.final_signal === 'BUY' ? 'signal-buy' : (d.final_signal === 'SELL' ? 'signal-sell' : 'signal-hold');
+            const vs = d.vote_summary;
+            const total = vs.buy_score + vs.sell_score + 0.01;
+            const buyPct = Math.round(vs.buy_score / total * 100);
+            const sellPct = Math.round(vs.sell_score / total * 100);
+            let riskHtml = '';
+            if (d.risk_flags.chip_risk) riskHtml += ' <span style="color:var(--accent-gold);font-size:10px;">[筹码风险]</span>';
+            if (d.risk_flags.crowding_risk) riskHtml += ' <span style="color:var(--accent-red);font-size:10px;">[拥挤风险]</span>';
+
+            document.getElementById('final-card').innerHTML = `
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-size:24px;font-weight:800;" class="${sigClass}">${d.final_signal}</span>
+                    <span style="font-size:12px;color:var(--text-dim);">置信度: ${d.final_confidence}</span>
+                </div>
+                <div style="margin-top:8px;display:flex;gap:12px;align-items:center;">
+                    <span style="font-size:11px;color:var(--accent-green);">买 ${vs.buy_count}票 (${vs.buy_score})</span>
+                    <span style="font-size:11px;color:var(--accent-red);">卖 ${vs.sell_count}票 (${vs.sell_score})</span>
+                    <span style="font-size:11px;color:var(--text-micro);">持 ${vs.hold_count}票</span>
+                    ${riskHtml}
+                </div>
+                <div style="margin-top:6px;background:rgba(255,255,255,0.05);border-radius:4px;height:8px;display:flex;overflow:hidden;">
+                    <div style="width:${buyPct}%;background:var(--accent-green);"></div>
+                    <div style="width:${sellPct}%;background:var(--accent-red);"></div>
+                </div>
+                <div style="font-size:10px;color:var(--text-micro);margin-top:6px;">${vs.decision_logic}</div>
+            `;
+
+            // Strategy table
+            document.getElementById('strategy-table').innerHTML = `
+                <table style="width:100%;font-size:11px;">
+                    <thead><tr style="color:var(--text-micro);">
+                        <th>策略</th><th>类型</th><th>信号</th><th>置信度</th><th>判断依据</th>
+                    </tr></thead>
+                    <tbody>${d.strategy_results.map(s => {
+                        const sc = s.signal === 'BUY' ? 'signal-buy' : (s.signal === 'SELL' ? 'signal-sell' : 'signal-hold');
+                        return `<tr>
+                            <td>${s.strategy_name}</td>
+                            <td style="font-size:10px;color:var(--text-micro);">${s.category==='ai_chain'?'AI链':'传统'}</td>
+                            <td class="${sc}">${s.signal}</td>
+                            <td>${s.confidence}</td>
+                            <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-dim);">${s.reasoning||''}</td>
+                        </tr>`;
+                    }).join('')}</tbody>
+                </table>
+            `;
+        }
+
+        async function loadHistory(code) {
+            try {
+                const res = await fetch(`${API_BASE}/quant/signals?stock_code=${code}&limit=20`);
+                const data = await res.json();
+                const signals = data.data || [];
+                if (!signals.length) {
+                    document.getElementById('history-list').innerHTML = '<div style="color:var(--text-micro);font-size:11px;text-align:center;">暂无历史信号</div>';
+                    return;
+                }
+                document.getElementById('history-list').innerHTML = signals.map(s => {
+                    const sc = s.signal === 'BUY' ? 'signal-buy' : (s.signal === 'SELL' ? 'signal-sell' : 'signal-hold');
+                    return `<div class="strategy-row">
+                        <span>${s.strategy_name} <span class="${sc}">${s.signal}</span></span>
+                        <span style="font-size:9px;color:var(--text-micro);">${(s.generated_at||'').slice(0,16)}</span>
+                    </div>`;
+                }).join('');
+            } catch(e) { console.error(e); }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadStrategies();
+        });
+    </script>
+</body>
+</html>
