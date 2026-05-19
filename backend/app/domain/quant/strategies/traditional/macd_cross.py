@@ -8,26 +8,18 @@ class MACDCrossStrategy(TimingStrategy):
 
     async def analyze(self, stock_code: str) -> SignalResult:
         ind = await self.load_indicators(stock_code)
-        macd_data = ind.get("macd", {})
-        macd = macd_data.get("macd", [])
-        signal_line = macd_data.get("macd_signal", [])
-        if len(macd) < 3:
-            return SignalResult.create(stock_code, self.name, self.category,
-                "HOLD", 0.3, "数据不足")
+        if not ind or "macd" not in ind or "macd_signal" not in ind:
+            return SignalResult.create(stock_code, self.name, self.category, "HOLD", 0.3, "数据不足")
 
-        prev_m, cur_m = macd[-2], macd[-1]
-        prev_s, cur_s = signal_line[-2], signal_line[-1]
-        cross_up = prev_m < prev_s and cur_m > cur_s
-        cross_down = prev_m > prev_s and cur_m < cur_s
+        macd_val = ind["macd"]
+        signal_val = ind["macd_signal"]
+        prev_macd = ind.get("_prev_macd", macd_val)
+        prev_signal = ind.get("_prev_signal", signal_val)
 
-        if cross_up and cur_m > 0:
-            return SignalResult.create(stock_code, self.name, self.category,
-                "BUY", 0.75, "MACD零轴上金叉")
-        elif cross_up:
-            return SignalResult.create(stock_code, self.name, self.category,
-                "BUY", 0.60, "MACD零轴下金叉(弱势)")
-        elif cross_down:
-            return SignalResult.create(stock_code, self.name, self.category,
-                "SELL", 0.70, "MACD死叉")
-        return SignalResult.create(stock_code, self.name, self.category,
-            "HOLD", 0.50, "MACD无明确信号")
+        if prev_macd < prev_signal and macd_val > signal_val and macd_val > 0:
+            return SignalResult.create(stock_code, self.name, self.category, "BUY", 0.75, "MACD零轴上金叉")
+        elif prev_macd < prev_signal and macd_val > signal_val:
+            return SignalResult.create(stock_code, self.name, self.category, "BUY", 0.60, "MACD金叉(弱势)")
+        elif prev_macd > prev_signal and macd_val < signal_val:
+            return SignalResult.create(stock_code, self.name, self.category, "SELL", 0.70, "MACD死叉")
+        return SignalResult.create(stock_code, self.name, self.category, "HOLD", 0.50, "MACD无信号")

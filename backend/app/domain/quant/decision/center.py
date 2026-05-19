@@ -30,10 +30,14 @@ class DecisionCenter:
         # 1. 加载指标 (复用StockIndicator中的最新快照)
         indicators = await self._load_all_indicators(stock_code)
 
-        # 2. 并行执行所有策略
+        # 2. 并行执行所有策略 (传统 + AI链)
         tasks = []
+        # 传统策略
         for name, strategy_cls in STRATEGY_REGISTRY.items():
-            tasks.append(self._run_one(name, strategy_cls, stock_code, indicators))
+            tasks.append(self._run_traditional(name, strategy_cls, stock_code))
+        # AI链策略
+        for ai_def in AILogicChainEngine.list_definitions():
+            tasks.append(self._run_ai_chain(ai_def["name"], stock_code, indicators))
 
         results: List[SignalResult] = await asyncio.gather(*tasks)
         results = [r for r in results if r is not None]
@@ -41,28 +45,26 @@ class DecisionCenter:
         # 3. 加权投票
         return self._aggregate(stock_code, results)
 
-    async def _run_one(self, name: str, strategy_cls, stock_code: str,
-                       indicators: dict) -> SignalResult:
+    async def _run_traditional(self, name: str, strategy_cls, stock_code: str) -> SignalResult:
         try:
-            if hasattr(strategy_cls, 'analyze'):
-                strategy = strategy_cls()
-                result = await strategy.analyze(stock_code)
-                return result
-            # AI chain strategies via YAML
-            elif name in self._ai_chain_names():
-                engine = AILogicChainEngine(self.provider, name)
-                result = await engine.execute(stock_code, indicators)
-                result.strategy_category = "ai_chain"
-                result.weight = 1.2
-                return result
+            strategy = strategy_cls()
+            return await strategy.analyze(stock_code)
         except Exception as e:
-            logger.warning(f"[DecisionCenter] Strategy {name} failed for {stock_code}: {e}")
+            logger.warning(f"[DecisionCenter] {name} failed for {stock_code}: {e}")
             return SignalResult.create(stock_code, name, "traditional",
-                "HOLD", 0.1, f"策略执行异常: {e}")
+                "HOLD", 0.1, f"策略异常: {e}")
 
-    def _ai_chain_names(self) -> set:
-        from app.domain.quant.strategies.ai_chain.engine import AILogicChainEngine
-        return {d["name"] for d in AILogicChainEngine.list_definitions()}
+    async def _run_ai_chain(self, name: str, stock_code: str, indicators: dict) -> SignalResult:
+        try:
+            engine = AILogicChainEngine(self.provider, name)
+            result = await engine.execute(stock_code, indicators)
+            result.strategy_category = "ai_chain"
+            result.weight = 1.2
+            return result
+        except Exception as e:
+            logger.warning(f"[DecisionCenter] AI chain {name} failed: {e}")
+            return SignalResult.create(stock_code, name, "ai_chain",
+                "HOLD", 0.1, f"AI链异常: {e}")
 
     def _aggregate(self, stock_code: str, results: List[SignalResult]) -> DecisionReport:
         buy_results = [r for r in results if r.signal == "BUY"]

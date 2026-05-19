@@ -25,10 +25,7 @@ class AILogicChainEngine:
             indicators=indicators,
         )
         text = await self.provider.chat(
-            prompt,
-            max_tokens=512,
-            temperature=self.definition.get("temperature", 0.3),
-        )
+            prompt, max_tokens=512)
         if not text:
             return SignalResult.create(stock_code, self.name, "ai_chain",
                 "HOLD", 0.3, "LLM无响应")
