@@ -38,6 +38,12 @@
                         </div>
                     </div>
 
+                    <div class="panel" style="padding: 14px; cursor: pointer; text-align: center;" onclick="syncMacroData()">
+                        <i class="fas fa-globe" style="color: var(--accent-blue);"></i>
+                        <div style="font-size: 12px; font-weight: 600; margin-top: 6px;">同步公共数据</div>
+                        <div style="font-size: 10px; color: var(--text-micro);">汇率/黄金/原油</div>
+                    </div>
+
                     <!-- 数据源状态 -->
                     <div class="panel" style="padding: 14px;">
                         <div style="font-size: 10px; color: var(--text-micro); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Data Source Pipeline</div>
@@ -228,6 +234,9 @@
                             <button class="btn-action" style="padding: 2px 8px; font-size: 10px;" onclick="viewDetail('${s.stock_code}')" title="详细体检">
                                 <i class="fas fa-search"></i>
                             </button>
+                            <button class="btn-action" style="padding: 2px 8px; font-size: 10px; border-color: var(--accent-gold); color: var(--accent-gold);" onclick="syncSingleStock('${s.stock_code}', this)" title="单股同步">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
                         </td>
                     </tr>
                 `).join('');
@@ -259,6 +268,36 @@
             } catch (e) {
                 addLog(`Failed to load detail: ${e.message}`, 'error');
             }
+        }
+
+        // ── 同步公共数据 (汇率/黄金/原油) ──
+        async function syncMacroData() {
+            addLog('正在同步公共数据 (汇率/黄金/原油)...', 'info');
+            const btn = document.querySelector('[onclick="syncMacroData()"]');
+            if (btn) { btn.style.opacity = '0.5'; btn.style.pointerEvents = 'none'; }
+            try {
+                const res = await fetch(`${API_BASE}/data/forex/sync`, { method: 'POST' });
+                const data = await res.json();
+                addLog(`公共数据同步完成: ${data.message || JSON.stringify(data)}`, 'success');
+            } catch (e) {
+                addLog(`公共数据同步失败: ${e.message}`, 'error');
+            }
+            if (btn) { btn.style.opacity = '1'; btn.style.pointerEvents = 'auto'; }
+        }
+
+        // ── 单股同步 ──
+        async function syncSingleStock(stockCode, btnEl) {
+            addLog(`正在同步 ${stockCode}...`, 'info');
+            if (btnEl) { btnEl.disabled = true; btnEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+            try {
+                const res = await fetch(`${API_BASE}/data/sync/daily/${stockCode}`, { method: 'POST' });
+                const data = await res.json();
+                addLog(`${stockCode} ${data.message || '同步完成'}`, 'success');
+                updateHealthTable();  // 刷新表格
+            } catch (e) {
+                addLog(`${stockCode} 同步失败: ${e.message}`, 'error');
+            }
+            if (btnEl) { btnEl.disabled = false; btnEl.innerHTML = '<i class="fas fa-sync-alt"></i>'; }
         }
 
         // ── 触发同步 ──
