@@ -248,7 +248,7 @@ class QuantEngine:
             if exec_id:
                 await task_manager.update_progress(exec_id, 95, "VALUATION: syncing PE/PB/mcap...")
             from app.domain.market_data.services.valuation import sync_valuation
-            val_count = await sync_valuation()
+            val_count = await sync_valuation(target_codes)
             if exec_id:
                 await task_manager.update_progress(exec_id, 100, f"估值同步完成: {val_count}只")
 

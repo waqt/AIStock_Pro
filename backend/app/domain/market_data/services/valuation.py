@@ -7,11 +7,13 @@ from app.framework.logger import logger
 from sqlalchemy import select
 
 
-async def sync_valuation():
-    """同步所有持仓的 PE/PB/市值到 stock_info 表"""
+async def sync_valuation(target_codes: list = None):
+    """同步 PE/PB/市值到 stock_info 表。target_codes 为 None 时同步全部持仓"""
     async with async_session() as db:
         res = await db.execute(select(Position.stock_code))
         codes = list(set(r[0] for r in res.all() if r[0]))
+        if target_codes:
+            codes = [c for c in codes if c in set(target_codes)]
 
     if not codes:
         return 0
