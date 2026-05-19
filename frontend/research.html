@@ -115,6 +115,17 @@
                             <div id="stock-count" style="font-size:10px;color:var(--text-micro);margin-top:4px;"></div>
                         </div>
                     </div>
+
+                    <!-- 历史研报 -->
+                    <div class="panel">
+                        <div class="panel-header">
+                            <span class="panel-title">历史研报</span>
+                            <button onclick="loadReportList()" style="background:none;border:none;color:var(--text-micro);cursor:pointer;font-size:10px;"><i class="fas fa-sync-alt"></i></button>
+                        </div>
+                        <div class="panel-body" id="content-report-history" style="max-height:400px;overflow-y:auto;">
+                            <div style="color:var(--text-micro);font-size:11px;text-align:center;">加载中...</div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- 右: 结果展示 -->
@@ -563,11 +574,70 @@
             }
         }
 
+        // ── 历史研报 ──
+        async function loadReportList() {
+            const el = document.getElementById('content-report-history');
+            try {
+                const res = await fetch(`${API_BASE}/research/reports?limit=20`);
+                const data = await res.json();
+                const reports = data.data || [];
+                if (!reports.length) {
+                    el.innerHTML = '<div style="color:var(--text-micro);font-size:11px;text-align:center;">暂无历史研报</div>';
+                    return;
+                }
+                el.innerHTML = reports.map(r => `
+                    <div style="padding:8px;border-bottom:1px solid var(--border-thin);cursor:pointer;display:flex;justify-content:space-between;align-items:center;"
+                         onclick="loadReportById('${r.report_id}')">
+                        <div style="flex:1;min-width:0;">
+                            <div style="font-size:11px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(r.industry||'未命名')}</div>
+                            <div style="font-size:9px;color:var(--text-micro);">${escHtml(r.agent)} | ${(r.created_at||'').slice(0,16)} | ${r.stocks_count||0}只标的</div>
+                        </div>
+                        <button onclick="event.stopPropagation();deleteReport('${r.report_id}')"
+                            style="background:none;border:none;color:var(--accent-red);cursor:pointer;font-size:10px;padding:2px 6px;"
+                            title="删除"><i class="fas fa-trash"></i></button>
+                    </div>
+                `).join('');
+            } catch(e) {
+                el.innerHTML = '<div style="color:var(--text-micro);font-size:11px;">加载失败</div>';
+            }
+        }
+
+        async function loadReportById(reportId) {
+            try {
+                const res = await fetch(`${API_BASE}/research/reports/${reportId}`);
+                const data = await res.json();
+                const report = data.data;
+                if (!report) return;
+                const d = report.data || {};
+                hideAllPanels();
+                document.getElementById('panel-empty').style.display = 'none';
+                document.getElementById('current-industry').textContent = d.industry || report.industry || '';
+                document.getElementById('stock-count').textContent = (d.core_stocks||[]).length ? (d.core_stocks.length + ' 只标的') : '';
+                const isV3 = d.core_stocks || d.supply_chain_map;
+                if (isV3) renderV3(d);
+                else renderLegacy(d);
+            } catch(e) {
+                Modal.alert('加载失败', e.message);
+            }
+        }
+
+        async function deleteReport(reportId) {
+            const ok = await Modal.confirm('删除研报', '确定删除这份研报?');
+            if (!ok) return;
+            try {
+                await fetch(`${API_BASE}/research/reports/${reportId}`, { method: 'DELETE' });
+                loadReportList();
+            } catch(e) {
+                Modal.alert('删除失败', e.message);
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => {
                 const cache = loadCache();
                 if (cache) { restoreView(cache); document.getElementById('scan-status').textContent = '已恢复上次分析'; }
             }, 300);
+            setTimeout(loadReportList, 500);
         });
 
     </script>

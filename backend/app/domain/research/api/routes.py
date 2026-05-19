@@ -13,6 +13,7 @@ from app.domain.research.agents.global_capex_scanner import GlobalCapexScanner
 from app.domain.research.agents.dag_orchestrator import DAGOrchestrator
 from app.domain.research.agents.market_scanner import MarketScanner
 from app.domain.research.services.data_loader import data_loader
+from app.domain.research.services.report_store import save_report, list_reports, get_report, delete_report
 from app.framework.logger import logger
 
 router = APIRouter(prefix="/api/research", tags=["投研分析"])
@@ -48,6 +49,7 @@ async def research_analyze_v4(req: ResearchRequest):
         context = {"question": req.question, "stock_codes": req.stock_codes,
                    "industry": req.industry or req.question, "include_portfolio": req.include_portfolio}
         result = await orchestrator.analyze(context)
+        save_report("DAGOrchestrator", req.industry or req.question, result)
         return {"success": True, "data": result}
     except Exception as e:
         logger.error(f"[❌] DAG pipeline failed: {e}")
@@ -96,6 +98,7 @@ async def supply_chain_analysis(req: ResearchRequest):
         context = {"question": req.question, "stock_codes": req.stock_codes,
                    "industry": req.industry or req.question, "include_portfolio": req.include_portfolio}
         result = await analyst.analyze(context)
+        save_report("SupplyChainAnalyst", req.industry or req.question, result)
         return {"success": True, "data": result}
     except Exception as e:
         logger.error(f"[❌] Supply chain analysis failed: {e}")
@@ -112,6 +115,7 @@ async def supply_chain_hacker_analysis(req: ResearchRequest):
         context = {"question": req.question, "stock_codes": req.stock_codes,
                    "industry": req.industry or req.question, "include_portfolio": req.include_portfolio}
         result = await hacker.analyze(context)
+        save_report("SupplyChainHacker", req.industry or req.question, result)
         return {"success": True, "data": result}
     except Exception as e:
         logger.error(f"[❌] Supply chain hacker failed: {e}")
@@ -154,6 +158,7 @@ async def global_capex_scan(req: ResearchRequest):
         scanner = GlobalCapexScanner(provider=DeepSeekProvider())
         context = {"industry": req.industry or "", "question": req.question}
         result = await scanner.analyze(context)
+        save_report("GlobalCapexScanner", req.industry or "全局", result)
         return {"success": True, "data": result}
     except Exception as e:
         logger.error(f"[❌] Global capex scan failed: {e}")
@@ -167,6 +172,7 @@ async def market_scan():
         from app.framework.ai.providers.deepseek import DeepSeekProvider
         scanner = MarketScanner(provider=DeepSeekProvider())
         result = await scanner.analyze({})
+        save_report("MarketScanner", "每日扫描", result)
         return {"success": True, "data": result}
     except Exception as e:
         logger.error(f"[❌] Market scan failed: {e}")
@@ -185,3 +191,31 @@ async def get_stock_data(code: str):
         "fundamentals": fund.get(code, {}),
         "indicators": ind.get(code, {}),
     }
+
+
+# ═══════════════════════════════════════════
+# 研报持久化
+# ═══════════════════════════════════════════
+
+@router.get("/reports")
+async def list_research_reports(limit: int = 20):
+    """列出历史研报 (摘要列表)"""
+    return {"success": True, "data": list_reports(limit)}
+
+
+@router.get("/reports/{report_id}")
+async def get_research_report(report_id: str):
+    """获取单篇研报完整内容"""
+    report = get_report(report_id)
+    if not report:
+        raise HTTPException(status_code=404, detail=f"Report {report_id} not found")
+    return {"success": True, "data": report}
+
+
+@router.delete("/reports/{report_id}")
+async def delete_research_report(report_id: str):
+    """删除单篇研报"""
+    ok = delete_report(report_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail=f"Report {report_id} not found")
+    return {"success": True, "message": f"Deleted {report_id}"}
