@@ -2,7 +2,9 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
+from datetime import datetime
 
+from app.domain.research.agents.base import ResearchAgent
 from app.domain.research.agents.coordinator import ResearchCoordinator
 from app.domain.research.agents.industry_analyst import IndustryAnalyst
 from app.domain.research.agents.supply_chain_analyst import SupplyChainAnalyst
@@ -50,7 +52,7 @@ async def research_analyze_v4(req: ResearchRequest):
                    "industry": req.industry or req.question, "include_portfolio": req.include_portfolio}
         result = await orchestrator.analyze(context)
         save_report("DAGOrchestrator", req.industry or req.question, result)
-        return {"success": True, "data": result}
+        return {"success": True, "data": result, "freshness": ResearchAgent.freshness_stamp()}
     except Exception as e:
         logger.error(f"[❌] DAG pipeline failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -64,7 +66,7 @@ async def research_analyze(req: ResearchRequest):
         context = {"question": req.question, "stock_codes": req.stock_codes,
                    "industry": req.industry, "include_portfolio": req.include_portfolio}
         result = await coordinator.analyze(context)
-        return {"success": True, "data": result}
+        return {"success": True, "data": result, "freshness": ResearchAgent.freshness_stamp()}
     except Exception as e:
         logger.error(f"[❌] Research analysis failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -99,7 +101,7 @@ async def supply_chain_analysis(req: ResearchRequest):
                    "industry": req.industry or req.question, "include_portfolio": req.include_portfolio}
         result = await analyst.analyze(context)
         save_report("SupplyChainAnalyst", req.industry or req.question, result)
-        return {"success": True, "data": result}
+        return {"success": True, "data": result, "freshness": ResearchAgent.freshness_stamp()}
     except Exception as e:
         logger.error(f"[❌] Supply chain analysis failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -116,7 +118,7 @@ async def supply_chain_hacker_analysis(req: ResearchRequest):
                    "industry": req.industry or req.question, "include_portfolio": req.include_portfolio}
         result = await hacker.analyze(context)
         save_report("SupplyChainHacker", req.industry or req.question, result)
-        return {"success": True, "data": result}
+        return {"success": True, "data": result, "freshness": ResearchAgent.freshness_stamp()}
     except Exception as e:
         logger.error(f"[❌] Supply chain hacker failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -132,7 +134,7 @@ async def audit_human_capital(req: ResearchRequest):
         from app.framework.ai.providers.deepseek import DeepSeekProvider
         detective = HumanCapitalDetective(provider=DeepSeekProvider())
         result = await detective.analyze({"stock_code": code, "stock_name": req.industry or code})
-        return {"success": True, "data": result}
+        return {"success": True, "data": result, "freshness": ResearchAgent.freshness_stamp()}
     except Exception as e:
         logger.error(f"[❌] Human capital audit failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -144,7 +146,7 @@ async def audit_financial(stock_code: str):
     try:
         auditor = FinancialAuditor()
         result = await auditor.analyze({"stock_code": stock_code, "stock_name": stock_code})
-        return {"success": True, "data": result}
+        return {"success": True, "data": result, "freshness": ResearchAgent.freshness_stamp()}
     except Exception as e:
         logger.error(f"[❌] Financial audit failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -159,7 +161,7 @@ async def global_capex_scan(req: ResearchRequest):
         context = {"industry": req.industry or "", "question": req.question}
         result = await scanner.analyze(context)
         save_report("GlobalCapexScanner", req.industry or "全局", result)
-        return {"success": True, "data": result}
+        return {"success": True, "data": result, "freshness": ResearchAgent.freshness_stamp()}
     except Exception as e:
         logger.error(f"[❌] Global capex scan failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -173,7 +175,7 @@ async def market_scan():
         scanner = MarketScanner(provider=DeepSeekProvider())
         result = await scanner.analyze({})
         save_report("MarketScanner", "每日扫描", result)
-        return {"success": True, "data": result}
+        return {"success": True, "data": result, "freshness": ResearchAgent.freshness_stamp()}
     except Exception as e:
         logger.error(f"[❌] Market scan failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))

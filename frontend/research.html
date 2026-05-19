@@ -113,6 +113,7 @@
                         <div class="panel-body" style="text-align:center;">
                             <div id="current-industry" style="font-size:16px;font-weight:700;color:var(--text-dim);">—</div>
                             <div id="stock-count" style="font-size:10px;color:var(--text-micro);margin-top:4px;"></div>
+                            <div id="data-freshness" style="font-size:9px;color:var(--text-micro);margin-top:4px;"></div>
                         </div>
                     </div>
 
@@ -267,6 +268,7 @@
                 }
 
                 saveCache(d);
+                showFreshness(result.freshness);
                 status.textContent = '扫描完成';
                 document.getElementById('panel-empty').style.display = 'none';
             } catch (e) {
@@ -324,6 +326,7 @@
                 document.getElementById('stock-count').textContent =
                     (d.core_stocks || []).length ? `锁定 ${d.core_stocks.length} 只核心标的` : '';
 
+                showFreshness(result.freshness);
                 saveCache(d);
             } catch (e) {
                 Modal.alert('分析异常', e.message);
@@ -540,6 +543,16 @@
         function escHtml(s) {
             if (!s) return '';
             return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        function showFreshness(freshness) {
+            const el = document.getElementById('data-freshness');
+            if (!el) return;
+            if (!freshness) { el.textContent = ''; return; }
+            const t = freshness.generated_at || '';
+            const ds = freshness.data_sources || {};
+            const sources = Object.entries(ds).map(([k,v]) => k + ':' + (v||'').slice(0,20)).join(' | ');
+            el.textContent = '\u{1F4C5} ' + (t.slice(0,16) || '') + ' | ' + (sources.slice(0,80));
         }
 
         // ── 持久化 ──

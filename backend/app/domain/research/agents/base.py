@@ -64,6 +64,21 @@ class ResearchAgent(BaseAgent):
         raise NotImplementedError
 
     @staticmethod
+    def freshness_stamp() -> Dict[str, Any]:
+        """返回数据新鲜度戳 — 每个 Agent 输出时附带, 防止用到过期数据"""
+        from datetime import datetime
+        return {
+            "generated_at": datetime.now().isoformat(),
+            "data_sources": {
+                "web_search": "实时 (DDG/Brave via Clash)",
+                "market_data": "持仓同步时的最新日线 (AkShare/EastMoney)",
+                "financials": "最近8个季度财报 (akshare)",
+                "valuation": "腾讯行情实时 PE/PB/市值",
+                "macro": "新浪实时汇率/黄金/原油",
+            }
+        }
+
+    @staticmethod
     def parse_json(text: str) -> Any:
         """共享 JSON 解析器 — 处理 markdown 代码块 + 括号计数截断"""
         import json, re
