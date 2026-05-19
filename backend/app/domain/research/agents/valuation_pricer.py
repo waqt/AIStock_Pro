@@ -55,11 +55,20 @@ class ValuationPricer(ResearchAgent):
         # 搜索全球对标数据
         peers_data = await self._search_global_peers(name, code)
 
+        # 从 DB 获取实时 PE/PB/市值 作为估值硬锚
+        fundamentals = await self.data_loader.load_fundamentals([code])
+        db_metrics = fundamentals.get(code, {})
+        hard_anchor = {
+            "pe_ttm": db_metrics.get("pe_ttm"),
+            "pb": db_metrics.get("pb"),
+            "mcap_yi": db_metrics.get("mcap_yi"),
+        }
+
         # LLM 综合定价
         if not self.provider:
             return {"agent": self.name, "error": "No AI provider", "code": code}
 
-        result = await self._price_target(stock, financial, human, peers_data)
+        result = await self._price_target(stock, financial, human, peers_data, hard_anchor)
         result["agent"] = self.name
         result["code"] = code
         result["name"] = name
@@ -81,11 +90,14 @@ class ValuationPricer(ResearchAgent):
     # ═══ LLM 综合定价 ═════════════════════════════
 
     async def _price_target(self, stock: Dict, financial: Dict,
-                            human: Dict, peers: List) -> Dict:
+                            human: Dict, peers: List, hard_anchor: Dict) -> Dict:
         prompt = f"""你是买方首席估值分析师。基于以下多维度数据, 对标的进行综合估值定价。
 
 ## 标的基本信息
 {_j(stock)}
+
+## 实时估值锚 (来自DB, 硬数据)
+{_j(hard_anchor)}
 
 ## 财务审计结果 (FinancialAuditor)
 {_j(financial)}
@@ -95,6 +107,11 @@ class ValuationPricer(ResearchAgent):
 
 ## 全球对标搜索
 {_j(peers)}
+
+## 关键规则
+- pe_current / ps_current 必须使用上述"实时估值锚"中的 pe_ttm 值
+- market_cap 必须使用上述 mcap_yi 值 (单位: 亿元)
+- 如果 hard_anchor 中某字段为 null, 使用同业对标数据估算
 
 ## 输出要求: 纯 JSON
 {{

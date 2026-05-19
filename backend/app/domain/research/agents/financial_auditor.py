@@ -96,8 +96,8 @@ class FinancialAuditor(ResearchAgent):
             else:
                 m["scissor_gap"] = None
 
-            # 毛利率估算
-            m["gross_margin_est"] = round((rev - (rev - profit)) / rev * 100, 1) if rev > 0 else 0
+            # 净利率 (无COGS数据, 无法算毛利率)
+            m["net_margin"] = round(profit / rev * 100, 1) if rev > 0 else 0
 
             # 经营现金流/利润 健康度
             m["ocf_profit_ratio"] = round(ocf / profit, 2) if profit and profit > 0 else None

@@ -107,6 +107,25 @@ async def supply_chain_analysis(req: ResearchRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+class LevelAnalysisRequest(BaseModel):
+    industry: str = ""
+    level_name: str = ""
+    level_info: Optional[Dict[str, Any]] = None
+
+
+@router.post("/supply-chain-hacker/level")
+async def supply_chain_level_analysis(req: LevelAnalysisRequest):
+    """V4.0 供应链单层级深度穿透 — 找出该层所有高价值资产"""
+    try:
+        from app.framework.ai.providers.deepseek import DeepSeekProvider
+        hacker = SupplyChainHacker(provider=DeepSeekProvider())
+        result = await hacker.analyze_level(req.industry, req.level_name, req.level_info)
+        return {"success": True, "data": result}
+    except Exception as e:
+        logger.error(f"[❌] Level analysis failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/supply-chain-hacker")
 async def supply_chain_hacker_analysis(req: ResearchRequest):
     """V4.0 供应链降维穿透 — 纯瓶颈定位 + 标的映射 (不含财务/估值)"""

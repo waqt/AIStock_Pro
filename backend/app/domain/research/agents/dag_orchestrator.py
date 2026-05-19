@@ -27,15 +27,17 @@ class DAGOrchestrator(ResearchAgent):
         ctx = await self.load_context(ctx)
         industry = ctx.get("industry", "")
         codes = ctx.get("stock_codes", [])
+        hot_sectors = ctx.get("hot_sectors", [])  # 可选: MarketScanner 预扫描信号
 
         if not industry:
             return {"agent": self.name, "error": "No industry specified"}
 
-        logger.info(f"[{self.name}] DAG pipeline starting for: {industry}")
+        logger.info(f"[{self.name}] DAG pipeline starting for: {industry}"
+                    + (f" (pre-scanned: {len(hot_sectors)} sectors)" if hot_sectors else ""))
 
         # ═══ Phase A: 顶层并行扫描 ═══
         logger.info(f"[{self.name}] Phase A: parallel top-down scan...")
-        capex_task = self._run_capex_scanner(industry)
+        capex_task = self._run_capex_scanner(industry, hot_sectors)
         hacker_task = self._run_supply_chain_hacker(industry, codes)
 
         capex_result, hacker_result = await asyncio.gather(capex_task, hacker_task)
@@ -90,11 +92,14 @@ class DAGOrchestrator(ResearchAgent):
 
     # ═══ Phase A: 并行顶层 ═══════════════════════
 
-    async def _run_capex_scanner(self, industry: str) -> Dict:
+    async def _run_capex_scanner(self, industry: str, hot_sectors: list = None) -> Dict:
         from app.domain.research.agents.global_capex_scanner import GlobalCapexScanner
         scanner = GlobalCapexScanner(provider=self.provider)
+        ctx = {"industry": industry}
+        if hot_sectors:
+            ctx["hot_sectors"] = hot_sectors  # 预扫描信号注入
         try:
-            return await scanner.analyze({"industry": industry})
+            return await scanner.analyze(ctx)
         except Exception as e:
             logger.warning(f"[{self.name}] CapexScanner failed: {e}")
             return {"error": str(e), "agent": "GlobalCapexScanner"}

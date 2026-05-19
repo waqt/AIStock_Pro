@@ -137,10 +137,19 @@ class SupplyChainHacker(ResearchAgent):
 ## 输出要求: 纯 JSON
 {{
   "supply_chain_map": [
-    {{"level": 1, "name": "显性瓶颈名称", "gap_score": 3, "gap_reason": "已被充分定价"}},
-    {{"level": 2, "name": "工艺瓶颈", "gap_score": 8, "gap_reason": "市场未认知"}},
-    {{"level": 3, "name": "材料瓶颈", "gap_score": 9, "gap_reason": "消耗倍增未定价"}},
-    {{"level": 4, "name": "设备/测试瓶颈", "gap_score": 10, "gap_reason": "全市场忽视, 国产化率极低"}}
+    {{
+      "level": 1, "name": "显性瓶颈名称", "gap_score": 3, "gap_reason": "已被充分定价",
+      "market_size_est": "该环节全球市场规模(亿元/亿美元, 注明单位)",
+      "tech_generation_gap": "与国际领先的代际差 (如: 落后2代)",
+      "localization_rate": "国产化率% (估)",
+      "level_assets": [
+        {{"code": "688981", "name": "中芯国际", "exchange": "SH",
+          "role": "代工龙头/设备商/材料商/封测厂",
+          "market_share_est": "全球市占率% (估)", "tech_level": "技术水平描述",
+          "moat_score": 8, "is_leader": true,
+          "key_metric": "关键指标 (如: 月产能XX万片, 或 毛利率XX%)"}}
+      ]
+    }}
   ],
   "temporal": [
     {{"segment": "环节名", "demand_growth": "25%", "supply_gap": "15%",
@@ -150,22 +159,23 @@ class SupplyChainHacker(ResearchAgent):
     {{"code": "688012", "name": "中微公司", "exchange": "SH",
       "segment": "所属瓶颈环节",
       "relevance": "国产替代逻辑 (1句话)",
-      "monopoly_root": "垄断根源 (技术/客户认证/产能)", "monopoly_score": 8,
+      "monopoly_root": "垄断根源", "monopoly_score": 8,
       "short_note": "关键判断 (1句话)"}}
-  ]
+  ],
+  "risk_alerts": [
+    {{"type": "地缘/技术替代/供需反转/政策", "severity": "高/中/低", "description": "..."}}
+  ],
+  "watchlist": ["关键跟踪指标1", "指标2"]
 }}
 
 gap_score 评分标准:
-1-3: 已被市场充分定价 (估值已反映)
-4-6: 市场部分认知, 但深度不够
-7-9: 市场未充分定价, 存在显著预期差
-10: 全市场完全忽视, 最大超额收益来源
+1-3: 已被充分定价  4-6: 部分认知  7-9: 显著预期差  10: 全市场忽视
 
-每个 core_stock 必须对应到 supply_chain_map 中的某个瓶颈层级。"""
+**重要**: level_assets 中要列出该层级**所有**你能识别的高价值公司(A股优先, 含港股, 也提关键的海外龙头作为对标), 至少 3-5 家。每个公司给出 role/market_share/tech_level/moat_score。"""
 
         try:
             text = await asyncio.wait_for(
-                self.provider.chat(prompt, max_tokens=4096), timeout=60)
+                self.provider.chat(prompt, max_tokens=8192), timeout=90)
             result = self.parse_json(text)
             if isinstance(result, dict):
                 result["findings_count"] = len(findings)
@@ -182,6 +192,89 @@ gap_score 评分标准:
             logger.warning(f"[{self.name}] Phase 2 failed: {e}")
 
         return {"raw_findings": findings, "error": "Structuring failed"}
+
+    # ═══ 层级独立深钻 ══════════════════════════
+
+    async def analyze_level(self, industry: str, level_name: str,
+                            level_info: Dict = None) -> Dict:
+        """对供应链的**单一层级**做独立深度分析 — 找出该层所有高价值资产"""
+        logger.info(f"[{self.name}] Deep-diving level: {level_name} ({industry})")
+
+        # 针对该层搜索
+        search_results = []
+        query = f"{industry} {level_name} 产业链 龙头企业 市占率 国产替代 产能 技术壁垒"
+        for r in await self.data_loader.search_web(query, num=6):
+            search_results.append({
+                "title": r.get("title", ""),
+                "url": r.get("url", ""),
+                "snippet": r.get("snippet", "")[:250],
+            })
+
+        prompt = f"""你是半导体/制造业产业链专家。请对 {industry} 的 **{level_name}** 环节做独立深度穿透。
+
+## 上下文
+行业: {industry}
+层级: {level_name}
+已知信息: {_j(level_info) if level_info else '无'}
+
+## 搜索结果
+{_j(search_results)}
+
+## 输出纯 JSON
+{{
+  "level_name": "{level_name}",
+  "industry": "{industry}",
+  "overview": "该环节的产业地位和技术经济特征 (2-3句)",
+  "market_structure": {{
+    "global_size": "全球市场规模 (亿美元/亿元)",
+    "growth_rate": "年增速%",
+    "concentration": "CR3/CR5 集中度%",
+    "entry_barriers": "进入壁垒 (技术/资金/客户认证/规模)"
+  }},
+  "technology_landscape": {{
+    "current_gen": "当前主流技术代际",
+    "next_gen": "下一代技术方向",
+    "gap_with_global_leader": "国产与国际领先的代差",
+    "key_patents_holders": ["专利持有方1", "专利持有方2"]
+  }},
+  "all_assets": [
+    {{
+      "code": "688012", "name": "公司名", "exchange": "SH/SZ/HK",
+      "role": "代工/设备/材料/封测/设计",
+      "market_share_est": "市占率%(估)",
+      "revenue_est": "该环节营收(亿元, 估)",
+      "tech_level": "技术实力描述",
+      "key_customers": "核心客户",
+      "capacity": "产能数据 (如有)",
+      "moat_type": "技术垄断/客户认证/成本优势/规模壁垒",
+      "moat_score": 8,
+      "catalyst": "近期催化剂"
+    }}
+  ],
+  "investment_thesis": "该层级的核心投资逻辑 (2-3句)",
+  "top_pick": {{"code": "...", "name": "...", "reason": "首选理由"}}
+}}
+
+要求:
+- all_assets 必须包含**所有**能识别的高价值公司 (A股优先, 含港股, 海外龙头作为对标)
+- 至少列出 5-8 家公司
+- 区分 tier1(龙头)/tier2(追赶者)/tier3(新进入者)
+- moat_score: 1-10, 10=绝对垄断"""
+
+        try:
+            text = await asyncio.wait_for(
+                self.provider.chat(prompt, max_tokens=4096), timeout=60)
+            result = self.parse_json(text)
+            if isinstance(result, dict):
+                result["agent"] = self.name
+                logger.info(f"[{self.name}] Level analysis: {level_name} — "
+                            f"{len(result.get('all_assets', []))} assets found")
+                return result
+        except Exception as e:
+            logger.warning(f"[{self.name}] Level analysis failed: {e}")
+
+        return {"level_name": level_name, "error": "Analysis failed",
+                "search_results": search_results}
 
     # ═══ 基类实现 ═══════════════════════════════
 
