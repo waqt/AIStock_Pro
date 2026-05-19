@@ -198,8 +198,10 @@ class QuantEngine:
         result = await self.db.execute(select(Position))
         positions = result.scalars().all()
         if target_codes:
-            target_set = set(target_codes)
-            positions = [p for p in positions if p.stock_code in target_set]
+            # 允许同步非持仓股: 不在持仓中的 code 构造虚拟条目
+            pos_codes = {p.stock_code for p in positions}
+            extra = [type('_', (), {'stock_code': c})() for c in target_codes if c not in pos_codes]
+            positions = [p for p in positions if p.stock_code in set(target_codes)] + extra
         total = len(positions)
 
         try:
