@@ -9,7 +9,7 @@ class KDJGoldenCrossStrategy(TimingStrategy):
     async def analyze(self, stock_code: str) -> SignalResult:
         ind = await self.load_indicators(stock_code)
         if not ind or "k" not in ind:
-            return SignalResult.create(stock_code, self.name, self.category, "HOLD", 0.3, "数据不足")
+            return SignalResult.create(stock_code, self.name, self.category, "HOLD", 0.3, "KDJ指标未计算,需先运行数据中心→重算指标")
 
         k, d, j = ind.get("k", 50), ind.get("d", 50), ind.get("j", 50)
         prev_k, prev_d = ind.get("_prev_k", k), ind.get("_prev_d", d)

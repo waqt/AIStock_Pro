@@ -9,7 +9,7 @@ class MACDCrossStrategy(TimingStrategy):
     async def analyze(self, stock_code: str) -> SignalResult:
         ind = await self.load_indicators(stock_code)
         if not ind or "macd" not in ind or "macd_signal" not in ind:
-            return SignalResult.create(stock_code, self.name, self.category, "HOLD", 0.3, "数据不足")
+            return SignalResult.create(stock_code, self.name, self.category, "HOLD", 0.3, "MACD指标数据不足,需先同步行情+重算指标")
 
         macd_val = ind["macd"]
         signal_val = ind["macd_signal"]

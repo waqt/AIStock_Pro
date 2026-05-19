@@ -229,21 +229,22 @@
                 const res = await fetch(`${API_BASE}/quant/decide/portfolio`, { method: 'POST' });
                 const resp = await res.json();
                 if (!resp.success) { Modal.alert('失败', resp.detail||JSON.stringify(resp)); return; }
-                const reports = Array.isArray(resp.data) ? resp.data : [];
-                if (!reports.length) {
-                    document.getElementById('detail-content').innerHTML = '<div style="color:var(--text-dim);padding:20px;">无持仓数据</div>';
+                let reports = resp.data;
+                if (!Array.isArray(reports)) { reports = [reports]; }
+                if (!reports || !reports.length) {
+                    document.getElementById('detail-content').innerHTML = '<div style="color:var(--text-dim);padding:20px;">无持仓或决策执行异常</div>';
                     return;
                 }
                 document.getElementById('detail-content').innerHTML = `
                     <div style="display:flex;flex-wrap:wrap;gap:8px;">${reports.map(r => {
                         const sc = r.final_signal === 'BUY' ? 'signal-buy' : (r.final_signal === 'SELL' ? 'signal-sell' : 'signal-hold');
-                        return `<div class="card" style="min-width:160px;flex:1;" onclick="showSingleResult('${r.stock_code}')" title="点击查看详情">
+                        return `<div class="card" style="min-width:160px;flex:1;cursor:pointer;" onclick="doDecide('${r.stock_code}')" title="点击查看详情">
                             <span style="font-weight:600;">${r.stock_code}</span>
-                            <span class="${sc}" style="margin-left:8px;">${r.final_signal}</span>
-                            <div style="font-size:10px;color:var(--text-micro);">${r.vote_summary.buy_count}B/${r.vote_summary.sell_count}S</div>
+                            <span class="${sc}" style="margin-left:8px;">${r.final_signal||'?'}</span>
+                            <div style="font-size:10px;color:var(--text-micro);">${(r.vote_summary||{}).buy_count||0}B/${(r.vote_summary||{}).sell_count||0}S</div>
                         </div>`;
                     }).join('')}</div>
-                    <div style="font-size:10px;color:var(--text-micro);margin-top:8px;">点击卡片查看单股详情</div>
+                    <div style="font-size:10px;color:var(--text-micro);margin-top:8px;">点击卡片查看单股详情 | ${reports.length} 只</div>
                 `;
                 status.textContent = `完成 ${reports.length} 只`;
             } catch(e) { status.textContent = '异常: ' + e.message; }
