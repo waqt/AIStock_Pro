@@ -5,7 +5,7 @@ from datetime import date, timedelta
 import re
 
 from app.framework.database.session import async_session
-from app.models.models import MarketData, StockIndicator, Position, ExchangeRate, StockInfo, WatchlistItem, PortfolioSnapshot, TradeHistory
+from app.models.models import MarketData, StockIndicator, Position, ExchangeRate, StockInfo, WatchlistItem, PortfolioSnapshot
 from app.domain.market_data.sources.router import data_router
 from app.framework.tasks.engine import task_manager
 from app.framework.logger import logger
@@ -673,10 +673,8 @@ async def compute_portfolio_snapshot():
                 mcap_yi=info.mcap_yi if info else None,
             ))
 
-        # 2. 查询历史已清仓盈亏 (从 TradeHistory)
-        realized_res = await db.execute(
-            select(func.sum(TradeHistory.profit_loss)))
-        realized_pl = realized_res.scalars().first() or 0.0
+        # 2. 已实现盈亏: TradeHistory 记录单笔交易无直接盈亏字段, 需配对计算(后续实现)
+        realized_pl = 0.0
 
         # 3. 清理今日已有快照, 写入新快照
         from sqlalchemy import delete as sqla_delete
