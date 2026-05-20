@@ -826,6 +826,7 @@ async def sync_watchlist(mode: str = "daily"):
             total_rows += rows
         except Exception as e:
             logger.warning(f"[WatchlistSync] {code} failed: {e}")
+    await db.commit()  # 持久化行情数据
 
     await sync_valuation(target_codes=codes)
     return {"success": True, "synced": len(codes), "total_rows": total_rows}
