@@ -247,6 +247,8 @@ class ResearchDataLoader:
         })
         df["REPORT_DATE"] = pd.to_datetime(df["REPORT_DATE"])
         cols = ["REPORT_DATE", "revenue", "profit", "operate_cost", "sale_expense", "manage_expense"]
+        missing = [c for c in cols if c not in df.columns]
+        if missing: logger.warning(f"[Financial] Income sheet missing columns: {missing}")
         return df[[c for c in cols if c in df.columns]].dropna(subset=["revenue"])
 
     @staticmethod
