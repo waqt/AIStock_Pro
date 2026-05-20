@@ -95,12 +95,17 @@
     </div>
 </div>
 
-<!-- Tab: 基本面 (待建设) -->
+<!-- Tab: 基本面 -->
 <div class="data-tab-panel" id="tab-fundamental" style="display:none;">
-    <div class="placeholder-tab">
-        <div class="icon">🏗️</div>
-        <div style="font-size:14px;color:var(--text-dim);">基本面数据中心 — 建设中</div>
-        <div style="font-size:11px;margin-top:8px;">PE/PB/市值趋势 + 行业分类 + 盈利预测</div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <div class="panel" style="flex:1;min-width:350px;max-height:55vh;overflow-y:auto;">
+            <div class="panel-header"><span class="panel-title">行业分布</span></div>
+            <div class="panel-body" id="fund-industry-table"></div>
+        </div>
+        <div class="panel" style="flex:2;min-width:500px;max-height:55vh;overflow-y:auto;">
+            <div class="panel-header"><span class="panel-title">估值一览</span></div>
+            <div class="panel-body" id="fund-valuation-table"></div>
+        </div>
     </div>
 </div>
 
@@ -118,12 +123,17 @@
     </div>
 </div>
 
-<!-- Tab: 另类数据 (待建设) -->
+<!-- Tab: 另类数据 -->
 <div class="data-tab-panel" id="tab-alt" style="display:none;">
-    <div class="placeholder-tab">
-        <div class="icon">🔮</div>
-        <div style="font-size:14px;color:var(--text-dim);">另类数据中心 — 建设中</div>
-        <div style="font-size:11px;margin-top:8px;">搜索缓存 + 爬虫结果 + 筹码分布图 + 拥挤度排名</div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <div class="panel" style="flex:1;min-width:300px;max-height:55vh;overflow-y:auto;">
+            <div class="panel-header"><span class="panel-title">筹码分布 (Top 20)</span></div>
+            <div class="panel-body" id="alt-chip-table"><div style="color:var(--text-micro);padding:12px;">加载中...</div></div>
+        </div>
+        <div class="panel" style="flex:1;min-width:300px;max-height:55vh;overflow-y:auto;">
+            <div class="panel-header"><span class="panel-title">拥挤度 (Top 20)</span></div>
+            <div class="panel-body" id="alt-crowd-table"><div style="color:var(--text-micro);padding:12px;">加载中...</div></div>
+        </div>
     </div>
 </div>
 
@@ -170,7 +180,66 @@ function switchDataTab(tab) {
     if (tab === 'watchlist') wlLoad();
     if (tab === 'health') updateHealthTable();
     if (tab === 'financial') finInitDropdown();
+    if (tab === 'fundamental') loadFundamental();
+    if (tab === 'alt') loadAltData();
 }
+
+// ═══ Alternative Data ═══
+async function loadAltData() {
+    try {
+        const r = await fetch(`${API_BASE}/data/alt/overview`);
+        const d = await r.json();
+        const data = d.data || {};
+        const chip = data.chip || [];
+        const crowd = data.crowding || [];
+
+        document.getElementById('alt-chip-table').innerHTML = chip.length ?
+            `<table class="health-table"><thead><tr><th>代码</th><th>日期</th><th style="text-align:right;">集中度</th><th style="text-align:right;">峰值价</th><th>形态</th></tr></thead>
+            <tbody>${chip.map(c => `<tr>
+                <td style="color:var(--accent-blue);">${escHtml(c.code)}</td><td>${c.date||''}</td>
+                <td style="text-align:right;">${c.concentration!=null?c.concentration.toFixed(1)+'%':'—'}</td>
+                <td style="text-align:right;">${c.peak!=null?c.peak.toFixed(2):'—'}</td>
+                <td style="font-size:10px;">${escHtml(c.pattern||'')}</td>
+            </tr>`).join('')}</tbody></table>` :
+            '<div style="color:var(--text-micro);padding:20px;">无筹码数据, 请先在量化决策页计算指标</div>';
+
+        document.getElementById('alt-crowd-table').innerHTML = crowd.length ?
+            `<table class="health-table"><thead><tr><th>代码</th><th>日期</th><th style="text-align:right;">换手比(20d/120d)</th><th style="text-align:right;">夏普(60d)</th></tr></thead>
+            <tbody>${crowd.map(c => `<tr>
+                <td style="color:var(--accent-blue);">${escHtml(c.code)}</td><td>${c.date||''}</td>
+                <td style="text-align:right;">${c.crowding_ratio!=null?c.crowding_ratio.toFixed(2):'—'}</td>
+                <td style="text-align:right;">${c.sharpe_60d!=null?c.sharpe_60d.toFixed(3):'—'}</td>
+            </tr>`).join('')}</tbody></table>` :
+            '<div style="color:var(--text-micro);padding:20px;">无拥挤度数据, 请先在量化决策页计算指标</div>';
+    } catch(e) { console.error(e); }
+
+// ═══ Fundamentals ═══
+async function loadFundamental() {
+    try {
+        const r = await fetch(`${API_BASE}/data/fundamental/overview`);
+        const d = await r.json();
+        const data = d.data || {};
+        const industries = data.industries || [];
+        const stocks = data.stocks || [];
+
+        // Industry table
+        document.getElementById('fund-industry-table').innerHTML = industries.length ?
+            `<table class="health-table"><thead><tr><th>行业</th><th style="text-align:right;">数量</th><th style="text-align:right;">均PE</th><th style="text-align:right;">均市值(亿)</th></tr></thead>
+            <tbody>${industries.map(i => `<tr><td>${escHtml(i.name)}</td><td style="text-align:right;">${i.count}</td><td style="text-align:right;">${i.avg_pe}</td><td style="text-align:right;">${Math.round(i.avg_mcap)}</td></tr>`).join('')}</tbody></table>` :
+            '<div style="color:var(--text-micro);padding:20px;">行业数据待同步</div>';
+
+        // Valuation table
+        document.getElementById('fund-valuation-table').innerHTML = stocks.length ?
+            `<table class="health-table"><thead><tr><th>代码</th><th>名称</th><th>行业</th><th style="text-align:right;">PE</th><th style="text-align:right;">PB</th><th style="text-align:right;">市值(亿)</th></tr></thead>
+            <tbody>${stocks.map(s => `<tr>
+                <td style="color:var(--accent-blue);">${escHtml(s.code)}</td><td style="color:#fff;">${escHtml(s.name)}</td>
+                <td style="font-size:10px;color:var(--text-micro);">${escHtml(s.industry)}</td>
+                <td style="text-align:right;">${s.pe_ttm!=null?s.pe_ttm.toFixed(1):'—'}</td>
+                <td style="text-align:right;">${s.pb!=null?s.pb.toFixed(1):'—'}</td>
+                <td style="text-align:right;">${s.mcap_yi!=null?Math.round(s.mcap_yi):'—'}</td>
+            </tr>`).join('')}</tbody></table>` :
+            '<div style="color:var(--text-micro);padding:20px;">估值数据从stock_info表加载</div>';
+    } catch(e) { console.error(e); }
 
 // ═══ Quick actions ═══
 function quickSync(mode) {

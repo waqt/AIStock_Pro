@@ -835,6 +835,72 @@ async def get_financial_statements(stock_code: str, periods: int = 8):
         ]}
 
 
+# ═══════════════════════════════════════════
+# 基本面数据中心
+# ═══════════════════════════════════════════
+
+@router.get("/fundamental/overview")
+async def get_fundamental_overview():
+    """基本面总览: 行业分布 + PE/PB/市值统计"""
+    async with async_session() as db:
+        # 行业分布
+        ind_res = await db.execute(
+            select(StockInfo.industry, func.count(), func.avg(StockInfo.pe_ttm), func.avg(StockInfo.mcap_yi))
+            .where(StockInfo.industry.isnot(None), StockInfo.industry != '')
+            .group_by(StockInfo.industry).order_by(func.count().desc()))
+        industries = [{"name": r[0], "count": r[1], "avg_pe": round(float(r[2] or 0),1), "avg_mcap": round(float(r[3] or 0),1)} for r in ind_res.all()]
+
+        # PE分布
+        pe_res = await db.execute(
+            select(StockInfo.stock_code, StockInfo.stock_name, StockInfo.pe_ttm, StockInfo.pb, StockInfo.mcap_yi, StockInfo.industry)
+            .where(StockInfo.pe_ttm.isnot(None))
+            .order_by(StockInfo.pe_ttm.asc()).limit(50))
+        stocks = [{"code": r[0], "name": r[1], "pe_ttm": r[2], "pb": r[3], "mcap_yi": r[4], "industry": r[5] or "未知"} for r in pe_res.all()]
+
+        return {"success": True, "data": {"industries": industries, "stocks": stocks}}
+
+
+# ═══════════════════════════════════════════
+# 另类数据中心
+# ═══════════════════════════════════════════
+
+@router.get("/alt/overview")
+async def get_alt_overview():
+    """另类数据总览: 筹码分布 + 拥挤度"""
+    async with async_session() as db:
+        # 取最近30天的指标数据
+        from datetime import date, timedelta
+        cutoff = date.today() - timedelta(days=30)
+
+        res = await db.execute(
+            select(StockIndicator.stock_code, StockIndicator.data_json, StockIndicator.analysis_date)
+            .where(StockIndicator.analysis_date >= cutoff)
+            .order_by(StockIndicator.analysis_date.desc()).limit(200))
+        rows = res.all()
+
+        chip_stocks = []
+        crowd_stocks = []
+        for code, data, dt in rows:
+            if data.get('chip_concentration'):
+                chip_stocks.append({
+                    "code": code, "date": str(dt),
+                    "concentration": data.get('chip_concentration'),
+                    "pattern": data.get('chip_pattern', 'unknown'),
+                    "peak": data.get('chip_peak_price'),
+                })
+            if data.get('crowding_ratio'):
+                crowd_stocks.append({
+                    "code": code, "date": str(dt),
+                    "crowding_ratio": data.get('crowding_ratio'),
+                    "sharpe_60d": data.get('sharpe_60d'),
+                })
+
+        return {"success": True, "data": {
+            "chip": sorted(chip_stocks, key=lambda x: x.get('concentration',0) or 0, reverse=True)[:20],
+            "crowding": sorted(crowd_stocks, key=lambda x: x.get('crowding_ratio',0) or 0, reverse=True)[:20],
+        }}
+
+
 @router.post("/watchlist/refresh-held")
 async def refresh_watchlist_held_status():
     """刷新所有自选股的持仓状态"""
