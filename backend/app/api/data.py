@@ -5,7 +5,7 @@ from datetime import date, timedelta
 import re
 
 from app.framework.database.session import async_session
-from app.models.models import MarketData, StockIndicator, Position, ExchangeRate, StockInfo, WatchlistItem, PortfolioSnapshot
+from app.models.models import MarketData, StockIndicator, Position, ExchangeRate, StockInfo, WatchlistItem, PortfolioSnapshot, TradeHistory
 from app.domain.market_data.sources.router import data_router
 from app.framework.tasks.engine import task_manager
 from app.framework.logger import logger
@@ -641,19 +641,19 @@ async def compute_portfolio_snapshot():
 
             today_price = float(rows[0][0] or 0)
             yesterday_price = float(rows[1][0] or 0) if len(rows) > 1 else today_price
-            vol = pos.volume
+            vol = float(pos.volume)
 
             # 当日盈亏 = 持仓量 × (今日收盘 - 昨日收盘)
             daily_pl = vol * (today_price - yesterday_price) if yesterday_price > 0 else 0
 
             # 累计盈亏 = 市值 - 成本
-            cost_basis = float(vol) * float(pos.avg_cost)
+            cost_basis = vol * float(pos.avg_cost)
             cumulative_pl = vol * today_price - cost_basis
 
             # 更新持仓
             pos.current_price = today_price
-            pos.market_value = vol * today_price
-            pos.profit_loss = cumulative_pl
+            pos.market_value = float(vol * today_price)
+            pos.profit_loss = float(cumulative_pl)
             pos.profit_loss_ratio = round(cumulative_pl / cost_basis * 100, 2) if cost_basis != 0 else None
 
             total_mv += pos.market_value
@@ -665,7 +665,7 @@ async def compute_portfolio_snapshot():
             snapshots.append(PortfolioSnapshot(
                 snap_date=today,
                 stock_code=pos.stock_code, stock_name=pos.stock_name or "",
-                volume=vol, avg_cost=float(pos.avg_cost),
+                volume=int(vol), avg_cost=float(pos.avg_cost),
                 current_price=today_price, market_value=pos.market_value,
                 profit_loss=cumulative_pl, profit_loss_ratio=pos.profit_loss_ratio,
                 pe_ttm=info.pe_ttm if info else None,
@@ -674,9 +674,8 @@ async def compute_portfolio_snapshot():
             ))
 
         # 2. 查询历史已清仓盈亏 (从 TradeHistory)
-        from app.models.models import TradeHistory
         realized_res = await db.execute(
-            select(__import__('sqlalchemy').func.sum(TradeHistory.profit_loss)))
+            select(func.sum(TradeHistory.profit_loss)))
         realized_pl = realized_res.scalars().first() or 0.0
 
         # 3. 清理今日已有快照, 写入新快照

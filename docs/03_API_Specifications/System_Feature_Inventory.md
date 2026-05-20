@@ -1,6 +1,6 @@
 # AIStock Pro V4.0 — 全系统功能清单
 
-> 审计日期: 2026-05-19 | 版本: V4.0
+> 最后更新: 2026-05-20 | 版本: V4.0
 
 ---
 
@@ -20,6 +20,8 @@
 | A1.8 | 删除持仓 | 点击删除按钮, Modal.confirm 确认后 DELETE | |
 | A1.9 | 刷新行情 | 按钮触发 POST /positions/update-prices | |
 | A1.10 | 估值字段 | PE/PB/市值 从 stock_info 表左联查询 | |
+| A1.11 | 刷新损益 | 快照按钮, 计算当日盈亏/累计盈亏/已实现盈亏/历史总盈亏 | |
+| A1.12 | 每日持仓切片 | portfolio_snapshots 表, POST /data/portfolio/snapshot | |
 
 ### A2. 智能导入页 (import.html)
 
