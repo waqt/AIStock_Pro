@@ -35,17 +35,21 @@
 <aside class="sidebar"></aside>
 <main class="main-content">
 <div class="top-bar"></div>
-<div class="workspace" style="padding:14px;">
+<div class="workspace" style="padding:0;">
 
-<!-- Tab Navigation -->
-<div class="data-tab-nav">
-    <button class="data-tab-btn active" onclick="switchDataTab('macro')" data-tab="macro"><i class="fas fa-globe"></i> 宏观</button>
-    <button class="data-tab-btn" onclick="switchDataTab('watchlist')" data-tab="watchlist"><i class="fas fa-star"></i> 自选股</button>
-    <button class="data-tab-btn" onclick="switchDataTab('health')" data-tab="health"><i class="fas fa-chart-bar"></i> 行情体检</button>
-    <button class="data-tab-btn" onclick="switchDataTab('fundamental')" data-tab="fundamental"><i class="fas fa-building"></i> 基本面</button>
-    <button class="data-tab-btn" onclick="switchDataTab('financial')" data-tab="financial"><i class="fas fa-file-invoice"></i> 财务报告</button>
-    <button class="data-tab-btn" onclick="switchDataTab('alt')" data-tab="alt"><i class="fas fa-database"></i> 另类数据</button>
+<!-- Tab Navigation (full width header) -->
+<div style="background:var(--bg-card);border-bottom:1px solid var(--border-color);padding:0 18px;">
+    <div class="data-tab-nav" style="border-bottom:none;margin-bottom:0;">
+        <button class="data-tab-btn active" onclick="switchDataTab('macro')" data-tab="macro"><i class="fas fa-globe"></i> 宏观</button>
+        <button class="data-tab-btn" onclick="switchDataTab('watchlist')" data-tab="watchlist"><i class="fas fa-star"></i> 自选股</button>
+        <button class="data-tab-btn" onclick="switchDataTab('health')" data-tab="health"><i class="fas fa-chart-bar"></i> 行情体检</button>
+        <button class="data-tab-btn" onclick="switchDataTab('fundamental')" data-tab="fundamental"><i class="fas fa-building"></i> 基本面</button>
+        <button class="data-tab-btn" onclick="switchDataTab('financial')" data-tab="financial"><i class="fas fa-file-invoice"></i> 财务报告</button>
+        <button class="data-tab-btn" onclick="switchDataTab('alt')" data-tab="alt"><i class="fas fa-database"></i> 另类数据</button>
+    </div>
 </div>
+
+<div style="padding:14px;">
 
 <!-- Tab: 宏观 -->
 <div class="data-tab-panel active" id="tab-macro">
@@ -117,8 +121,10 @@
     </div>
 </div>
 
+</div><!-- /inner padding -->
+
 <!-- Terminal -->
-<div class="panel" style="margin-top:12px;">
+<div class="panel" style="margin:0 14px 14px;">
     <div class="panel-header"><span class="panel-title">执行追踪</span><span id="task-id-display" style="font-family:var(--font-mono);font-size:10px;color:var(--text-micro);">IDLE</span></div>
     <div class="panel-body" style="padding:0;">
         <div id="data-terminal" style="background:#020202;padding:10px;font-family:var(--font-mono);font-size:10px;height:120px;overflow-y:auto;color:#666;line-height:1.6;">
