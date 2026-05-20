@@ -120,9 +120,15 @@
                     <div id="tab-panel-watchlist" style="display:none;">
                         <div class="panel" style="padding:10px;margin-bottom:8px;">
                             <div style="display:flex;gap:6px;margin-bottom:6px;">
-                                <input type="text" id="wl-code" placeholder="股票代码" style="flex:1;background:#000;border:1px solid var(--border-color);color:#fff;padding:6px 8px;border-radius:4px;font-size:11px;">
-                                <input type="text" id="wl-group" placeholder="分组" style="width:80px;background:#000;border:1px solid var(--border-color);color:#fff;padding:6px 8px;border-radius:4px;font-size:11px;" value="默认">
+                                <input type="text" id="wl-code" placeholder="股票代码" style="width:100px;background:#000;border:1px solid var(--border-color);color:#fff;padding:6px 8px;border-radius:4px;font-size:11px;">
+                                <input type="text" id="wl-group" placeholder="分组" style="width:70px;background:#000;border:1px solid var(--border-color);color:#fff;padding:6px 8px;border-radius:4px;font-size:11px;" value="默认">
                                 <button class="btn-action" onclick="wlAdd()" style="font-size:11px;white-space:nowrap;">添加</button>
+                                <select id="wl-filter-group" onchange="wlLoad()" style="background:#000;border:1px solid var(--border-color);color:#fff;padding:6px 8px;border-radius:4px;font-size:11px;">
+                                    <option value="">全部分组</option>
+                                </select>
+                                <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-dim);white-space:nowrap;">
+                                    <input type="checkbox" id="wl-filter-held" onchange="wlLoad()"> 仅持仓
+                                </label>
                             </div>
                             <div style="display:flex;gap:6px;flex-wrap:wrap;">
                                 <button class="btn-action" onclick="wlImportPositions()" style="font-size:10px;border-color:var(--accent-blue);color:var(--accent-blue);"><i class="fas fa-download"></i> 从持仓导入</button>
@@ -238,31 +244,123 @@
             try {
                 const res = await fetch(`${API_BASE}/data/watchlist`);
                 const data = await res.json();
-                const items = data.data || [];
+                let items = data.data || [];
                 const el = document.getElementById('watchlist-table');
-                if (!items.length) { el.innerHTML = '<div style="color:var(--text-micro);padding:20px;text-align:center;">自选股为空, 点上方"从持仓导入"或手动添加</div>'; return; }
+
+                // Populate filter groups
+                const groups = [...new Set(items.map(i => i.group_tag || '默认'))];
+                const sel = document.getElementById('wl-filter-group');
+                const curVal = sel.value;
+                sel.innerHTML = '<option value="">全部分组</option>' + groups.map(g => `<option value="${escHtml(g)}">${escHtml(g)}</option>`).join('');
+                sel.value = curVal;
+
+                // Apply filters
+                const filterGroup = document.getElementById('wl-filter-group').value;
+                const filterHeld = document.getElementById('wl-filter-held').checked;
+                if (filterGroup) items = items.filter(i => (i.group_tag || '默认') === filterGroup);
+                if (filterHeld) items = items.filter(i => i.is_held);
+
+                if (!items.length) { el.innerHTML = '<div style="color:var(--text-micro);padding:20px;text-align:center;">无匹配结果</div>'; return; }
+
                 // Group by group_tag
-                const groups = {};
-                items.forEach(i => { const g = i.group_tag || '默认'; if (!groups[g]) groups[g] = []; groups[g].push(i); });
-                el.innerHTML = Object.entries(groups).map(([g, stocks]) => `
+                const grouped = {};
+                items.forEach(i => { const g = i.group_tag || '默认'; if (!grouped[g]) grouped[g] = []; grouped[g].push(i); });
+                el.innerHTML = Object.entries(grouped).map(([g, stocks]) => `
                     <div class="panel" style="margin-bottom:8px;">
-                        <div class="panel-header"><span style="font-size:12px;">${escHtml(g)}</span><span style="font-size:10px;color:var(--text-micro);">(${stocks.length})</span></div>
+                        <div class="panel-header">
+                            <span style="font-size:12px;">${escHtml(g)}</span>
+                            <span style="font-size:10px;color:var(--text-micro);">(${stocks.length})</span>
+                        </div>
                         <div class="panel-body" style="padding:0;">
-                            ${stocks.map(s => `
-                                <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;border-bottom:1px solid var(--border-thin);font-size:11px;">
-                                    <span>
-                                        <span style="color:var(--accent-blue);">${escHtml(s.stock_code)}</span>
-                                        <span style="margin-left:6px;color:#fff;">${escHtml(s.stock_name)}</span>
-                                        ${s.is_held ? '<span style="color:var(--accent-green);font-size:9px;margin-left:4px;">[持仓]</span>' : '<span style="color:var(--text-micro);font-size:9px;margin-left:4px;">[关注]</span>'}
-                                    </span>
-                                    <span style="display:flex;gap:4px;align-items:center;">
-                                        <button onclick="wlSyncOne('${escHtml(s.stock_code)}', this)" title="单股同步" style="background:none;border:none;color:var(--accent-blue);cursor:pointer;font-size:9px;"><i class="fas fa-sync-alt"></i></button>
-                                        <button onclick="wlRemove('${escHtml(s.stock_code)}')" title="删除" style="background:none;border:none;color:var(--accent-red);cursor:pointer;font-size:10px;"><i class="fas fa-trash"></i></button>
-                                    </span>
-                                </div>`).join('')}
+                            <table style="width:100%;font-size:11px;border-collapse:collapse;">
+                                <thead><tr style="color:var(--text-micro);font-size:10px;">
+                                    <th style="padding:4px;text-align:left;">代码</th><th>名称</th><th style="text-align:right;">现价</th><th style="text-align:right;">涨跌</th><th style="text-align:right;">市值(亿)</th><th style="text-align:right;">PE</th><th style="text-align:center;">操作</th>
+                                </tr></thead>
+                                <tbody>${stocks.map(s => {
+                                    const pct = s.change_pct;
+                                    const pctColor = pct != null ? (pct >= 0 ? 'var(--accent-green)' : 'var(--accent-red)') : 'var(--text-micro)';
+                                    const pctStr = pct != null ? ((pct>=0?'+':'') + pct.toFixed(2) + '%') : '—';
+                                    return `<tr style="border-bottom:1px solid var(--border-thin);cursor:pointer;" onclick="wlShowChart('${escHtml(s.stock_code)}','${escHtml(s.stock_name)}')" title="点击查看K线+指标">
+                                        <td style="padding:4px;color:var(--accent-blue);">${escHtml(s.stock_code)}</td>
+                                        <td style="padding:4px;color:#fff;">
+                                            ${escHtml(s.stock_name)}
+                                            ${s.is_held ? '<span style="color:var(--accent-green);font-size:9px;">[持仓]</span>' : '<span style="color:var(--text-micro);font-size:9px;">[关注]</span>'}
+                                        </td>
+                                        <td style="padding:4px;text-align:right;font-family:var(--font-mono);">${s.price != null ? s.price.toFixed(2) : '—'}</td>
+                                        <td style="padding:4px;text-align:right;color:${pctColor};font-family:var(--font-mono);">${pctStr}</td>
+                                        <td style="padding:4px;text-align:right;font-family:var(--font-mono);">${s.mcap_yi != null ? Math.round(s.mcap_yi) : '—'}</td>
+                                        <td style="padding:4px;text-align:right;font-family:var(--font-mono);">${s.pe_ttm != null ? s.pe_ttm.toFixed(1) : '—'}</td>
+                                        <td style="padding:4px;text-align:center;" onclick="event.stopPropagation();">
+                                            <button onclick="wlSyncOne('${escHtml(s.stock_code)}', this)" title="同步" style="background:none;border:none;color:var(--accent-blue);cursor:pointer;font-size:9px;"><i class="fas fa-sync-alt"></i></button>
+                                            <button onclick="wlEditGroup('${escHtml(s.stock_code)}','${escHtml(s.group_tag||'默认')}')" title="改分组" style="background:none;border:none;color:var(--accent-gold);cursor:pointer;font-size:9px;"><i class="fas fa-tag"></i></button>
+                                            <button onclick="wlRemove('${escHtml(s.stock_code)}')" title="删除" style="background:none;border:none;color:var(--accent-red);cursor:pointer;font-size:9px;"><i class="fas fa-trash"></i></button>
+                                        </td>
+                                    </tr>`;
+                                }).join('')}</tbody>
+                            </table>
                         </div>
                     </div>`).join('');
             } catch(e) { console.error(e); }
+        }
+
+        // 查看K线+指标
+        async function wlShowChart(code, name) {
+            // 复用 positions 页的 ECharts 弹窗模式
+            try {
+                const res = await fetch(`${API_BASE}/data/daily/${code}?limit=500`);
+                const kdata = await res.json();
+                const indRes = await fetch(`${API_BASE}/quant/indicators/${code}`);
+                const indData = await indRes.json();
+                const ind = (indData.data && indData.data.indicators) ? indData.data.indicators : {};
+
+                // Build modal with K-line chart
+                let modalHtml = `<div style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:1000;display:flex;justify-content:center;align-items:center;backdrop-filter:blur(4px);" onclick="this.remove()">
+                    <div style="background:var(--bg-card);width:85%;max-width:1000px;border-radius:8px;border:1px solid var(--border-color);overflow:hidden;" onclick="event.stopPropagation()">
+                        <div style="padding:12px 16px;border-bottom:1px solid var(--border-color);display:flex;justify-content:space-between;align-items:center;">
+                            <span style="font-weight:700;">${escHtml(code)} ${escHtml(name)}</span>
+                            <button onclick="this.closest('div[style*=fixed]').remove()" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:16px;">&times;</button>
+                        </div>
+                        <div id="wl-chart-container" style="width:100%;height:450px;"></div>
+                        <div style="padding:8px 16px;font-size:10px;color:var(--text-micro);border-top:1px solid var(--border-thin);">
+                            指标: ${Object.entries(ind).filter(([k,v])=>v!=null&&!k.startsWith('_')).slice(0,12).map(([k,v])=>k+':'+(typeof v==='number'?v.toFixed(2):v)).join(' | ') || '暂无'}
+                        </div>
+                    </div>
+                </div>`;
+                document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+                // Render ECharts
+                setTimeout(() => {
+                    const container = document.getElementById('wl-chart-container');
+                    if (!container || !window.echarts) return;
+                    const chart = echarts.init(container);
+                    const dates = kdata.map(d => d.trade_date);
+                    const ohlc = kdata.map(d => [d.open, d.close, d.low, d.high]);
+                    const volumes = kdata.map(d => d.volume);
+                    chart.setOption({
+                        animation: false,
+                        tooltip: {trigger:'axis'},
+                        grid: [{left:'8%',right:'3%',top:'5%',height:'60%'},{left:'8%',right:'3%',top:'75%',height:'18%'}],
+                        xAxis: [{type:'category',data:dates,axisLabel:{fontSize:9}},{type:'category',data:dates,gridIndex:1,axisLabel:{show:false}}],
+                        yAxis: [{scale:true,splitLine:{lineStyle:{color:'#1a1a1a'}}},{gridIndex:1,splitLine:{show:false},axisLabel:{fontSize:9}}],
+                        series: [
+                            {type:'candlestick',data:ohlc,
+                                itemStyle:{color:'#ef232a',color0:'#14b143',borderColor:'#ef232a',borderColor0:'#14b143'}},
+                            {type:'bar',xAxisIndex:1,yAxisIndex:1,data:volumes,
+                                itemStyle:{color: (p) => { const i=p.dataIndex; return ohlc[i] && ohlc[i][1]>=ohlc[i][0] ? '#ef232a' : '#14b143'; }}}
+                        ]
+                    });
+                }, 200);
+            } catch(e) { Modal.alert('加载失败', e.message); }
+        }
+
+        // 编辑分组
+        async function wlEditGroup(code, currentGroup) {
+            const newGroup = prompt('修改分组标签:', currentGroup);
+            if (!newGroup || newGroup === currentGroup) return;
+            try {
+                await fetch(`${API_BASE}/data/watchlist/${code}?group_tag=${encodeURIComponent(newGroup)}`, { method: 'PUT' });
+                wlLoad();
+            } catch(e) {}
         }
 
         async function wlAdd() {

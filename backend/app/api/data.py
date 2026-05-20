@@ -493,15 +493,43 @@ async def get_macro_history(code: str, days: int = Query(default=365, le=730)):
 
 @router.get("/watchlist")
 async def list_watchlist():
-    """自选股列表 (按分组排列)"""
+    """自选股列表 (按分组排列, 含实时行情+估值)"""
     async with async_session() as db:
         res = await db.execute(
             select(WatchlistItem).order_by(WatchlistItem.group_tag, WatchlistItem.sort_order))
         items = res.scalars().all()
+        codes = [i.stock_code for i in items]
+
+        # 批量查最新行情
+        price_map = {}
+        if codes:
+            from sqlalchemy import and_
+            for code in codes:
+                mr = await db.execute(
+                    select(MarketData.close, MarketData.change_pct)
+                    .where(MarketData.stock_code == code)
+                    .order_by(MarketData.trade_date.desc()).limit(1))
+                row = mr.first()
+                if row:
+                    price_map[code] = {"price": float(row[0] or 0), "change_pct": float(row[1] or 0)}
+
+            # 批量查估值
+            val_res = await db.execute(
+                select(StockInfo.stock_code, StockInfo.pe_ttm, StockInfo.mcap_yi)
+                .where(StockInfo.stock_code.in_(codes)))
+            val_map = {r[0]: {"pe_ttm": r[1], "mcap_yi": r[2]} for r in val_res.all()}
+        else:
+            val_map = {}
+
         return {"success": True, "data": [
             {"stock_code": i.stock_code, "stock_name": i.stock_name,
              "group_tag": i.group_tag, "is_held": i.is_held,
-             "added_at": str(i.added_at) if i.added_at else None}
+             "added_at": str(i.added_at) if i.added_at else None,
+             "price": price_map.get(i.stock_code, {}).get("price"),
+             "change_pct": price_map.get(i.stock_code, {}).get("change_pct"),
+             "pe_ttm": val_map.get(i.stock_code, {}).get("pe_ttm"),
+             "mcap_yi": val_map.get(i.stock_code, {}).get("mcap_yi"),
+            }
             for i in items
         ]}
 
