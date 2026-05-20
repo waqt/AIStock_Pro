@@ -215,28 +215,6 @@ class DataRouter:
             logger.info(f"[✅] Macro data synced: {list(result.keys())}")
         return result
 
-        if result:
-            from app.framework.database.session import async_session
-            from app.models.models import ExchangeRate
-            from datetime import datetime as dt
-            async with async_session() as db:
-                for code, info in result.items():
-                    price = info.get('price')
-                    pct = info.get('change_pct')
-                    if price is None:
-                        continue
-                    existing = await db.get(ExchangeRate, code)
-                    if existing:
-                        existing.name = info['name']
-                        existing.rate = price
-                        existing.change_pct = pct
-                        existing.updated_at = dt.now()
-                    else:
-                        db.add(ExchangeRate(code=code, name=info['name'], rate=price, change_pct=pct))
-                await db.commit()
-            logger.info(f"[✅] Macro data synced: {list(result.keys())}")
-        return result
-
 
 # 全局单例
 data_router = DataRouter()

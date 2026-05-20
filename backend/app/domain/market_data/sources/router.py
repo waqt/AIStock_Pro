@@ -254,9 +254,14 @@ class DataRouter:
                 row = df.iloc[i]
                 dt_val = row.iloc[date_idx]
                 val = row.iloc[val_idx]
-                if val is None or (isinstance(val, float) and math.isnan(val)):
+                if pd.isna(val):
                     continue
-                val = float(val)
+                try:
+                    val = float(val)
+                    if math.isnan(val) or math.isinf(val):
+                        continue
+                except (ValueError, TypeError):
+                    continue
                 # Date conversion
                 if hasattr(dt_val, 'date'): dt_val = dt_val.date()
                 else:
@@ -271,28 +276,6 @@ class DataRouter:
                 db.add(MacroHistory(code=code, obs_date=dt_val, value=val))
             await db.commit()
             logger.info(f"[MacroHistory] Saved {code}: {len(df)} rows")
-
-        if result:
-            from app.framework.database.session import async_session
-            from app.models.models import ExchangeRate
-            from datetime import datetime as dt
-            async with async_session() as db:
-                for code, info in result.items():
-                    price = info.get('price')
-                    pct = info.get('change_pct')
-                    if price is None:
-                        continue
-                    existing = await db.get(ExchangeRate, code)
-                    if existing:
-                        existing.name = info['name']
-                        existing.rate = price
-                        existing.change_pct = pct
-                        existing.updated_at = dt.now()
-                    else:
-                        db.add(ExchangeRate(code=code, name=info['name'], rate=price, change_pct=pct))
-                await db.commit()
-            logger.info(f"[✅] Macro data synced: {list(result.keys())}")
-        return result
 
 
 # 全局单例
