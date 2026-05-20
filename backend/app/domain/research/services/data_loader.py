@@ -310,38 +310,13 @@ class ResearchDataLoader:
 
 
     async def search_web(self, query: str, num: int = 5) -> List[Dict]:
-        """网络搜索 — DDG (免费优先) → Brave Search (付费兜底)
-        通过 Clash 代理 (127.0.0.1:7890) 访问海外服务, 绕过 GFW 阻断。
+        """网络搜索 — Brave Search (优先, 高质量) → DDG (免费兜底)
+        通过 Clash 代理 (127.0.0.1:7890) 访问海外服务。
         """
         from app.framework.config import settings
         CLASH_PROXY = "http://127.0.0.1:7890"
 
-        # 1. DDG 优先 (免费, 已验证可用)
-        try:
-            import re, httpx
-            url = "https://html.duckduckgo.com/html/"
-            data = {"q": query}
-            async with httpx.AsyncClient(proxy=CLASH_PROXY, timeout=15.0,
-                    headers={"User-Agent": "Mozilla/5.0"}) as client:
-                resp = await client.post(url, data=data)
-                if resp.status_code == 200:
-                    results = []
-                    links = re.findall(r'<a[^>]*class="result__a"[^>]*href="([^"]*)"[^>]*>(.*?)</a>', resp.text)
-                    snippets = re.findall(r'<a[^>]*class="result__snippet"[^>]*>(.*?)</a>', resp.text)
-                    for i, (url, title) in enumerate(links[:num]):
-                        title_clean = re.sub(r'<[^>]+>', '', title).strip()
-                        snippet = re.sub(r'<[^>]+>', '', snippets[i]).strip() if i < len(snippets) else ""
-                        if title_clean:
-                            results.append({"title": title_clean[:150], "url": url, "snippet": snippet[:300]})
-                    if results:
-                        logger.info(f"[DDG search OK: {len(results)} results for '{query[:40]}']")
-                        return results
-                else:
-                    logger.warning(f"[DDG returned {resp.status_code}]")
-        except Exception as e:
-            logger.warning(f"[DDG search failed: {type(e).__name__}: {e}]")
-
-        # 2. Brave Search 兜底 (付费 Key, 结构化结果)
+        # 1. Brave Search 优先 (付费 Key, 高质量结构化结果)
         if settings.BRAVE_API_KEY:
             try:
                 import httpx
@@ -371,7 +346,42 @@ class ResearchDataLoader:
             except Exception as e:
                 logger.warning(f"[Brave search failed: {type(e).__name__}: {e}]")
 
+        # 2. DDG 兜底 (免费)
+        try:
+            import re, httpx
+            url = "https://html.duckduckgo.com/html/"
+            data = {"q": query}
+            async with httpx.AsyncClient(proxy=CLASH_PROXY, timeout=15.0,
+                    headers={"User-Agent": "Mozilla/5.0"}) as client:
+                resp = await client.post(url, data=data)
+                if resp.status_code == 200:
+                    results = []
+                    links = re.findall(r'<a[^>]*class="result__a"[^>]*href="([^"]*)"[^>]*>(.*?)</a>', resp.text)
+                    snippets = re.findall(r'<a[^>]*class="result__snippet"[^>]*>(.*?)</a>', resp.text)
+                    for i, (url, title) in enumerate(links[:num]):
+                        title_clean = re.sub(r'<[^>]+>', '', title).strip()
+                        snippet = re.sub(r'<[^>]+>', '', snippets[i]).strip() if i < len(snippets) else ""
+                        if title_clean:
+                            results.append({"title": title_clean[:150], "url": url, "snippet": snippet[:300]})
+                    if results:
+                        logger.info(f"[DDG search OK: {len(results)} results for '{query[:40]}']")
+                        return results
+                else:
+                    logger.warning(f"[DDG returned {resp.status_code}]")
+        except Exception as e:
+            logger.warning(f"[DDG search failed: {type(e).__name__}: {e}]")
+
         return []
+
+    async def scrape_url(self, url: str) -> Dict:
+        """抓取单个URL并抽取正文"""
+        from app.domain.research.services.web_scraper import WebScraper
+        return await WebScraper.fetch_and_extract(url)
+
+    async def scrape_urls(self, urls: List[str]) -> List[Dict]:
+        """批量抓取多个URL"""
+        from app.domain.research.services.web_scraper import WebScraper
+        return await WebScraper.batch_fetch(urls)
 
     async def deep_research(self, query: str, rounds: int = 3) -> Dict:
         """多轮深研 — 初始搜索 → 提取关键线索 → 逐轮深入"""

@@ -233,6 +233,19 @@ async def get_research_report(report_id: str):
     return {"success": True, "data": report}
 
 
+@router.post("/scrape")
+async def scrape_url(url: str = None, urls: str = None):
+    """抓取网页并抽取正文。传 url= 或 urls=(逗号分隔)"""
+    if urls:
+        url_list = [u.strip() for u in urls.split(",") if u.strip()]
+        result = await data_loader.scrape_urls(url_list)
+    elif url:
+        result = await data_loader.scrape_url(url)
+    else:
+        raise HTTPException(status_code=400, detail="需要 url 或 urls 参数")
+    return {"success": True, "data": result}
+
+
 @router.delete("/reports/{report_id}")
 async def delete_research_report(report_id: str):
     """删除单篇研报"""
