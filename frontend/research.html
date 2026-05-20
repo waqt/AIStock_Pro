@@ -135,7 +135,7 @@
                     <div class="panel" id="panel-summary" style="display:none;">
                         <div class="panel-header"><span class="panel-title">核心结论</span></div>
                         <div class="panel-body">
-                            <div class="summary-box" id="content-summary"></div>
+                            <div class="summary-box md-content" id="content-summary"></div>
                         </div>
                     </div>
 
@@ -169,7 +169,7 @@
                     <!-- 风险提示 -->
                     <div class="panel" id="panel-risks" style="display:none;">
                         <div class="panel-header"><span class="panel-title">风险警示</span></div>
-                        <div class="panel-body" id="content-risks"></div>
+                        <div class="panel-body md-content" id="content-risks"></div>
                     </div>
 
                     <!-- 跟踪指标 -->
@@ -372,22 +372,22 @@
                 renderDagAudits(audits);
             }
 
-            // 5. Key Risks + Catalysts
-            if (d.key_risks || d.catalysts_to_watch) {
+            // 5. Key Risks + Catalysts + Timeline (文本用MD渲染)
+            if (d.key_risks || d.catalysts_to_watch || d.timeline) {
                 document.getElementById('panel-risks').style.display = '';
-                let html = '';
+                let md = '';
                 if (d.key_risks && d.key_risks.length) {
-                    html += '<div style="font-weight:600;color:var(--accent-red);margin-bottom:4px;">关键风险</div>';
-                    html += d.key_risks.map(r => `<div style="font-size:11px;color:var(--text-dim);padding:2px 0;">• ${escHtml(r)}</div>`).join('');
+                    md += '### 关键风险\n';
+                    md += d.key_risks.map(r => `- **${escHtml(r.type||'')}** (${escHtml(r.severity||'')})：${escHtml(r.description||r)}`).join('\n');
                 }
                 if (d.catalysts_to_watch && d.catalysts_to_watch.length) {
-                    html += '<div style="font-weight:600;color:var(--accent-green);margin:8px 0 4px;">待观察催化剂</div>';
-                    html += d.catalysts_to_watch.map(c => `<div style="font-size:11px;color:var(--text-dim);padding:2px 0;">• ${escHtml(c)}</div>`).join('');
+                    md += '\n\n### 待观察催化剂\n';
+                    md += d.catalysts_to_watch.map(c => `- ${escHtml(c)}`).join('\n');
                 }
                 if (d.timeline) {
-                    html += `<div style="font-size:10px;color:var(--text-micro);margin-top:6px;">时间线: ${escHtml(d.timeline)}</div>`;
+                    md += `\n\n> 执行时间线: ${escHtml(d.timeline)}`;
                 }
-                document.getElementById('content-risks').innerHTML = html;
+                document.getElementById('content-risks').innerHTML = MD.render(md);
             }
 
             // 6. Pipeline stats
@@ -698,14 +698,6 @@
         }
 
         // ═══ 工具函数 ═══════════════════════════════════
-
-        function MD.render(md) {
-            return md
-                .replace(/### (.+)/g, '<h3>$1</h3>')
-                .replace(/## (.+)/g, '<h2>$1</h2>')
-                .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-                .replace(/\n/g, '<br>');
-        }
 
         function escHtml(s) {
             if (!s) return '';
