@@ -17,7 +17,9 @@ CACHE_FILE = os.path.join(BASE_DIR, "import_cache.json")
 
 
 class AIImportService:
-    """AI 导入服务 — 截图识别 + 文本解析 + Excel 解析 + 批量写库"""
+    """AI 导入服务 — OCR(Doubao主)→DeepSeek Flash→Gemini 三级降级
+    AI路由: OCR=Doubao | 文本解析=DeepSeek Flash | 复杂推理=DeepSeek Pro+Thinking
+    """
 
     # ── Prompts ──────────────────────────────────
 
@@ -211,16 +213,15 @@ class AIImportService:
 
     @classmethod
     async def _call_deepseek_vision(cls, image_b64: str, prompt: str) -> Optional[List[Dict]]:
-        """DeepSeek Vision — Anthropic 兼容端点, 支持图片输入"""
+        """DeepSeek Flash Vision — OCR辅助 (图片→结构化)"""
         if not settings.DEEPSEEK_API_KEY:
             return None
         base = settings.DEEPSEEK_BASE_URL.rstrip("/")
+        model = settings.DEEPSEEK_FLASH_MODEL
         if "anthropic" in base:
-            # Anthropic Messages 格式
             url = f"{base}/messages"
             body = {
-                "model": settings.DEEPSEEK_MODEL,
-                "max_tokens": 2048,
+                "model": model, "max_tokens": 2048,
                 "messages": [{
                     "role": "user",
                     "content": [
@@ -230,10 +231,9 @@ class AIImportService:
                 }]
             }
         else:
-            # OpenAI Chat 格式 (fallback)
             url = f"{base}/chat/completions"
             body = {
-                "model": settings.DEEPSEEK_MODEL,
+                "model": settings.DEEPSEEK_FLASH_MODEL,
                 "messages": [{"role": "user", "content": [
                     {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}},
                     {"type": "text", "text": prompt}
@@ -263,24 +263,23 @@ class AIImportService:
 
     @classmethod
     async def _call_deepseek_text(cls, prompt: str) -> Optional[List[Dict]]:
-        """DeepSeek 文本模式 — 用于文本提示的结构化提取"""
+        """DeepSeek Flash 文本模式 — 文本解析/格式化 (快速便宜)"""
         if not settings.DEEPSEEK_API_KEY:
             return None
+        model = settings.DEEPSEEK_FLASH_MODEL
         base = settings.DEEPSEEK_BASE_URL.rstrip("/")
         if "anthropic" in base:
             url = f"{base}/messages"
             body = {
-                "model": settings.DEEPSEEK_MODEL,
-                "max_tokens": 2048,
+                "model": model, "max_tokens": 2048,
                 "messages": [{"role": "user", "content": prompt}]
             }
         else:
             url = f"{base}/chat/completions"
             body = {
-                "model": settings.DEEPSEEK_MODEL,
+                "model": model,
                 "messages": [{"role": "user", "content": prompt}],
-                "temperature": 0.1,
-                "max_tokens": 2048
+                "temperature": 0.1, "max_tokens": 2048
             }
         headers = {
             "Authorization": f"Bearer {settings.DEEPSEEK_API_KEY}",
