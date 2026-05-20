@@ -5,6 +5,7 @@
     <title>AIStock | 数据中心</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <style>
         .data-tab-nav { display: flex; gap: 0; border-bottom: 1px solid var(--border-color); margin-bottom: 12px; }
         .data-tab-btn { background: none; border: none; color: var(--text-dim); cursor: pointer; padding: 8px 16px; font-size: 12px; border-bottom: 2px solid transparent; transition: all 0.2s; }
@@ -246,19 +247,19 @@ async function wlLoad() {
                 <div class="panel-header"><span style="font-size:11px;">${escHtml(g)}</span><span style="font-size:9px;color:var(--text-micro);">(${stocks.length})</span></div>
                 <div class="panel-body" style="padding:0;">
                     <table class="watchlist-table">
-                        <thead><tr><th>代码</th><th>名称</th><th style="text-align:right;">现价</th><th style="text-align:right;">涨跌</th><th style="text-align:right;">市值(亿)</th><th style="text-align:right;">PE</th><th style="text-align:center;">操作</th></tr></thead>
+                        <thead><tr><th style="width:80px;">代码</th><th>名称</th><th style="text-align:right;width:70px;">现价</th><th style="text-align:right;width:70px;">涨跌</th><th style="text-align:right;width:80px;">市值(亿)</th><th style="text-align:right;width:60px;">PE</th><th style="text-align:center;width:80px;">操作</th></tr></thead>
                         <tbody>${stocks.map(s => {
                             const pct = s.change_pct;
                             const pc = pct != null ? (pct >= 0 ? 'var(--accent-green)' : 'var(--accent-red)') : 'var(--text-micro)';
                             const ps = pct != null ? ((pct>=0?'+':'') + pct.toFixed(2) + '%') : '—';
                             return `<tr onclick="wlShowChart('${escHtml(s.stock_code)}','${escHtml(s.stock_name)}')" title="点击查看K线">
-                                <td style="color:var(--accent-blue);">${escHtml(s.stock_code)}</td>
+                                <td style="width:80px;color:var(--accent-blue);">${escHtml(s.stock_code)}</td>
                                 <td style="color:#fff;">${escHtml(s.stock_name)}${s.is_held?'<span style="color:var(--accent-green);font-size:9px;">[持仓]</span>':''}</td>
-                                <td style="text-align:right;">${s.price!=null?s.price.toFixed(2):'—'}</td>
-                                <td style="text-align:right;color:${pc};">${ps}</td>
-                                <td style="text-align:right;">${s.mcap_yi!=null?Math.round(s.mcap_yi):'—'}</td>
-                                <td style="text-align:right;">${s.pe_ttm!=null?s.pe_ttm.toFixed(1):'—'}</td>
-                                <td style="text-align:center;" onclick="event.stopPropagation();">
+                                <td style="text-align:right;width:70px;">${s.price!=null?s.price.toFixed(2):'—'}</td>
+                                <td style="text-align:right;width:70px;color:${pc};">${ps}</td>
+                                <td style="text-align:right;width:80px;">${s.mcap_yi!=null?Math.round(s.mcap_yi):'—'}</td>
+                                <td style="text-align:right;width:60px;">${s.pe_ttm!=null?s.pe_ttm.toFixed(1):'—'}</td>
+                                <td style="text-align:center;width:80px;" onclick="event.stopPropagation();">
                                     <button onclick="wlSyncOne('${escHtml(s.stock_code)}',this)" style="background:none;border:none;color:var(--accent-blue);cursor:pointer;font-size:9px;"><i class="fas fa-sync-alt"></i></button>
                                     <button onclick="wlEditGroup('${escHtml(s.stock_code)}','${escHtml(s.group_tag||'默认')}')" style="background:none;border:none;color:var(--accent-gold);cursor:pointer;font-size:9px;"><i class="fas fa-tag"></i></button>
                                     <button onclick="wlRemove('${escHtml(s.stock_code)}')" style="background:none;border:none;color:var(--accent-red);cursor:pointer;font-size:9px;"><i class="fas fa-trash"></i></button>
