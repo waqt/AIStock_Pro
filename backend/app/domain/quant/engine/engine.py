@@ -30,7 +30,9 @@ class QuantEngine:
         """
         # 1. 判断同步模式
         days_to_fetch = 500
-        if mode == "AUTO":
+        if mode == "FORCE":
+            days_to_fetch = 10  # 强制拉取最近10天, 不检查gap
+        elif mode == "AUTO":
             res = await self.db.execute(
                 select(MarketData.trade_date)
                 .where(MarketData.stock_code == stock_code)

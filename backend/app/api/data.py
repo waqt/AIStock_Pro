@@ -821,7 +821,8 @@ async def sync_watchlist(mode: str = "daily"):
     total_rows = 0
     for code in codes:
         try:
-            sync_mode = "FULL" if mode == "historical" else "AUTO"
+            # daily=强制拉当日(跳过gap检查), historical=全量500天
+            sync_mode = "FULL" if mode == "historical" else "FORCE"
             rows = await engine.sync_market_data(code, mode=sync_mode)
             total_rows += rows
         except Exception as e:
@@ -829,4 +830,14 @@ async def sync_watchlist(mode: str = "daily"):
     await db.commit()  # 持久化行情数据
 
     await sync_valuation(target_codes=codes)
+
+    # 补充自选股名称 (从 StockInfo)
+    for code in codes:
+        wl = await db.get(WatchlistItem, code)
+        if wl and not wl.stock_name:
+            info = await db.get(StockInfo, code)
+            if info and info.stock_name:
+                wl.stock_name = info.stock_name
+    await db.commit()
+
     return {"success": True, "synced": len(codes), "total_rows": total_rows}
