@@ -38,10 +38,55 @@
 - `Data_Center_Design_V2.md`: 数据中心相关改动同步
 
 ### 6. 自测清单 (必须)
-- [ ] Python 语法检查: `python -m py_compile <changed_files>`
-- [ ] 新端点: curl 测试返回正确
-- [ ] 前端: 按钮点击 → 网络请求 → 页面渲染 完整链路
-- [ ] 数据库: 新表 `create_all` 自动建表
+
+#### 6.1 语法与导入
+- [ ] `python -m py_compile <changed_files>` 无错误
+- [ ] 新增 import 路径有效 (IDE 或 `python -c "from app.xxx import yyy"`)
+
+#### 6.2 API 接口测试 (轻量改动)
+以下情况 curl 足够:
+- 查询类端点 (GET): 返回数据结构正确即可
+- 返回静态数据的端点
+
+```bash
+curl -s "http://127.0.0.1:8000/api/xxx" | python -c "assert 'key' in data"
+```
+
+#### 6.3 数据完整性测试 (数据写入类改动 ★ 必须)
+涉及 **数据写入/更新/同步** 的改动, curl 验证 API 返回≠ 数据真正落库。必须写 `temp_lab/` 脚本验证:
+
+```python
+# temp_lab/test_xxx.py — 端到端验证模板
+import asyncio, sys
+sys.path.insert(0, r'E:\workspace\AIResearch\AIStock_Pro\backend')
+from app.framework.database.session import async_session
+from app.models.models import TargetTable
+from sqlalchemy import select
+
+async def main():
+    async with async_session() as db:
+        # 1. 触发操作 (或调 API)
+        # 2. 查 DB 验证数据确实落库
+        res = await db.execute(select(TargetTable).where(...))
+        row = res.first()
+        # 3. 打印验证结果
+        print(f"Rows: {len(res.all())}  Expected: >0  PASS: {row is not None}")
+        # 4. 验证字段值正确
+        assert row.field is not None, "field should not be NULL"
+
+asyncio.run(main())
+```
+
+**验证标准**: 不是"API返回success", 而是"DB中数据正确":
+- [ ] 数据行数符合预期 (写入 N 行 → 查 count = N)
+- [ ] 关键字段非空 (名称/价格/日期 ≠ NULL/空字符串)
+- [ ] 日期正确 (latest_date 是今天/期望的日期)
+- [ ] 关联表联动正确 (如 watchlist.name 与 stock_info.name 一致)
+
+#### 6.4 前端链路测试
+- [ ] 按钮点击 → 浏览器 DevTools Network 面板确认 API 调用成功
+- [ ] 页面数据刷新后与 DB 一致
+- [ ] 无 JS console 报错 (`undefined`, `is not a function` 等)
 
 ## 禁止事项
 
@@ -51,3 +96,4 @@
 - ❌ 假设字段存在 → TradeHistory.profit_loss 不存在
 - ❌ 不注意 Decimal/Float 类型冲突 → MySQL ORM 常见坑
 - ❌ 删除前端元素不检查 JS 引用 → `document.getElementById` 返回 null
+- ❌ 用 curl 验证数据写入操作 → curl 只测API表面, 需查DB验证落库
