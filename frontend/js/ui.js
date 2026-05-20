@@ -5,16 +5,23 @@
 const UI_COMPONENTS = {
     // 侧边栏组件
     sidebar: (activeItem) => {
-        const menuItems = [
-            { id: 'index', icon: 'fas fa-terminal', label: '指挥部概览', url: 'index.html' },
-            { id: 'positions', icon: 'fas fa-search-dollar', label: '持仓管理', url: 'positions.html' },
-            { id: 'data', icon: 'fas fa-server', label: '数据中心', url: 'data.html' },
-            { id: 'definitions', icon: 'fas fa-tasks', label: '任务定义', url: 'definitions.html' },
-            { id: 'history', icon: 'fas fa-history', label: '执行历史', url: 'history.html' },
-            { id: 'import', icon: 'fas fa-file-import', label: '智能导入', url: 'import.html' },
+        // 业务模块
+        const bizModules = [
+            { id: 'index', icon: 'fas fa-compass', label: '指挥中心', url: 'index.html' },
+            { id: 'positions', icon: 'fas fa-briefcase', label: '持仓管理', url: 'positions.html',
+              subs: [
+                { id: 'import', icon: 'fas fa-upload', label: '智能导入', url: 'import.html' },
+              ]
+            },
             { id: 'research', icon: 'fas fa-brain', label: 'AI 投研', url: 'research.html' },
             { id: 'quant', icon: 'fas fa-chart-line', label: '量化决策', url: 'quant.html' },
-            { id: 'settings', icon: 'fas fa-cog', label: '系统管理', url: 'settings.html' }
+            { id: 'data', icon: 'fas fa-globe', label: '市场分析', url: 'data.html' },
+        ];
+
+        // 系统支撑
+        const sysModules = [
+            { id: 'definitions', icon: 'fas fa-cog', label: '任务定义', url: 'definitions.html' },
+            { id: 'history', icon: 'fas fa-history', label: '执行历史', url: 'history.html' },
         ];
 
         let html = `
@@ -24,7 +31,29 @@ const UI_COMPONENTS = {
             <div class="nav-list">
         `;
 
-        menuItems.forEach(item => {
+        bizModules.forEach(item => {
+            const isActive = activeItem === item.id ? 'active' : '';
+            const subActive = (item.subs || []).some(s => activeItem === s.id);
+            const highlight = isActive || subActive ? 'active' : '';
+            html += `
+                <div class="nav-item ${highlight}" onclick="location.href='${item.url}'">
+                    <i class="${item.icon}"></i><span>${item.label}</span>
+                </div>
+            `;
+            if (item.subs) {
+                item.subs.forEach(sub => {
+                    const sActive = activeItem === sub.id ? 'active' : '';
+                    html += `
+                        <div class="nav-item nav-sub ${sActive}" onclick="event.stopPropagation();location.href='${sub.url}'">
+                            <i class="${sub.icon}"></i><span>${sub.label}</span>
+                        </div>
+                    `;
+                });
+            }
+        });
+
+        html += `<div class="nav-section">系统</div>`;
+        sysModules.forEach(item => {
             const isActive = activeItem === item.id ? 'active' : '';
             html += `
                 <div class="nav-item ${isActive}" onclick="location.href='${item.url}'">
