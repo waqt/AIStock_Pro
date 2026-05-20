@@ -204,6 +204,7 @@
     <script src="js/framework/api.js"></script>
     <script src="js/framework/modal.js"></script>
     <script src="js/framework/task_monitor.js"></script>
+    <script src="js/framework/markdown.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/common.js"></script>
     <script>
@@ -264,7 +265,7 @@
 
                 if (d.briefing) {
                     document.getElementById('panel-summary').style.display = '';
-                    document.getElementById('content-summary').innerHTML = mdToHtml(d.briefing);
+                    document.getElementById('content-summary').innerHTML = MD.render(d.briefing);
                 }
 
                 saveCache(d);
@@ -352,7 +353,7 @@
             // 1. Final Summary
             if (d.final_summary) {
                 document.getElementById('panel-summary').style.display = '';
-                document.getElementById('content-summary').innerHTML = mdToHtml(d.final_summary);
+                document.getElementById('content-summary').innerHTML = MD.render(d.final_summary);
             }
 
             // 2. Top Picks + Portfolio Allocation
@@ -509,7 +510,7 @@
             // Summary
             if (d.summary) {
                 document.getElementById('panel-summary').style.display = '';
-                document.getElementById('content-summary').innerHTML = mdToHtml(d.summary);
+                document.getElementById('content-summary').innerHTML = MD.render(d.summary);
             }
 
             // Core Stocks (the main feature)
@@ -671,7 +672,7 @@
             }
             if (d.summary) {
                 document.getElementById('panel-summary').style.display = '';
-                document.getElementById('content-summary').innerHTML = mdToHtml(d.summary);
+                document.getElementById('content-summary').innerHTML = MD.render(d.summary);
             }
             if (d.supply_chain) {
                 const ls = d.supply_chain.recursive_layers || d.supply_chain.layers || [];
@@ -698,7 +699,7 @@
 
         // ═══ 工具函数 ═══════════════════════════════════
 
-        function mdToHtml(md) {
+        function MD.render(md) {
             return md
                 .replace(/### (.+)/g, '<h3>$1</h3>')
                 .replace(/## (.+)/g, '<h2>$1</h2>')
@@ -753,7 +754,7 @@
                 renderLegacy(d);
                 if (d.briefing) {
                     document.getElementById('panel-summary').style.display = '';
-                    document.getElementById('content-summary').innerHTML = mdToHtml(d.briefing);
+                    document.getElementById('content-summary').innerHTML = MD.render(d.briefing);
                 }
             }
         }

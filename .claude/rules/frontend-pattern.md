@@ -7,6 +7,7 @@
 <script src="js/framework/api.js"></script>
 <script src="js/framework/modal.js"></script>
 <script src="js/framework/task_monitor.js"></script>
+<script src="js/framework/markdown.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/common.js"></script>
 <!-- 页面业务 JS 放在最后 -->
@@ -70,3 +71,17 @@ const result = await API.post('/data/sync/daily/auto', { type: 'AUTO' });
 - [ ] 使用 Modal 替代 alert/confirm
 - [ ] API 路径以 `API_BASE` 开头
 - [ ] 使用 CSS 变量而非硬编码颜色
+
+## Markdown 渲染
+
+复杂文本内容使用 `MD.render(markdownText)` 渲染, 不要手写 HTML 拼接:
+
+```javascript
+// ✅ 正确: 使用 MD 组件
+document.getElementById('content').innerHTML = MD.render(d.summary);
+
+// ❌ 错误: 手动 replace 正则
+d.summary.replace(/### (.+)/g, '<h3>$1</h3>').replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')...
+```
+
+需要特殊样式时, 给容器加 `class="md-content"` 即可自动应用暗色主题。
