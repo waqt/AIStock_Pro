@@ -411,12 +411,11 @@
         async function wlSyncOne(code, btn) {
             if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
             try {
-                await fetch(`${API_BASE}/data/sync/daily/${code}`, { method: 'POST' });
-                // 补全名称
-                await fetch(`${API_BASE}/data/watchlist/${code}`, { method: 'PUT' });
-                addLog(`${code} 同步完成`, 'success');
-                wlLoad(); // 刷新列表
-            } catch(e) { addLog(`${code} 同步失败`, 'error'); }
+                const res = await fetch(`${API_BASE}/data/sync/daily/${code}`, { method: 'POST' });
+                const d = await res.json();
+                addLog(`${code} 完成 | 名称:${d.name||'--'} | 价格:${d.price||'--'} | +${d.new_rows||0}行`, 'success');
+                wlLoad();
+            } catch(e) { addLog(`${code} 失败: ${e.message}`, 'error'); }
             if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-sync-alt"></i>'; }
         }
 

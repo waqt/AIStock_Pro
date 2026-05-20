@@ -67,9 +67,40 @@ async def trigger_auto_sync(request: SyncRequest):
 
 @router.post("/sync/daily/{stock_code}")
 async def trigger_single_sync(stock_code: str):
-    """触发单股同步 + 指标计算"""
-    exec_id = await task_manager.run_task("sync_market", {"mode": "AUTO", "target_codes": [stock_code]})
-    return {"message": f"{stock_code} 同步已加入队列", "task_id": exec_id}
+    """单股同步 (同步执行: 行情+估值+名称补全)"""
+    from app.domain.quant.engine.engine import QuantEngine
+    from app.domain.market_data.sources.router import data_router
+    from app.domain.market_data.services.valuation import sync_valuation
+    from app.models.models import WatchlistItem
+
+    async with async_session() as db:
+        engine = QuantEngine(db)
+        # 1. 同步行情
+        rows = await engine.sync_market_data(stock_code, mode="AUTO")
+        # 2. 同步估值 (PE/PB/市值 → stock_info)
+        await sync_valuation(target_codes=[stock_code])
+        # 3. 补全自选股名称 (从 stock_info 或行情)
+        wl = await db.get(WatchlistItem, stock_code)
+        if wl and not wl.stock_name:
+            info = await db.get(StockInfo, stock_code)
+            if info and info.stock_name:
+                wl.stock_name = info.stock_name
+            await db.commit()
+        # 4. 查最新价格
+        mr = await db.execute(
+            select(MarketData.close, MarketData.change_pct)
+            .where(MarketData.stock_code == stock_code)
+            .order_by(MarketData.trade_date.desc()).limit(1))
+        row = mr.first()
+
+    return {
+        "success": True,
+        "stock_code": stock_code,
+        "new_rows": rows,
+        "name": wl.stock_name if wl else "",
+        "price": float(row[0]) if row and row[0] else None,
+        "change_pct": float(row[1]) if row and row[1] else None,
+    }
 
 
 # ═══════════════════════════════════════════
