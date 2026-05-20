@@ -107,13 +107,14 @@
 <!-- Tab: 财务报告 -->
 <div class="data-tab-panel" id="tab-financial" style="display:none;">
     <div class="toolbar">
-        <input type="text" id="fin-code" placeholder="股票代码" style="width:120px;">
-        <button class="btn-action" onclick="finSync()" style="font-size:11px;border-color:var(--accent-green);color:var(--accent-green);"><i class="fas fa-sync-alt"></i> 拉取财报</button>
-        <button class="btn-action" onclick="finBatchSync()" style="font-size:11px;"><i class="fas fa-layer-group"></i> 批量同步</button>
-        <span style="font-size:10px;color:var(--text-micro);">仅同步自选股 | 8Q趋势+明细</span>
+        <select id="fin-select" onchange="finSelectStock()" style="background:#000;border:1px solid var(--border-color);color:#fff;padding:5px 10px;border-radius:4px;font-size:11px;min-width:180px;">
+            <option value="">— 选择自选股 —</option>
+        </select>
+        <button class="btn-action" onclick="finSyncSelected()" style="font-size:11px;border-color:var(--accent-green);color:var(--accent-green);"><i class="fas fa-sync-alt"></i> 拉取财报</button>
+        <button class="btn-action" onclick="finBatchSync()" style="font-size:11px;"><i class="fas fa-layer-group"></i> 批量同步全部</button>
     </div>
     <div id="financial-content" style="max-height:65vh;overflow-y:auto;">
-        <div style="color:var(--text-micro);padding:40px;text-align:center;">输入股票代码, 点击"拉取财报"</div>
+        <div style="color:var(--text-micro);padding:40px;text-align:center;">从自选股下拉列表中选择</div>
     </div>
 </div>
 
@@ -168,6 +169,7 @@ function switchDataTab(tab) {
     if (tab === 'macro') loadMacro();
     if (tab === 'watchlist') wlLoad();
     if (tab === 'health') updateHealthTable();
+    if (tab === 'financial') finInitDropdown();
 }
 
 // ═══ Quick actions ═══
@@ -433,9 +435,23 @@ async function showMacroHistory(code, name) {
 }
 
 // ═══ Financial Reports ═══
-async function finSync() {
-    const code = document.getElementById('fin-code').value.trim();
-    if (!code) { addLog('请输入代码', 'warn'); return; }
+async function finInitDropdown() {
+    try {
+        const r = await fetch(`${API_BASE}/data/watchlist`);
+        const d = await r.json();
+        const sel = document.getElementById('fin-select');
+        sel.innerHTML = '<option value="">— 选择自选股 —</option>' +
+            (d.data||[]).map(i => `<option value="${i.stock_code}">${i.stock_code} ${i.stock_name}</option>`).join('');
+    } catch(e) {}
+}
+function finSelectStock() {
+    const code = document.getElementById('fin-select').value;
+    if (code) finLoad(code);
+}
+async function finSyncSelected() {
+    const sel = document.getElementById('fin-select');
+    const code = sel.value;
+    if (!code) { addLog('请先选择自选股', 'warn'); return; }
     addLog(`拉取 ${code} 财报...`, 'info');
     try {
         const r = await fetch(`${API_BASE}/data/financial/sync/${code}`, { method: 'POST' });
