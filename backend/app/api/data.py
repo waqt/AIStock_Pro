@@ -78,15 +78,25 @@ async def trigger_single_sync(stock_code: str, mode: str = "daily"):
         sync_mode = "AUTO" if mode == "daily" else "FULL"
         rows = await engine.sync_market_data(stock_code, mode=sync_mode)
         await sync_valuation(target_codes=[stock_code])
-        # 同步基本信息 (行业/总股本/上市时间)
+        # 同步基本信息 (行业/总股本/上市时间/名称)
         from app.domain.market_data.services.valuation import sync_stock_info as sync_info
         await sync_info(stock_code)
 
         wl = await db.get(WatchlistItem, stock_code)
         if wl and not wl.stock_name:
+            # 从 stock_info 或 market_data 源获取名称
             info = await db.get(StockInfo, stock_code)
             if info and info.stock_name:
                 wl.stock_name = info.stock_name
+            else:
+                # 兜底: 用行情数据源查名称
+                try:
+                    from app.domain.market_data.sources.tencent import get_tencent_quotes
+                    quotes = await get_tencent_quotes([stock_code])
+                    q = quotes.get(stock_code, {})
+                    if q.get('name'):
+                        wl.stock_name = q['name']
+                except: pass
             await db.commit()
 
         mr = await db.execute(
@@ -796,21 +806,26 @@ async def update_watchlist(stock_code: str, group_tag: str = None, stock_name: s
 
 
 @router.post("/watchlist/sync")
-async def sync_watchlist():
-    """同步全部自选股行情+估值 (不限于持仓)"""
+async def sync_watchlist(mode: str = "daily"):
+    """同步全部自选股行情+估值 — mode=daily(当日10天)|historical(2年补全)"""
     from app.domain.market_data.services.valuation import sync_valuation
+    from app.domain.quant.engine.engine import QuantEngine
+
     async with async_session() as db:
         res = await db.execute(select(WatchlistItem.stock_code))
         codes = [r[0] for r in res.all()]
     if not codes:
         return {"success": True, "message": "Watchlist empty"}
-    # 同步行情
-    from app.domain.quant.engine.indicator_runner import IndicatorRunner
-    await data_router.sync_macro_data()
+
+    engine = QuantEngine(db)
+    total_rows = 0
     for code in codes:
         try:
-            await data_router.get_daily_data(code, days=10)
-        except Exception:
-            pass
+            sync_mode = "FULL" if mode == "historical" else "AUTO"
+            rows = await engine.sync_market_data(code, mode=sync_mode)
+            total_rows += rows
+        except Exception as e:
+            logger.warning(f"[WatchlistSync] {code} failed: {e}")
+
     await sync_valuation(target_codes=codes)
-    return {"success": True, "synced": len(codes)}
+    return {"success": True, "synced": len(codes), "total_rows": total_rows}
