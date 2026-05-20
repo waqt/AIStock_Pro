@@ -454,6 +454,40 @@ async def import_stock_csv(file: UploadFile = File(...)):
 
 
 # ═══════════════════════════════════════════
+# 宏观数据中心
+# ═══════════════════════════════════════════
+
+@router.get("/macro/latest")
+async def get_macro_latest():
+    """获取全部宏观指标最新值"""
+    async with async_session() as db:
+        res = await db.execute(select(ExchangeRate))
+        items = res.scalars().all()
+        return {"success": True, "data": [
+            {"code": i.code, "name": i.name, "rate": i.rate,
+             "change_pct": i.change_pct, "updated_at": str(i.updated_at) if i.updated_at else None}
+            for i in items
+        ]}
+
+
+@router.get("/macro/history")
+async def get_macro_history(code: str, days: int = Query(default=365, le=730)):
+    """获取单个宏观指标的历史序列"""
+    from app.models.models import MacroHistory
+    async with async_session() as db:
+        res = await db.execute(
+            select(MacroHistory)
+            .where(MacroHistory.code == code)
+            .order_by(MacroHistory.obs_date.desc())
+            .limit(days)
+        )
+        rows = res.scalars().all()
+        return {"success": True, "data": [
+            {"date": str(r.obs_date), "value": r.value} for r in reversed(rows)
+        ]}
+
+
+# ═══════════════════════════════════════════
 # 自选股中心
 # ═══════════════════════════════════════════
 

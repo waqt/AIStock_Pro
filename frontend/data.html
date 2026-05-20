@@ -105,9 +105,15 @@
 
                     <!-- Tab 导航 -->
                     <div style="display:flex;gap:0;margin-bottom:10px;border-bottom:1px solid var(--border-color);">
-                        <button class="tab-btn active" onclick="switchDataTab('health')" id="tab-health" style="background:none;border:none;color:var(--text-dim);cursor:pointer;padding:6px 14px;font-size:12px;border-bottom:2px solid var(--accent-blue);">行情体检</button>
+                        <button class="tab-btn active" onclick="switchDataTab('macro')" id="tab-macro" style="background:none;border:none;color:var(--text-dim);cursor:pointer;padding:6px 14px;font-size:12px;border-bottom:2px solid var(--accent-blue);">宏观</button>
                         <button class="tab-btn" onclick="switchDataTab('watchlist')" id="tab-watchlist" style="background:none;border:none;color:var(--text-dim);cursor:pointer;padding:6px 14px;font-size:12px;border-bottom:2px solid transparent;">自选股</button>
+                        <button class="tab-btn" onclick="switchDataTab('health')" id="tab-health" style="background:none;border:none;color:var(--text-dim);cursor:pointer;padding:6px 14px;font-size:12px;border-bottom:2px solid transparent;">行情体检</button>
                         <button class="tab-btn" onclick="switchDataTab('manual')" id="tab-manual" style="background:none;border:none;color:var(--text-dim);cursor:pointer;padding:6px 14px;font-size:12px;border-bottom:2px solid transparent;">手动操作</button>
+                    </div>
+
+                    <!-- Tab: 宏观数据 -->
+                    <div id="tab-panel-macro" style="display:flex;flex-wrap:wrap;gap:8px;">
+                        <div style="color:var(--text-micro);font-size:11px;width:100%;text-align:center;padding:20px;">加载中...</div>
                     </div>
 
                     <!-- Tab: 自选股 -->
@@ -185,12 +191,39 @@
         const taskIdDisplay = document.getElementById('task-id-display');
 
         function switchDataTab(tab) {
-            document.querySelectorAll('#tab-panel-health, #tab-panel-watchlist, #tab-panel-manual').forEach(p => p.style.display = 'none');
+            document.querySelectorAll('#tab-panel-macro, #tab-panel-health, #tab-panel-watchlist, #tab-panel-manual').forEach(p => p.style.display = 'none');
             document.querySelectorAll('.tab-btn').forEach(b => { b.style.borderBottomColor = 'transparent'; });
             document.getElementById('tab-' + tab).style.borderBottomColor = 'var(--accent-blue)';
+            if (tab === 'macro') { document.getElementById('tab-panel-macro').style.display = 'flex'; loadMacro(); }
             if (tab === 'health') { document.getElementById('tab-panel-health').style.display = ''; updateHealthTable(); }
             if (tab === 'watchlist') { document.getElementById('tab-panel-watchlist').style.display = ''; wlLoad(); }
             if (tab === 'manual') document.getElementById('tab-panel-manual').style.display = '';
+        }
+
+        // ── 宏观数据 ──
+        async function loadMacro() {
+            const el = document.getElementById('tab-panel-macro');
+            try {
+                const res = await fetch(`${API_BASE}/data/macro/latest`);
+                const data = await res.json();
+                const items = data.data || [];
+                if (!items.length) { el.innerHTML = '<div style="color:var(--text-micro);padding:20px;text-align:center;">暂无宏观数据, 请点击同步</div>'; return; }
+                const names = {XAU:'黄金',XAG:'白银',BRENT:'原油',DXY:'美元指数',USD_CNY:'美元/人民币',HKD_CNY:'港币/人民币',US10YT:'美债10Y',US_FED_RATE:'联邦基金利率',CREDIT_IMPULSE:'信用脉冲'};
+                el.innerHTML = items.map(i => {
+                    const pct = i.change_pct;
+                    const pctStr = pct != null ? ((pct>=0?'+':'') + pct.toFixed(2) + '%') : '';
+                    const pctColor = pct != null ? (pct>=0 ? 'var(--accent-green)' : 'var(--accent-red)') : 'var(--text-micro)';
+                    return `<div class="panel" style="flex:1;min-width:140px;max-width:200px;padding:12px;text-align:center;">
+                        <div style="font-size:10px;color:var(--text-micro);">${names[i.code]||i.code}</div>
+                        <div style="font-size:20px;font-weight:700;color:#fff;margin:4px 0;">${i.rate != null ? i.rate.toFixed(4) : '—'}</div>
+                        <div style="font-size:11px;color:${pctColor};">${pctStr||'—'}</div>
+                    </div>`;
+                }).join('');
+                // Sync button
+                el.innerHTML += `<div style="width:100%;text-align:center;margin-top:4px;">
+                    <button class="btn-action" onclick="syncMacroData()" style="font-size:10px;"><i class="fas fa-sync-alt"></i> 刷新宏观数据</button>
+                </div>`;
+            } catch(e) { el.innerHTML = '<div style="color:var(--accent-red);padding:20px;">加载失败</div>'; }
         }
 
         // ── 自选股 ──
@@ -531,6 +564,7 @@
             updateSourceStatus();
             updateHealthSummary();
             updateHealthTable();
+            loadMacro();
         }
 
         window.refreshPageData = refreshAll;

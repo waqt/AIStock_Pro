@@ -133,20 +133,16 @@ class DataRouter:
     # ── 宏观市场数据 (V5.4: 使用 akshare, 已验证可用) ──
 
     async def sync_macro_data(self) -> dict:
-        """抓取汇率+美元指数+金/银/油 — 新浪实时行情 (httpx, 已验证)"""
+        """宏观数据同步: 新浪实时(汇率/大宗) + akshare(美债/利率/PPI)"""
         import httpx
+        from datetime import datetime as dt, date as d
         result = {}
 
-        # 新浪实时行情代码
+        # ── Phase 1: 新浪实时行情 ──
         symbols = {
-            'DXY': 'hf_DINIW',       # 美元指数
-            'XAU': 'hf_XAU',         # 伦敦金
-            'XAG': 'hf_XAG',         # 伦敦银
-            'BRENT': 'hf_OIL',       # 布伦特原油
-            'USD_CNY': 'fx_susdcny', # 美元/人民币
-            'HKD_CNY': 'fx_shkdcny', # 港元/人民币
+            'DXY': 'hf_DINIW', 'XAU': 'hf_XAU', 'XAG': 'hf_XAG',
+            'BRENT': 'hf_OIL', 'USD_CNY': 'fx_susdcny', 'HKD_CNY': 'fx_shkdcny',
         }
-
         try:
             codes = ','.join(symbols.values())
             url = f"http://hq.sinajs.cn/list={codes}"
@@ -158,62 +154,110 @@ class DataRouter:
                     for code, sina_code in symbols.items():
                         pattern = f'var hq_str_{sina_code}='
                         idx = text.find(pattern)
-                        if idx < 0:
-                            continue
+                        if idx < 0: continue
                         start = text.find('"', idx) + 1
                         end = text.find('"', start)
-                        if end < 0:
-                            continue
+                        if end < 0: continue
                         fields = text[start:end].split(',')
-                        if len(fields) < 2:
-                            continue
-
-                        price = None
-                        change_pct = None
-                        if sina_code.startswith('fx_'):
-                            # fx 格式: 时间,最新价,昨收,今开,涨跌额,...,名称,涨跌幅
-                            # fields[1]=最新价, fields[2]=昨收
-                            try:
+                        if len(fields) < 2: continue
+                        price, change_pct = None, None
+                        try:
+                            if sina_code.startswith('fx_'):
                                 price = float(fields[1]) if fields[1] and fields[1] != '0.0000000000' else None
                                 prev = float(fields[2]) if len(fields) > 2 and fields[2] else None
                                 if price and prev and prev > 0:
                                     change_pct = round((price - prev) / prev * 100, 4)
-                            except (ValueError, IndexError):
-                                pass
-                        elif sina_code.startswith('hf_'):
-                            # hf 格式: 最新价,昨结算,今开,最高,最低,...
-                            # fields[0]=最新价, fields[1]=昨结算
-                            try:
+                            elif sina_code.startswith('hf_'):
                                 price = float(fields[0]) if fields[0] and fields[0] != '0.0000' else None
                                 prev = float(fields[1]) if len(fields) > 1 and fields[1] and fields[1] != '0.0000' else None
                                 if price and prev and prev > 0:
                                     change_pct = round((price - prev) / prev * 100, 4)
-                            except (ValueError, IndexError):
-                                pass
+                        except (ValueError, IndexError): pass
                         if price:
                             result[code] = {'name': code, 'price': price, 'change_pct': change_pct}
         except Exception as e:
             logger.warning(f"[⚠️] Sina macro fetch failed: {e}")
 
+        # ── Phase 2: akshare 美债/利率 ──
+        try:
+            import akshare as ak
+            import pandas as pd
+            loop = __import__('asyncio').get_event_loop()
+
+            # 美国10年期国债收益率
+            try:
+                df = await loop.run_in_executor(None, ak.bond_zh_us_rate)
+                if df is not None and not df.empty:
+                    latest = df.sort_values('日期').iloc[-1]
+                    result['US10YT'] = {
+                        'name': 'US10YT', 'price': float(latest['美国国债收益率10年']),
+                        'change_pct': None,
+                    }
+                    # 存历史序列
+                    await self._save_macro_history('US10YT', df, '日期', '美国国债收益率10年')
+            except Exception as e:
+                logger.warning(f"[⚠️] US10YT fetch failed: {e}")
+
+            # 美联储利率
+            try:
+                df_rate = await loop.run_in_executor(None, ak.macro_bank_usa_interest_rate)
+                if df_rate is not None and not df_rate.empty:
+                    # 取最新的联邦基金利率
+                    cols = [c for c in df_rate.columns if '联邦基金' in c or 'fed' in c.lower() or '有效' in c]
+                    if not cols: cols = [df_rate.columns[1]] if len(df_rate.columns) > 1 else []
+                    if cols:
+                        latest = df_rate.sort_values(df_rate.columns[0]).iloc[-1]
+                        result['US_FED_RATE'] = {
+                            'name': 'US_FED_RATE', 'price': float(latest[cols[0]]),
+                            'change_pct': None,
+                        }
+            except Exception as e:
+                logger.warning(f"[⚠️] US_FED_RATE fetch failed: {e}")
+
+        except Exception as e:
+            logger.warning(f"[⚠️] akshare macro fetch failed: {e}")
+
+        # ── 写入 ExchangeRate 表 ──
         if result:
             from app.framework.database.session import async_session
             from app.models.models import ExchangeRate
-            from datetime import datetime as dt
             async with async_session() as db:
                 for code, info in result.items():
-                    price = info['price']
-                    pct = info.get('change_pct')
                     existing = await db.get(ExchangeRate, code)
                     if existing:
-                        existing.name = info.get('name', code)
-                        existing.rate = price
-                        existing.change_pct = pct
+                        existing.rate = info['price']
+                        existing.change_pct = info.get('change_pct')
                         existing.updated_at = dt.now()
                     else:
-                        db.add(ExchangeRate(code=code, name=info.get('name', code), rate=price, change_pct=pct))
+                        db.add(ExchangeRate(code=code, name=info.get('name', code),
+                            rate=info['price'], change_pct=info.get('change_pct')))
                 await db.commit()
             logger.info(f"[✅] Macro data synced: {list(result.keys())}")
         return result
+
+    @staticmethod
+    async def _save_macro_history(code: str, df, date_col: str, value_col: str):
+        """将时间序列存入 macro_history 表"""
+        from app.framework.database.session import async_session
+        from app.models.models import MacroHistory
+        from datetime import date as d
+        async with async_session() as db:
+            for _, row in df.iterrows():
+                dt_val = row[date_col]
+                if hasattr(dt_val, 'date'): dt_val = dt_val.date()
+                elif hasattr(dt_val, 'strftime'): dt_val = dt_val
+                else:
+                    try: dt_val = d.fromisoformat(str(dt_val)[:10])
+                    except: continue
+                val = float(row[value_col])
+                # Upsert: check existing
+                from sqlalchemy import select
+                res = await db.execute(
+                    select(MacroHistory).where(
+                        MacroHistory.code == code, MacroHistory.obs_date == dt_val))
+                if res.scalars().first(): continue
+                db.add(MacroHistory(code=code, obs_date=dt_val, value=val))
+            await db.commit()
 
         if result:
             from app.framework.database.session import async_session

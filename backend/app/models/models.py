@@ -97,6 +97,16 @@ class ExchangeRate(Base):
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
 
+class MacroHistory(Base):
+    """宏观指标历史序列 — 用于趋势图"""
+    __tablename__ = "macro_history"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    code = Column(String(30), index=True, comment="指标代码")
+    obs_date = Column(Date, comment="观测日期")
+    value = Column(Float, comment="指标值")
+    created_at = Column(DateTime, default=datetime.now)
+
+
 class StockInfo(Base):
     """股票基础信息 — A股+港股全量代码名称"""
     __tablename__ = "stock_info"
