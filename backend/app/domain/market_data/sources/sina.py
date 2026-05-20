@@ -40,7 +40,7 @@ class SinaSource(DataSourceProtocol):
 
     async def _fetch_sina_a_stock(self, stock_code: str, days: int) -> pd.DataFrame:
         """A股日线 — 新浪接口"""
-        prefix = 'sh' if stock_code.startswith(('6', '9')) else 'sz'
+        prefix = 'sh' if stock_code.startswith(('5', '6', '9')) else 'sz'
         symbol = f"{prefix}{stock_code}"
         url = (
             f"http://money.finance.sina.com.cn/quotes_service/api/json_v2.php/"

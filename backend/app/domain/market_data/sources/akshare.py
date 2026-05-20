@@ -43,13 +43,13 @@ class AkShareSource(DataSourceProtocol):
         """东方财富市场前缀: 1=沪市, 0=深市"""
         if len(stock_code) == 5:
             return f"116.{stock_code}"  # 港股
-        return f"{'1' if stock_code.startswith(('6', '9')) else '0'}.{stock_code}"
+        return f"{'1' if stock_code.startswith(('5', '6', '9')) else '0'}.{stock_code}"
 
     def _sina_prefix(self, stock_code: str) -> str:
         """新浪市场前缀"""
         if len(stock_code) == 5:
             return f"hk{stock_code}"
-        return f"{'sh' if stock_code.startswith(('6', '9')) else 'sz'}{stock_code}"
+        return f"{'sh' if stock_code.startswith(('5', '6', '9')) else 'sz'}{stock_code}"
 
     async def get_realtime_quotes(self, stock_codes: List[str]) -> dict:
         """批量获取实时行情 (价格、PE、总市值)"""

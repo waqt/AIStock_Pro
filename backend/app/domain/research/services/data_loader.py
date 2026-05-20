@@ -241,7 +241,7 @@ class ResearchDataLoader:
         if c.startswith("SH") or c.startswith("SZ") or c.startswith("BJ"):
             return c
         if len(c) == 6:
-            if c.startswith(("6", "9")):
+            if c.startswith(("5", "6", "9")):
                 return f"SH{c}"
             elif c.startswith(("0", "2", "3")):
                 return f"SZ{c}"

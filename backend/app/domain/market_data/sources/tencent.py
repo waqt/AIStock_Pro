@@ -19,7 +19,7 @@ async def get_tencent_quotes(codes: List[str]) -> Dict[str, dict]:
             prefixed.append(c.lower())  # 美股: usNVDA, usTSM
         elif len(c) == 5:
             prefixed.append(f"hk{c}")   # 港股
-        elif c.startswith(("6", "9")):
+        elif c.startswith(("5", "6", "9")):
             prefixed.append(f"sh{c}")
         else:
             prefixed.append(f"sz{c}")
