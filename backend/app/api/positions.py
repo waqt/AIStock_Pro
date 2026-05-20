@@ -70,3 +70,31 @@ async def delete_position(stock_code: str, db: AsyncSession = Depends(get_db)):
     await db.commit()
     logger.info(f"[🧹] Deleted position: {stock_code} {pos.stock_name}")
     return {"message": f"已删除 {stock_code} {pos.stock_name}"}
+
+
+@router.post("/update-prices")
+async def update_positions_prices(db: AsyncSession = Depends(get_db)):
+    """刷新全部持仓的现价 + 盈亏 (用最新行情更新)"""
+    from sqlalchemy import select as sa_select
+    from app.models.models import MarketData
+
+    result = await db.execute(sa_select(Position))
+    positions = result.scalars().all()
+    updated = 0
+    for pos in positions:
+        mr = await db.execute(
+            sa_select(MarketData.close).where(MarketData.stock_code == pos.stock_code)
+            .order_by(MarketData.trade_date.desc()).limit(1))
+        row = mr.first()
+        if not row or not row[0]:
+            continue
+        price = float(row[0])
+        pos.current_price = price
+        pos.market_value = float(pos.volume) * price
+        cost = float(pos.volume) * float(pos.avg_cost)
+        pos.profit_loss = pos.market_value - cost
+        pos.profit_loss_ratio = round(pos.profit_loss / cost * 100, 2) if cost != 0 else None
+        updated += 1
+    await db.commit()
+    logger.info(f"[Positions] Updated prices for {updated}/{len(positions)} stocks")
+    return {"message": f"已刷新 {updated}/{len(positions)} 只持仓行情", "updated": updated}
