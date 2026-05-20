@@ -146,8 +146,25 @@ class ResearchDataLoader:
             ]
 
     async def load_financials(self, codes: List[str]) -> Dict[str, Dict]:
-        """加载财务数据 — PE/PB/市值"""
-        return await self.load_fundamentals(codes)
+        """加载财务数据 — PE/PB/市值 (akshare优先, tushare兜底)"""
+        result = await self.load_fundamentals(codes)
+        # Tushare 兜底: 补充缺失的估值数据
+        from app.domain.market_data.sources.tushare_provider import TushareProvider
+        if TushareProvider.available():
+            for code in codes:
+                if code not in result or not result[code].get('pe_ttm'):
+                    try:
+                        df = await TushareProvider.get_daily_basic(code, days=5)
+                        if not df.empty:
+                            latest = df.iloc[-1]
+                            result[code] = {
+                                'pe_ttm': float(latest.get('pe_ttm', 0) or 0),
+                                'pb': float(latest.get('pb', 0) or 0),
+                                'mcap_yi': float(latest.get('total_mv', 0) or 0) / 1e4,
+                            }
+                    except Exception:
+                        pass
+        return result
 
     async def load_financial_statements(self, code: str, periods: int = 8) -> Dict[str, Any]:
         """获取单只股票连续 N 个季度的三大表核心字段 (V4.0 数据底座)

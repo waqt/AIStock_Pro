@@ -44,6 +44,20 @@ async def sync_stock_info(code: str) -> bool:
                 info['name'] = str(value)
 
         if not info:
+            # Tushare 兜底
+            from app.domain.market_data.sources.tushare_provider import TushareProvider
+            if TushareProvider.available():
+                ts_info = await loop.run_in_executor(None, TushareProvider._fetch_stock_info, code)
+                if ts_info.get('name'):
+                    info['name'] = ts_info['name']
+                if ts_info.get('industry'):
+                    info['industry'] = ts_info['industry']
+                if ts_info.get('list_date'):
+                    try:
+                        from datetime import date as d2
+                        info['list_date'] = d2.fromisoformat(str(ts_info['list_date']))
+                    except: pass
+        if not info:
             return False
 
         async with async_session() as db:
