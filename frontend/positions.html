@@ -18,7 +18,13 @@
 
             <div class="workspace">
                 <div class="panel">
-                    <div class="panel-header"><span class="panel-title">持仓明细 (Portfolio Details)</span></div>
+                    <div class="panel-header">
+                        <span class="panel-title">持仓明细 (Portfolio Details)</span>
+                        <button class="btn-action" onclick="computeSnapshot()" id="btn-snapshot" style="margin-left:12px;font-size:11px;padding:4px 10px;border-color:var(--accent-gold);color:var(--accent-gold);">
+                            <i class="fas fa-calculator"></i> 刷新损益
+                        </button>
+                        <span id="snapshot-result" style="font-size:10px;color:var(--text-micro);margin-left:8px;"></span>
+                    </div>
                     <div class="panel-body">
                         <table>
                             <thead>
@@ -71,6 +77,20 @@
     <script src="js/common.js"></script>
     <script>
         // API_BASE 已在 common.js 中定义
+        async function computeSnapshot() {
+            const btn = document.getElementById('btn-snapshot');
+            const status = document.getElementById('snapshot-result');
+            btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 计算中...';
+            status.textContent = '';
+            try {
+                const res = await fetch(`${API_BASE}/data/portfolio/snapshot`, { method: 'POST' });
+                const d = await res.json();
+                status.textContent = `完成: ${d.count||0}只, 市值¥${(d.total_market_value||0).toLocaleString()}, 盈亏¥${(d.total_profit_loss||0).toLocaleString()}`;
+                refreshPositions();
+            } catch(e) { status.textContent = '失败: ' + e.message; }
+            finally { btn.disabled = false; btn.innerHTML = '<i class="fas fa-calculator"></i> 刷新损益'; }
+        }
+
         async function refreshPositions() {
             try {
                 const res = await fetch(`${API_BASE}/positions`);
