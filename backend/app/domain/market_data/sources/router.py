@@ -183,21 +183,27 @@ class DataRouter:
             import akshare as ak
             loop = __import__('asyncio').get_event_loop()
 
-            # 美国10年期国债收益率 (ak.bond_zh_us_rate 已验证可用)
+            # 美国10年期国债收益率 (ak.bond_zh_us_rate)
             try:
                 df = await loop.run_in_executor(None, ak.bond_zh_us_rate)
                 if df is not None and not df.empty:
-                    # 列名: 日期 / 中国国债收益率2年 / 5年 / 10年 / 30年 / 美国国债收益率2年 / 5年 / 10年 / 30年
-                    cols = df.columns
-                    us10y_col = [c for c in cols if '美国' in c and '10' in c]
+                    import math
+                    # 列名可能是中文或英文, 找包含 "10" 且非中国国债的列
+                    cols = list(df.columns)
+                    date_col = cols[0]  # 第一列是日期
+                    # 排除日期列和第2-5列(中国国债2/5/10/30), 剩余的是美国国债列
+                    us_cols = cols[5:] if len(cols) > 5 else []
+                    us10y_col = [c for c in us_cols if ('10' in c or '10' in str(c))]
+                    if not us10y_col:
+                        # 回退: 找第一个包含 '10' 的非中国列
+                        us10y_col = [c for c in cols[1:] if ('10' in c or '10' in str(c)) and ('2' not in c or '10' in c)][:1]
                     if us10y_col:
-                        latest = df.sort_values('日期').iloc[-1]
-                        result['US10YT'] = {
-                            'name': 'US10YT', 'price': float(latest[us10y_col[0]]),
-                            'change_pct': None,
-                        }
-                        await self._save_macro_history('US10YT', df, '日期', us10y_col[0])
-                        logger.info(f"[✅] US10YT: {result['US10YT']['price']}%")
+                        latest = df.sort_values(date_col).iloc[-1]
+                        val = float(latest[us10y_col[0]])
+                        if not math.isnan(val):
+                            result['US10YT'] = {'name': 'US10YT', 'price': val, 'change_pct': None}
+                            await self._save_macro_history('US10YT', df, date_col, us10y_col[0])
+                            logger.info(f"[✅] US10YT: {val}%")
             except Exception as e:
                 logger.warning(f"[⚠️] US10YT fetch failed: {e}")
 
@@ -215,16 +221,20 @@ class DataRouter:
         if result:
             from app.framework.database.session import async_session
             from app.models.models import ExchangeRate
+            import math
             async with async_session() as db:
                 for code, info in result.items():
+                    price = info['price']
+                    if price is None or (isinstance(price, float) and math.isnan(price)):
+                        continue
                     existing = await db.get(ExchangeRate, code)
                     if existing:
-                        existing.rate = info['price']
+                        existing.rate = price
                         existing.change_pct = info.get('change_pct')
                         existing.updated_at = dt.now()
                     else:
                         db.add(ExchangeRate(code=code, name=info.get('name', code),
-                            rate=info['price'], change_pct=info.get('change_pct')))
+                            rate=price, change_pct=info.get('change_pct')))
                 await db.commit()
             logger.info(f"[✅] Macro data synced: {list(result.keys())}")
         return result
@@ -235,16 +245,24 @@ class DataRouter:
         from app.framework.database.session import async_session
         from app.models.models import MacroHistory
         from datetime import date as d
+        import math
         async with async_session() as db:
-            for _, row in df.iterrows():
-                dt_val = row[date_col]
+            # 使用 iloc 位置索引, 避免中文列名匹配问题
+            date_idx = list(df.columns).index(date_col) if date_col in df.columns else 0
+            val_idx = list(df.columns).index(value_col) if value_col in df.columns else date_idx + 1
+            for i in range(len(df)):
+                row = df.iloc[i]
+                dt_val = row.iloc[date_idx]
+                val = row.iloc[val_idx]
+                if val is None or (isinstance(val, float) and math.isnan(val)):
+                    continue
+                val = float(val)
+                # Date conversion
                 if hasattr(dt_val, 'date'): dt_val = dt_val.date()
-                elif hasattr(dt_val, 'strftime'): dt_val = dt_val
                 else:
                     try: dt_val = d.fromisoformat(str(dt_val)[:10])
                     except: continue
-                val = float(row[value_col])
-                # Upsert: check existing
+                # Upsert
                 from sqlalchemy import select
                 res = await db.execute(
                     select(MacroHistory).where(
@@ -252,6 +270,7 @@ class DataRouter:
                 if res.scalars().first(): continue
                 db.add(MacroHistory(code=code, obs_date=dt_val, value=val))
             await db.commit()
+            logger.info(f"[MacroHistory] Saved {code}: {len(df)} rows")
 
         if result:
             from app.framework.database.session import async_session
