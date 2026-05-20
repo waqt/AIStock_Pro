@@ -8,6 +8,7 @@ engine = create_async_engine(
     DATABASE_URL,
     echo=False,
     pool_pre_ping=True,
+    pool_recycle=3600,  # 1小时回收连接, 防止长空闲被防火墙断开
     pool_size=10,
     max_overflow=20
 )

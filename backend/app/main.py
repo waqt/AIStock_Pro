@@ -1,7 +1,8 @@
-﻿from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-import os
+from fastapi.responses import JSONResponse
+import os, time
 from datetime import datetime
 
 from app.framework.config import settings
@@ -34,7 +35,29 @@ app = FastAPI(
     ]
 )
 
-# 1. 中间件与跨域
+# ═══ 中间件 ═══════════════════════════════════
+
+# 1. 请求日志中间件
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    t0 = time.time()
+    response = await call_next(request)
+    dt = (time.time() - t0) * 1000
+    # 跳过静态文件和健康检查的日志
+    if not request.url.path.startswith("/health") and not request.url.path.endswith((".js", ".css", ".html", ".ico", ".png")):
+        logger.info(f"[HTTP] {request.method} {request.url.path} → {response.status_code} ({dt:.0f}ms)")
+    return response
+
+# 2. 全局异常处理器
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"[HTTP] Unhandled error on {request.method} {request.url.path}: {type(exc).__name__}: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Internal server error: {type(exc).__name__}"},
+    )
+
+# 3. CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -43,7 +66,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 2. 注册业务路由 (优先级最高)
+# ═══ 路由注册 ═════════════════════════════════
+
 app.include_router(tasks.router)
 app.include_router(data.router)
 app.include_router(positions.router)
@@ -53,14 +77,23 @@ app.include_router(quant_indicator_router)
 app.include_router(quant_strategy_router)
 app.include_router(quant_decision_router)
 
+
 @app.get("/health")
 async def health_check():
     return {"status": "healthy", "architecture": "DDD / Clean V5.0"}
 
+
+@app.get("/")
+async def root():
+    return {"message": "AIStock Pro Engine V5.1 Running"}
+
+
+# ═══ 生命周期 ═════════════════════════════════
+
 @app.on_event("startup")
 async def startup_event():
     logger.info("[🚀] AIStock_Pro V5.0 Engine Initializing...")
-    
+
     # 1. 数据库表验证
     try:
         async with engine.begin() as conn:
@@ -69,31 +102,48 @@ async def startup_event():
     except Exception as e:
         logger.error(f"[❌] Schema verification failed: {e}")
 
-    # 2. 任务注册同步 (V5.0 核心)
+    # 2. DB连接验证
+    try:
+        async with async_session() as db:
+            await db.execute(select(1))
+        logger.info("[✅] Database connection verified.")
+    except Exception as e:
+        logger.error(f"[❌] Database connection failed: {e}")
+
+    # 3. AI API Key 验证
+    if settings.DEEPSEEK_API_KEY:
+        logger.info(f"[✅] DeepSeek API configured (flash={settings.DEEPSEEK_FLASH_MODEL}, pro={settings.DEEPSEEK_PRO_MODEL}, thinking={settings.DEEPSEEK_THINKING})")
+    else:
+        logger.warning("[⚠️] No DeepSeek API key configured — AI features disabled")
+    if settings.DOUBAO_API_KEY:
+        logger.info(f"[✅] Doubao API configured ({settings.DOUBAO_MODEL})")
+    if settings.BRAVE_API_KEY:
+        logger.info("[✅] Brave Search API configured")
+
+    # 4. 任务注册同步
     try:
         await task_manager.sync_definitions_to_db()
     except Exception as e:
         logger.error(f"[❌] Task Registration failed: {e}")
 
-    # 3. 启动定时调度器 (V5.0 APScheduler)
+    # 5. 启动定时调度器
     try:
         await scheduler.start()
     except Exception as e:
         logger.error(f"[❌] Scheduler start failed: {e}")
 
-    # 4. 启动自愈 (按照用户要求标记为 FAILED)
+    # 6. 启动自愈 (Zombie任务标记)
     try:
         async with async_session() as db:
             res = await db.execute(
                 select(TaskExecution).where(TaskExecution.status.in_(["RUNNING", "PENDING", "STOPPING"]))
             )
             zombies = res.scalars().all()
-            
             if zombies:
                 logger.warning(f"[🧹] Found {len(zombies)} zombie tasks. Marking as FAILED...")
                 await db.execute(
                     update(TaskExecution).where(TaskExecution.status.in_(["RUNNING", "PENDING", "STOPPING"])).values(
-                        status="FAILED", 
+                        status="FAILED",
                         result_msg="[系统自愈] 服务器意外重启，任务强制中断",
                         end_time=datetime.now(),
                         updated_at=datetime.now()
@@ -106,16 +156,17 @@ async def startup_event():
 
     logger.info("[✅] System startup sequence complete.")
 
-@app.get("/")
-async def root():
-    """欢迎页面 (现在由 StaticFiles 兜底，此接口仅作为元数据展示)"""
-    return {"message": "AIStock Pro Engine V5.1 Running"}
 
 @app.on_event("shutdown")
 async def shutdown_event():
+    logger.info("[🛑] System shutting down...")
     await scheduler.shutdown()
+    await engine.dispose()
+    logger.info("[✅] Shutdown complete.")
 
-# 3. 挂载前端静态资源 (所有路由定义完之后再挂载, 避免拦截 API)
+
+# ═══ 静态文件挂载 ═════════════════════════════
+
 frontend_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend"))
 if os.path.exists(frontend_path):
     app.mount("/", StaticFiles(directory=frontend_path, html=True), name="static")
