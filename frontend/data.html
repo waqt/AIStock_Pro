@@ -2,709 +2,408 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AIStock | 数据中心</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .data-tab-nav { display: flex; gap: 0; border-bottom: 1px solid var(--border-color); margin-bottom: 12px; }
+        .data-tab-btn { background: none; border: none; color: var(--text-dim); cursor: pointer; padding: 8px 16px; font-size: 12px; border-bottom: 2px solid transparent; transition: all 0.2s; }
+        .data-tab-btn:hover { color: #fff; }
+        .data-tab-btn.active { color: #fff; border-bottom-color: var(--accent-blue); }
+        .data-tab-panel { display: none; }
+        .data-tab-panel.active { display: block; }
+        .macro-card { background: rgba(255,255,255,0.02); border: 1px solid var(--border-thin); border-radius: 6px; padding: 14px; text-align: center; min-width: 140px; flex: 1; }
+        .macro-card .label { font-size: 10px; color: var(--text-micro); }
+        .macro-card .value { font-size: 20px; font-weight: 700; color: #fff; margin: 4px 0; }
+        .macro-card .change { font-size: 11px; }
+        .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+        .toolbar input { background: #000; border: 1px solid var(--border-color); color: #fff; padding: 5px 10px; border-radius: 4px; font-size: 11px; }
+        .watchlist-table { width: 100%; font-size: 11px; border-collapse: collapse; }
+        .watchlist-table th { color: var(--text-micro); font-size: 10px; padding: 4px; text-align: left; border-bottom: 1px solid var(--border-color); }
+        .watchlist-table td { padding: 5px 4px; border-bottom: 1px solid var(--border-thin); color: var(--text-dim); }
+        .watchlist-table tr { cursor: pointer; }
+        .watchlist-table tr:hover td { background: rgba(255,255,255,0.02); }
+        .health-table { width: 100%; font-size: 11px; border-collapse: collapse; }
+        .health-table th { color: var(--text-micro); font-size: 10px; padding: 4px; text-align: left; border-bottom: 1px solid var(--border-color); }
+        .health-table td { padding: 5px 4px; border-bottom: 1px solid var(--border-thin); color: var(--text-dim); }
+        .placeholder-tab { text-align: center; padding: 60px 20px; color: var(--text-micro); }
+        .placeholder-tab .icon { font-size: 40px; opacity: 0.3; margin-bottom: 12px; }
+    </style>
 </head>
 <body data-page-id="data">
-    <div class="app-container">
-        <aside class="sidebar"></aside>
+<div class="app-container">
+<aside class="sidebar"></aside>
+<main class="main-content">
+<div class="top-bar"></div>
+<div class="workspace" style="padding:14px;">
 
-        <main class="main-content">
-            <div class="top-bar"></div>
+<!-- Toolbar -->
+<div class="toolbar">
+    <button class="btn-action" onclick="triggerSync('AUTO')" style="font-size:11px;border-color:var(--accent-green);color:var(--accent-green);"><i class="fas fa-sync-alt"></i> 全量同步</button>
+    <button class="btn-action" onclick="syncMacroData()" style="font-size:11px;"><i class="fas fa-globe"></i> 同步宏观</button>
+    <button class="btn-action" onclick="triggerAsync('calc_indicators')" style="font-size:11px;"><i class="fas fa-calculator"></i> 重算指标</button>
+    <input type="text" id="quick-stock-input" placeholder="快速输入代码..." style="width:140px;">
+    <button class="btn-action" onclick="quickSync()" style="font-size:11px;padding:5px 10px;"><i class="fas fa-bolt"></i> 快同</button>
+    <button class="btn-action" onclick="quickCompute()" style="font-size:11px;padding:5px 10px;border-color:var(--accent-blue);color:var(--accent-blue);"><i class="fas fa-microchip"></i> 快算</button>
+    <span style="flex:1;"></span>
+    <span id="toolbar-status" style="font-size:10px;color:var(--text-micro);"></span>
+</div>
 
-            <!-- 核心操作矩阵 -->
-            <div class="workspace" style="grid-template-columns: 320px 1fr; gap: 16px; padding: 16px;">
+<!-- Tab Navigation -->
+<div class="data-tab-nav">
+    <button class="data-tab-btn active" onclick="switchDataTab('macro')" data-tab="macro"><i class="fas fa-globe"></i> 宏观</button>
+    <button class="data-tab-btn" onclick="switchDataTab('watchlist')" data-tab="watchlist"><i class="fas fa-star"></i> 自选股</button>
+    <button class="data-tab-btn" onclick="switchDataTab('health')" data-tab="health"><i class="fas fa-chart-bar"></i> 行情体检</button>
+    <button class="data-tab-btn" onclick="switchDataTab('fundamental')" data-tab="fundamental"><i class="fas fa-building"></i> 基本面</button>
+    <button class="data-tab-btn" onclick="switchDataTab('financial')" data-tab="financial"><i class="fas fa-file-invoice"></i> 财务报告</button>
+    <button class="data-tab-btn" onclick="switchDataTab('alt')" data-tab="alt"><i class="fas fa-database"></i> 另类数据</button>
+</div>
 
-                <!-- 左：命令面板 -->
-                <div style="display: flex; flex-direction: column; gap: 12px;">
-                    <div class="panel" style="padding: 18px; cursor: pointer; border-left: 3px solid var(--accent-green);" onclick="triggerSync('AUTO')">
-                        <div style="font-size: 10px; color: var(--text-micro); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Strategic Command</div>
-                        <div style="font-size: 15px; font-weight: 700;">智能全量同步</div>
-                        <div style="font-size: 11px; color: var(--text-dim); margin-top: 8px;">自动感知冷/热启动，增量拉取缺失数据</div>
-                    </div>
+<!-- Tab: 宏观 -->
+<div class="data-tab-panel active" id="tab-macro">
+    <div style="display:flex;flex-wrap:wrap;gap:8px;" id="macro-cards"><div style="color:var(--text-micro);padding:20px;">加载中...</div></div>
+</div>
 
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                        <div class="panel" style="padding: 14px; cursor: pointer; text-align: center;" onclick="triggerSync('PRICE_ONLY')">
-                            <i class="fas fa-bolt" style="color: var(--accent-gold);"></i>
-                            <div style="font-size: 12px; font-weight: 600; margin-top: 6px;">刷新行情</div>
-                            <div style="font-size: 10px; color: var(--text-micro);">仅价格</div>
-                        </div>
-                        <div class="panel" style="padding: 14px; cursor: pointer; text-align: center;" onclick="triggerAsync('calc_indicators')">
-                            <i class="fas fa-calculator" style="color: var(--accent-blue);"></i>
-                            <div style="font-size: 12px; font-weight: 600; margin-top: 6px;">重算指标</div>
-                            <div style="font-size: 10px; color: var(--text-micro);">指标重算</div>
-                        </div>
-                    </div>
+<!-- Tab: 自选股 -->
+<div class="data-tab-panel" id="tab-watchlist" style="display:none;">
+    <div class="toolbar">
+        <input type="text" id="wl-code" placeholder="代码" style="width:100px;">
+        <input type="text" id="wl-group" placeholder="分组" style="width:70px;" value="默认">
+        <button class="btn-action" onclick="wlAdd()" style="font-size:11px;">添加</button>
+        <select id="wl-filter-group" onchange="wlLoad()" style="background:#000;border:1px solid var(--border-color);color:#fff;padding:4px 8px;border-radius:4px;font-size:11px;"><option value="">全部分组</option></select>
+        <label style="font-size:10px;color:var(--text-dim);display:flex;align-items:center;gap:4px;"><input type="checkbox" id="wl-filter-held" onchange="wlLoad()">仅持仓</label>
+        <button class="btn-action" onclick="wlImportPositions()" style="font-size:10px;border-color:var(--accent-blue);color:var(--accent-blue);"><i class="fas fa-download"></i> 导入持仓</button>
+        <button class="btn-action" onclick="wlSync()" style="font-size:10px;border-color:var(--accent-green);color:var(--accent-green);"><i class="fas fa-sync-alt"></i> 同步行情</button>
+        <button class="btn-action" onclick="wlRefreshHeld()" style="font-size:10px;">刷新状态</button>
+    </div>
+    <div id="watchlist-table" style="max-height:60vh;overflow-y:auto;"></div>
+</div>
 
-                    <div class="panel" style="padding: 14px; cursor: pointer; text-align: center;" onclick="syncMacroData()">
-                        <i class="fas fa-globe" style="color: var(--accent-blue);"></i>
-                        <div style="font-size: 12px; font-weight: 600; margin-top: 6px;">同步公共数据</div>
-                        <div style="font-size: 10px; color: var(--text-micro);">汇率/黄金/原油</div>
-                    </div>
+<!-- Tab: 行情体检 -->
+<div class="data-tab-panel" id="tab-health" style="display:none;">
+    <div style="font-size:10px;color:var(--text-micro);margin-bottom:6px;" id="health-summary-bar">加载中...</div>
+    <div style="max-height:55vh;overflow-y:auto;">
+        <table class="health-table">
+            <thead><tr><th>标的</th><th>行情区间</th><th style="text-align:right;">最新价</th><th style="text-align:center;">状态</th><th style="text-align:center;">操作</th></tr></thead>
+            <tbody id="health-table-body"><tr><td colspan="5" style="text-align:center;color:var(--text-micro);padding:20px;">加载中...</td></tr></tbody>
+        </table>
+    </div>
+</div>
 
-                    <!-- 数据源状态 -->
-                    <div class="panel" style="padding: 14px;">
-                        <div style="font-size: 10px; color: var(--text-micro); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Data Source Pipeline</div>
-                        <div id="source-status" style="display: flex; flex-direction: column; gap: 6px;">
-                            <div style="color: var(--text-dim); font-size: 11px;">探测中...</div>
-                        </div>
-                        <div style="font-size: 10px; color: var(--text-micro); margin-top: 8px;">
-                            活跃源: <span id="active-source" style="color: var(--accent-green);">—</span>
-                        </div>
-                    </div>
+<!-- Tab: 基本面 (待建设) -->
+<div class="data-tab-panel" id="tab-fundamental" style="display:none;">
+    <div class="placeholder-tab">
+        <div class="icon">🏗️</div>
+        <div style="font-size:14px;color:var(--text-dim);">基本面数据中心 — 建设中</div>
+        <div style="font-size:11px;margin-top:8px;">PE/PB/市值趋势 + 行业分类 + 盈利预测</div>
+    </div>
+</div>
 
-                    <!-- 全局健康 -->
-                    <div class="panel" style="padding: 14px; background: rgba(255,255,255,0.01);">
-                        <div style="font-size: 10px; color: var(--text-micro); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">System Health</div>
-                        <div id="health-summary" style="font-size: 11px; color: var(--text-dim); line-height: 1.8;">
-                            加载中...
-                        </div>
-                    </div>
+<!-- Tab: 财务报告 (待建设) -->
+<div class="data-tab-panel" id="tab-financial" style="display:none;">
+    <div class="placeholder-tab">
+        <div class="icon">📊</div>
+        <div style="font-size:14px;color:var(--text-dim);">财务报告中心 — 建设中</div>
+        <div style="font-size:11px;margin-top:8px;">8Q趋势图 + 季度明细表 + 异动高亮</div>
+    </div>
+</div>
 
-                    <!-- 股票列表导入 -->
-                    <div class="panel" style="padding: 14px;">
-                        <div style="font-size: 10px; color: var(--text-micro); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Stock List Import</div>
-                        <input type="file" id="csv-file-input" accept=".csv" style="display:none" onchange="uploadStockCSV(this)">
-                        <div style="display: flex; gap: 8px;">
-                            <button class="btn-action" onclick="document.getElementById('csv-file-input').click()" style="font-size: 11px; flex:1; justify-content: center;">
-                                <i class="fas fa-upload"></i> 上传 CSV
-                            </button>
-                            <button class="btn-action" onclick="syncFullStockList()" style="font-size: 11px; flex:1; justify-content: center; border-color: var(--accent-gold); color: var(--accent-gold);">
-                                <i class="fas fa-cloud-download-alt"></i> 全量同步
-                            </button>
-                        </div>
-                        <div id="csv-result" style="font-size: 10px; color: var(--accent-green); margin-top: 6px;"></div>
-                        <div style="font-size: 10px; color: var(--text-micro); margin-top: 6px;">
-                            从东方财富网页导出 CSV (代码+名称), 或点"全量同步"在线拉取
-                        </div>
-                    </div>
+<!-- Tab: 另类数据 (待建设) -->
+<div class="data-tab-panel" id="tab-alt" style="display:none;">
+    <div class="placeholder-tab">
+        <div class="icon">🔮</div>
+        <div style="font-size:14px;color:var(--text-dim);">另类数据中心 — 建设中</div>
+        <div style="font-size:11px;margin-top:8px;">搜索缓存 + 爬虫结果 + 筹码分布图 + 拥挤度排名</div>
+    </div>
+</div>
 
-                    <div style="margin-top: auto;">
-                        <button class="btn-action" style="width: 100%; justify-content: center; font-size: 11px;" onclick="location.href='definitions.html'">
-                            <i class="fas fa-sliders-h"></i> 任务调度配置
-                        </button>
-                    </div>
+<!-- Terminal -->
+<div class="panel" style="margin-top:12px;">
+    <div class="panel-header"><span class="panel-title">执行追踪</span><span id="task-id-display" style="font-family:var(--font-mono);font-size:10px;color:var(--text-micro);">IDLE</span></div>
+    <div class="panel-body" style="padding:0;">
+        <div id="data-terminal" style="background:#020202;padding:10px;font-family:var(--font-mono);font-size:10px;height:120px;overflow-y:auto;color:#666;line-height:1.6;">
+            <div>System ready.</div>
+        </div>
+    </div>
+</div>
+
+</div>
+</main>
+</div>
+
+<script src="js/framework/api.js"></script>
+<script src="js/framework/modal.js"></script>
+<script src="js/framework/task_monitor.js"></script>
+<script src="js/framework/markdown.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/common.js"></script>
+<script>
+const terminal = document.getElementById('data-terminal');
+const taskIdDisplay = document.getElementById('task-id-display');
+
+function addLog(msg, type) {
+    const time = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+    const colors = { info: '#666', success: 'var(--accent-green)', warn: 'var(--accent-gold)', error: 'var(--accent-red)' };
+    const line = document.createElement('div');
+    line.innerHTML = `<span style="color:#333;">[${time}]</span> <span style="color:${colors[type]||'#666'};">${msg}</span>`;
+    terminal.appendChild(line);
+    terminal.scrollTop = terminal.scrollHeight;
+    if (terminal.children.length > 100) terminal.removeChild(terminal.firstChild);
+}
+
+function switchDataTab(tab) {
+    document.querySelectorAll('.data-tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.data-tab-panel').forEach(p => { p.style.display = 'none'; p.classList.remove('active'); });
+    document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+    const panel = document.getElementById('tab-' + tab);
+    panel.style.display = ''; panel.classList.add('active');
+    if (tab === 'macro') loadMacro();
+    if (tab === 'watchlist') wlLoad();
+    if (tab === 'health') updateHealthTable();
+}
+
+// ═══ Quick actions ═══
+function quickSync() {
+    const code = document.getElementById('quick-stock-input').value.trim();
+    if (!code) { addLog('请输入代码', 'warn'); return; }
+    addLog(`同步 ${code}...`, 'info');
+    fetch(`${API_BASE}/data/sync/daily/${code}`, { method: 'POST' }).then(r => r.json()).then(d => {
+        addLog(`${code} | 名称:${d.name||'--'} | 价格:${d.price||'--'} | +${d.new_rows||0}行`, 'success');
+    }).catch(e => addLog(`${code} 同步失败: ${e.message}`, 'error'));
+}
+function quickCompute() {
+    const code = document.getElementById('quick-stock-input').value.trim();
+    if (!code) { addLog('请输入代码', 'warn'); return; }
+    addLog(`计算 ${code} 指标...`, 'info');
+    fetch(`${API_BASE}/quant/indicators/compute/${code}?mode=snapshot`, { method: 'POST' }).then(r => r.json()).then(d => {
+        addLog(`${code} 完成: ${d.data?.computed||0}个指标`, 'success');
+    }).catch(e => addLog(`${code} 异常: ${e.message}`, 'error'));
+}
+
+// ═══ Macro ═══
+async function loadMacro() {
+    const el = document.getElementById('macro-cards');
+    try {
+        const res = await fetch(`${API_BASE}/data/macro/latest`);
+        const data = await res.json();
+        const items = data.data || [];
+        const names = {XAU:'黄金',XAG:'白银',BRENT:'原油',USD_CNY:'美元/人民币',HKD_CNY:'港币/人民币',US10YT:'美债10Y'};
+        const pending = 'DXY/US_FED_RATE/CN_PPI/US_PPI/CREDIT_IMPULSE 待接入';
+        el.innerHTML = items.map(i => {
+            const pct = i.change_pct;
+            const pctStr = pct != null ? ((pct>=0?'+':'') + pct.toFixed(2) + '%') : '';
+            const pctColor = pct != null ? (pct>=0 ? 'var(--accent-green)' : 'var(--accent-red)') : 'var(--text-micro)';
+            return `<div class="macro-card">
+                <div class="label">${names[i.code]||i.code}</div>
+                <div class="value">${i.rate != null ? i.rate.toFixed(4) : '—'}</div>
+                <div class="change" style="color:${pctColor}">${pctStr||'—'}</div>
+            </div>`;
+        }).join('') + `<div style="width:100%;font-size:9px;color:var(--text-micro);margin-top:4px;">待接入: ${pending}</div>`;
+    } catch(e) { el.innerHTML = '<div style="color:var(--accent-red);">加载失败</div>'; }
+}
+
+// ═══ Watchlist ═══
+async function wlLoad() {
+    const el = document.getElementById('watchlist-table');
+    try {
+        const res = await fetch(`${API_BASE}/data/watchlist`);
+        const data = await res.json();
+        let items = data.data || [];
+        // Filters
+        const filterGroup = document.getElementById('wl-filter-group').value;
+        const filterHeld = document.getElementById('wl-filter-held').checked;
+        if (filterGroup) items = items.filter(i => (i.group_tag || '默认') === filterGroup);
+        if (filterHeld) items = items.filter(i => i.is_held);
+        // Populate group dropdown
+        const groups = [...new Set(data.data.map(i => i.group_tag || '默认'))];
+        const sel = document.getElementById('wl-filter-group');
+        const curVal = sel.value;
+        sel.innerHTML = '<option value="">全部分组</option>' + groups.map(g => `<option>${g}</option>`).join('');
+        sel.value = curVal;
+        if (!items.length) { el.innerHTML = '<div style="color:var(--text-micro);padding:20px;text-align:center;">无匹配结果，从持仓导入或手动添加</div>'; return; }
+        // Grouped
+        const grouped = {};
+        items.forEach(i => { const g = i.group_tag || '默认'; if (!grouped[g]) grouped[g] = []; grouped[g].push(i); });
+        el.innerHTML = Object.entries(grouped).map(([g, stocks]) => `
+            <div class="panel" style="margin-bottom:6px;">
+                <div class="panel-header"><span style="font-size:11px;">${escHtml(g)}</span><span style="font-size:9px;color:var(--text-micro);">(${stocks.length})</span></div>
+                <div class="panel-body" style="padding:0;">
+                    <table class="watchlist-table">
+                        <thead><tr><th>代码</th><th>名称</th><th style="text-align:right;">现价</th><th style="text-align:right;">涨跌</th><th style="text-align:right;">市值(亿)</th><th style="text-align:right;">PE</th><th style="text-align:center;">操作</th></tr></thead>
+                        <tbody>${stocks.map(s => {
+                            const pct = s.change_pct;
+                            const pc = pct != null ? (pct >= 0 ? 'var(--accent-green)' : 'var(--accent-red)') : 'var(--text-micro)';
+                            const ps = pct != null ? ((pct>=0?'+':'') + pct.toFixed(2) + '%') : '—';
+                            return `<tr onclick="wlShowChart('${escHtml(s.stock_code)}','${escHtml(s.stock_name)}')" title="点击查看K线">
+                                <td style="color:var(--accent-blue);">${escHtml(s.stock_code)}</td>
+                                <td style="color:#fff;">${escHtml(s.stock_name)}${s.is_held?'<span style="color:var(--accent-green);font-size:9px;">[持仓]</span>':''}</td>
+                                <td style="text-align:right;">${s.price!=null?s.price.toFixed(2):'—'}</td>
+                                <td style="text-align:right;color:${pc};">${ps}</td>
+                                <td style="text-align:right;">${s.mcap_yi!=null?Math.round(s.mcap_yi):'—'}</td>
+                                <td style="text-align:right;">${s.pe_ttm!=null?s.pe_ttm.toFixed(1):'—'}</td>
+                                <td style="text-align:center;" onclick="event.stopPropagation();">
+                                    <button onclick="wlSyncOne('${escHtml(s.stock_code)}',this)" style="background:none;border:none;color:var(--accent-blue);cursor:pointer;font-size:9px;"><i class="fas fa-sync-alt"></i></button>
+                                    <button onclick="wlEditGroup('${escHtml(s.stock_code)}','${escHtml(s.group_tag||'默认')}')" style="background:none;border:none;color:var(--accent-gold);cursor:pointer;font-size:9px;"><i class="fas fa-tag"></i></button>
+                                    <button onclick="wlRemove('${escHtml(s.stock_code)}')" style="background:none;border:none;color:var(--accent-red);cursor:pointer;font-size:9px;"><i class="fas fa-trash"></i></button>
+                                </td>
+                            </tr>`;
+                        }).join('')}</tbody>
+                    </table>
                 </div>
-
-                <!-- 右：主面板 -->
-                <div style="display: flex; flex-direction: column; gap: 16px;">
-                    <!-- 实时终端 -->
-                    <div class="panel" style="flex: 0 0 auto;">
-                        <div class="panel-header">
-                            <span class="panel-title">Execution Trace</span>
-                            <span id="task-id-display" style="font-family: var(--font-mono); font-size: 10px; color: var(--text-micro);">IDLE</span>
-                        </div>
-                        <div class="panel-body" style="padding: 0;">
-                            <div id="data-terminal" style="background: #020202; border: 1px solid #111; padding: 14px; font-family: var(--font-mono); font-size: 11px; height: 180px; overflow-y: auto; color: #666; line-height: 1.7;">
-                                <div><span style="color: #333;">[—]</span> System ready. Awaiting dispatch.</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Tab 导航 -->
-                    <div style="display:flex;gap:0;margin-bottom:10px;border-bottom:1px solid var(--border-color);">
-                        <button class="tab-btn active" onclick="switchDataTab('macro')" id="tab-macro" style="background:none;border:none;color:var(--text-dim);cursor:pointer;padding:6px 14px;font-size:12px;border-bottom:2px solid var(--accent-blue);">宏观</button>
-                        <button class="tab-btn" onclick="switchDataTab('watchlist')" id="tab-watchlist" style="background:none;border:none;color:var(--text-dim);cursor:pointer;padding:6px 14px;font-size:12px;border-bottom:2px solid transparent;">自选股</button>
-                        <button class="tab-btn" onclick="switchDataTab('health')" id="tab-health" style="background:none;border:none;color:var(--text-dim);cursor:pointer;padding:6px 14px;font-size:12px;border-bottom:2px solid transparent;">行情体检</button>
-                        <button class="tab-btn" onclick="switchDataTab('manual')" id="tab-manual" style="background:none;border:none;color:var(--text-dim);cursor:pointer;padding:6px 14px;font-size:12px;border-bottom:2px solid transparent;">手动操作</button>
-                    </div>
-
-                    <!-- Tab: 宏观数据 -->
-                    <div id="tab-panel-macro" style="display:flex;flex-wrap:wrap;gap:8px;">
-                        <div style="color:var(--text-micro);font-size:11px;width:100%;text-align:center;padding:20px;">加载中...</div>
-                    </div>
-
-                    <!-- Tab: 自选股 -->
-                    <div id="tab-panel-watchlist" style="display:none;">
-                        <div class="panel" style="padding:10px;margin-bottom:8px;">
-                            <div style="display:flex;gap:6px;margin-bottom:6px;">
-                                <input type="text" id="wl-code" placeholder="股票代码" style="width:100px;background:#000;border:1px solid var(--border-color);color:#fff;padding:6px 8px;border-radius:4px;font-size:11px;">
-                                <input type="text" id="wl-group" placeholder="分组" style="width:70px;background:#000;border:1px solid var(--border-color);color:#fff;padding:6px 8px;border-radius:4px;font-size:11px;" value="默认">
-                                <button class="btn-action" onclick="wlAdd()" style="font-size:11px;white-space:nowrap;">添加</button>
-                                <select id="wl-filter-group" onchange="wlLoad()" style="background:#000;border:1px solid var(--border-color);color:#fff;padding:6px 8px;border-radius:4px;font-size:11px;">
-                                    <option value="">全部分组</option>
-                                </select>
-                                <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-dim);white-space:nowrap;">
-                                    <input type="checkbox" id="wl-filter-held" onchange="wlLoad()"> 仅持仓
-                                </label>
-                            </div>
-                            <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                                <button class="btn-action" onclick="wlImportPositions()" style="font-size:10px;border-color:var(--accent-blue);color:var(--accent-blue);"><i class="fas fa-download"></i> 从持仓导入</button>
-                                <button class="btn-action" onclick="wlSync()" style="font-size:10px;border-color:var(--accent-green);color:var(--accent-green);"><i class="fas fa-sync-alt"></i> 同步行情</button>
-                                <button class="btn-action" onclick="wlRefreshHeld()" style="font-size:10px;"><i class="fas fa-check-double"></i> 刷新状态</button>
-                            </div>
-                        </div>
-                        <div id="watchlist-table" style="max-height:55vh;overflow-y:auto;"></div>
-                    </div>
-
-                    <!-- Tab: 手动操作 -->
-                    <div id="tab-panel-manual" style="display:none;">
-                    <div class="panel" style="padding:10px;">
-                        <div style="display:flex;gap:6px;align-items:center;">
-                            <input type="text" id="manual-stock-input" placeholder="输入股票代码 (如 688012)"
-                                style="flex:1;background:#000;border:1px solid var(--border-color);color:#fff;padding:6px 10px;border-radius:4px;font-size:12px;">
-                            <button class="btn-action" onclick="syncManualStock()" style="white-space:nowrap;font-size:11px;padding:6px 12px;">
-                                <i class="fas fa-sync-alt"></i> 同步
-                            </button>
-                            <button class="btn-action" onclick="computeIndicators()" style="white-space:nowrap;font-size:11px;padding:6px 12px;border-color:var(--accent-blue);color:var(--accent-blue);">
-                                <i class="fas fa-calculator"></i> 算指标
-                            </button>
-                            <button class="btn-action" onclick="computeHistorical()" style="white-space:nowrap;font-size:11px;padding:6px 12px;border-color:var(--accent-gold);color:var(--accent-gold);">
-                                <i class="fas fa-history"></i> 历史
-                            </button>
-                        </div>
-                    </div>
-
-                    <div id="tab-panel-health">
-                    <!-- 行情体检表 -->
-                    <div class="panel" style="flex: 1;">
-                        <div class="panel-header">
-                            <span class="panel-title">Market Data Health</span>
-                            <span id="health-count" style="font-family: var(--font-mono); font-size: 10px; color: var(--text-micro);"></span>
-                        </div>
-                        <div class="panel-body" style="padding: 0;">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>标的</th>
-                                        <th>行情区间</th>
-                                        <th style="text-align: right;">最新价格</th>
-                                        <th style="text-align: center;">状态</th>
-                                        <th style="text-align: center;">操作</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="health-table-body">
-                                    <tr><td colspan="5" style="text-align: center; color: var(--text-micro); padding: 30px;">加载中...</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                    </div><!-- /tab-panel-health -->
-                    </div><!-- /tab-panel-manual -->
+            </div>`).join('');
+    } catch(e) { el.innerHTML = '<div style="color:var(--accent-red);">加载失败</div>'; }
+}
+async function wlAdd() {
+    const code = document.getElementById('wl-code').value.trim();
+    if (!code) { addLog('请输入代码', 'warn'); return; }
+    const group = document.getElementById('wl-group').value.trim() || '默认';
+    try {
+        const res = await fetch(`${API_BASE}/data/watchlist/add?stock_code=${code}&group_tag=${encodeURIComponent(group)}`, { method: 'POST' });
+        const d = await res.json();
+        document.getElementById('wl-code').value = '';
+        wlLoad(); addLog(`已添加 ${code} (${d.name||''})`, 'success');
+    } catch(e) { addLog(`添加失败: ${e.message}`, 'error'); }
+}
+async function wlImportPositions() {
+    addLog('从持仓导入...', 'info');
+    try { const res = await fetch(`${API_BASE}/data/watchlist/import-positions`, { method: 'POST' }); const d = await res.json(); wlLoad(); addLog(`导入完成: ${d.imported||0}只`, 'success'); }
+    catch(e) { addLog(`失败: ${e.message}`, 'error'); }
+}
+async function wlSync() {
+    addLog('同步自选股行情...', 'info');
+    try { const res = await fetch(`${API_BASE}/data/watchlist/sync`, { method: 'POST' }); const d = await res.json(); addLog(`完成: ${d.synced||0}只`, 'success'); updateHealthTable(); }
+    catch(e) { addLog(`失败: ${e.message}`, 'error'); }
+}
+async function wlSyncOne(code, btn) {
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+    try { const res = await fetch(`${API_BASE}/data/sync/daily/${code}`, { method: 'POST' }); const d = await res.json(); addLog(`${code} | ${d.name||''} | ¥${d.price||'--'} | +${d.new_rows||0}行`, 'success'); wlLoad(); }
+    catch(e) { addLog(`${code} 失败: ${e.message}`, 'error'); }
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-sync-alt"></i>'; }
+}
+async function wlRefreshHeld() {
+    try { const res = await fetch(`${API_BASE}/data/watchlist/refresh-held`, { method: 'POST' }); const d = await res.json(); addLog(`状态更新: ${d.updated||0}只`, 'success'); wlLoad(); } catch(e) {}
+}
+async function wlRemove(code) {
+    try { await fetch(`${API_BASE}/data/watchlist/${code}`, { method: 'DELETE' }); wlLoad(); } catch(e) {}
+}
+async function wlEditGroup(code, currentGroup) {
+    const newGroup = prompt('修改分组:', currentGroup);
+    if (!newGroup || newGroup === currentGroup) return;
+    try { await fetch(`${API_BASE}/data/watchlist/${code}?group_tag=${encodeURIComponent(newGroup)}`, { method: 'PUT' }); wlLoad(); } catch(e) {}
+}
+async function wlShowChart(code, name) {
+    try {
+        const [kRes, iRes] = await Promise.all([
+            fetch(`${API_BASE}/data/daily/${code}?limit=500`),
+            fetch(`${API_BASE}/quant/indicators/${code}`)
+        ]);
+        const kdata = await kRes.json();
+        const iData = await iRes.json();
+        const ind = (iData.data && iData.data.indicators) ? iData.data.indicators : {};
+        let modalHtml = `<div style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:1000;display:flex;justify-content:center;align-items:center;backdrop-filter:blur(4px);" onclick="this.remove()">
+            <div style="background:var(--bg-card);width:90%;max-width:1000px;border-radius:8px;border:1px solid var(--border-color);overflow:hidden;" onclick="event.stopPropagation()">
+                <div style="padding:10px 14px;border-bottom:1px solid var(--border-color);display:flex;justify-content:space-between;">
+                    <span style="font-weight:700;">${escHtml(code)} ${escHtml(name)}</span>
+                    <button onclick="this.closest('div[style*=fixed]').remove()" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:16px;">&times;</button>
+                </div>
+                <div id="wl-chart" style="width:100%;height:450px;"></div>
+                <div style="padding:6px 14px;font-size:9px;color:var(--text-micro);border-top:1px solid var(--border-thin);max-height:60px;overflow-y:auto;">
+                    ${Object.entries(ind).filter(([k,v])=>v!=null&&!k.startsWith('_')).slice(0,15).map(([k,v])=>k+':'+(typeof v==='number'?v.toFixed(2):v)).join(' | ') || '暂无指标'}
                 </div>
             </div>
-        </main>
-    </div>
+        </div>`;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        setTimeout(() => {
+            const c = document.getElementById('wl-chart');
+            if (!c || !window.echarts) return;
+            const chart = echarts.init(c);
+            const dates = kdata.map(d => d.trade_date);
+            const ohlc = kdata.map(d => [d.open, d.close, d.low, d.high]);
+            const vols = kdata.map(d => d.volume);
+            chart.setOption({ animation: false, tooltip: { trigger: 'axis' },
+                grid: [{ left: '8%', right: '3%', top: '5%', height: '60%' }, { left: '8%', right: '3%', top: '75%', height: '18%' }],
+                xAxis: [{ type: 'category', data: dates, axisLabel: { fontSize: 9 } }, { type: 'category', data: dates, gridIndex: 1, axisLabel: { show: false } }],
+                yAxis: [{ scale: true, splitLine: { lineStyle: { color: '#1a1a1a' } } }, { gridIndex: 1, splitLine: { show: false }, axisLabel: { fontSize: 9 } }],
+                series: [{ type: 'candlestick', data: ohlc, itemStyle: { color: '#ef232a', color0: '#14b143', borderColor: '#ef232a', borderColor0: '#14b143' } },
+                    { type: 'bar', xAxisIndex: 1, yAxisIndex: 1, data: vols, itemStyle: { color: p => ohlc[p.dataIndex]&&ohlc[p.dataIndex][1]>=ohlc[p.dataIndex][0]?'#ef232a':'#14b143' } }]
+            });
+        }, 200);
+    } catch(e) { addLog(`K线加载失败: ${e.message}`, 'error'); }
+}
 
-    <script src="js/framework/api.js"></script>
-    <script src="js/framework/modal.js"></script>
-    <script src="js/framework/task_monitor.js"></script>
-    <script src="js/ui.js"></script>
-    <script src="js/common.js"></script>
-    <script>
-        const terminal = document.getElementById('data-terminal');
-        const taskIdDisplay = document.getElementById('task-id-display');
+// ═══ Health Table ═══
+async function updateHealthTable() {
+    const tbody = document.getElementById('health-table-body');
+    try {
+        const [hRes, sRes] = await Promise.all([
+            fetch(`${API_BASE}/data/health/stocks`),
+            fetch(`${API_BASE}/data/health/overview`)
+        ]);
+        const stocks = await hRes.json();
+        const overview = await sRes.json();
+        document.getElementById('health-summary-bar').innerHTML =
+            `已同步: ${overview.synced_stocks||0}只 | 指标覆盖: ${overview.indicators_coverage||0} | 估值覆盖: ${overview.valuation_coverage||0} | 状态: ${overview.status}`;
+        const statusBadge = { HEALTHY: '<span style="color:var(--accent-green);">● HEALTHY</span>', STALE: '<span style="color:var(--accent-gold);">● STALE</span>', GAP: '<span style="color:var(--accent-red);">● GAP</span>' };
+        tbody.innerHTML = stocks.map(s => `<tr>
+            <td><span style="font-weight:600;">${escHtml(s.stock_name||s.stock_code)}</span><br><small style="color:var(--text-micro);">${s.stock_code}</small></td>
+            <td style="font-size:10px;color:var(--text-dim);">${s.earliest_date||'—'}<br>~ ${s.latest_date||'—'}</td>
+            <td style="text-align:right;font-weight:600;">${s.latest_price?'¥'+Number(s.latest_price).toFixed(2):'—'}</td>
+            <td style="text-align:center;">${statusBadge[s.status]||s.status}</td>
+            <td style="text-align:center;">
+                <button style="background:none;border:none;color:var(--accent-blue);cursor:pointer;font-size:10px;" onclick="viewDetail('${s.stock_code}')" title="体检"><i class="fas fa-search"></i></button>
+                <button style="background:none;border:none;color:var(--accent-gold);cursor:pointer;font-size:10px;" onclick="quickSyncCode('${s.stock_code}')" title="同步"><i class="fas fa-sync-alt"></i></button>
+            </td>
+        </tr>`).join('');
+    } catch(e) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--accent-red);">加载失败</td></tr>'; }
+}
+function quickSyncCode(code) {
+    addLog(`同步 ${code}...`, 'info');
+    fetch(`${API_BASE}/data/sync/daily/${code}`, { method: 'POST' }).then(r => r.json()).then(d => {
+        addLog(`${code} 完成`, 'success'); updateHealthTable();
+    }).catch(e => addLog(`${code} 失败: ${e.message}`, 'error'));
+}
+async function viewDetail(code) {
+    try {
+        const res = await fetch(`${API_BASE}/data/health/${code}`);
+        const d = await res.json();
+        Modal.alert(`${code} 数据体检`,
+            `行情: ${d.data_range?.from||'—'} ~ ${d.data_range?.to||'—'} (${d.data_range?.records||0}条)\n` +
+            `最新: 开${d.latest_quote?.open||'—'} 高${d.latest_quote?.high||'—'} 低${d.latest_quote?.low||'—'} 收${d.latest_quote?.close||'—'}\n` +
+            `涨跌: ${d.latest_quote?.change_pct!=null?d.latest_quote.change_pct.toFixed(2)+'%':'—'}`);
+    } catch(e) { addLog(`体检失败: ${e.message}`, 'error'); }
+}
 
-        function switchDataTab(tab) {
-            document.querySelectorAll('#tab-panel-macro, #tab-panel-health, #tab-panel-watchlist, #tab-panel-manual').forEach(p => p.style.display = 'none');
-            document.querySelectorAll('.tab-btn').forEach(b => { b.style.borderBottomColor = 'transparent'; });
-            document.getElementById('tab-' + tab).style.borderBottomColor = 'var(--accent-blue)';
-            if (tab === 'macro') { document.getElementById('tab-panel-macro').style.display = 'flex'; loadMacro(); }
-            if (tab === 'health') { document.getElementById('tab-panel-health').style.display = ''; updateHealthTable(); }
-            if (tab === 'watchlist') { document.getElementById('tab-panel-watchlist').style.display = ''; wlLoad(); }
-            if (tab === 'manual') document.getElementById('tab-panel-manual').style.display = '';
-        }
+// ═══ Sync triggers ═══
+async function syncMacroData() {
+    addLog('同步宏观数据...', 'info');
+    try { const r = await fetch(`${API_BASE}/data/forex/sync`, { method: 'POST' }); const d = await r.json(); addLog('宏观同步完成', 'success'); loadMacro(); }
+    catch(e) { addLog(`宏观同步失败: ${e.message}`, 'error'); }
+}
+async function triggerSync(mode) {
+    addLog(`触发同步: ${mode}...`, 'info');
+    try {
+        const res = await fetch(`${API_BASE}/data/sync/daily/auto`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: mode }) });
+        const data = await res.json();
+        addLog(`任务入队: ${data.task_id||data.message}`, 'success');
+        setTimeout(updateHealthTable, 5000);
+    } catch(e) { addLog(`同步失败: ${e.message}`, 'error'); }
+}
+async function triggerAsync(code) {
+    addLog(`触发异步任务: ${code}...`, 'info');
+    try {
+        const r = await fetch(`${API_BASE}/system/tasks/executions`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ task_code: code }) });
+        const d = await r.json();
+        addLog(`任务入队: ${d.id||'ok'}`, 'success');
+    } catch(e) { addLog(`失败: ${e.message}`, 'error'); }
+}
 
-        // ── 宏观数据 ──
-        async function loadMacro() {
-            const el = document.getElementById('tab-panel-macro');
-            try {
-                const res = await fetch(`${API_BASE}/data/macro/latest`);
-                const data = await res.json();
-                const items = data.data || [];
-                if (!items.length) { el.innerHTML = '<div style="color:var(--text-micro);padding:20px;text-align:center;">暂无宏观数据, 请点击同步</div>'; return; }
-                const names = {XAU:'黄金',XAG:'白银',BRENT:'原油',USD_CNY:'美元/人民币',HKD_CNY:'港币/人民币',US10YT:'美债10Y'};
-                const pending = ['DXY:美元指数','US_FED_RATE:联邦基金利率','CN_PPI:中国PPI','US_PPI:美国PPI','CREDIT_IMPULSE:信用脉冲'];
-                el.innerHTML = items.map(i => {
-                    const pct = i.change_pct;
-                    const pctStr = pct != null ? ((pct>=0?'+':'') + pct.toFixed(2) + '%') : '';
-                    const pctColor = pct != null ? (pct>=0 ? 'var(--accent-green)' : 'var(--accent-red)') : 'var(--text-micro)';
-                    const n = names[i.code] || i.code;
-                    return `<div class="panel" style="flex:1;min-width:140px;max-width:200px;padding:12px;text-align:center;">
-                        <div style="font-size:10px;color:var(--text-micro);">${n}</div>
-                        <div style="font-size:20px;font-weight:700;color:#fff;margin:4px 0;">${i.rate != null ? i.rate.toFixed(4) : '—'}</div>
-                        <div style="font-size:11px;color:${pctColor};">${pctStr||'—'}</div>
-                    </div>`;
-                }).join('');
-                // Pending indicators
-                el.innerHTML += `<div style="width:100%;margin-top:8px;padding:8px;background:rgba(255,255,255,0.02);border-radius:4px;font-size:10px;color:var(--text-micro);">
-                    待接入: ${pending.join(' | ')}
-                </div>`;
-                // Sync button
-                el.innerHTML += `<div style="width:100%;text-align:center;margin-top:4px;">
-                    <button class="btn-action" onclick="syncMacroData()" style="font-size:10px;"><i class="fas fa-sync-alt"></i> 刷新宏观数据</button>
-                </div>`;
-            } catch(e) { el.innerHTML = '<div style="color:var(--accent-red);padding:20px;">加载失败</div>'; }
-        }
+function escHtml(s) { if (!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-        // ── 自选股 ──
-        async function wlLoad() {
-            try {
-                const res = await fetch(`${API_BASE}/data/watchlist`);
-                const data = await res.json();
-                let items = data.data || [];
-                const el = document.getElementById('watchlist-table');
-
-                // Populate filter groups
-                const groups = [...new Set(items.map(i => i.group_tag || '默认'))];
-                const sel = document.getElementById('wl-filter-group');
-                const curVal = sel.value;
-                sel.innerHTML = '<option value="">全部分组</option>' + groups.map(g => `<option value="${escHtml(g)}">${escHtml(g)}</option>`).join('');
-                sel.value = curVal;
-
-                // Apply filters
-                const filterGroup = document.getElementById('wl-filter-group').value;
-                const filterHeld = document.getElementById('wl-filter-held').checked;
-                if (filterGroup) items = items.filter(i => (i.group_tag || '默认') === filterGroup);
-                if (filterHeld) items = items.filter(i => i.is_held);
-
-                if (!items.length) { el.innerHTML = '<div style="color:var(--text-micro);padding:20px;text-align:center;">无匹配结果</div>'; return; }
-
-                // Group by group_tag
-                const grouped = {};
-                items.forEach(i => { const g = i.group_tag || '默认'; if (!grouped[g]) grouped[g] = []; grouped[g].push(i); });
-                el.innerHTML = Object.entries(grouped).map(([g, stocks]) => `
-                    <div class="panel" style="margin-bottom:8px;">
-                        <div class="panel-header">
-                            <span style="font-size:12px;">${escHtml(g)}</span>
-                            <span style="font-size:10px;color:var(--text-micro);">(${stocks.length})</span>
-                        </div>
-                        <div class="panel-body" style="padding:0;">
-                            <table style="width:100%;font-size:11px;border-collapse:collapse;">
-                                <thead><tr style="color:var(--text-micro);font-size:10px;">
-                                    <th style="padding:4px;text-align:left;">代码</th><th>名称</th><th style="text-align:right;">现价</th><th style="text-align:right;">涨跌</th><th style="text-align:right;">市值(亿)</th><th style="text-align:right;">PE</th><th style="text-align:center;">操作</th>
-                                </tr></thead>
-                                <tbody>${stocks.map(s => {
-                                    const pct = s.change_pct;
-                                    const pctColor = pct != null ? (pct >= 0 ? 'var(--accent-green)' : 'var(--accent-red)') : 'var(--text-micro)';
-                                    const pctStr = pct != null ? ((pct>=0?'+':'') + pct.toFixed(2) + '%') : '—';
-                                    return `<tr style="border-bottom:1px solid var(--border-thin);cursor:pointer;" onclick="wlShowChart('${escHtml(s.stock_code)}','${escHtml(s.stock_name)}')" title="点击查看K线+指标">
-                                        <td style="padding:4px;color:var(--accent-blue);">${escHtml(s.stock_code)}</td>
-                                        <td style="padding:4px;color:#fff;">
-                                            ${escHtml(s.stock_name)}
-                                            ${s.is_held ? '<span style="color:var(--accent-green);font-size:9px;">[持仓]</span>' : '<span style="color:var(--text-micro);font-size:9px;">[关注]</span>'}
-                                        </td>
-                                        <td style="padding:4px;text-align:right;font-family:var(--font-mono);">${s.price != null ? s.price.toFixed(2) : '—'}</td>
-                                        <td style="padding:4px;text-align:right;color:${pctColor};font-family:var(--font-mono);">${pctStr}</td>
-                                        <td style="padding:4px;text-align:right;font-family:var(--font-mono);">${s.mcap_yi != null ? Math.round(s.mcap_yi) : '—'}</td>
-                                        <td style="padding:4px;text-align:right;font-family:var(--font-mono);">${s.pe_ttm != null ? s.pe_ttm.toFixed(1) : '—'}</td>
-                                        <td style="padding:4px;text-align:center;" onclick="event.stopPropagation();">
-                                            <button onclick="wlSyncOne('${escHtml(s.stock_code)}', this)" title="同步" style="background:none;border:none;color:var(--accent-blue);cursor:pointer;font-size:9px;"><i class="fas fa-sync-alt"></i></button>
-                                            <button onclick="wlEditGroup('${escHtml(s.stock_code)}','${escHtml(s.group_tag||'默认')}')" title="改分组" style="background:none;border:none;color:var(--accent-gold);cursor:pointer;font-size:9px;"><i class="fas fa-tag"></i></button>
-                                            <button onclick="wlRemove('${escHtml(s.stock_code)}')" title="删除" style="background:none;border:none;color:var(--accent-red);cursor:pointer;font-size:9px;"><i class="fas fa-trash"></i></button>
-                                        </td>
-                                    </tr>`;
-                                }).join('')}</tbody>
-                            </table>
-                        </div>
-                    </div>`).join('');
-            } catch(e) { console.error(e); }
-        }
-
-        // 查看K线+指标
-        async function wlShowChart(code, name) {
-            // 复用 positions 页的 ECharts 弹窗模式
-            try {
-                const res = await fetch(`${API_BASE}/data/daily/${code}?limit=500`);
-                const kdata = await res.json();
-                const indRes = await fetch(`${API_BASE}/quant/indicators/${code}`);
-                const indData = await indRes.json();
-                const ind = (indData.data && indData.data.indicators) ? indData.data.indicators : {};
-
-                // Build modal with K-line chart
-                let modalHtml = `<div style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:1000;display:flex;justify-content:center;align-items:center;backdrop-filter:blur(4px);" onclick="this.remove()">
-                    <div style="background:var(--bg-card);width:85%;max-width:1000px;border-radius:8px;border:1px solid var(--border-color);overflow:hidden;" onclick="event.stopPropagation()">
-                        <div style="padding:12px 16px;border-bottom:1px solid var(--border-color);display:flex;justify-content:space-between;align-items:center;">
-                            <span style="font-weight:700;">${escHtml(code)} ${escHtml(name)}</span>
-                            <button onclick="this.closest('div[style*=fixed]').remove()" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:16px;">&times;</button>
-                        </div>
-                        <div id="wl-chart-container" style="width:100%;height:450px;"></div>
-                        <div style="padding:8px 16px;font-size:10px;color:var(--text-micro);border-top:1px solid var(--border-thin);">
-                            指标: ${Object.entries(ind).filter(([k,v])=>v!=null&&!k.startsWith('_')).slice(0,12).map(([k,v])=>k+':'+(typeof v==='number'?v.toFixed(2):v)).join(' | ') || '暂无'}
-                        </div>
-                    </div>
-                </div>`;
-                document.body.insertAdjacentHTML('beforeend', modalHtml);
-
-                // Render ECharts
-                setTimeout(() => {
-                    const container = document.getElementById('wl-chart-container');
-                    if (!container || !window.echarts) return;
-                    const chart = echarts.init(container);
-                    const dates = kdata.map(d => d.trade_date);
-                    const ohlc = kdata.map(d => [d.open, d.close, d.low, d.high]);
-                    const volumes = kdata.map(d => d.volume);
-                    chart.setOption({
-                        animation: false,
-                        tooltip: {trigger:'axis'},
-                        grid: [{left:'8%',right:'3%',top:'5%',height:'60%'},{left:'8%',right:'3%',top:'75%',height:'18%'}],
-                        xAxis: [{type:'category',data:dates,axisLabel:{fontSize:9}},{type:'category',data:dates,gridIndex:1,axisLabel:{show:false}}],
-                        yAxis: [{scale:true,splitLine:{lineStyle:{color:'#1a1a1a'}}},{gridIndex:1,splitLine:{show:false},axisLabel:{fontSize:9}}],
-                        series: [
-                            {type:'candlestick',data:ohlc,
-                                itemStyle:{color:'#ef232a',color0:'#14b143',borderColor:'#ef232a',borderColor0:'#14b143'}},
-                            {type:'bar',xAxisIndex:1,yAxisIndex:1,data:volumes,
-                                itemStyle:{color: (p) => { const i=p.dataIndex; return ohlc[i] && ohlc[i][1]>=ohlc[i][0] ? '#ef232a' : '#14b143'; }}}
-                        ]
-                    });
-                }, 200);
-            } catch(e) { Modal.alert('加载失败', e.message); }
-        }
-
-        // 编辑分组
-        async function wlEditGroup(code, currentGroup) {
-            const newGroup = prompt('修改分组标签:', currentGroup);
-            if (!newGroup || newGroup === currentGroup) return;
-            try {
-                await fetch(`${API_BASE}/data/watchlist/${code}?group_tag=${encodeURIComponent(newGroup)}`, { method: 'PUT' });
-                wlLoad();
-            } catch(e) {}
-        }
-
-        async function wlAdd() {
-            const code = document.getElementById('wl-code').value.trim();
-            if (!code) { addLog('请输入股票代码', 'warn'); return; }
-            const group = document.getElementById('wl-group').value.trim() || '默认';
-            try {
-                const res = await fetch(`${API_BASE}/data/watchlist/add?stock_code=${code}&group_tag=${encodeURIComponent(group)}`, { method: 'POST' });
-                const d = await res.json();
-                document.getElementById('wl-code').value = '';
-                wlLoad(); addLog(`已添加 ${code} (${d.name||''})`, 'success');
-            } catch(e) { addLog(`添加失败: ${e.message}`, 'error'); }
-        }
-
-        async function wlRemove(code) {
-            try { await fetch(`${API_BASE}/data/watchlist/${code}`, { method: 'DELETE' }); wlLoad(); } catch(e) {}
-        }
-
-        async function wlImportPositions() {
-            addLog('从持仓导入自选股...', 'info');
-            try {
-                const res = await fetch(`${API_BASE}/data/watchlist/import-positions`, { method: 'POST' });
-                const d = await res.json();
-                addLog(`导入完成: ${d.imported||0}只新增`, 'success');
-                wlLoad();
-            } catch(e) { addLog(`导入失败: ${e.message}`, 'error'); }
-        }
-
-        async function wlSync() {
-            addLog('同步全部自选股行情+估值...', 'info');
-            try {
-                const res = await fetch(`${API_BASE}/data/watchlist/sync`, { method: 'POST' });
-                const d = await res.json();
-                addLog(`同步完成: ${d.synced||0}只`, 'success');
-                updateHealthTable();
-            } catch(e) { addLog(`同步失败: ${e.message}`, 'error'); }
-        }
-
-        async function wlRefreshHeld() {
-            try {
-                const res = await fetch(`${API_BASE}/data/watchlist/refresh-held`, { method: 'POST' });
-                const d = await res.json();
-                addLog(`持仓状态更新: ${d.updated||0}只`, 'success');
-                wlLoad();
-            } catch(e) {}
-        }
-
-        async function wlSyncOne(code, btn) {
-            if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
-            try {
-                const res = await fetch(`${API_BASE}/data/sync/daily/${code}`, { method: 'POST' });
-                const d = await res.json();
-                addLog(`${code} 完成 | 名称:${d.name||'--'} | 价格:${d.price||'--'} | +${d.new_rows||0}行`, 'success');
-                wlLoad();
-            } catch(e) { addLog(`${code} 失败: ${e.message}`, 'error'); }
-            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-sync-alt"></i>'; }
-        }
-
-        function addLog(msg, type) {
-            const time = new Date().toLocaleTimeString('zh-CN', { hour12: false });
-            const colors = {
-                info: '#666',
-                success: 'var(--accent-green)',
-                warn: 'var(--accent-gold)',
-                error: 'var(--accent-red)'
-            };
-            const line = document.createElement('div');
-            line.innerHTML = `<span style="color:#333;">[${time}]</span> <span style="color:${colors[type] || '#666'};">${msg}</span>`;
-            terminal.appendChild(line);
-            terminal.scrollTop = terminal.scrollHeight;
-            if (terminal.children.length > 100) terminal.removeChild(terminal.firstChild);
-        }
-
-        // ── 数据源状态 ──
-        async function updateSourceStatus() {
-            try {
-                const res = await fetch(`${API_BASE}/data/sources/status`);
-                const data = await res.json();
-                const el = document.getElementById('source-status');
-                el.innerHTML = data.sources.map(s => {
-                    const dot = s.online ? '<span style="color:var(--accent-green);">●</span>' : '<span style="color:var(--accent-red);">●</span>';
-                    const latency = s.latency || '—';
-                    return `<div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px;">
-                        <span>${dot} ${s.name} <span style="color: var(--text-micro); font-size: 10px;">P${s.priority}</span></span>
-                        <span style="font-family: var(--font-mono); color: var(--text-dim); font-size: 10px;">${latency}</span>
-                    </div>`;
-                }).join('');
-                document.getElementById('active-source').textContent = data.active_source || '—';
-            } catch (e) {
-                console.error('Source status failed:', e);
-            }
-        }
-
-        // ── 健康总览 ──
-        async function updateHealthSummary() {
-            try {
-                const res = await fetch(`${API_BASE}/data/health/overview`);
-                const data = await res.json();
-                const statusColor = {
-                    'HEALTHY': 'var(--accent-green)',
-                    'STALE': 'var(--accent-gold)',
-                    'GAP': 'var(--accent-red)'
-                };
-                const el = document.getElementById('health-summary');
-                el.innerHTML = `
-                    <div>已同步标的: <strong style="color: var(--text-normal);">${data.synced_stocks}</strong></div>
-                    <div>最新数据日: <strong style="color: var(--text-normal);">${data.latest_sync_date || '—'}</strong></div>
-                    <div>指标覆盖率: <strong style="color: var(--text-normal);">${data.indicators_coverage}</strong></div>
-                    <div>系统状态: <strong style="color: ${statusColor[data.status] || 'var(--text-dim)'};">${data.status}</strong></div>
-                `;
-            } catch (e) {
-                console.error('Health summary failed:', e);
-            }
-        }
-
-        // ── 行情体检表 ──
-        async function updateHealthTable() {
-            try {
-                const res = await fetch(`${API_BASE}/data/health/stocks`);
-                const stocks = await res.json();
-                const tbody = document.getElementById('health-table-body');
-                const countEl = document.getElementById('health-count');
-                countEl.textContent = `${stocks.length} 标的`;
-
-                if (!stocks.length) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-micro); padding: 40px;">暂无同步数据。<br><small>点击左侧"智能全量同步"开始拉取行情。</small></td></tr>';
-                    return;
-                }
-
-                const statusBadge = {
-                    'HEALTHY': '<span style="color: var(--accent-green); font-weight: 600;">● 正常</span>',
-                    'STALE': '<span style="color: var(--accent-gold); font-weight: 600;">● 滞后</span>',
-                    'GAP': '<span style="color: var(--accent-red); font-weight: 600;">● 断层</span>'
-                };
-
-                tbody.innerHTML = stocks.map(s => `
-                    <tr>
-                        <td>
-                            <span style="font-weight: 600;">${s.stock_name || s.stock_code}</span>
-                            <br><small style="color: var(--text-micro);">${s.stock_code}</small>
-                        </td>
-                        <td style="font-family: var(--font-mono); font-size: 10px; color: var(--text-dim);">
-                            ${s.earliest_date || '—'}<br><span style="color: var(--text-micro);">~ ${s.latest_date || '—'}</span>
-                        </td>
-                        <td style="text-align: right; font-family: var(--font-mono); font-weight: 600;">
-                            ${s.latest_price ? '¥' + Number(s.latest_price).toFixed(3) : '—'}
-                        </td>
-                        <td style="text-align: center; font-size: 11px;">${statusBadge[s.status] || s.status}</td>
-                        <td style="text-align: center;">
-                            <button class="btn-action" style="padding: 2px 8px; font-size: 10px;" onclick="viewDetail('${s.stock_code}')" title="详细体检">
-                                <i class="fas fa-search"></i>
-                            </button>
-                            <button class="btn-action" style="padding: 2px 8px; font-size: 10px; border-color: var(--accent-gold); color: var(--accent-gold);" onclick="syncSingleStock('${s.stock_code}', this)" title="单股同步">
-                                <i class="fas fa-sync-alt"></i>
-                            </button>
-                        </td>
-                    </tr>
-                `).join('');
-            } catch (e) {
-                console.error('Health table failed:', e);
-            }
-        }
-
-        // ── 详细体检弹窗 ──
-        async function viewDetail(stockCode) {
-            addLog(`Fetching detail health for ${stockCode}...`, 'info');
-            try {
-                const res = await fetch(`${API_BASE}/data/health/${stockCode}`);
-                const data = await res.json();
-                const snap = data.indicators?.snapshot || {};
-                const findings = data.indicators?.findings?.findings;
-                const fText = findings?.length
-                    ? findings.map(f => `${f.name} (score:${f.score})`).join(', ')
-                    : '无形态信号';
-
-                Modal.alert(`${stockCode} 数据体检`,
-                    `行情范围: ${data.data_range?.from || '—'} ~ ${data.data_range?.to || '—'} (${data.data_range?.records || 0}条)\n` +
-                    `最新行情: ${data.latest_quote?.trade_date || '—'}\n` +
-                    `开:${data.latest_quote?.open || '—'} 高:${data.latest_quote?.high || '—'} 低:${data.latest_quote?.low || '—'} 收:${data.latest_quote?.close || '—'}\n` +
-                    `涨跌幅: ${data.latest_quote?.change_pct != null ? data.latest_quote.change_pct.toFixed(2) + '%' : '—'}\n\n` +
-                    `指标快照: MA5=${snap.ma5 || '—'} MA20=${snap.ma20 || '—'} RSI=${snap.rsi || '—'}\n` +
-                    `形态信号: ${fText}`
-                );
-            } catch (e) {
-                addLog(`Failed to load detail: ${e.message}`, 'error');
-            }
-        }
-
-        // ── 手动单票同步 ──
-        async function syncManualStock() {
-            const code = document.getElementById('manual-stock-input').value.trim();
-            if (!code) { addLog('请输入股票代码', 'warn'); return; }
-            addLog(`正在同步 ${code} (行情+估值)...`, 'info');
-            try {
-                const res = await fetch(`${API_BASE}/data/sync/daily/${code}`, { method: 'POST' });
-                const data = await res.json();
-                addLog(`${code} ${data.message || '同步完成'}`, 'success');
-                updateHealthTable();
-            } catch(e) { addLog(`${code} 同步失败: ${e.message}`, 'error'); }
-        }
-
-        // ── 手动指标计算 ──
-        async function computeIndicators() {
-            const code = document.getElementById('manual-stock-input').value.trim();
-            if (!code) { addLog('请输入股票代码', 'warn'); return; }
-            addLog(`正在计算 ${code} 最新指标...`, 'info');
-            try {
-                const res = await fetch(`${API_BASE}/quant/indicators/compute/${code}?mode=snapshot`, { method: 'POST' });
-                const data = await res.json();
-                const r = data.data || {};
-                if (r.error) { addLog(`${code} 失败: ${r.error}`, 'error'); }
-                else { addLog(`${code} 完成: ${r.computed||0} 个指标`, 'success'); }
-            } catch(e) { addLog(`${code} 异常: ${e.message}`, 'error'); }
-        }
-
-        // ── 历史指标计算 ──
-        async function computeHistorical() {
-            const code = document.getElementById('manual-stock-input').value.trim();
-            if (!code) { addLog('请输入股票代码', 'warn'); return; }
-            addLog(`正在逐日计算 ${code} 全量历史指标 (约需30-60秒)...`, 'info');
-            try {
-                const res = await fetch(`${API_BASE}/quant/indicators/compute/${code}?mode=historical`, { method: 'POST' });
-                const data = await res.json();
-                const r = data.data || {};
-                if (r.error) { addLog(`${code} 失败: ${r.error}`, 'error'); }
-                else { addLog(`${code} 完成: ${r.days_computed||0} 天指标已存储`, 'success'); }
-            } catch(e) { addLog(`${code} 异常: ${e.message}`, 'error'); }
-        }
-
-        // ── 同步公共数据 (汇率/黄金/原油) ──
-        async function syncMacroData() {
-            addLog('正在同步公共数据 (汇率/黄金/原油)...', 'info');
-            const btn = document.querySelector('[onclick="syncMacroData()"]');
-            if (btn) { btn.style.opacity = '0.5'; btn.style.pointerEvents = 'none'; }
-            try {
-                const res = await fetch(`${API_BASE}/data/forex/sync`, { method: 'POST' });
-                const data = await res.json();
-                addLog(`公共数据同步完成: ${data.message || JSON.stringify(data)}`, 'success');
-            } catch (e) {
-                addLog(`公共数据同步失败: ${e.message}`, 'error');
-            }
-            if (btn) { btn.style.opacity = '1'; btn.style.pointerEvents = 'auto'; }
-        }
-
-        // ── 单股同步 ──
-        async function syncSingleStock(stockCode, btnEl) {
-            addLog(`正在同步 ${stockCode}...`, 'info');
-            if (btnEl) { btnEl.disabled = true; btnEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
-            try {
-                const res = await fetch(`${API_BASE}/data/sync/daily/${stockCode}`, { method: 'POST' });
-                const data = await res.json();
-                addLog(`${stockCode} ${data.message || '同步完成'}`, 'success');
-                updateHealthTable();  // 刷新表格
-            } catch (e) {
-                addLog(`${stockCode} 同步失败: ${e.message}`, 'error');
-            }
-            if (btnEl) { btnEl.disabled = false; btnEl.innerHTML = '<i class="fas fa-sync-alt"></i>'; }
-        }
-
-        // ── 触发同步 ──
-        async function triggerSync(mode) {
-            addLog(`Dispatching sync: mode=${mode}...`, 'info');
-            try {
-                const res = await fetch(`${API_BASE}/data/sync/daily/auto`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ type: mode })
-                });
-                const data = await res.json();
-                taskIdDisplay.textContent = `TASK: ${data.task_id.substring(0, 8)}...`;
-                addLog(`Task queued: ${data.task_id.substring(0, 8)}...`, 'success');
-            } catch (e) {
-                addLog(`CRITICAL: ${e.message}`, 'error');
-            }
-        }
-
-        // ── 通用任务触发 ──
-        async function triggerAsync(taskCode) {
-            addLog(`Triggering ${taskCode}...`, 'info');
-            try {
-                const res = await fetch(`${API_BASE}/system/tasks/executions`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ task_code: taskCode, params: {} })
-                });
-                const data = await res.json();
-                addLog(`Task ${taskCode} queued: ${data.id.substring(0, 8)}...`, 'success');
-            } catch (e) {
-                addLog(`Failed: ${e.message}`, 'error');
-            }
-        }
-
-        // ── 页面初始化 ──
-        // ── CSV 上传 ──
-        async function uploadStockCSV(input) {
-            if (!input.files || !input.files[0]) return;
-            const file = input.files[0];
-            const resultEl = document.getElementById('csv-result');
-            resultEl.style.color = 'var(--accent-blue)';
-            resultEl.textContent = '导入中...';
-            const form = new FormData();
-            form.append('file', file);
-            try {
-                const res = await fetch(`${API_BASE}/data/stock-list/import-csv`, { method: 'POST', body: form });
-                const data = await res.json();
-                if (data.success) {
-                    resultEl.style.color = 'var(--accent-green)';
-                    resultEl.textContent = `已导入 ${data.imported} 条股票信息`;
-                } else {
-                    resultEl.style.color = 'var(--accent-red)';
-                    resultEl.textContent = '导入失败: ' + (data.detail || '未知错误');
-                }
-            } catch (e) {
-                resultEl.style.color = 'var(--accent-red)';
-                resultEl.textContent = '网络错误: ' + e.message;
-            }
-        }
-
-        // ── 全量同步 ──
-        async function syncFullStockList() {
-            const resultEl = document.getElementById('csv-result');
-            resultEl.style.color = 'var(--accent-gold)';
-            resultEl.textContent = '全量同步中 (约需30秒)...';
-            try {
-                const res = await fetch(`${API_BASE}/data/stock-list/sync?full=true`, { method: 'POST' });
-                const data = await res.json();
-                resultEl.style.color = 'var(--accent-green)';
-                resultEl.textContent = `全量同步完成: ${data.synced} 条`;
-                updateHealthTable();
-            } catch (e) {
-                resultEl.style.color = 'var(--accent-red)';
-                resultEl.textContent = '同步异常: ' + e.message;
-            }
-        }
-
-        function refreshAll() {
-            updateSourceStatus();
-            updateHealthSummary();
-            updateHealthTable();
-            loadMacro();
-        }
-
-        window.refreshPageData = refreshAll;
-        window.onload = () => { refreshAll(); addLog('Data Center initialized.', 'info'); };
-    </script>
+document.addEventListener('DOMContentLoaded', () => {
+    loadMacro();
+    setTimeout(updateHealthTable, 1000);
+});
+window.refreshPageData = () => { loadMacro(); updateHealthTable(); };
+</script>
 </body>
 </html>
