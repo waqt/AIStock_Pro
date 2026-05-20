@@ -5,7 +5,7 @@ from datetime import date, timedelta
 import re
 
 from app.framework.database.session import async_session
-from app.models.models import MarketData, StockIndicator, Position, ExchangeRate, StockInfo, WatchlistItem
+from app.models.models import MarketData, StockIndicator, Position, ExchangeRate, StockInfo, WatchlistItem, PortfolioSnapshot
 from app.domain.market_data.sources.router import data_router
 from app.framework.tasks.engine import task_manager
 from app.framework.logger import logger
@@ -607,6 +607,97 @@ async def import_positions_to_watchlist():
                 count += 1
         await db.commit()
         return {"success": True, "imported": count, "message": f"Imported {count} new, updated existing"}
+
+
+@router.post("/portfolio/snapshot")
+async def compute_portfolio_snapshot():
+    """计算当日持仓切片: 更新PnL + 记录历史快照"""
+    from app.models.models import PortfolioSnapshot
+    from datetime import date as d
+
+    async with async_session() as db:
+        # 1. 查询全部持仓
+        pos_res = await db.execute(select(Position))
+        positions = pos_res.scalars().all()
+        if not positions:
+            return {"success": True, "message": "无持仓", "count": 0}
+
+        today = d.today()
+        snapshots = []
+        total_mv = 0.0
+        total_pl = 0.0
+
+        for pos in positions:
+            # 取最新行情
+            mr = await db.execute(
+                select(MarketData.close)
+                .where(MarketData.stock_code == pos.stock_code)
+                .order_by(MarketData.trade_date.desc()).limit(1))
+            price_row = mr.first()
+            if not price_row or not price_row[0]:
+                continue
+            price = float(price_row[0])
+
+            # 更新持仓
+            pos.current_price = price
+            pos.market_value = float(pos.volume) * price
+            cost_basis = float(pos.volume) * float(pos.avg_cost)
+            pos.profit_loss = pos.market_value - cost_basis
+            pos.profit_loss_ratio = round(pos.profit_loss / cost_basis * 100, 2) if cost_basis != 0 else None
+
+            total_mv += pos.market_value
+            total_pl += pos.profit_loss
+
+            # 查估值
+            info = await db.get(StockInfo, pos.stock_code)
+
+            # 记录快照
+            snapshots.append(PortfolioSnapshot(
+                snap_date=today,
+                stock_code=pos.stock_code, stock_name=pos.stock_name or "",
+                volume=pos.volume, avg_cost=float(pos.avg_cost),
+                current_price=price, market_value=pos.market_value,
+                profit_loss=pos.profit_loss, profit_loss_ratio=pos.profit_loss_ratio,
+                pe_ttm=info.pe_ttm if info else None,
+                pb=info.pb if info else None,
+                mcap_yi=info.mcap_yi if info else None,
+            ))
+
+        # 2. 清理今日已有快照, 写入新快照
+        from sqlalchemy import delete as sqla_delete
+        await db.execute(
+            sqla_delete(PortfolioSnapshot).where(
+                PortfolioSnapshot.snap_date == today))
+        db.add_all(snapshots)
+        await db.commit()
+
+        logger.info(f"[Portfolio] Snapshot: {len(snapshots)} stocks, MV={total_mv:.0f}, P&L={total_pl:.0f}")
+        return {
+            "success": True,
+            "count": len(snapshots),
+            "total_market_value": round(total_mv, 2),
+            "total_profit_loss": round(total_pl, 2),
+        }
+
+
+@router.get("/portfolio/snapshots")
+async def get_portfolio_snapshots(days: int = 30):
+    """查询最近N天的持仓切片"""
+    from app.models.models import PortfolioSnapshot
+    async with async_session() as db:
+        res = await db.execute(
+            select(PortfolioSnapshot)
+            .order_by(PortfolioSnapshot.snap_date.desc(), PortfolioSnapshot.stock_code)
+            .limit(days * 20))
+        rows = res.scalars().all()
+        return {"success": True, "data": [
+            {"snap_date": str(r.snap_date), "stock_code": r.stock_code,
+             "stock_name": r.stock_name, "volume": r.volume,
+             "avg_cost": r.avg_cost, "current_price": r.current_price,
+             "market_value": r.market_value, "profit_loss": r.profit_loss,
+             "profit_loss_ratio": r.profit_loss_ratio}
+            for r in rows
+        ]}
 
 
 @router.post("/watchlist/refresh-held")

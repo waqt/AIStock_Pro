@@ -366,12 +366,12 @@
         async function wlAdd() {
             const code = document.getElementById('wl-code').value.trim();
             if (!code) { addLog('请输入股票代码', 'warn'); return; }
-            const name = document.getElementById('wl-name').value.trim();
             const group = document.getElementById('wl-group').value.trim() || '默认';
             try {
-                await fetch(`${API_BASE}/data/watchlist/add?stock_code=${code}&stock_name=${encodeURIComponent(name)}&group_tag=${encodeURIComponent(group)}`, { method: 'POST' });
-                document.getElementById('wl-code').value = ''; document.getElementById('wl-name').value = '';
-                wlLoad(); addLog(`已添加 ${code}`, 'success');
+                const res = await fetch(`${API_BASE}/data/watchlist/add?stock_code=${code}&group_tag=${encodeURIComponent(group)}`, { method: 'POST' });
+                const d = await res.json();
+                document.getElementById('wl-code').value = '';
+                wlLoad(); addLog(`已添加 ${code} (${d.name||''})`, 'success');
             } catch(e) { addLog(`添加失败: ${e.message}`, 'error'); }
         }
 

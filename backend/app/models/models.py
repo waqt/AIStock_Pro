@@ -134,6 +134,25 @@ class WatchlistItem(Base):
     added_at = Column(DateTime, default=datetime.now)
 
 
+class PortfolioSnapshot(Base):
+    """持仓每日切片 — 历史持仓状态记录, 用于后续分析"""
+    __tablename__ = "portfolio_snapshots"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    snap_date = Column(Date, index=True, comment="切片日期")
+    stock_code = Column(String(20), index=True)
+    stock_name = Column(String(50))
+    volume = Column(Integer, default=0)
+    avg_cost = Column(Float, default=0.0)
+    current_price = Column(Float, default=0.0)
+    market_value = Column(Float, default=0.0)
+    profit_loss = Column(Float, default=0.0)
+    profit_loss_ratio = Column(Float, default=0.0)
+    pe_ttm = Column(Float, nullable=True)
+    pb = Column(Float, nullable=True)
+    mcap_yi = Column(Float, nullable=True)
+    created_at = Column(DateTime, default=datetime.now)
+
+
 class StrategySignal(Base):
     """策略信号持久化 — 每策略每次执行的结果"""
     __tablename__ = "strategy_signals"
