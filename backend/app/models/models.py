@@ -113,6 +113,17 @@ class StockInfo(Base):
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
 
+class WatchlistItem(Base):
+    """自选股 — 用户关注的股票 (与持仓独立)"""
+    __tablename__ = "watchlist"
+    stock_code = Column(String(20), primary_key=True)
+    stock_name = Column(String(50), default="")
+    group_tag = Column(String(30), default="默认")  # 分组标签
+    is_held = Column(Boolean, default=False)  # 是否已持仓
+    sort_order = Column(Integer, default=0)
+    added_at = Column(DateTime, default=datetime.now)
+
+
 class StrategySignal(Base):
     """策略信号持久化 — 每策略每次执行的结果"""
     __tablename__ = "strategy_signals"

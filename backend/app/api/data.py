@@ -5,7 +5,7 @@ from datetime import date, timedelta
 import re
 
 from app.framework.database.session import async_session
-from app.models.models import MarketData, StockIndicator, Position, ExchangeRate, StockInfo
+from app.models.models import MarketData, StockIndicator, Position, ExchangeRate, StockInfo, WatchlistItem
 from app.domain.market_data.sources.router import data_router
 from app.framework.tasks.engine import task_manager
 from app.framework.logger import logger
@@ -451,3 +451,82 @@ async def import_stock_csv(file: UploadFile = File(...)):
         return {"success": True, "imported": imported}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"导入失败: {str(e)}")
+
+
+# ═══════════════════════════════════════════
+# 自选股中心
+# ═══════════════════════════════════════════
+
+@router.get("/watchlist")
+async def list_watchlist():
+    """自选股列表 (按分组排列)"""
+    async with async_session() as db:
+        res = await db.execute(
+            select(WatchlistItem).order_by(WatchlistItem.group_tag, WatchlistItem.sort_order))
+        items = res.scalars().all()
+        return {"success": True, "data": [
+            {"stock_code": i.stock_code, "stock_name": i.stock_name,
+             "group_tag": i.group_tag, "is_held": i.is_held,
+             "added_at": str(i.added_at) if i.added_at else None}
+            for i in items
+        ]}
+
+
+@router.post("/watchlist/add")
+async def add_to_watchlist(stock_code: str, stock_name: str = "", group_tag: str = "默认"):
+    """添加自选股"""
+    async with async_session() as db:
+        existing = await db.get(WatchlistItem, stock_code)
+        if existing:
+            existing.group_tag = group_tag
+            if stock_name: existing.stock_name = stock_name
+        else:
+            db.add(WatchlistItem(stock_code=stock_code, stock_name=stock_name, group_tag=group_tag))
+        await db.commit()
+        return {"success": True, "message": f"Added {stock_code}"}
+
+
+@router.delete("/watchlist/{stock_code}")
+async def remove_from_watchlist(stock_code: str):
+    """删除自选股"""
+    async with async_session() as db:
+        item = await db.get(WatchlistItem, stock_code)
+        if not item:
+            raise HTTPException(status_code=404, detail="Not in watchlist")
+        await db.delete(item)
+        await db.commit()
+        return {"success": True, "message": f"Removed {stock_code}"}
+
+
+@router.put("/watchlist/{stock_code}")
+async def update_watchlist(stock_code: str, group_tag: str = None, stock_name: str = None):
+    """更新自选股分组或名称"""
+    async with async_session() as db:
+        item = await db.get(WatchlistItem, stock_code)
+        if not item:
+            raise HTTPException(status_code=404, detail="Not in watchlist")
+        if group_tag: item.group_tag = group_tag
+        if stock_name: item.stock_name = stock_name
+        await db.commit()
+        return {"success": True, "message": f"Updated {stock_code}"}
+
+
+@router.post("/watchlist/sync")
+async def sync_watchlist():
+    """同步全部自选股行情+估值 (不限于持仓)"""
+    from app.domain.market_data.services.valuation import sync_valuation
+    async with async_session() as db:
+        res = await db.execute(select(WatchlistItem.stock_code))
+        codes = [r[0] for r in res.all()]
+    if not codes:
+        return {"success": True, "message": "Watchlist empty"}
+    # 同步行情
+    from app.domain.quant.engine.indicator_runner import IndicatorRunner
+    await data_router.sync_macro_data()
+    for code in codes:
+        try:
+            await data_router.get_daily_data(code, days=10)
+        except Exception:
+            pass
+    await sync_valuation(target_codes=codes)
+    return {"success": True, "synced": len(codes)}

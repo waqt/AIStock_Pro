@@ -103,7 +103,31 @@
                         </div>
                     </div>
 
-                    <!-- 手动单票同步 -->
+                    <!-- Tab 导航 -->
+                    <div style="display:flex;gap:0;margin-bottom:10px;border-bottom:1px solid var(--border-color);">
+                        <button class="tab-btn active" onclick="switchDataTab('health')" id="tab-health" style="background:none;border:none;color:var(--text-dim);cursor:pointer;padding:6px 14px;font-size:12px;border-bottom:2px solid var(--accent-blue);">行情体检</button>
+                        <button class="tab-btn" onclick="switchDataTab('watchlist')" id="tab-watchlist" style="background:none;border:none;color:var(--text-dim);cursor:pointer;padding:6px 14px;font-size:12px;border-bottom:2px solid transparent;">自选股</button>
+                        <button class="tab-btn" onclick="switchDataTab('manual')" id="tab-manual" style="background:none;border:none;color:var(--text-dim);cursor:pointer;padding:6px 14px;font-size:12px;border-bottom:2px solid transparent;">手动操作</button>
+                    </div>
+
+                    <!-- Tab: 自选股 -->
+                    <div id="tab-panel-watchlist" style="display:none;">
+                        <div class="panel" style="padding:10px;margin-bottom:8px;">
+                            <div style="display:flex;gap:6px;">
+                                <input type="text" id="wl-code" placeholder="股票代码" style="flex:1;background:#000;border:1px solid var(--border-color);color:#fff;padding:6px 8px;border-radius:4px;font-size:11px;">
+                                <input type="text" id="wl-name" placeholder="名称(可选)" style="flex:1;background:#000;border:1px solid var(--border-color);color:#fff;padding:6px 8px;border-radius:4px;font-size:11px;">
+                                <input type="text" id="wl-group" placeholder="分组" style="width:80px;background:#000;border:1px solid var(--border-color);color:#fff;padding:6px 8px;border-radius:4px;font-size:11px;" value="默认">
+                                <button class="btn-action" onclick="wlAdd()" style="font-size:11px;white-space:nowrap;">添加</button>
+                            </div>
+                            <div style="margin-top:6px;">
+                                <button class="btn-action" onclick="wlSync()" style="font-size:11px;border-color:var(--accent-green);color:var(--accent-green);">同步全部自选</button>
+                            </div>
+                        </div>
+                        <div id="watchlist-table" style="max-height:55vh;overflow-y:auto;"></div>
+                    </div>
+
+                    <!-- Tab: 手动操作 -->
+                    <div id="tab-panel-manual" style="display:none;">
                     <div class="panel" style="padding:10px;">
                         <div style="display:flex;gap:6px;align-items:center;">
                             <input type="text" id="manual-stock-input" placeholder="输入股票代码 (如 688012)"
@@ -120,6 +144,7 @@
                         </div>
                     </div>
 
+                    <div id="tab-panel-health">
                     <!-- 行情体检表 -->
                     <div class="panel" style="flex: 1;">
                         <div class="panel-header">
@@ -143,6 +168,8 @@
                             </table>
                         </div>
                     </div>
+                    </div><!-- /tab-panel-health -->
+                    </div><!-- /tab-panel-manual -->
                 </div>
             </div>
         </main>
@@ -156,6 +183,72 @@
     <script>
         const terminal = document.getElementById('data-terminal');
         const taskIdDisplay = document.getElementById('task-id-display');
+
+        function switchDataTab(tab) {
+            document.querySelectorAll('#tab-panel-health, #tab-panel-watchlist, #tab-panel-manual').forEach(p => p.style.display = 'none');
+            document.querySelectorAll('.tab-btn').forEach(b => { b.style.borderBottomColor = 'transparent'; });
+            document.getElementById('tab-' + tab).style.borderBottomColor = 'var(--accent-blue)';
+            if (tab === 'health') { document.getElementById('tab-panel-health').style.display = ''; updateHealthTable(); }
+            if (tab === 'watchlist') { document.getElementById('tab-panel-watchlist').style.display = ''; wlLoad(); }
+            if (tab === 'manual') document.getElementById('tab-panel-manual').style.display = '';
+        }
+
+        // ── 自选股 ──
+        async function wlLoad() {
+            try {
+                const res = await fetch(`${API_BASE}/data/watchlist`);
+                const data = await res.json();
+                const items = data.data || [];
+                const el = document.getElementById('watchlist-table');
+                if (!items.length) { el.innerHTML = '<div style="color:var(--text-micro);padding:20px;text-align:center;">自选股为空, 上方添加</div>'; return; }
+                // Group by group_tag
+                const groups = {};
+                items.forEach(i => { const g = i.group_tag || '默认'; if (!groups[g]) groups[g] = []; groups[g].push(i); });
+                el.innerHTML = Object.entries(groups).map(([g, stocks]) => `
+                    <div class="panel" style="margin-bottom:8px;">
+                        <div class="panel-header"><span style="font-size:12px;">${escHtml(g)}</span><span style="font-size:10px;color:var(--text-micro);">(${stocks.length})</span></div>
+                        <div class="panel-body" style="padding:0;">
+                            ${stocks.map(s => `
+                                <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;border-bottom:1px solid var(--border-thin);font-size:11px;">
+                                    <span>
+                                        <span style="color:var(--accent-blue);">${escHtml(s.stock_code)}</span>
+                                        <span style="margin-left:6px;color:#fff;">${escHtml(s.stock_name)}</span>
+                                        ${s.is_held ? '<span style="color:var(--accent-green);font-size:9px;">[持仓]</span>' : ''}
+                                    </span>
+                                    <span>
+                                        <button onclick="wlRemove('${escHtml(s.stock_code)}')" style="background:none;border:none;color:var(--accent-red);cursor:pointer;font-size:10px;"><i class="fas fa-trash"></i></button>
+                                    </span>
+                                </div>`).join('')}
+                        </div>
+                    </div>`).join('');
+            } catch(e) { console.error(e); }
+        }
+
+        async function wlAdd() {
+            const code = document.getElementById('wl-code').value.trim();
+            if (!code) { addLog('请输入股票代码', 'warn'); return; }
+            const name = document.getElementById('wl-name').value.trim();
+            const group = document.getElementById('wl-group').value.trim() || '默认';
+            try {
+                await fetch(`${API_BASE}/data/watchlist/add?stock_code=${code}&stock_name=${encodeURIComponent(name)}&group_tag=${encodeURIComponent(group)}`, { method: 'POST' });
+                document.getElementById('wl-code').value = ''; document.getElementById('wl-name').value = '';
+                wlLoad(); addLog(`已添加 ${code}`, 'success');
+            } catch(e) { addLog(`添加失败: ${e.message}`, 'error'); }
+        }
+
+        async function wlRemove(code) {
+            try { await fetch(`${API_BASE}/data/watchlist/${code}`, { method: 'DELETE' }); wlLoad(); } catch(e) {}
+        }
+
+        async function wlSync() {
+            addLog('同步全部自选股行情+估值...', 'info');
+            try {
+                const res = await fetch(`${API_BASE}/data/watchlist/sync`, { method: 'POST' });
+                const d = await res.json();
+                addLog(`同步完成: ${d.synced||0}只`, 'success');
+                updateHealthTable();
+            } catch(e) { addLog(`同步失败: ${e.message}`, 'error'); }
+        }
 
         function addLog(msg, type) {
             const time = new Date().toLocaleTimeString('zh-CN', { hour12: false });
