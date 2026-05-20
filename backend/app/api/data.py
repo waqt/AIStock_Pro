@@ -66,27 +66,26 @@ async def trigger_auto_sync(request: SyncRequest):
 
 
 @router.post("/sync/daily/{stock_code}")
-async def trigger_single_sync(stock_code: str):
-    """单股同步 (同步执行: 行情+估值+名称补全)"""
+async def trigger_single_sync(stock_code: str, mode: str = "daily"):
+    """单股同步 — mode=daily(当日最新) | historical(2年补齐缺失)"""
     from app.domain.quant.engine.engine import QuantEngine
-    from app.domain.market_data.sources.router import data_router
     from app.domain.market_data.services.valuation import sync_valuation
     from app.models.models import WatchlistItem
+    import pandas as pd
 
     async with async_session() as db:
         engine = QuantEngine(db)
-        # 1. 同步行情
-        rows = await engine.sync_market_data(stock_code, mode="AUTO")
-        # 2. 同步估值 (PE/PB/市值 → stock_info)
+        sync_mode = "AUTO" if mode == "daily" else "FULL"
+        rows = await engine.sync_market_data(stock_code, mode=sync_mode)
         await sync_valuation(target_codes=[stock_code])
-        # 3. 补全自选股名称 (从 stock_info 或行情)
+
         wl = await db.get(WatchlistItem, stock_code)
         if wl and not wl.stock_name:
             info = await db.get(StockInfo, stock_code)
             if info and info.stock_name:
                 wl.stock_name = info.stock_name
             await db.commit()
-        # 4. 查最新价格
+
         mr = await db.execute(
             select(MarketData.close, MarketData.change_pct)
             .where(MarketData.stock_code == stock_code)
@@ -94,8 +93,7 @@ async def trigger_single_sync(stock_code: str):
         row = mr.first()
 
     return {
-        "success": True,
-        "stock_code": stock_code,
+        "success": True, "stock_code": stock_code, "mode": mode,
         "new_rows": rows,
         "name": wl.stock_name if wl else "",
         "price": float(row[0]) if row and row[0] else None,
@@ -487,6 +485,14 @@ async def import_stock_csv(file: UploadFile = File(...)):
 # ═══════════════════════════════════════════
 # 宏观数据中心
 # ═══════════════════════════════════════════
+
+@router.post("/macro/sync")
+async def sync_macro(mode: str = "daily"):
+    """同步宏观数据 — mode=daily(当日最新) | historical(2年历史序列)"""
+    from app.domain.market_data.sources.router import data_router
+    result = await data_router.sync_macro_data()
+    return {"success": True, "data": result, "mode": mode}
+
 
 @router.get("/macro/latest")
 async def get_macro_latest():
