@@ -611,9 +611,9 @@ async def import_positions_to_watchlist():
 
 @router.post("/portfolio/snapshot")
 async def compute_portfolio_snapshot():
-    """计算当日持仓切片: 更新PnL + 记录历史快照"""
+    """计算当日持仓切片: 当日盈亏 + 累计盈亏 + 历史快照"""
     from app.models.models import PortfolioSnapshot
-    from datetime import date as d
+    from datetime import date as d, timedelta
 
     async with async_session() as db:
         # 1. 查询全部持仓
@@ -623,60 +623,78 @@ async def compute_portfolio_snapshot():
             return {"success": True, "message": "无持仓", "count": 0}
 
         today = d.today()
+        yesterday = today - timedelta(days=1)
         snapshots = []
         total_mv = 0.0
-        total_pl = 0.0
+        total_pl = 0.0       # 累计盈亏
+        total_daily_pl = 0.0 # 当日盈亏
 
         for pos in positions:
-            # 取最新行情
+            # 取最近两天行情
             mr = await db.execute(
-                select(MarketData.close)
+                select(MarketData.close, MarketData.trade_date)
                 .where(MarketData.stock_code == pos.stock_code)
-                .order_by(MarketData.trade_date.desc()).limit(1))
-            price_row = mr.first()
-            if not price_row or not price_row[0]:
+                .order_by(MarketData.trade_date.desc()).limit(2))
+            rows = mr.all()
+            if not rows:
                 continue
-            price = float(price_row[0])
+
+            today_price = float(rows[0][0] or 0)
+            yesterday_price = float(rows[1][0] or 0) if len(rows) > 1 else today_price
+            vol = pos.volume
+
+            # 当日盈亏 = 持仓量 × (今日收盘 - 昨日收盘)
+            daily_pl = vol * (today_price - yesterday_price) if yesterday_price > 0 else 0
+
+            # 累计盈亏 = 市值 - 成本
+            cost_basis = float(vol) * float(pos.avg_cost)
+            cumulative_pl = vol * today_price - cost_basis
 
             # 更新持仓
-            pos.current_price = price
-            pos.market_value = float(pos.volume) * price
-            cost_basis = float(pos.volume) * float(pos.avg_cost)
-            pos.profit_loss = pos.market_value - cost_basis
-            pos.profit_loss_ratio = round(pos.profit_loss / cost_basis * 100, 2) if cost_basis != 0 else None
+            pos.current_price = today_price
+            pos.market_value = vol * today_price
+            pos.profit_loss = cumulative_pl
+            pos.profit_loss_ratio = round(cumulative_pl / cost_basis * 100, 2) if cost_basis != 0 else None
 
             total_mv += pos.market_value
-            total_pl += pos.profit_loss
+            total_pl += cumulative_pl
+            total_daily_pl += daily_pl
 
-            # 查估值
             info = await db.get(StockInfo, pos.stock_code)
 
-            # 记录快照
             snapshots.append(PortfolioSnapshot(
                 snap_date=today,
                 stock_code=pos.stock_code, stock_name=pos.stock_name or "",
-                volume=pos.volume, avg_cost=float(pos.avg_cost),
-                current_price=price, market_value=pos.market_value,
-                profit_loss=pos.profit_loss, profit_loss_ratio=pos.profit_loss_ratio,
+                volume=vol, avg_cost=float(pos.avg_cost),
+                current_price=today_price, market_value=pos.market_value,
+                profit_loss=cumulative_pl, profit_loss_ratio=pos.profit_loss_ratio,
                 pe_ttm=info.pe_ttm if info else None,
                 pb=info.pb if info else None,
                 mcap_yi=info.mcap_yi if info else None,
             ))
 
-        # 2. 清理今日已有快照, 写入新快照
+        # 2. 查询历史已清仓盈亏 (从 TradeHistory)
+        from app.models.models import TradeHistory
+        realized_res = await db.execute(
+            select(__import__('sqlalchemy').func.sum(TradeHistory.profit_loss)))
+        realized_pl = realized_res.scalars().first() or 0.0
+
+        # 3. 清理今日已有快照, 写入新快照
         from sqlalchemy import delete as sqla_delete
         await db.execute(
-            sqla_delete(PortfolioSnapshot).where(
-                PortfolioSnapshot.snap_date == today))
+            sqla_delete(PortfolioSnapshot).where(PortfolioSnapshot.snap_date == today))
         db.add_all(snapshots)
         await db.commit()
 
-        logger.info(f"[Portfolio] Snapshot: {len(snapshots)} stocks, MV={total_mv:.0f}, P&L={total_pl:.0f}")
+        logger.info(f"[Portfolio] Snapshot: {len(snapshots)} stocks, MV={total_mv:.0f}, DailyPL={total_daily_pl:.0f}, CumPL={total_pl:.0f}")
         return {
             "success": True,
             "count": len(snapshots),
             "total_market_value": round(total_mv, 2),
-            "total_profit_loss": round(total_pl, 2),
+            "daily_profit_loss": round(total_daily_pl, 2),     # 当日盈亏
+            "cumulative_profit_loss": round(total_pl, 2),       # 累计盈亏 (持仓)
+            "realized_profit_loss": round(realized_pl, 2),      # 已实现盈亏 (清仓)
+            "total_profit_loss": round(realized_pl + total_pl, 2), # 历史总盈亏
         }
 
 

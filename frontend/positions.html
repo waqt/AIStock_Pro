@@ -85,7 +85,12 @@
             try {
                 const res = await fetch(`${API_BASE}/data/portfolio/snapshot`, { method: 'POST' });
                 const d = await res.json();
-                status.textContent = `完成: ${d.count||0}只, 市值¥${(d.total_market_value||0).toLocaleString()}, 盈亏¥${(d.total_profit_loss||0).toLocaleString()}`;
+                const daily = d.daily_profit_loss || 0;
+                const cumulative = d.cumulative_profit_loss || 0;
+                const realized = d.realized_profit_loss || 0;
+                const total = d.total_profit_loss || 0;
+                const dailyColor = daily >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+                status.innerHTML = `${d.count||0}只 | 市值¥${(d.total_market_value||0).toLocaleString()} | <span style="color:${dailyColor}">当日盈亏 ¥${daily.toLocaleString()}</span> | 累计持仓 ¥${cumulative.toLocaleString()} | 已实现 ¥${realized.toLocaleString()} | 历史总 ¥${total.toLocaleString()}`;
                 refreshPositions();
             } catch(e) { status.textContent = '失败: ' + e.message; }
             finally { btn.disabled = false; btn.innerHTML = '<i class="fas fa-calculator"></i> 刷新损益'; }
