@@ -253,19 +253,30 @@ async function wlLoad() {
                 <div class="panel-header"><span style="font-size:11px;">${escHtml(g)}</span><span style="font-size:9px;color:var(--text-micro);">(${stocks.length})</span></div>
                 <div class="panel-body" style="padding:0;">
                     <table class="watchlist-table">
-                        <thead><tr><th style="width:80px;">代码</th><th>名称</th><th style="text-align:right;width:70px;">现价</th><th style="text-align:right;width:70px;">涨跌</th><th style="text-align:right;width:80px;">市值(亿)</th><th style="text-align:right;width:60px;">PE</th><th style="text-align:center;width:80px;">操作</th></tr></thead>
+                        <thead><tr><th style="width:80px;">代码</th><th>名称</th><th style="text-align:right;width:65px;">现价</th><th style="text-align:right;width:65px;">涨跌</th><th style="text-align:right;width:70px;">市值(亿)</th><th style="text-align:right;width:55px;">PE</th><th style="text-align:right;width:70px;">营收(亿)</th><th style="text-align:right;width:55px;">净利率</th><th style="text-align:right;width:60px;">ROE</th><th style="text-align:center;width:90px;">操作</th></tr></thead>
                         <tbody>${stocks.map(s => {
                             const pct = s.change_pct;
                             const pc = pct != null ? (pct >= 0 ? 'var(--accent-green)' : 'var(--accent-red)') : 'var(--text-micro)';
                             const ps = pct != null ? ((pct>=0?'+':'') + pct.toFixed(2) + '%') : '—';
+                            const rev = s.fin_revenue;
+                            const profit = s.fin_profit;
+                            const cost = s.fin_cost;
+                            const equity = s.fin_equity;
+                            const nm = rev ? (profit/rev*100).toFixed(1) : '—';
+                            const roe = equity ? (profit/equity*100).toFixed(1) : '—';
+                            const revYi = rev ? (rev/1e8).toFixed(1) : '—';
                             return `<tr onclick="wlShowChart('${escHtml(s.stock_code)}','${escHtml(s.stock_name)}')" title="点击查看K线">
                                 <td style="width:80px;color:var(--accent-blue);">${escHtml(s.stock_code)}</td>
                                 <td style="color:#fff;">${escHtml(s.stock_name)}${s.is_held?'<span style="color:var(--accent-green);font-size:9px;">[持仓]</span>':''}</td>
-                                <td style="text-align:right;width:70px;">${s.price!=null?s.price.toFixed(2):'—'}</td>
-                                <td style="text-align:right;width:70px;color:${pc};">${ps}</td>
-                                <td style="text-align:right;width:80px;">${s.mcap_yi!=null?Math.round(s.mcap_yi):'—'}</td>
-                                <td style="text-align:right;width:60px;">${s.pe_ttm!=null?s.pe_ttm.toFixed(1):'—'}</td>
-                                <td style="text-align:center;width:80px;" onclick="event.stopPropagation();">
+                                <td style="text-align:right;width:65px;">${s.price!=null?s.price.toFixed(2):'—'}</td>
+                                <td style="text-align:right;width:65px;color:${pc};">${ps}</td>
+                                <td style="text-align:right;width:70px;">${s.mcap_yi!=null?Math.round(s.mcap_yi):'—'}</td>
+                                <td style="text-align:right;width:55px;">${s.pe_ttm!=null?s.pe_ttm.toFixed(1):'—'}</td>
+                                <td style="text-align:right;width:70px;">${revYi}</td>
+                                <td style="text-align:right;width:55px;">${nm}%</td>
+                                <td style="text-align:right;width:60px;">${roe}%</td>
+                                <td style="text-align:center;width:90px;" onclick="event.stopPropagation();">
+                                    <button onclick="wlFinDetail('${escHtml(s.stock_code)}','${escHtml(s.stock_name)}')" title="财务F10" style="background:none;border:none;color:var(--accent-gold);cursor:pointer;font-size:9px;"><i class="fas fa-file-invoice"></i></button>
                                     <button onclick="wlSyncOne('${escHtml(s.stock_code)}',this)" style="background:none;border:none;color:var(--accent-blue);cursor:pointer;font-size:9px;"><i class="fas fa-sync-alt"></i></button>
                                     <button onclick="wlEditGroup('${escHtml(s.stock_code)}','${escHtml(s.group_tag||'默认')}')" style="background:none;border:none;color:var(--accent-gold);cursor:pointer;font-size:9px;"><i class="fas fa-tag"></i></button>
                                     <button onclick="wlRemove('${escHtml(s.stock_code)}')" style="background:none;border:none;color:var(--accent-red);cursor:pointer;font-size:9px;"><i class="fas fa-trash"></i></button>
@@ -512,6 +523,51 @@ async function finLoad(code) {
                 }).join('')}</tbody>
             </table>`;
     } catch(e) { el.innerHTML = '<div style="color:var(--accent-red);">加载失败</div>'; }
+}
+
+// ── F10 财务明细 ──
+async function wlFinDetail(code, name) {
+    try {
+        const r = await fetch(`${API_BASE}/data/financial/${code}?periods=12`);
+        const d = await r.json();
+        const rows = d.data || [];
+        if (!rows.length) { addLog(`${code} 无财务数据, 请先在财务报告标签拉取`, 'warn'); return; }
+        const tbl = rows.map(r => {
+            const rev = (r.revenue||0)/1e8;
+            const profit = (r.parent_profit||0)/1e8;
+            const gm = r.revenue ? ((r.revenue-r.operate_cost)/r.revenue*100).toFixed(1) : '—';
+            const nm = r.revenue ? (profit*1e8/r.revenue*100).toFixed(1) : '—';
+            const roe = r.total_equity ? (profit*1e8/r.total_equity*100).toFixed(1) : '—';
+            const pc = profit >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+            return `<tr>
+                <td>${r.report_date}<br><span style="font-size:9px;color:var(--text-micro);">${r.report_type}</span></td>
+                <td style="text-align:right;">${rev.toFixed(2)}</td>
+                <td style="text-align:right;color:${pc};">${profit.toFixed(2)}</td>
+                <td style="text-align:right;">${gm}%</td><td style="text-align:right;">${nm}%</td>
+                <td style="text-align:right;">${roe}%</td>
+                <td style="text-align:right;">${((r.op_cashflow||0)/1e8).toFixed(2)}</td>
+                <td style="text-align:right;">${((r.inventory||0)/1e8).toFixed(2)}</td>
+                <td style="text-align:right;">${((r.contract_liability||0)/1e8).toFixed(2)}</td>
+                <td style="text-align:right;">${((r.total_assets||0)/1e8).toFixed(2)}</td>
+                <td style="text-align:right;">${((r.total_liabilities||0)/1e8).toFixed(2)}</td>
+            </tr>`;
+        }).join('');
+        let html = `<div style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:1000;display:flex;justify-content:center;align-items:center;backdrop-filter:blur(4px);" onclick="this.remove()">
+            <div style="background:var(--bg-card);width:95%;max-width:1100px;max-height:85vh;border-radius:8px;border:1px solid var(--border-color);overflow:hidden;" onclick="event.stopPropagation()">
+                <div style="padding:10px 14px;border-bottom:1px solid var(--border-color);display:flex;justify-content:space-between;">
+                    <span style="font-weight:700;">${escHtml(code)} ${escHtml(name)} — 财务报告</span>
+                    <button onclick="this.closest('div[style*=fixed]').remove()" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:16px;">&times;</button>
+                </div>
+                <div style="overflow-x:auto;max-height:70vh;">
+                    <table class="health-table"><thead><tr>
+                        <th>报告期</th><th style="text-align:right;">营收(亿)</th><th style="text-align:right;">净利润(亿)</th><th style="text-align:right;">毛利率</th><th style="text-align:right;">净利率</th><th style="text-align:right;">ROE</th>
+                        <th style="text-align:right;">CF(亿)</th><th style="text-align:right;">存货(亿)</th><th style="text-align:right;">合同负债(亿)</th><th style="text-align:right;">总资产(亿)</th><th style="text-align:right;">负债(亿)</th>
+                    </tr></thead><tbody>${tbl}</tbody></table>
+                </div>
+            </div>
+        </div>`;
+        document.body.insertAdjacentHTML('beforeend', html);
+    } catch(e) { addLog(`财务加载失败: ${e.message}`, 'error'); }
 }
 
 // ═══ Sync triggers ═══

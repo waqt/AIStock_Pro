@@ -572,6 +572,25 @@ async def list_watchlist():
         else:
             val_map = {}
 
+        # 批量查最新季度财务
+        fin_map = {}
+        if codes:
+            for code in codes:
+                fr = await db.execute(
+                    select(FinancialStatement.revenue, FinancialStatement.parent_profit,
+                           FinancialStatement.operate_cost, FinancialStatement.total_equity,
+                           FinancialStatement.report_date)
+                    .where(FinancialStatement.stock_code == code)
+                    .order_by(FinancialStatement.report_date.desc()).limit(2))
+                rows = fr.all()
+                if rows:
+                    fin_map[code] = {"revenue": float(rows[0][0] or 0), "profit": float(rows[0][1] or 0),
+                                     "cost": float(rows[0][2] or 0), "equity": float(rows[0][3] or 0),
+                                     "report_date": str(rows[0][4])}
+                    if len(rows) >= 2:
+                        fin_map[code]["prev_revenue"] = float(rows[1][0] or 0)
+                        fin_map[code]["prev_profit"] = float(rows[1][1] or 0)
+
         return {"success": True, "data": [
             {"stock_code": i.stock_code, "stock_name": i.stock_name,
              "group_tag": i.group_tag, "is_held": i.is_held,
@@ -580,6 +599,12 @@ async def list_watchlist():
              "change_pct": price_map.get(i.stock_code, {}).get("change_pct"),
              "pe_ttm": val_map.get(i.stock_code, {}).get("pe_ttm"),
              "mcap_yi": val_map.get(i.stock_code, {}).get("mcap_yi"),
+             "fin_revenue": fin_map.get(i.stock_code, {}).get("revenue"),
+             "fin_profit": fin_map.get(i.stock_code, {}).get("profit"),
+             "fin_cost": fin_map.get(i.stock_code, {}).get("cost"),
+             "fin_equity": fin_map.get(i.stock_code, {}).get("equity"),
+             "fin_date": fin_map.get(i.stock_code, {}).get("report_date"),
+             "fin_revenue_qoq": (fin_map.get(i.stock_code, {}).get("revenue",0) / max(fin_map.get(i.stock_code, {}).get("prev_revenue",1), 1) - 1) * 100 if fin_map.get(i.stock_code, {}).get("prev_revenue") else None,
             }
             for i in items
         ]}
