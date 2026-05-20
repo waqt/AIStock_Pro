@@ -208,17 +208,23 @@
                 const data = await res.json();
                 const items = data.data || [];
                 if (!items.length) { el.innerHTML = '<div style="color:var(--text-micro);padding:20px;text-align:center;">暂无宏观数据, 请点击同步</div>'; return; }
-                const names = {XAU:'黄金',XAG:'白银',BRENT:'原油',DXY:'美元指数',USD_CNY:'美元/人民币',HKD_CNY:'港币/人民币',US10YT:'美债10Y',US_FED_RATE:'联邦基金利率',CREDIT_IMPULSE:'信用脉冲'};
+                const names = {XAU:'黄金',XAG:'白银',BRENT:'原油',USD_CNY:'美元/人民币',HKD_CNY:'港币/人民币',US10YT:'美债10Y'};
+                const pending = ['DXY:美元指数','US_FED_RATE:联邦基金利率','CN_PPI:中国PPI','US_PPI:美国PPI','CREDIT_IMPULSE:信用脉冲'];
                 el.innerHTML = items.map(i => {
                     const pct = i.change_pct;
                     const pctStr = pct != null ? ((pct>=0?'+':'') + pct.toFixed(2) + '%') : '';
                     const pctColor = pct != null ? (pct>=0 ? 'var(--accent-green)' : 'var(--accent-red)') : 'var(--text-micro)';
+                    const n = names[i.code] || i.code;
                     return `<div class="panel" style="flex:1;min-width:140px;max-width:200px;padding:12px;text-align:center;">
-                        <div style="font-size:10px;color:var(--text-micro);">${names[i.code]||i.code}</div>
+                        <div style="font-size:10px;color:var(--text-micro);">${n}</div>
                         <div style="font-size:20px;font-weight:700;color:#fff;margin:4px 0;">${i.rate != null ? i.rate.toFixed(4) : '—'}</div>
                         <div style="font-size:11px;color:${pctColor};">${pctStr||'—'}</div>
                     </div>`;
                 }).join('');
+                // Pending indicators
+                el.innerHTML += `<div style="width:100%;margin-top:8px;padding:8px;background:rgba(255,255,255,0.02);border-radius:4px;font-size:10px;color:var(--text-micro);">
+                    待接入: ${pending.join(' | ')}
+                </div>`;
                 // Sync button
                 el.innerHTML += `<div style="width:100%;text-align:center;margin-top:4px;">
                     <button class="btn-action" onclick="syncMacroData()" style="font-size:10px;"><i class="fas fa-sync-alt"></i> 刷新宏观数据</button>

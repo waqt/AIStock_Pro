@@ -178,44 +178,38 @@ class DataRouter:
         except Exception as e:
             logger.warning(f"[⚠️] Sina macro fetch failed: {e}")
 
-        # ── Phase 2: akshare 美债/利率 ──
+        # ── Phase 2: akshare 美债收益率 ──
         try:
             import akshare as ak
-            import pandas as pd
             loop = __import__('asyncio').get_event_loop()
 
-            # 美国10年期国债收益率
+            # 美国10年期国债收益率 (ak.bond_zh_us_rate 已验证可用)
             try:
                 df = await loop.run_in_executor(None, ak.bond_zh_us_rate)
                 if df is not None and not df.empty:
-                    latest = df.sort_values('日期').iloc[-1]
-                    result['US10YT'] = {
-                        'name': 'US10YT', 'price': float(latest['美国国债收益率10年']),
-                        'change_pct': None,
-                    }
-                    # 存历史序列
-                    await self._save_macro_history('US10YT', df, '日期', '美国国债收益率10年')
+                    # 列名: 日期 / 中国国债收益率2年 / 5年 / 10年 / 30年 / 美国国债收益率2年 / 5年 / 10年 / 30年
+                    cols = df.columns
+                    us10y_col = [c for c in cols if '美国' in c and '10' in c]
+                    if us10y_col:
+                        latest = df.sort_values('日期').iloc[-1]
+                        result['US10YT'] = {
+                            'name': 'US10YT', 'price': float(latest[us10y_col[0]]),
+                            'change_pct': None,
+                        }
+                        await self._save_macro_history('US10YT', df, '日期', us10y_col[0])
+                        logger.info(f"[✅] US10YT: {result['US10YT']['price']}%")
             except Exception as e:
                 logger.warning(f"[⚠️] US10YT fetch failed: {e}")
 
-            # 美联储利率
-            try:
-                df_rate = await loop.run_in_executor(None, ak.macro_bank_usa_interest_rate)
-                if df_rate is not None and not df_rate.empty:
-                    # 取最新的联邦基金利率
-                    cols = [c for c in df_rate.columns if '联邦基金' in c or 'fed' in c.lower() or '有效' in c]
-                    if not cols: cols = [df_rate.columns[1]] if len(df_rate.columns) > 1 else []
-                    if cols:
-                        latest = df_rate.sort_values(df_rate.columns[0]).iloc[-1]
-                        result['US_FED_RATE'] = {
-                            'name': 'US_FED_RATE', 'price': float(latest[cols[0]]),
-                            'change_pct': None,
-                        }
-            except Exception as e:
-                logger.warning(f"[⚠️] US_FED_RATE fetch failed: {e}")
-
         except Exception as e:
             logger.warning(f"[⚠️] akshare macro fetch failed: {e}")
+
+        # ── 注: 以下数据源待接入 ──
+        # DXY (美元指数): Sina hf_DINIW 返回空; akshare currency_latest 需要第三方 API key
+        # US_FED_RATE: ak.macro_bank_usa_interest_rate 列名乱码+NaN, 数据质量不可用
+        # CN_PPI: ak.macro_china_ppi_yearly 最新值 NaN
+        # US_PPI: 需要 FRED API key
+        # CREDIT_IMPULSE: 需要 PBOC 社融 + GDP 计算逻辑
 
         # ── 写入 ExchangeRate 表 ──
         if result:
