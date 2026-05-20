@@ -213,7 +213,7 @@ async function loadMacro() {
             const pct = i.change_pct;
             const pctStr = pct != null ? ((pct>=0?'+':'') + pct.toFixed(2) + '%') : '';
             const pctColor = pct != null ? (pct>=0 ? 'var(--accent-green)' : 'var(--accent-red)') : 'var(--text-micro)';
-            return `<div class="macro-card">
+            return `<div class="macro-card" style="cursor:pointer;" onclick="showMacroHistory('${i.code}','${names[i.code]||i.code}')" title="点击查看历史趋势">
                 <div class="label">${names[i.code]||i.code}</div>
                 <div class="value">${i.rate != null ? i.rate.toFixed(4) : '—'}</div>
                 <div class="change" style="color:${pctColor}">${pctStr||'—'}</div>
@@ -392,6 +392,42 @@ async function viewDetail(code) {
             `最新: 开${d.latest_quote?.open||'—'} 高${d.latest_quote?.high||'—'} 低${d.latest_quote?.low||'—'} 收${d.latest_quote?.close||'—'}\n` +
             `涨跌: ${d.latest_quote?.change_pct!=null?d.latest_quote.change_pct.toFixed(2)+'%':'—'}`);
     } catch(e) { addLog(`体检失败: ${e.message}`, 'error'); }
+}
+
+// ── 宏观历史趋势图 ──
+async function showMacroHistory(code, name) {
+    try {
+        const res = await fetch(`${API_BASE}/data/macro/history?code=${code}&days=365`);
+        const d = await res.json();
+        const data = d.data || [];
+        if (!data.length) { addLog(`${name} 无历史数据`, 'warn'); return; }
+        const dates = data.map(r => r.date);
+        const values = data.map(r => r.value);
+        const id = 'macro-chart-' + Date.now();
+        let modalHtml = `<div style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:1000;display:flex;justify-content:center;align-items:center;backdrop-filter:blur(4px);" onclick="this.remove()">
+            <div style="background:var(--bg-card);width:80%;max-width:800px;border-radius:8px;border:1px solid var(--border-color);overflow:hidden;" onclick="event.stopPropagation()">
+                <div style="padding:10px 14px;border-bottom:1px solid var(--border-color);display:flex;justify-content:space-between;">
+                    <span style="font-weight:700;">${escHtml(name)} 历史趋势 (${data.length}天)</span>
+                    <button onclick="this.closest('div[style*=fixed]').remove()" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:16px;">&times;</button>
+                </div>
+                <div id="${id}" style="width:100%;height:400px;"></div>
+            </div>
+        </div>`;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        setTimeout(() => {
+            const c = document.getElementById(id);
+            if (!c || !window.echarts) return;
+            const chart = echarts.init(c);
+            chart.setOption({
+                tooltip: { trigger: 'axis' },
+                xAxis: { type: 'category', data: dates, axisLabel: { fontSize: 9, rotate: 30 } },
+                yAxis: { type: 'value', scale: true, splitLine: { lineStyle: { color: '#1a1a1a' } } },
+                series: [{ type: 'line', data: values, smooth: true, symbol: 'none',
+                    lineStyle: { color: '#60a5fa', width: 1.5 },
+                    areaStyle: { color: 'rgba(96,165,250,0.08)' } }]
+            });
+        }, 200);
+    } catch(e) { addLog(`历史加载失败: ${e.message}`, 'error'); }
 }
 
 // ═══ Sync triggers ═══
