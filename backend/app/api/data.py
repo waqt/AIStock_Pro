@@ -26,13 +26,14 @@ class SyncRequest(BaseModel):
 async def get_daily_data(stock_code: str, limit: int = Query(default=500, le=1000)):
     """获取个股日线数据 (JSON 数组, 按日期正序)"""
     async with async_session() as db:
+        # 取最近 N 天: 倒序查 N 条 → Python 反转
         res = await db.execute(
             select(MarketData)
             .where(MarketData.stock_code == stock_code)
-            .order_by(MarketData.trade_date.asc())
+            .order_by(MarketData.trade_date.desc())
             .limit(limit)
         )
-        rows = res.scalars().all()
+        rows = res.scalars().all()[::-1]  # 反转为正序
 
         # 查持仓名称
         name_res = await db.execute(select(Position.stock_name).where(Position.stock_code == stock_code))
