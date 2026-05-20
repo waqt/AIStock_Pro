@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     DEEPSEEK_API_KEY: Optional[str] = None
     DEEPSEEK_BASE_URL: str = "https://api.deepseek.com"
     DEEPSEEK_MODEL: str = "deepseek-chat"
+    DEEPSEEK_FLASH_MODEL: str = "deepseek-v4-flash"
+    DEEPSEEK_PRO_MODEL: str = "deepseek-v4-pro"
+    DEEPSEEK_THINKING: bool = False  # Pro模型是否启用思考模式
     DOUBAO_API_KEY: Optional[str] = None
     DOUBAO_BASE_URL: str = "https://ark.cn-beijing.volces.com/api/v3"
     DOUBAO_MODEL: str = "doubao-seed-2-0-mini-260428"

@@ -21,7 +21,7 @@ class ResearchAgent(BaseAgent):
             prompt = self.build_prompt(enriched)
             # 3. 调用 LLM
             if self.provider:
-                text = await self.provider.chat(prompt)
+                text = await self.provider.chat_pro(prompt)
                 return self.parse_result(text, enriched)
             return {"error": "No AI provider configured", "agent": self.name}
         except Exception as e:

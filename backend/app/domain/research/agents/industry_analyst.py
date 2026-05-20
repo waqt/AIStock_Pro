@@ -18,7 +18,7 @@ class IndustryAnalyst(ResearchAgent):
         if not self.provider:
             return {"agent": self.name, "error": "No AI provider", "data": ctx}
 
-        text = await self.provider.chat(prompt)
+        text = await self.provider.chat_pro(prompt)
         return self.parse_result(text, ctx)
 
     async def load_context(self, ctx: Dict[str, Any]) -> Dict[str, Any]:

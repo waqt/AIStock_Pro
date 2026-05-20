@@ -235,7 +235,7 @@ class DAGOrchestrator(ResearchAgent):
 
         try:
             text = await asyncio.wait_for(
-                self.provider.chat(prompt, max_tokens=3072), timeout=60)
+                self.provider.chat_pro(prompt, max_tokens=3072), timeout=60)
             result = self.parse_json(text)
             if isinstance(result, dict):
                 result["detail"] = {

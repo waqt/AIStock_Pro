@@ -24,7 +24,7 @@ class AILogicChainEngine:
             persona=self.definition.get("persona", ""),
             indicators=indicators,
         )
-        text = await self.provider.chat(
+        text = await self.provider.chat_pro(
             prompt, max_tokens=512)
         if not text:
             return SignalResult.create(stock_code, self.name, "ai_chain",

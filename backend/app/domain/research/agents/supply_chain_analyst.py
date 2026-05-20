@@ -90,7 +90,7 @@ class SupplyChainAnalyst(ResearchAgent):
 {{"findings": [{{"key": "关键发现1", "detail": "细节"}}], "gaps": ["缺口1","缺口2"], "need_more_search": true/false}}"""
 
             try:
-                text = await asyncio.wait_for(self.provider.chat(prompt, max_tokens=2048), timeout=45)
+                text = await asyncio.wait_for(self.provider.chat_pro(prompt, max_tokens=2048), timeout=45)
                 result = self.parse_json(text)
                 if isinstance(result, dict):
                     findings = result.get("findings", [])
@@ -193,7 +193,7 @@ class SupplyChainAnalyst(ResearchAgent):
 每个财务数据字段如果搜索结果中有就填, 没有就基于训练知识估算并标注 (估)。"""
 
         try:
-            text = await asyncio.wait_for(self.provider.chat(prompt, max_tokens=8192), timeout=90)
+            text = await asyncio.wait_for(self.provider.chat_pro(prompt, max_tokens=8192), timeout=90)
             if not text:
                 logger.warning(f"[{self.name}] Phase 2: provider returned empty response")
                 return {"summary": "结构化报告生成失败: AI 无响应", "raw_findings": findings}

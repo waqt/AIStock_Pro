@@ -154,7 +154,7 @@ class MarketScanner(ResearchAgent):
     async def _safe_call(self, prompt: str) -> str:
         try:
             return await asyncio.wait_for(
-                self.provider.chat(prompt, max_tokens=2048), timeout=45) or ""
+                self.provider.chat_pro(prompt, max_tokens=2048), timeout=45) or ""
         except asyncio.TimeoutError:
             logger.warning("[MarketScanner] LLM call timed out")
             return "分析超时, 请重试"

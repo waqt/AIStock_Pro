@@ -92,7 +92,7 @@ class SupplyChainHacker(ResearchAgent):
 
             try:
                 text = await asyncio.wait_for(
-                    self.provider.chat(prompt, max_tokens=2048), timeout=45)
+                    self.provider.chat_pro(prompt, max_tokens=2048), timeout=45)
                 result = self.parse_json(text)
                 if isinstance(result, dict):
                     findings = result.get("findings", [])
@@ -185,7 +185,7 @@ gap_score 评分标准:
 
         try:
             text = await asyncio.wait_for(
-                self.provider.chat(prompt, max_tokens=8192), timeout=90)
+                self.provider.chat_pro(prompt, max_tokens=8192), timeout=90)
             result = self.parse_json(text)
             if isinstance(result, dict):
                 result["findings_count"] = len(findings)
@@ -273,7 +273,7 @@ gap_score 评分标准:
 
         try:
             text = await asyncio.wait_for(
-                self.provider.chat(prompt, max_tokens=4096), timeout=60)
+                self.provider.chat_pro(prompt, max_tokens=4096), timeout=60)
             result = self.parse_json(text)
             if isinstance(result, dict):
                 result["agent"] = self.name
