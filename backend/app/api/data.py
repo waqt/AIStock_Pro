@@ -78,6 +78,9 @@ async def trigger_single_sync(stock_code: str, mode: str = "daily"):
         sync_mode = "AUTO" if mode == "daily" else "FULL"
         rows = await engine.sync_market_data(stock_code, mode=sync_mode)
         await sync_valuation(target_codes=[stock_code])
+        # 同步基本信息 (行业/总股本/上市时间)
+        from app.domain.market_data.services.valuation import sync_stock_info as sync_info
+        await sync_info(stock_code)
 
         wl = await db.get(WatchlistItem, stock_code)
         if wl and not wl.stock_name:
@@ -719,6 +722,29 @@ async def get_portfolio_snapshots(days: int = 30):
              "profit_loss_ratio": r.profit_loss_ratio}
             for r in rows
         ]}
+
+
+@router.post("/stock-info/sync/{stock_code}")
+async def sync_single_stock_info(stock_code: str):
+    """同步单只股票的基本信息 (行业/总股本/上市时间)"""
+    from app.domain.market_data.services.valuation import sync_stock_info
+    ok = await sync_stock_info(stock_code)
+    return {"success": ok, "stock_code": stock_code}
+
+
+@router.post("/stock-info/sync")
+async def sync_all_stock_info():
+    """批量同步全部持仓+自选股的基本信息"""
+    from app.domain.market_data.services.valuation import sync_stock_info
+    async with async_session() as db:
+        pos_res = await db.execute(select(Position.stock_code))
+        wl_res = await db.execute(select(WatchlistItem.stock_code))
+        codes = list(set([r[0] for r in pos_res.all()] + [r[0] for r in wl_res.all()]))
+    ok = 0
+    for code in codes:
+        if await sync_stock_info(code):
+            ok += 1
+    return {"success": True, "synced": ok, "total": len(codes)}
 
 
 @router.post("/watchlist/refresh-held")
