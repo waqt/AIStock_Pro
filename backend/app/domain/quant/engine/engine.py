@@ -194,11 +194,19 @@ class QuantEngine:
         批量同步 (数据同步与指标计算已分离)
         节点: FX → FETCHING → SAVING → UPDATING_POSITIONS → VALUATION
         指标计算独立: POST /api/quant/indicators/compute
-        target_codes: 可选, 指定要同步的股票代码列表; 为None则同步全部持仓
+        target_codes: 可选; None则同步全部持仓+全部自选股
         """
+        from app.models.models import WatchlistItem
         result = await self.db.execute(select(Position))
         positions = result.scalars().all()
-        if target_codes:
+        if not target_codes:
+            # 全量同步: 持仓 + 自选股 (去重)
+            wl_res = await self.db.execute(select(WatchlistItem.stock_code))
+            wl_codes = [r[0] for r in wl_res.all()]
+            pos_codes = {p.stock_code for p in positions}
+            extra = [type('_', (), {'stock_code': c})() for c in wl_codes if c not in pos_codes]
+            positions = positions + extra
+        elif target_codes:
             # 允许同步非持仓股: 不在持仓中的 code 构造虚拟条目
             pos_codes = {p.stock_code for p in positions}
             extra = [type('_', (), {'stock_code': c})() for c in target_codes if c not in pos_codes]

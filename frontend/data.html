@@ -412,7 +412,10 @@
             if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
             try {
                 await fetch(`${API_BASE}/data/sync/daily/${code}`, { method: 'POST' });
+                // 补全名称
+                await fetch(`${API_BASE}/data/watchlist/${code}`, { method: 'PUT' });
                 addLog(`${code} 同步完成`, 'success');
+                wlLoad(); // 刷新列表
             } catch(e) { addLog(`${code} 同步失败`, 'error'); }
             if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-sync-alt"></i>'; }
         }

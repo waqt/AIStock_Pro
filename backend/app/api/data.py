@@ -617,8 +617,13 @@ async def update_watchlist(stock_code: str, group_tag: str = None, stock_name: s
             raise HTTPException(status_code=404, detail="Not in watchlist")
         if group_tag: item.group_tag = group_tag
         if stock_name: item.stock_name = stock_name
+        # 如果名字为空，尝试从 StockInfo 补全
+        if not item.stock_name:
+            info = await db.get(StockInfo, stock_code)
+            if info and info.stock_name:
+                item.stock_name = info.stock_name
         await db.commit()
-        return {"success": True, "message": f"Updated {stock_code}"}
+        return {"success": True, "message": f"Updated {stock_code}", "name": item.stock_name}
 
 
 @router.post("/watchlist/sync")
