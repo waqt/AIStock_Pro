@@ -119,14 +119,15 @@
                     <!-- Tab: 自选股 -->
                     <div id="tab-panel-watchlist" style="display:none;">
                         <div class="panel" style="padding:10px;margin-bottom:8px;">
-                            <div style="display:flex;gap:6px;">
+                            <div style="display:flex;gap:6px;margin-bottom:6px;">
                                 <input type="text" id="wl-code" placeholder="股票代码" style="flex:1;background:#000;border:1px solid var(--border-color);color:#fff;padding:6px 8px;border-radius:4px;font-size:11px;">
-                                <input type="text" id="wl-name" placeholder="名称(可选)" style="flex:1;background:#000;border:1px solid var(--border-color);color:#fff;padding:6px 8px;border-radius:4px;font-size:11px;">
                                 <input type="text" id="wl-group" placeholder="分组" style="width:80px;background:#000;border:1px solid var(--border-color);color:#fff;padding:6px 8px;border-radius:4px;font-size:11px;" value="默认">
                                 <button class="btn-action" onclick="wlAdd()" style="font-size:11px;white-space:nowrap;">添加</button>
                             </div>
-                            <div style="margin-top:6px;">
-                                <button class="btn-action" onclick="wlSync()" style="font-size:11px;border-color:var(--accent-green);color:var(--accent-green);">同步全部自选</button>
+                            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                                <button class="btn-action" onclick="wlImportPositions()" style="font-size:10px;border-color:var(--accent-blue);color:var(--accent-blue);"><i class="fas fa-download"></i> 从持仓导入</button>
+                                <button class="btn-action" onclick="wlSync()" style="font-size:10px;border-color:var(--accent-green);color:var(--accent-green);"><i class="fas fa-sync-alt"></i> 同步行情</button>
+                                <button class="btn-action" onclick="wlRefreshHeld()" style="font-size:10px;"><i class="fas fa-check-double"></i> 刷新状态</button>
                             </div>
                         </div>
                         <div id="watchlist-table" style="max-height:55vh;overflow-y:auto;"></div>
@@ -239,7 +240,7 @@
                 const data = await res.json();
                 const items = data.data || [];
                 const el = document.getElementById('watchlist-table');
-                if (!items.length) { el.innerHTML = '<div style="color:var(--text-micro);padding:20px;text-align:center;">自选股为空, 上方添加</div>'; return; }
+                if (!items.length) { el.innerHTML = '<div style="color:var(--text-micro);padding:20px;text-align:center;">自选股为空, 点上方"从持仓导入"或手动添加</div>'; return; }
                 // Group by group_tag
                 const groups = {};
                 items.forEach(i => { const g = i.group_tag || '默认'; if (!groups[g]) groups[g] = []; groups[g].push(i); });
@@ -252,10 +253,11 @@
                                     <span>
                                         <span style="color:var(--accent-blue);">${escHtml(s.stock_code)}</span>
                                         <span style="margin-left:6px;color:#fff;">${escHtml(s.stock_name)}</span>
-                                        ${s.is_held ? '<span style="color:var(--accent-green);font-size:9px;">[持仓]</span>' : ''}
+                                        ${s.is_held ? '<span style="color:var(--accent-green);font-size:9px;margin-left:4px;">[持仓]</span>' : '<span style="color:var(--text-micro);font-size:9px;margin-left:4px;">[关注]</span>'}
                                     </span>
-                                    <span>
-                                        <button onclick="wlRemove('${escHtml(s.stock_code)}')" style="background:none;border:none;color:var(--accent-red);cursor:pointer;font-size:10px;"><i class="fas fa-trash"></i></button>
+                                    <span style="display:flex;gap:4px;align-items:center;">
+                                        <button onclick="wlSyncOne('${escHtml(s.stock_code)}', this)" title="单股同步" style="background:none;border:none;color:var(--accent-blue);cursor:pointer;font-size:9px;"><i class="fas fa-sync-alt"></i></button>
+                                        <button onclick="wlRemove('${escHtml(s.stock_code)}')" title="删除" style="background:none;border:none;color:var(--accent-red);cursor:pointer;font-size:10px;"><i class="fas fa-trash"></i></button>
                                     </span>
                                 </div>`).join('')}
                         </div>
@@ -279,6 +281,16 @@
             try { await fetch(`${API_BASE}/data/watchlist/${code}`, { method: 'DELETE' }); wlLoad(); } catch(e) {}
         }
 
+        async function wlImportPositions() {
+            addLog('从持仓导入自选股...', 'info');
+            try {
+                const res = await fetch(`${API_BASE}/data/watchlist/import-positions`, { method: 'POST' });
+                const d = await res.json();
+                addLog(`导入完成: ${d.imported||0}只新增`, 'success');
+                wlLoad();
+            } catch(e) { addLog(`导入失败: ${e.message}`, 'error'); }
+        }
+
         async function wlSync() {
             addLog('同步全部自选股行情+估值...', 'info');
             try {
@@ -287,6 +299,24 @@
                 addLog(`同步完成: ${d.synced||0}只`, 'success');
                 updateHealthTable();
             } catch(e) { addLog(`同步失败: ${e.message}`, 'error'); }
+        }
+
+        async function wlRefreshHeld() {
+            try {
+                const res = await fetch(`${API_BASE}/data/watchlist/refresh-held`, { method: 'POST' });
+                const d = await res.json();
+                addLog(`持仓状态更新: ${d.updated||0}只`, 'success');
+                wlLoad();
+            } catch(e) {}
+        }
+
+        async function wlSyncOne(code, btn) {
+            if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+            try {
+                await fetch(`${API_BASE}/data/sync/daily/${code}`, { method: 'POST' });
+                addLog(`${code} 同步完成`, 'success');
+            } catch(e) { addLog(`${code} 同步失败`, 'error'); }
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-sync-alt"></i>'; }
         }
 
         function addLog(msg, type) {

@@ -508,15 +508,63 @@ async def list_watchlist():
 
 @router.post("/watchlist/add")
 async def add_to_watchlist(stock_code: str, stock_name: str = "", group_tag: str = "默认"):
-    """添加自选股"""
+    """添加自选股 (自动补全名称+持仓标记)"""
     async with async_session() as db:
+        # 自动补全名称
+        if not stock_name:
+            info = await db.get(StockInfo, stock_code)
+            if info and info.stock_name:
+                stock_name = info.stock_name
+        # 检查是否持仓
+        pos = await db.get(Position, stock_code)
+        is_held = pos is not None
+        # Upsert
         existing = await db.get(WatchlistItem, stock_code)
         if existing:
             existing.group_tag = group_tag
             if stock_name: existing.stock_name = stock_name
+            existing.is_held = is_held
         else:
-            db.add(WatchlistItem(stock_code=stock_code, stock_name=stock_name, group_tag=group_tag))
+            db.add(WatchlistItem(stock_code=stock_code, stock_name=stock_name,
+                group_tag=group_tag, is_held=is_held))
         await db.commit()
+        return {"success": True, "message": f"Added {stock_code}", "name": stock_name, "is_held": is_held}
+
+
+@router.post("/watchlist/import-positions")
+async def import_positions_to_watchlist():
+    """一键从持仓导入到自选股"""
+    async with async_session() as db:
+        res = await db.execute(select(Position.stock_code, Position.stock_name))
+        positions = res.all()
+        count = 0
+        for code, name in positions:
+            existing = await db.get(WatchlistItem, code)
+            if existing:
+                existing.is_held = True
+                if name and not existing.stock_name: existing.stock_name = name
+            else:
+                db.add(WatchlistItem(stock_code=code, stock_name=name, group_tag="持仓股", is_held=True))
+                count += 1
+        await db.commit()
+        return {"success": True, "imported": count, "message": f"Imported {count} new, updated existing"}
+
+
+@router.post("/watchlist/refresh-held")
+async def refresh_watchlist_held_status():
+    """刷新所有自选股的持仓状态"""
+    async with async_session() as db:
+        pos_res = await db.execute(select(Position.stock_code))
+        held_codes = {r[0] for r in pos_res.all()}
+        wl_res = await db.execute(select(WatchlistItem))
+        updated = 0
+        for item in wl_res.scalars().all():
+            new_status = item.stock_code in held_codes
+            if item.is_held != new_status:
+                item.is_held = new_status
+                updated += 1
+        await db.commit()
+        return {"success": True, "updated": updated}
         return {"success": True, "message": f"Added {stock_code}"}
 
 
