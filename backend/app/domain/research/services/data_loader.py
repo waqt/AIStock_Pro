@@ -183,6 +183,32 @@ class ResearchDataLoader:
         import pandas as pd
         from app.framework.config import settings
 
+        # DB 优先: 查 financial_statements 表
+        from app.models.models import FinancialStatement
+        async with async_session() as db:
+            res = await db.execute(
+                select(FinancialStatement)
+                .where(FinancialStatement.stock_code == code)
+                .order_by(FinancialStatement.report_date.desc())
+                .limit(periods)
+            )
+            rows = res.scalars().all()
+            if len(rows) >= 4:
+                quarters = [{
+                    "report_date": str(r.report_date),
+                    "revenue": float(r.revenue or 0), "profit": float(r.parent_profit or 0),
+                    "operate_cost": float(r.operate_cost or 0), "op_cashflow": float(r.op_cashflow or 0),
+                    "inventory": float(r.inventory or 0), "contract_liability": float(r.contract_liability or 0),
+                    "accounts_receivable": float(r.accounts_receivable or 0),
+                    "total_assets": float(r.total_assets or 0), "current_assets": float(r.current_assets or 0),
+                    "fixed_assets": float(r.fixed_assets or 0), "total_liabilities": float(r.total_liabilities or 0),
+                    "total_equity": float(r.total_equity or 0),
+                    "sale_expense": float(r.sale_expense or 0), "manage_expense": float(r.manage_expense or 0),
+                    "rd_expense": float(r.rd_expense or 0),
+                } for r in reversed(rows)]
+                return {"code": code, "quarters": quarters, "source": "DB"}
+
+        # DB 无数据 → akshare 实时拉取 (旧逻辑)
         prefix = self._code_to_akshare_prefix(code)
         if not prefix:
             logger.warning(f"[Financial] Unsupported code format: {code}")

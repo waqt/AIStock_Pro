@@ -104,12 +104,16 @@
     </div>
 </div>
 
-<!-- Tab: 财务报告 (待建设) -->
+<!-- Tab: 财务报告 -->
 <div class="data-tab-panel" id="tab-financial" style="display:none;">
-    <div class="placeholder-tab">
-        <div class="icon">📊</div>
-        <div style="font-size:14px;color:var(--text-dim);">财务报告中心 — 建设中</div>
-        <div style="font-size:11px;margin-top:8px;">8Q趋势图 + 季度明细表 + 异动高亮</div>
+    <div class="toolbar">
+        <input type="text" id="fin-code" placeholder="股票代码" style="width:120px;">
+        <button class="btn-action" onclick="finSync()" style="font-size:11px;border-color:var(--accent-green);color:var(--accent-green);"><i class="fas fa-sync-alt"></i> 拉取财报</button>
+        <button class="btn-action" onclick="finBatchSync()" style="font-size:11px;"><i class="fas fa-layer-group"></i> 批量同步</button>
+        <span style="font-size:10px;color:var(--text-micro);">仅同步自选股 | 8Q趋势+明细</span>
+    </div>
+    <div id="financial-content" style="max-height:65vh;overflow-y:auto;">
+        <div style="color:var(--text-micro);padding:40px;text-align:center;">输入股票代码, 点击"拉取财报"</div>
     </div>
 </div>
 
@@ -426,6 +430,72 @@ async function showMacroHistory(code, name) {
             });
         }, 200);
     } catch(e) { addLog(`历史加载失败: ${e.message}`, 'error'); }
+}
+
+// ═══ Financial Reports ═══
+async function finSync() {
+    const code = document.getElementById('fin-code').value.trim();
+    if (!code) { addLog('请输入代码', 'warn'); return; }
+    addLog(`拉取 ${code} 财报...`, 'info');
+    try {
+        const r = await fetch(`${API_BASE}/data/financial/sync/${code}`, { method: 'POST' });
+        const d = await r.json();
+        addLog(`${code}: ${d.data?.stored||0} 季度已存储`, 'success');
+        finLoad(code);
+    } catch(e) { addLog(`失败: ${e.message}`, 'error'); }
+}
+async function finBatchSync() {
+    addLog('批量拉取自选股财报...', 'info');
+    try {
+        const r = await fetch(`${API_BASE}/data/financial/sync`, { method: 'POST' });
+        const d = await r.json();
+        addLog(`完成: ${d.data?.synced_stocks||0}只 ${d.data?.total_quarters||0}季度`, 'success');
+    } catch(e) { addLog(`失败: ${e.message}`, 'error'); }
+}
+async function finLoad(code) {
+    const el = document.getElementById('financial-content');
+    try {
+        const r = await fetch(`${API_BASE}/data/financial/${code}?periods=12`);
+        const d = await r.json();
+        const rows = d.data || [];
+        if (!rows.length) { el.innerHTML = '<div style="color:var(--text-micro);padding:40px;text-align:center;">无数据, 点击"拉取财报"</div>'; return; }
+        el.innerHTML = `
+            <table class="health-table">
+                <thead><tr>
+                    <th>报告期</th><th>营收(亿)</th><th>净利润(亿)</th><th>毛利率</th><th>净利率</th>
+                    <th>现金流(亿)</th><th>存货(亿)</th><th>合同负债(亿)</th><th>应收(亿)</th>
+                    <th>总资产(亿)</th><th>负债(亿)</th><th>ROE</th>
+                </tr></thead>
+                <tbody>${rows.map(r => {
+                    const rev = (r.revenue||0)/1e8;
+                    const profit = (r.parent_profit||0)/1e8;
+                    const gm = r.revenue ? ((r.revenue-r.operate_cost)/r.revenue*100).toFixed(1) : '—';
+                    const nm = r.revenue ? (profit*1e8/r.revenue*100).toFixed(1) : '—';
+                    const ocf = (r.op_cashflow||0)/1e8;
+                    const inv = (r.inventory||0)/1e8;
+                    const cl = (r.contract_liability||0)/1e8;
+                    const ar = (r.accounts_receivable||0)/1e8;
+                    const ta = (r.total_assets||0)/1e8;
+                    const tl = (r.total_liabilities||0)/1e8;
+                    const roe = r.total_equity ? (profit*1e8/r.total_equity*100).toFixed(1) : '—';
+                    const color = profit >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+                    return `<tr>
+                        <td>${r.report_date} <span style="font-size:9px;color:var(--text-micro);">${r.report_type}</span></td>
+                        <td style="text-align:right;">${rev.toFixed(2)}</td>
+                        <td style="text-align:right;color:${color};">${profit.toFixed(2)}</td>
+                        <td style="text-align:right;">${gm}%</td>
+                        <td style="text-align:right;">${nm}%</td>
+                        <td style="text-align:right;">${ocf.toFixed(2)}</td>
+                        <td style="text-align:right;">${inv.toFixed(2)}</td>
+                        <td style="text-align:right;">${cl.toFixed(2)}</td>
+                        <td style="text-align:right;">${ar.toFixed(2)}</td>
+                        <td style="text-align:right;">${ta.toFixed(2)}</td>
+                        <td style="text-align:right;">${tl.toFixed(2)}</td>
+                        <td style="text-align:right;">${roe}%</td>
+                    </tr>`;
+                }).join('')}</tbody>
+            </table>`;
+    } catch(e) { el.innerHTML = '<div style="color:var(--accent-red);">加载失败</div>'; }
 }
 
 // ═══ Sync triggers ═══

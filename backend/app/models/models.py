@@ -123,6 +123,33 @@ class StockInfo(Base):
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
 
+class FinancialStatement(Base):
+    """季度财务报告 — 三大表核心字段"""
+    __tablename__ = "financial_statements"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    stock_code = Column(String(20), nullable=False, index=True)
+    report_date = Column(Date, nullable=False)
+    report_type = Column(String(5), default="Q")
+    revenue = Column(Float, default=0.0)
+    parent_profit = Column(Float, default=0.0)
+    operate_cost = Column(Float, default=0.0)
+    sale_expense = Column(Float, default=0.0)
+    manage_expense = Column(Float, default=0.0)
+    rd_expense = Column(Float, default=0.0)
+    op_cashflow = Column(Float, default=0.0)
+    inventory = Column(Float, default=0.0)
+    contract_liability = Column(Float, default=0.0)
+    accounts_receivable = Column(Float, default=0.0)
+    total_assets = Column(Float, default=0.0)
+    current_assets = Column(Float, default=0.0)
+    fixed_assets = Column(Float, default=0.0)
+    total_liabilities = Column(Float, default=0.0)
+    total_equity = Column(Float, default=0.0)
+    announce_date = Column(Date, nullable=True)
+    created_at = Column(DateTime, default=datetime.now)
+    __table_args__ = (UniqueConstraint('stock_code', 'report_date', name='uq_fin_stmt'),)
+
+
 class WatchlistItem(Base):
     """自选股 — 用户关注的股票 (与持仓独立)"""
     __tablename__ = "watchlist"

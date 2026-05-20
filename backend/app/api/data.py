@@ -5,7 +5,7 @@ from datetime import date, timedelta
 import re
 
 from app.framework.database.session import async_session
-from app.models.models import MarketData, StockIndicator, Position, ExchangeRate, StockInfo, WatchlistItem, PortfolioSnapshot
+from app.models.models import MarketData, StockIndicator, Position, ExchangeRate, StockInfo, WatchlistItem, PortfolioSnapshot, FinancialStatement
 from app.domain.market_data.sources.router import data_router
 from app.framework.tasks.engine import task_manager
 from app.framework.logger import logger
@@ -756,6 +756,58 @@ async def sync_all_stock_info():
         if await sync_stock_info(code):
             ok += 1
     return {"success": True, "synced": ok, "total": len(codes)}
+
+
+# ═══════════════════════════════════════════
+# 财务报告中心
+# ═══════════════════════════════════════════
+
+@router.post("/financial/sync/{stock_code}")
+async def sync_financial_statement(stock_code: str):
+    """同步单只股票的财务报告"""
+    from app.domain.market_data.services.financial_sync import sync_financials
+    result = await sync_financials(stock_code)
+    return {"success": "error" not in result, "data": result}
+
+
+@router.post("/financial/sync")
+async def sync_financial_statements_batch():
+    """批量同步全部自选股的财务报告"""
+    from app.domain.market_data.services.financial_sync import sync_financials_batch
+    async with async_session() as db:
+        res = await db.execute(select(WatchlistItem.stock_code))
+        codes = [r[0] for r in res.all()]
+    if not codes:
+        return {"success": True, "message": "自选股为空"}
+    result = await sync_financials_batch(codes)
+    return {"success": True, "data": result}
+
+
+@router.get("/financial/{stock_code}")
+async def get_financial_statements(stock_code: str, periods: int = 8):
+    """查询单只股票的财务报告 (最近N个季度)"""
+    from app.models.models import FinancialStatement
+    async with async_session() as db:
+        res = await db.execute(
+            select(FinancialStatement)
+            .where(FinancialStatement.stock_code == stock_code)
+            .order_by(FinancialStatement.report_date.desc())
+            .limit(periods)
+        )
+        rows = res.scalars().all()
+        return {"success": True, "data": [
+            {"stock_code": r.stock_code, "report_date": str(r.report_date),
+             "report_type": r.report_type, "revenue": r.revenue,
+             "parent_profit": r.parent_profit, "operate_cost": r.operate_cost,
+             "sale_expense": r.sale_expense, "manage_expense": r.manage_expense,
+             "rd_expense": r.rd_expense, "op_cashflow": r.op_cashflow,
+             "inventory": r.inventory, "contract_liability": r.contract_liability,
+             "accounts_receivable": r.accounts_receivable, "total_assets": r.total_assets,
+             "current_assets": r.current_assets, "fixed_assets": r.fixed_assets,
+             "total_liabilities": r.total_liabilities, "total_equity": r.total_equity,
+             "announce_date": str(r.announce_date) if r.announce_date else None}
+            for r in reversed(rows)  # 正序返回
+        ]}
 
 
 @router.post("/watchlist/refresh-held")
