@@ -22,7 +22,8 @@ AIStock Pro 是一套 AI 驱动的量化分析与投资研究系统，面向 A �
 | AI 提供者 | DeepSeek (Anthropic兼容, 主) / 豆包 Seed / Gemini Vision |
 | 任务调度 | TaskEngine (自研) + APScheduler |
 | 数据源 | httpx → 新浪/东方财富/腾讯; akshare (财报+港股) |
-| Web 搜索 | DDG → Brave Search (双源, 通过 Clash 代理 127.0.0.1:7890) |
+| Web 搜索 | Brave Search (主) → DDG (兜底), 通过 Clash 代理 127.0.0.1:7890 |
+| 网页抓取 | WebScraper (异步抓取+正文抽取) |
 
 ## 目录结构 (核心变更)
 
@@ -33,10 +34,10 @@ backend/app/
 │   ├── tasks/                     # TaskEngine + APScheduler
 │   └── ...
 ├── domain/
-│   ├── market_data/               # 行情同步 + 健康检查 + 估值同步
+│   ├── market_data/               # 行情同步 + 健康检查 + 估值同步 + 宏观数据
 │   │   ├── sources/               # Sina/AkShare/Tencent/Push2
 │   │   ├── services/              # valuation.py (PE/PB/市值), stock_list.py
-│   │   └── api/                   # (空, 路由在 app/api/data.py)
+│   │   └── api/                   # (路由在 app/api/data.py)
 │   ├── research/                  # ★ AI 投研 V4.0 DAG管道 + V3.0遗留
 │   │   ├── agents/
 │   │   │   ├── base.py            #   ResearchAgent + parse_json()
@@ -110,7 +111,7 @@ V3.0 遗留 (3个, 向后兼容):
 ### 量化模块架构
 
 ```
-指标库 (17算子) → 策略库 (8策略) → 决策中心 (加权投票) → 信号持久化
+指标库 (16算子) → 策略库 (8策略) → 决策中心 (加权投票) → 信号持久化
                    ├─ 6传统 (代码逻辑)
                    └─ 2 AI链 (YAML + LLM推理)
 ```
@@ -118,17 +119,23 @@ V3.0 遗留 (3个, 向后兼容):
 新增算子: 继承 `BaseIndicator`, 加 `@register` 装饰器, 放在对应分类目录, `__init__.py` 自动发现。
 新增策略: 继承 `TimingStrategy`, 加 `@register_strategy` 装饰器。AI链策略编辑 YAML 文件即可热更新。
 
-### 数据表
+### 数据表 (13张)
 
 | 表 | 用途 |
 |----|------|
-| positions | 持仓明细 (含 PE/PB/市值字段) |
-| market_data | 日K线 (股票代码+交易日索引) |
-| stock_indicators | 指标数据 (每日一行, analysis_date索引) |
-| stock_info | 股票基础信息 + PE/PB/市值 |
+| positions | 持仓明细 |
+| watchlist | 自选股 (分组标签+持仓标记) |
+| market_data | 日K线 (stock_code+trade_date唯一索引) |
+| stock_indicators | 指标数据 (每日一行, per-date存储) |
+| stock_info | 股票基础信息 + PE/PB/市值/换手率 |
 | strategy_signals | 策略信号持久化 (stock_code+日期索引) |
-| exchange_rates | 汇率/黄金/原油 |
-| task_definitions / task_executions | 任务调度 |
+| portfolio_snapshots | 持仓每日切片 (价格/市值/盈亏快照) |
+| exchange_rates | 汇率/黄金/原油/宏观指标 |
+| macro_history | 宏观指标历史序列 (趋势图) |
+| financial_statements | 季度财报 (待建表) |
+| trade_history | 交易审计流水 |
+| task_definitions | 任务定义 (含cron表达式) |
+| task_executions | 任务执行记录 |
 
 ## 架构约束 (不变)
 
@@ -168,14 +175,34 @@ await IndicatorRunner.compute_snapshot("688012")       # 快照
 from app.domain.quant.decision.center import DecisionCenter
 center = DecisionCenter(provider=deepseek_provider)
 reports = await center.decide(["688012", "002409"])
+
+# 自选股
+from app.models.models import WatchlistItem
+# API: GET/POST /data/watchlist, POST /data/watchlist/import-positions
+
+# 持仓快照 + 损益
+# POST /data/portfolio/snapshot → 当日盈亏+累计盈亏+市值
+
+# 宏观数据
+# GET /data/macro/latest → 全部宏观指标
+# GET /data/macro/history?code=US10YT → 历史序列
+
+# AI 模型路由
+from app.framework.ai.providers.deepseek import DeepSeekProvider
+provider = DeepSeekProvider()
+provider.chat_flash(prompt)  # 简单任务: deepseek-v4-flash
+provider.chat_pro(prompt)    # 复杂推理: deepseek-v4-pro + thinking
 ```
 
 ## 开发流程
 
-1. 确认需求归属领域 (research/quant/market_data/portfolio)
-2. 如需新表 → 修改 `models/models.py` → 启动时 `create_all` 自动建表
-3. Agent/策略/算子 → 遵循对应 domain 的装饰器注册范式
-4. 暴露接口 → `domain/<领域>/api/` → `main.py` 注册路由
-5. 前端页面 → `<body data-page-id>` + sidebar + topbar + workspace
-6. `smoke_test.py` 通过 (16 API)
-7. `git commit` (pre-commit hook: 语法检查 + smoke test)
+1. 查 `docs/03_API_Specifications/System_Feature_Inventory.md` 做关联影响分析
+2. 确认需求归属领域 (research/quant/market_data/portfolio)
+3. 如需新表 → 修改 `models/models.py` → 启动时 `create_all` 自动建表
+4. Agent/策略/算子 → 遵循对应 domain 的装饰器注册范式 (见 `.claude/rules/`)
+5. 暴露接口 → `domain/<领域>/api/` → `main.py` 注册路由
+6. 前端页面 → `<body data-page-id>` + sidebar + topbar + workspace
+7. 端到端验证: curl API → 前端按钮 → 页面渲染
+8. 更新 `System_Feature_Inventory.md` 和 `CLAUDE.md` (如有架构变更)
+9. `smoke_test.py` 通过 (16 API)
+10. `git commit` (见 `.claude/rules/quality-gates.md`)
