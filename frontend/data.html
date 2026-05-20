@@ -35,7 +35,7 @@
 <aside class="sidebar"></aside>
 <main class="main-content">
 <div class="top-bar"></div>
-<div class="workspace" style="padding:0;">
+<div class="workspace" style="padding:0;display:flex;flex-direction:column;">
 
 <!-- Tab Navigation (full width header) -->
 <div style="background:var(--bg-card);border-bottom:1px solid var(--border-color);padding:0 18px;">
@@ -123,14 +123,11 @@
 
 </div><!-- /inner padding -->
 
-<!-- Terminal -->
-<div class="panel" style="margin:0 14px 14px;">
-    <div class="panel-header"><span class="panel-title">执行追踪</span><span id="task-id-display" style="font-family:var(--font-mono);font-size:10px;color:var(--text-micro);">IDLE</span></div>
-    <div class="panel-body" style="padding:0;">
-        <div id="data-terminal" style="background:#020202;padding:10px;font-family:var(--font-mono);font-size:10px;height:120px;overflow-y:auto;color:#666;line-height:1.6;">
-            <div>System ready.</div>
-        </div>
-    </div>
+<!-- Terminal (compact) -->
+<div style="border-top:1px solid var(--border-color);padding:6px 14px;display:flex;align-items:center;gap:10px;">
+    <span style="font-size:10px;color:var(--text-micro);white-space:nowrap;"><i class="fas fa-terminal"></i> 追踪</span>
+    <span id="task-id-display" style="font-family:var(--font-mono);font-size:9px;color:var(--text-micro);">IDLE</span>
+    <div id="data-terminal" style="flex:1;font-family:var(--font-mono);font-size:10px;color:#666;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-height:20px;line-height:20px;">System ready.</div>
 </div>
 
 </div>
