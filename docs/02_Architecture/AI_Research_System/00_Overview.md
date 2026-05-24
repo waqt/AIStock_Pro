@@ -26,7 +26,7 @@
 | Step | 名称 | 设计 | 实现 | 备注 |
 |------|------|------|------|------|
 | 1 | 宏观与全球资本周期 | ✅ 完成 | ⚠️ 80% | 12/16 指标入库，macro_report 合成+缓存已交付；缺 4 个 akshare 指标 + server biz_date 修复未加载 |
-| 2 | Pipeline 看门人 | ✅ 完成 | ❌ 0% | 设计文档定稿，代码尚未改动 |
+| 2 | Pipeline 看门人 | ✅ 完成 | ✅ 完成 | analyze() 支持 auto/manual 双模式, 6块定性输出, 已通过 manual 模式测试 |
 | 3 | 产业链系统拆解 | ⚠️ 草稿 | ❌ 0% | 待按 Step 2 格式重写设计文档 |
 | 4+5 | 系统动力学 + 非线性推演 | ⚠️ 草稿 | ❌ 0% | 待详细设计 |
 | 6 | 核心资产筛选 | ✅ 完成 | ✅ 已完成 | ROE/股息/增速质量加权已加入 |
@@ -60,13 +60,14 @@
 ```
 已完成:
   ✅ 设计文档: I/O contract、输出 schema、行为规范、上下游接口
-  ✅ 设计原则: LLM 定性归类、不生成主观数值
-  ✅ git committed
+  ✅ market_scanner.py: analyze() 重构 + _scan_auto + _deep_dive_manual + _evaluate_industry
+  ✅ Prompt 重写: 6块定性 JSON (cycle_position/prosperity/payoff/propagation/verdict/kill_reasons)
+  ✅ 双模式: auto(验证Step1假设)/manual(用户指定行业)
+  ✅ 测试通过: manual 模式 "AI电力基础设施" 返回完整6块结构
 
-待实现:
-  ❌ market_scanner.py: analyze() 重构、新增 _scan_auto/_deep_dive_manual
-  ❌ Prompt 重写: 6阶段 × 6类型 矩阵
-  ❌ 双模式 (auto/manual) 行为切换
+待集成:
+  ❌ Pipeline Phase 0 → Step2 数据流: macro_report.benefited_sectors → _scan_auto()
+  ❌ scan API 端点未适配新参数 (当前仅 legacy 模式)
 ```
 
 ---
