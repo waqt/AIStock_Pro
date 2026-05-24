@@ -158,9 +158,153 @@ def run_pipeline(industry, run_id, force_from=None):
 
 ---
 
-## 四、操作命令
+## 四、子报告追溯日志 (Trace Log)
 
-### 4.1 全新分析
+### 4.0 概念
+
+一组 Step1-11 完整执行 = 一个**报告组**(report group)。
+每个 Step 的输出 = 一份**子报告**(sub-report)。
+每份子报告附带一个 **trace log**，记录"这个结论是怎么得出来的"。
+
+### 4.1 Trace Log 结构
+
+每个 Step 的检查点旁边保存一个 `.trace.txt` 文件：
+
+```
+backend/data/pipeline_checkpoints/
+└── 20260525_CPU_v1/
+    ├── step2_gatekeeper_a1b2c3.json        ← 子报告 (结构化输出)
+    ├── step2_gatekeeper_a1b2c3.trace.txt   ← 追溯日志 (人类可读)
+    ├── step3_sc_hacker_d4e5f6.json
+    ├── step3_sc_hacker_d4e5f6.trace.txt
+    └── ...
+```
+
+### 4.2 Trace Log 内容
+
+```text
+═══════════════════════════════════════════
+Step: step2_gatekeeper
+Industry: AI电力基础设施
+Run: 20260525_CPU_v1
+Started: 2026-05-25 00:53:57
+Elapsed: 20.1s
+Status: completed
+═══════════════════════════════════════════
+
+── 搜索查询 ──────────────────────────────
+[1/4] AI电力基础设施 行业概况 市场规模 TAM 增速 2026
+  → 4 results from Brave Search
+  [1] "AI电力需求2026年爆发..." (500 chars)
+  [2] "全球电网投资预测2030年翻倍..." (480 chars)
+  ...
+
+[2/4] AI电力基础设施 供需缺口 产能利用率 交期 CAPEX 扩产周期 2026
+  → 4 results from Brave Search
+  ...
+
+── LLM 调用 ──────────────────────────────
+Model: deepseek-v4-flash
+Max Tokens: 3072
+Prompt (3800 chars):
+  你是买方资本配置分析师(Pipeline Gatekeeper)...
+  ## Step1 预判信息
+  ...
+  ## 搜索结果
+  [1/4] AI电力基础设施 行业概况...
+    - 标题1: snippet...
+    - 标题2: snippet...
+
+Response (1500 chars):
+  {
+    "industry": "AI电力基础设施",
+    "cycle_position": {
+      "phase": "bottleneck_formation",
+      "sub_phase": "early",
+      "evidence": "变压器交期从8个月延长到12个月+, 电网扩容订单YoY+200%..."
+    },
+    ...
+  }
+
+── 关键判断依据 ──────────────────────────
+phase=bottleneck_formation:
+  → 证据1: 搜索结果[2/4] "变压器交期从8个月延长到12个月+" 
+  → 证据2: 搜索结果[2/4] "电网扩容订单YoY+200%"
+  
+type=supply_shock:
+  → 证据: 搜索结果[1/4] "电网建设周期3-5年 vs AI需求年增35%"
+  
+demand_quality=real_demand:
+  → 证据: 搜索结果[1/4] "终端电力消费+15%", 搜索结果[3/4] "数据中心在建项目+40%"
+  → 排除: 不是库存补库(无"库存""渠道囤货"信号), 不是政策透支
+
+payoff=强非对称:
+  → 上行: 搜索结果[1/4] "AI电力需求若兑现→行业利润池扩大5倍"
+  → 下行: 搜索结果[1/4] "电网升级需求只是推迟不是消失"
+
+priority=高:
+  → 五错配检查:
+    ✅ 供需错配: 需求35% vs 供给3-5年
+    ✅ 时间错配: 扩产周期远长于需求爆发
+    ✅ 认知错配: 市场关注芯片, 对电力基础设施稀缺度认知不足
+    ✅ 利润迁移: 利润从芯片→电力设备迁移
+    ✅ 尚未充分定价: 搜索结果[3/4] "当前PE未反映3年复合增速"
+
+═══ 原始数据引用索引 ════════════════════
+搜索结果[1/4]: "AI电力需求2026年爆发..." (Brave Search, 2026-05-25)
+搜索结果[2/4]: "全球电网投资预测..." (Brave Search, 2026-05-25)
+搜索结果[3/4]: "AI数据中心电力..." (Brave Search, 2026-05-25)
+搜索结果[4/4]: "产业链传导..." (Brave Search, 2026-05-25)
+```
+
+### 4.3 Trace Log 生成规则
+
+每条判断必须追溯到一个具体来源：
+
+| 判断类型 | 必须引用 | 格式 |
+|---------|---------|------|
+| 搜索结果中的数字 | 搜索轮次 + 标题 | `搜索结果[2/4] "标题" — snippet中的数字` |
+| DB 中的数据 | 表名 + 字段 | `exchange_rates.US10YT = 4.56 (2026-05-22)` |
+| LLM 的逻辑推理 | 推理链 | `如果A→B→C, 则D` |
+| 程序化计算 | 代码位置 | `financial_auditor.py:score = PASS if m_score < ...` |
+
+### 4.4 前端查阅
+
+`research.html` 报告管理面板中，每份报告增加「追溯」按钮，点击展开该报告组所有子报告的 trace log 列表，可逐个查看每步的搜索过程、LLM 对话、判断依据。
+
+```
+前端交互:
+  报告列表 → 点击「CPU产业链深度研报」
+    → 报告内容 (现有)
+    → [追溯] 标签页 (新增)
+      ├── Step2 Gatekeeper → 查看 trace log
+      ├── Step3 产业链拆解 → 查看 trace log
+      ├── Step4 系统动力学 → 查看 trace log
+      └── ...
+```
+
+### 4.5 实现
+
+每个 Agent 的 `analyze()` 方法增加 `trace` 参数，输出时附带 trace 信息。
+
+```python
+# 在 _evaluate_industry() 中
+trace = {
+    "step": "step2_gatekeeper",
+    "industry": industry,
+    "search_queries": [{"query": q, "results": r} for q, r in search_data],
+    "llm_prompt": prompt,
+    "llm_response": text,
+    "key_evidence": extract_evidence(result, search_data),  # 新增: 提取关键证据
+}
+save_checkpoint(..., trace=trace)  # 保存 .trace.txt
+```
+
+---
+
+## 五、操作命令
+
+### 5.1 全新分析
 
 ```bash
 # 完整跑 (首次)
@@ -170,7 +314,7 @@ python temp_lab/run_pipeline.py --industry CPU --run-id 20260525_CPU_v1
 python temp_lab/run_pipeline.py --industry CPU --run-id 20260526_CPU_v1
 ```
 
-### 4.2 从中断点继续
+### 5.2 从中断点继续
 
 ```bash
 # Step 3 崩溃后, 从 Step 3 重跑
@@ -180,7 +324,7 @@ python temp_lab/run_pipeline.py --industry CPU --run-id 20260525_CPU_v1 --resume
 python temp_lab/run_pipeline.py --industry CPU --run-id 20260525_CPU_v1 --force-from step2_gatekeeper
 ```
 
-### 4.3 溯源
+### 5.3 溯源
 
 ```bash
 # 列出某次 run 的所有步骤
@@ -193,7 +337,7 @@ python temp_lab/run_pipeline.py --run-id 20260525_CPU_v1 --inspect step5_dag_aud
 cat backend/data/pipeline_checkpoints/20260525_CPU_v1/step5_dag_audits_a1b2c3.json
 ```
 
-### 4.4 查看历史
+### 5.4 查看历史
 
 ```bash
 # 列出所有 run
@@ -207,7 +351,7 @@ python temp_lab/run_pipeline.py --history
 
 ---
 
-## 五、run_id 命名规范
+## 六、run_id 命名规范
 
 ```
 {YYYYMMDD}_{industry_slug}_{version}
@@ -226,7 +370,7 @@ python temp_lab/run_pipeline.py --history
 
 ---
 
-## 六、实现优先级
+## 七、实现优先级
 
 | 优先级 | 内容 | 改动 |
 |--------|------|------|
@@ -239,7 +383,7 @@ python temp_lab/run_pipeline.py --history
 
 ---
 
-## 七、与现有系统的关系
+## 八、与现有系统的关系
 
 | 现有基础设施 | 关系 |
 |-------------|------|
