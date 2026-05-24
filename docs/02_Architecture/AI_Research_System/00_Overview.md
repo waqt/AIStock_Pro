@@ -66,7 +66,6 @@
   ✅ 测试通过: manual 模式 "AI电力基础设施" 返回完整6块结构
 
 待集成:
-  ❌ Pipeline Phase 0 → Step2 数据流: macro_report.benefited_sectors → _scan_auto()
   ❌ scan API 端点未适配新参数 (当前仅 legacy 模式)
 ```
 

@@ -1,0 +1,36 @@
+Step1 benefited_sectors (4):
+  黄金及贵金属 [高]
+  半导体设备与材料国产替代 [中高]
+  新质生产力基础设施（卫星互联网/商业航天） [中高]
+  中国利率债及高股息红利资产 [高]
+
+Scanning 4 industries...
+
+============================================================
+Results: 4 industries evaluated
+
+1. [ENTER] 半导体设备与材料国产替代 [高]
+   Phase: bottleneck_formation/early | Type: supply_shock | Demand: real_demand
+   Payoff: 强非对称 | Depth: 深 | Alpha: 6-12个月
+   Contradiction: 先进制程设备国产化率仍低于20%，而晶圆厂扩产对国产设备导入比例要求快速提升至50%以上，供给端技术突破与产能爬坡速度显著滞后于需求端刚性采购需求。
+   Rationale: 美国管制升级驱动真实需求爆发，国产设备扩产周期（2-3年）远长于需求响应窗口（12-18个月），供给瓶颈显著；市场对先进制程突破深度及国产化速度仍存分歧，利润迁移明确（海外→国内设备商），A股设备龙头估值（2026年PE 35-40倍）尚未完全反映3年复合50%+的利润增速，五错配条件均满足。
+
+2. [ENTER] 新质生产力基础设施（卫星互联网/商业航天） [高]
+   Phase: bottleneck_formation/early | Type: demand_explosion | Demand: real_demand
+   Payoff: 强非对称 | Depth: 深 | Alpha: 6-12个月
+   Contradiction: 卫星互联网组网需求的万颗级爆发性增长，与火箭可重复技术尚在验证期、卫星量产线尚未完全建成的供给瓶颈之间的矛盾。
+   Rationale: 基于五错配原则：①供需错配：万颗组网需求vs火箭/卫星产能扩张慢；②时间错配：扩产周期2-3年vs需求2026年密集爆发；③认知错配：市场尚未充分理解'地面端10倍空间'及低空融合的乘数效应；④利润迁移：利润从火箭/卫星制造向地面设备、运营及应用端迁移；⑤尚未充分定价：部分龙头股价仅筑底回升，行业仍处早期估值阶段。
+
+3. [SKIP] 黄金及贵金属 [低]
+   Phase: bottleneck_formation/early | Type: demand_explosion | Demand: real_demand
+   Payoff: 对称 | Depth: 浅 | Alpha: 6-12个月
+   Contradiction: 当前金价高企的支撑更多来自货币信用及避险情绪，而非实体供需实质性短缺；矿山产出增长缓慢但需求亦未加速。
+   Rationale: 未满足五错配原则：需求增速（2%）与供给增速持平，无显著供需错配；市场对黄金长期逻辑已有充分认知（认知错配弱）；利润仅在上游集中，无迁移现象；当前估值已包含较高金价预期，尚未充分定价条件不成立。
+   Kill reasons: 估值透支3年增长
+
+4. [SKIP] 中国利率债及高股息红利资产 [跳过]
+   Phase: theme_emergence/early | Type: demand_explosion | Demand: real_demand
+   Payoff: 对称 | Depth: 浅 | Alpha: 3-6个月
+   Contradiction: 当前资产价格已经隐含了较多宽松预期，需求与供给之间未形成显著错配
+   Rationale: 不满足五错配原则：该资产类别为金融产品，缺乏实体产业的供需错配、扩产周期、利润迁移等核心要素，传导链极短，Alpha空间有限
+   Kill reasons: 传导链<3层Alpha空间有限

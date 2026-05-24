@@ -383,7 +383,53 @@ python temp_lab/run_pipeline.py --history
 
 ---
 
-## 八、与现有系统的关系
+## 八、目录与归档规范
+
+### 8.1 目录结构
+
+```
+backend/data/
+├── indicators.db                          ← 量化指标 (SQLite)
+├── macro_report.json                      ← 宏观周期报告 (30天缓存, 单文件覆盖)
+├── research_reports/                      ← 最终投研报告 (*.json)
+│   ├── 20260525_101000_CPU.json
+│   └── 20260525_143000_SOFC.json
+└── pipeline_checkpoints/                  ← Pipeline 检查点
+    └── {YYYYMMDD}_{slug}_v{n}/            ← 一组报告 = 一个目录
+        ├── _run_manifest.json             ← run 元信息
+        ├── step2_gatekeeper_{hash}.json   ← 子报告
+        ├── step2_gatekeeper_{hash}.trace.txt ← 追溯日志
+        ├── step3_sc_hacker_{hash}.json
+        ├── step3_sc_hacker_{hash}.trace.txt
+        └── ...
+
+temp_lab/                                  ← 临时测试 (不提交生产)
+├── run_step.py                            ← 统一运行工具
+├── test_step2_auto.py                     ← Step2 测试脚本
+└── *_result.txt                           ← 测试输出
+```
+
+### 8.2 归档与清理策略
+
+| 目录 | 保留策略 | 清理方式 |
+|------|---------|---------|
+| `research_reports/` | 永久保留 | 前端手动删除, 物理文件删除 + registry 标记 expired |
+| `pipeline_checkpoints/` | 保留最近 30 天 | 超过 30 天的 run 目录自动归档或删除 (手动触发) |
+| `macro_report.json` | 单文件覆盖 | 新报告直接覆盖旧文件 |
+| `temp_lab/` | 随时可删 | 只保留当前测试脚本, 历史输出手动清理 |
+
+**归档命令** (未来实现):
+```bash
+# 清理 30 天前的检查点
+python temp_lab/run_pipeline.py --cleanup --older-than 30
+
+# 归档某个 run 的完整检查点到归档目录
+python temp_lab/run_pipeline.py --archive 20260525_CPU_v1
+```
+
+---
+
+## 九、与现有系统的关系
 
 | 现有基础设施 | 关系 |
 |-------------|------|
