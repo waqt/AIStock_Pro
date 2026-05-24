@@ -1,6 +1,6 @@
-# AIStock Pro V4.0 — 全系统功能清单
+# AIStock Pro V5.6 — 全系统功能清单
 
-> 最后更新: 2026-05-20 | 版本: V4.0
+> 最后更新: 2026-05-21 | 版本: V5.6
 
 ---
 
@@ -239,11 +239,67 @@
 | G1 | suggestions.html | 完全占位 "Strategy Engine Coming Soon" | 待需求确认 | |
 | G2 | morning_report.html | 静态占位, 缺 data-page-id | 待需求确认: 是否需要晨报页? | |
 | G3 | closing_report.html | 调用不存在API /reports/*, 缺 data-page-id | 修复或删除 | |
-| G4 | calc_indicators任务 | 仍用旧版 engine/indicators.py (5个算子) | 迁移到 IndicatorRunner (16个算子) | |
-| G5 | domain/quant/tasks/__init__.py | import dead calc module | 清理死代码 | |
-| G6 | tasks_registry.html | meta refresh 重定向桩 | 保留或删除 | |
-| G7 | tasks_history.html | meta refresh 重定向桩 | 保留或删除 | |
-| G8 | data.html D1.3按钮 | "重算指标"调旧calc_indicators | 改为调新 IndicatorRunner.compute_batch | |
+| G4 | calc_indicators任务 | 旧版 engine/indicators.py (5个算子) | ✅ 已迁移到 IndicatorRunner (16个算子, numba加速) | ✅ |
+| G5 | domain/quant/tasks/__init__.py | import dead calc module | ✅ 已清理 | ✅ |
+| G6 | tasks_registry.html | meta refresh 重定向桩 | 保留 | |
+| G7 | tasks_history.html | meta refresh 重定向桩 | 保留 | |
+| G8 | data.html D1.3按钮 | "重算指标"调旧calc_indicators | ✅ 已统一为 IndicatorCompute 公共组件 | ✅ |
+
+---
+
+## 模块H: 量化指标体系 V5.6 ★
+
+### H1. 指标算子库
+
+| # | 功能 | 说明 | 状态 |
+|---|------|------|------|
+| H1.1 | 16个指标算子 | trend(3)+momentum(3)+volatility(2)+volume(3)+crowding(2)+chip(3), @register 自注册 | ✅ |
+| H1.2 | 注册表查询 | GET /quant/indicators/registry → 16算子含中文 label | ✅ |
+| H1.3 | 新增指标 | 一个 .py 文件 → @register → 自动发现, 零 DDL | ✅ |
+| H1.4 | 装饰器范式 | 继承 BaseIndicator, name/label/output/requires/params/compute | ✅ |
+
+### H2. 计算引擎
+
+| # | 功能 | 说明 | 状态 |
+|---|------|------|------|
+| H2.1 | IndicatorRunner | 统一计算引擎, 3轮处理 + ctx 上下文传递 | ✅ |
+| H2.2 | 快照模式 | compute_snapshot → 仅今天一行 | ✅ |
+| H2.3 | 历史模式 | compute_historical → 全量覆盖 (DELETE+INSERT) | ✅ |
+| H2.4 | 增量模式 | compute_incremental → 只补新日期 + 自动降级全量 | ✅ |
+| H2.5 | 参数化任务 | target_codes / mode / indicator_names 三参数 | ✅ |
+| H2.6 | COST 筹码算法 | 指数衰减(半衰期45天) + 三角分布, 经通达信验证 | ✅ |
+| H2.7 | numba 加速 | COST 计算从 ~10s→~0.8s/股 | ✅ |
+
+### H3. SQLite 宽表存储
+
+| # | 功能 | 说明 | 状态 |
+|---|------|------|------|
+| H3.1 | indicators 表 | 52列 (49数值+2文本+1主键), stock_code+trade_date 唯一 | ✅ |
+| H3.2 | 全量写入 | executemany INSERT OR REPLACE (2次SQL) | ✅ |
+| H3.3 | 部分合并 | SELECT 旧行 → 内存合并 → executemany (不丢数据) | ✅ |
+| H3.4 | 数据文件 | data/indicators.db, 单文件, cp 备份 | ✅ |
+
+### H4. API 端点
+
+| # | 端点 | 用途 | 状态 |
+|---|------|------|------|
+| H4.1 | GET /quant/indicators/registry | 16指标元信息 | ✅ |
+| H4.2 | GET /quant/indicators/{code} | 单股最新快照 | ✅ |
+| H4.3 | GET /quant/indicators/history/{code} | 时间序列 (ECharts) | ✅ |
+| H4.4 | GET /quant/indicators/coverage | 覆盖检测 (哪只缺哪些) | ✅ |
+| H4.5 | GET /quant/indicators/field/{name} | 全股票该字段排名 | ✅ |
+| H4.6 | POST /quant/indicators/compute | 批量计算 | ✅ |
+| H4.7 | DELETE /quant/indicators/data/{code} | 清理单股 | ✅ |
+
+### H5. 前端
+
+| # | 功能 | 说明 | 状态 |
+|---|------|------|------|
+| H5.1 | IndicatorCompute 组件 | js/framework/indicator_compute.js, 全系统统一入口 | ✅ |
+| H5.2 | 控制面板 | render() — mode/scope/indicator 选择 + 复选框列表 | ✅ |
+| H5.3 | Modal 弹窗 | openModal() — alt tab / health tab 统一用 | ✅ |
+| H5.4 | 直接提交 | submit() — 代码直接调用 | ✅ |
+| H5.5 | 指标数据页 | indicators.html — 全景卡片 + 时间序列图 + 排名 | ✅ |
 
 ---
 

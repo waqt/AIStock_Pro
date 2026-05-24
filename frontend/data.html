@@ -41,12 +41,12 @@
 <!-- Tab Navigation (full width header) -->
 <div style="background:var(--bg-card);border-bottom:1px solid var(--border-color);padding:0 18px;">
     <div class="data-tab-nav" style="border-bottom:none;margin-bottom:0;">
-        <button class="data-tab-btn active" onclick="switchDataTab('macro')" data-tab="macro"><i class="fas fa-globe"></i> 宏观</button>
-        <button class="data-tab-btn" onclick="switchDataTab('watchlist')" data-tab="watchlist"><i class="fas fa-star"></i> 自选股</button>
-        <button class="data-tab-btn" onclick="switchDataTab('health')" data-tab="health"><i class="fas fa-chart-bar"></i> 行情体检</button>
-        <button class="data-tab-btn" onclick="switchDataTab('fundamental')" data-tab="fundamental"><i class="fas fa-building"></i> 基本面</button>
-        <button class="data-tab-btn" onclick="switchDataTab('financial')" data-tab="financial"><i class="fas fa-file-invoice"></i> 财务报告</button>
-        <button class="data-tab-btn" onclick="switchDataTab('alt')" data-tab="alt"><i class="fas fa-database"></i> 另类数据</button>
+        <button class="data-tab-btn active" onclick="DataTabs.switchTab('macro')" data-tab="macro"><i class="fas fa-globe"></i> 宏观</button>
+        <button class="data-tab-btn" onclick="DataTabs.switchTab('watchlist')" data-tab="watchlist"><i class="fas fa-star"></i> 自选股</button>
+        <button class="data-tab-btn" onclick="DataTabs.switchTab('health')" data-tab="health"><i class="fas fa-chart-bar"></i> 行情体检</button>
+        <button class="data-tab-btn" onclick="DataTabs.switchTab('fundamental')" data-tab="fundamental"><i class="fas fa-building"></i> 基本面</button>
+        <button class="data-tab-btn" onclick="DataTabs.switchTab('financial')" data-tab="financial"><i class="fas fa-file-invoice"></i> 财务报告</button>
+        <button class="data-tab-btn" onclick="DataTabs.switchTab('alt')" data-tab="alt"><i class="fas fa-database"></i> 另类数据</button>
     </div>
 </div>
 
@@ -55,8 +55,8 @@
 <!-- Tab: 宏观 -->
 <div class="data-tab-panel active" id="tab-macro">
     <div class="toolbar">
-        <button class="btn-action" onclick="syncMacro('daily')" style="font-size:11px;border-color:var(--accent-green);color:var(--accent-green);"><i class="fas fa-sync-alt"></i> 同步当日</button>
-        <button class="btn-action" onclick="syncMacro('historical')" style="font-size:11px;"><i class="fas fa-history"></i> 补齐历史</button>
+        <button class="btn-action" onclick="DataTabs.Macro.sync('daily')" style="font-size:11px;border-color:var(--accent-green);color:var(--accent-green);"><i class="fas fa-sync-alt"></i> 同步当日</button>
+        <button class="btn-action" onclick="DataTabs.Macro.sync('historical')" style="font-size:11px;"><i class="fas fa-history"></i> 补齐历史</button>
         <span style="font-size:10px;color:var(--text-micro);">当日=最新实时数据 | 历史=2年序列补齐</span>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:8px;" id="macro-cards"><div style="color:var(--text-micro);padding:20px;">加载中...</div></div>
@@ -65,15 +65,18 @@
 <!-- Tab: 自选股 -->
 <div class="data-tab-panel" id="tab-watchlist" style="display:none;">
     <div class="toolbar">
-        <input type="text" id="wl-code" placeholder="代码" style="width:100px;">
-        <input type="text" id="wl-group" placeholder="分组" style="width:70px;" value="默认">
-        <button class="btn-action" onclick="wlAdd()" style="font-size:11px;">添加</button>
-        <select id="wl-filter-group" onchange="wlLoad()" style="background:#000;border:1px solid var(--border-color);color:#fff;padding:4px 8px;border-radius:4px;font-size:11px;"><option value="">全部分组</option></select>
-        <label style="font-size:10px;color:var(--text-dim);display:flex;align-items:center;gap:4px;"><input type="checkbox" id="wl-filter-held" onchange="wlLoad()">仅持仓</label>
-        <button class="btn-action" onclick="wlImportPositions()" style="font-size:10px;border-color:var(--accent-blue);color:var(--accent-blue);"><i class="fas fa-download"></i> 导入持仓</button>
-        <button class="btn-action" onclick="wlSync('daily')" style="font-size:10px;border-color:var(--accent-green);color:var(--accent-green);"><i class="fas fa-sync-alt"></i> 同步当日</button>
-        <button class="btn-action" onclick="wlSync('historical')" style="font-size:10px;"><i class="fas fa-history"></i> 补齐历史</button>
-        <button class="btn-action" onclick="wlRefreshHeld()" style="font-size:10px;">刷新状态</button>
+        <input type="text" id="wl-code" placeholder="代码" style="width:90px;">
+        <input type="text" id="wl-group" placeholder="分组" style="width:60px;" value="默认">
+        <input type="text" id="wl-notes" placeholder="备注" style="width:100px;">
+        <input type="number" id="wl-target-low" placeholder="目标低价" step="0.01" style="width:75px;font-size:10px;">
+        <input type="number" id="wl-target-high" placeholder="目标高价" step="0.01" style="width:75px;font-size:10px;">
+        <button class="btn-action" onclick="DataTabs.Watchlist.add()" style="font-size:11px;">添加</button>
+        <select id="wl-filter-group" onchange="DataTabs.Watchlist.load()" style="background:#000;border:1px solid var(--border-color);color:#fff;padding:4px 8px;border-radius:4px;font-size:11px;"><option value="">全部分组</option></select>
+        <label style="font-size:10px;color:var(--text-dim);display:flex;align-items:center;gap:4px;"><input type="checkbox" id="wl-filter-held" onchange="DataTabs.Watchlist.load()">仅持仓</label>
+        <button class="btn-action" onclick="DataTabs.Watchlist.importPositions()" style="font-size:10px;border-color:var(--accent-blue);color:var(--accent-blue);"><i class="fas fa-download"></i> 导入持仓</button>
+        <button class="btn-action" onclick="DataTabs.Watchlist.sync('daily')" style="font-size:10px;border-color:var(--accent-green);color:var(--accent-green);"><i class="fas fa-sync-alt"></i> 同步当日</button>
+        <button class="btn-action" onclick="DataTabs.Watchlist.sync('historical')" style="font-size:10px;"><i class="fas fa-history"></i> 补齐历史</button>
+        <button class="btn-action" onclick="DataTabs.Watchlist.refreshHeld()" style="font-size:10px;">刷新状态</button>
     </div>
     <div id="watchlist-table" style="max-height:60vh;overflow-y:auto;"></div>
 </div>
@@ -82,9 +85,9 @@
 <div class="data-tab-panel" id="tab-health" style="display:none;">
     <div class="toolbar">
         <input type="text" id="quick-stock-input" placeholder="输入代码..." style="width:120px;">
-        <button class="btn-action" onclick="quickSync('daily')" style="font-size:11px;border-color:var(--accent-green);color:var(--accent-green);"><i class="fas fa-sync-alt"></i> 同步当日</button>
-        <button class="btn-action" onclick="quickSync('historical')" style="font-size:11px;"><i class="fas fa-history"></i> 补齐历史</button>
-        <button class="btn-action" onclick="quickCompute()" style="font-size:11px;border-color:var(--accent-blue);color:var(--accent-blue);"><i class="fas fa-microchip"></i> 算指标</button>
+        <button class="btn-action" onclick="DataTabs.Health.quickSync('daily')" style="font-size:11px;border-color:var(--accent-green);color:var(--accent-green);"><i class="fas fa-sync-alt"></i> 同步当日</button>
+        <button class="btn-action" onclick="DataTabs.Health.quickSync('historical')" style="font-size:11px;"><i class="fas fa-history"></i> 补齐历史</button>
+        <button class="btn-action" onclick="DataTabs.Health.quickCompute()" style="font-size:11px;border-color:var(--accent-blue);color:var(--accent-blue);"><i class="fas fa-microchip"></i> 算指标</button>
         <span style="font-size:10px;color:var(--text-micro);" id="health-summary-bar">加载中...</span>
     </div>
     <div style="max-height:55vh;overflow-y:auto;">
@@ -97,6 +100,10 @@
 
 <!-- Tab: 基本面 -->
 <div class="data-tab-panel" id="tab-fundamental" style="display:none;">
+    <div class="toolbar">
+        <button class="btn-action" onclick="DataTabs.Fundamental.syncIndustry()" style="font-size:11px;border-color:var(--accent-green);color:var(--accent-green);"><i class="fas fa-sync-alt"></i> 同步行业</button>
+        <span style="font-size:10px;color:var(--text-micro);">从东财拉取全部持仓+自选股的行业/总股本/上市时间</span>
+    </div>
     <div style="display:flex;gap:12px;flex-wrap:wrap;">
         <div class="panel" style="flex:1;min-width:350px;max-height:55vh;overflow-y:auto;">
             <div class="panel-header"><span class="panel-title">行业分布</span></div>
@@ -112,11 +119,11 @@
 <!-- Tab: 财务报告 -->
 <div class="data-tab-panel" id="tab-financial" style="display:none;">
     <div class="toolbar">
-        <select id="fin-select" onchange="finSelectStock()" style="background:#000;border:1px solid var(--border-color);color:#fff;padding:5px 10px;border-radius:4px;font-size:11px;min-width:180px;">
+        <select id="fin-select" onchange="DataTabs.Financial.selectStock()" style="background:#000;border:1px solid var(--border-color);color:#fff;padding:5px 10px;border-radius:4px;font-size:11px;min-width:180px;">
             <option value="">— 选择自选股 —</option>
         </select>
-        <button class="btn-action" onclick="finSyncSelected()" style="font-size:11px;border-color:var(--accent-green);color:var(--accent-green);"><i class="fas fa-sync-alt"></i> 拉取财报</button>
-        <button class="btn-action" onclick="finBatchSync()" style="font-size:11px;"><i class="fas fa-layer-group"></i> 批量同步全部</button>
+        <button class="btn-action" onclick="DataTabs.Financial.syncSelected()" style="font-size:11px;border-color:var(--accent-green);color:var(--accent-green);"><i class="fas fa-sync-alt"></i> 拉取财报</button>
+        <button class="btn-action" onclick="DataTabs.Financial.batchSync()" style="font-size:11px;"><i class="fas fa-layer-group"></i> 批量同步全部</button>
     </div>
     <div id="financial-content" style="max-height:65vh;overflow-y:auto;">
         <div style="color:var(--text-micro);padding:40px;text-align:center;">从自选股下拉列表中选择</div>
@@ -125,14 +132,71 @@
 
 <!-- Tab: 另类数据 -->
 <div class="data-tab-panel" id="tab-alt" style="display:none;">
+    <div class="toolbar">
+        <select id="alt-date-range" onchange="DataTabs.Alt.load()" style="background:#000;border:1px solid var(--border-color);color:#fff;padding:5px 10px;border-radius:4px;font-size:11px;">
+            <option value="7">近7天</option>
+            <option value="30" selected>近30天</option>
+            <option value="60">近60天</option>
+            <option value="120">近120天</option>
+        </select>
+        <select id="alt-industry-filter" onchange="DataTabs.Alt.load()" style="background:#000;border:1px solid var(--border-color);color:#fff;padding:5px 10px;border-radius:4px;font-size:11px;min-width:120px;">
+            <option value="">全部行业</option>
+        </select>
+        <button class="btn-action" onclick="DataTabs.Alt.computeIndicators()" style="font-size:11px;border-color:var(--accent-blue);color:var(--accent-blue);"><i class="fas fa-microchip"></i> 计算指标</button>
+        <span style="font-size:10px;color:var(--text-micro);">行业和日期筛选 | 点击个股查看时间序列</span>
+    </div>
+    <div class="panel" style="margin-bottom:8px;">
+        <div class="panel-header"><span class="panel-title">行业拥挤度</span></div>
+        <div class="panel-body" id="alt-industry-chart"><div style="color:var(--text-micro);padding:20px;text-align:center;">加载中...</div></div>
+    </div>
     <div style="display:flex;gap:12px;flex-wrap:wrap;">
-        <div class="panel" style="flex:1;min-width:300px;max-height:55vh;overflow-y:auto;">
-            <div class="panel-header"><span class="panel-title">筹码分布 (Top 20)</span></div>
-            <div class="panel-body" id="alt-chip-table"><div style="color:var(--text-micro);padding:12px;">加载中...</div></div>
+        <div class="panel" style="flex:2;min-width:400px;max-height:45vh;overflow-y:auto;">
+            <div class="panel-header"><span class="panel-title">个股拥挤度排名</span></div>
+            <div class="panel-body" id="alt-crowd-table"></div>
         </div>
-        <div class="panel" style="flex:1;min-width:300px;max-height:55vh;overflow-y:auto;">
-            <div class="panel-header"><span class="panel-title">拥挤度 (Top 20)</span></div>
-            <div class="panel-body" id="alt-crowd-table"><div style="color:var(--text-micro);padding:12px;">加载中...</div></div>
+        <div class="panel" style="flex:1;min-width:280px;max-height:45vh;overflow-y:auto;">
+            <div class="panel-header"><span class="panel-title">筹码分布排名</span></div>
+            <div class="panel-body" id="alt-chip-table"></div>
+        </div>
+    </div>
+    <div class="panel" style="margin-top:8px;" id="alt-guide-panel">
+        <div class="panel-header" style="cursor:pointer;" onclick="DataTabs.Alt.toggleGuide()">
+            <span class="panel-title"><i class="fas fa-question-circle"></i> 拥挤度 & 夏普比 — 使用说明</span>
+            <span style="font-size:10px;color:var(--text-micro);" id="alt-guide-toggle">展开</span>
+        </div>
+        <div class="panel-body" id="alt-guide-body" style="display:none;font-size:11px;color:var(--text-dim);line-height:1.8;">
+            <p><strong style="color:#fff;">拥挤度 (crowding_ratio)</strong> = 20日均量 ÷ 120日均量。反映短期交易拥挤程度。</p>
+            <p style="margin-left:12px;"><span style="color:#ef4444;">&gt; 1.5</span> = 过热 — 短期追涨资金密集，回调风险大<br>
+            <span style="color:#f59e0b;">1.0 ~ 1.5</span> = 偏热 — 交易活跃，注意仓位<br>
+            <span style="color:#60a5fa;">&lt; 1.0</span> = 正常 — 交易冷清或筹码稳定</p>
+            <p><strong style="color:#fff;">夏普比 (sharpe_60d)</strong> = (60日年化收益率 − 无风险利率) ÷ 年化波动率。衡量风险调整后收益。</p>
+            <p style="margin-left:12px;"><span style="color:#60a5fa;">&gt; 1.0</span> = 优秀 — 承担相同风险获得更高回报<br>
+            <span style="color:#f59e0b;">0.5 ~ 1.0</span> = 良好 — 风险收益比合理<br>
+            <span style="color:#ef4444;">&lt; 0.5</span> = 一般 — 风险收益比不佳</p>
+            <p><strong style="color:#fff;">应用方法</strong></p>
+            <p style="margin-left:12px;">拥挤度低(&lt;1.0) + 夏普高(&gt;0.8) → 关注买入时机，市场情绪冷静且风险收益比合理<br>
+            拥挤度高(&gt;1.5) → 短期追涨风险大，注意止盈或减仓<br>
+            夏普持续走低 → 说明近期波动加大或收益下滑，重新评估持仓</p>
+        </div>
+    </div>
+    <div class="panel" style="margin-top:8px;" id="alt-chip-guide-panel">
+        <div class="panel-header" style="cursor:pointer;" onclick="DataTabs.Alt.toggleChipGuide()">
+            <span class="panel-title"><i class="fas fa-question-circle"></i> 筹码形态 — 六大形态判定说明</span>
+            <span style="font-size:10px;color:var(--text-micro);" id="alt-chip-guide-toggle">展开</span>
+        </div>
+        <div class="panel-body" id="alt-chip-guide-body" style="display:none;font-size:11px;color:var(--text-dim);line-height:1.8;">
+            <p><strong style="color:#fff;">筹码集中度</strong> = COST算法计算的筹码锁定程度。>12% 集高度集中, 8-12% 中度集中, &lt;5% 分散。</p>
+            <p><strong style="color:#fff;">六大形态</strong></p>
+            <p style="margin-left:12px;">
+            <span style="color:var(--accent-green);">◆ 低位单峰密集</span> — 集中度≥12% + 单峰 + 价格在峰值附近。主力吸筹完毕，筹码高度锁定 → <span style="color:var(--accent-green);">买入</span><br>
+            <span style="color:var(--accent-green);">◆ 洗盘回归密集</span> — 集中度≥10% + 单峰 + 价格回调<20%。主力拉升后洗盘，底部筹码未松动 → <span style="color:var(--accent-green);">加仓</span><br>
+            <span style="color:var(--accent-green);">◆ 多峰密集上行</span> — 8%≤集中度<12% + 多峰。趋势拉升中筹码滚雪球式换手 → <span style="color:var(--accent-green);">持有/上调止损</span><br>
+            <span style="color:var(--accent-gold);">◆ 向上突破高位密集</span> — 集中度≥8% + 价格高于峰值区。突破高位筹码密集区 → <span style="color:var(--accent-gold);">逐步减仓</span><br>
+            <span style="color:var(--accent-red);">◆ 上峰消失高位分散</span> — 集中度从高变低(下降>30%) 或 集中度<5%且之前>8%。主力已出货，散户站岗 → <span style="color:var(--accent-red);">强制清仓</span><br>
+            <span style="color:var(--text-micro);">◆ 筹码分散</span> — 集中度<5%持续。无主力迹象，筹码自由流通 → <span style="color:var(--text-micro);">观望</span>
+            </p>
+            <p><strong style="color:#fff;">怎么看</strong></p>
+            <p style="margin-left:12px;">集中度持续上升 + 单峰 → 主力锁仓，关注突破信号<br>集中度从高变低 + 价格下跌 → 主力出货，注意止损<br>多峰结构 → 中线持有，但需警惕最高峰是否开始松动</p>
         </div>
     </div>
 </div>
@@ -154,522 +218,15 @@
 <script src="js/framework/modal.js"></script>
 <script src="js/framework/task_monitor.js"></script>
 <script src="js/framework/markdown.js"></script>
+<script src="js/framework/indicator_compute.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/common.js"></script>
-<script>
-const terminal = document.getElementById('data-terminal');
-const taskIdDisplay = document.getElementById('task-id-display');
-
-function addLog(msg, type) {
-    const time = new Date().toLocaleTimeString('zh-CN', { hour12: false });
-    const colors = { info: '#666', success: 'var(--accent-green)', warn: 'var(--accent-gold)', error: 'var(--accent-red)' };
-    const line = document.createElement('div');
-    line.innerHTML = `<span style="color:#333;">[${time}]</span> <span style="color:${colors[type]||'#666'};">${msg}</span>`;
-    terminal.appendChild(line);
-    terminal.scrollTop = terminal.scrollHeight;
-    if (terminal.children.length > 100) terminal.removeChild(terminal.firstChild);
-}
-
-function switchDataTab(tab) {
-    document.querySelectorAll('.data-tab-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.data-tab-panel').forEach(p => { p.style.display = 'none'; p.classList.remove('active'); });
-    document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
-    const panel = document.getElementById('tab-' + tab);
-    panel.style.display = ''; panel.classList.add('active');
-    if (tab === 'macro') loadMacro();
-    if (tab === 'watchlist') wlLoad();
-    if (tab === 'health') updateHealthTable();
-    if (tab === 'financial') finInitDropdown();
-    if (tab === 'fundamental') loadFundamental();
-    if (tab === 'alt') loadAltData();
-}
-
-// ═══ Alternative Data ═══
-async function loadAltData() {
-    try {
-        const r = await fetch(`${API_BASE}/data/alt/overview`);
-        const d = await r.json();
-        const data = d.data || {};
-        const chip = data.chip || [];
-        const crowd = data.crowding || [];
-
-        document.getElementById('alt-chip-table').innerHTML = chip.length ?
-            `<table class="health-table"><thead><tr><th>代码</th><th>日期</th><th style="text-align:right;">集中度</th><th style="text-align:right;">峰值价</th><th>形态</th></tr></thead>
-            <tbody>${chip.map(c => `<tr>
-                <td style="color:var(--accent-blue);">${escHtml(c.code)}</td><td>${c.date||''}</td>
-                <td style="text-align:right;">${c.concentration!=null?c.concentration.toFixed(1)+'%':'—'}</td>
-                <td style="text-align:right;">${c.peak!=null?c.peak.toFixed(2):'—'}</td>
-                <td style="font-size:10px;">${escHtml(c.pattern||'')}</td>
-            </tr>`).join('')}</tbody></table>` :
-            '<div style="color:var(--text-micro);padding:20px;">无筹码数据, 请先在量化决策页计算指标</div>';
-
-        document.getElementById('alt-crowd-table').innerHTML = crowd.length ?
-            `<table class="health-table"><thead><tr><th>代码</th><th>日期</th><th style="text-align:right;">换手比(20d/120d)</th><th style="text-align:right;">夏普(60d)</th></tr></thead>
-            <tbody>${crowd.map(c => `<tr>
-                <td style="color:var(--accent-blue);">${escHtml(c.code)}</td><td>${c.date||''}</td>
-                <td style="text-align:right;">${c.crowding_ratio!=null?c.crowding_ratio.toFixed(2):'—'}</td>
-                <td style="text-align:right;">${c.sharpe_60d!=null?c.sharpe_60d.toFixed(3):'—'}</td>
-            </tr>`).join('')}</tbody></table>` :
-            '<div style="color:var(--text-micro);padding:20px;">无拥挤度数据, 请先在量化决策页计算指标</div>';
-    } catch(e) { console.error(e); }
-
-// ═══ Fundamentals ═══
-async function loadFundamental() {
-    try {
-        const r = await fetch(`${API_BASE}/data/fundamental/overview`);
-        const d = await r.json();
-        const data = d.data || {};
-        const industries = data.industries || [];
-        const stocks = data.stocks || [];
-
-        // Industry table
-        document.getElementById('fund-industry-table').innerHTML = industries.length ?
-            `<table class="health-table"><thead><tr><th>行业</th><th style="text-align:right;">数量</th><th style="text-align:right;">均PE</th><th style="text-align:right;">均市值(亿)</th></tr></thead>
-            <tbody>${industries.map(i => `<tr><td>${escHtml(i.name)}</td><td style="text-align:right;">${i.count}</td><td style="text-align:right;">${i.avg_pe}</td><td style="text-align:right;">${Math.round(i.avg_mcap)}</td></tr>`).join('')}</tbody></table>` :
-            '<div style="color:var(--text-micro);padding:20px;">行业数据待同步</div>';
-
-        // Valuation table
-        document.getElementById('fund-valuation-table').innerHTML = stocks.length ?
-            `<table class="health-table"><thead><tr><th>代码</th><th>名称</th><th>行业</th><th style="text-align:right;">PE</th><th style="text-align:right;">PB</th><th style="text-align:right;">市值(亿)</th></tr></thead>
-            <tbody>${stocks.map(s => `<tr>
-                <td style="color:var(--accent-blue);">${escHtml(s.code)}</td><td style="color:#fff;">${escHtml(s.name)}</td>
-                <td style="font-size:10px;color:var(--text-micro);">${escHtml(s.industry)}</td>
-                <td style="text-align:right;">${s.pe_ttm!=null?s.pe_ttm.toFixed(1):'—'}</td>
-                <td style="text-align:right;">${s.pb!=null?s.pb.toFixed(1):'—'}</td>
-                <td style="text-align:right;">${s.mcap_yi!=null?Math.round(s.mcap_yi):'—'}</td>
-            </tr>`).join('')}</tbody></table>` :
-            '<div style="color:var(--text-micro);padding:20px;">估值数据从stock_info表加载</div>';
-    } catch(e) { console.error(e); }
-
-// ═══ Quick actions ═══
-function quickSync(mode) {
-    const code = document.getElementById('quick-stock-input').value.trim();
-    if (!code) { addLog('请输入代码', 'warn'); return; }
-    const label = mode === 'historical' ? '补齐历史' : '同步当日';
-    addLog(`${label}: ${code}...`, 'info');
-    fetch(`${API_BASE}/data/sync/daily/${code}?mode=${mode}`, { method: 'POST' }).then(r => r.json()).then(d => {
-        addLog(`${code} | 名称:${d.name||'--'} | 价格:${d.price||'--'} | +${d.new_rows||0}行`, 'success');
-        updateHealthTable();
-    }).catch(e => addLog(`${code} 失败: ${e.message}`, 'error'));
-}
-function quickCompute() {
-    const code = document.getElementById('quick-stock-input').value.trim();
-    if (!code) { addLog('请输入代码', 'warn'); return; }
-    addLog(`计算 ${code} 指标...`, 'info');
-    fetch(`${API_BASE}/quant/indicators/compute/${code}?mode=snapshot`, { method: 'POST' }).then(r => r.json()).then(d => {
-        addLog(`${code} 完成: ${d.data?.computed||0}个指标`, 'success');
-    }).catch(e => addLog(`${code} 异常: ${e.message}`, 'error'));
-}
-
-// ═══ Macro Sync ═══
-async function syncMacro(mode) {
-    const label = mode === 'historical' ? '补齐历史' : '同步当日';
-    addLog(`宏观${label}...`, 'info');
-    try {
-        const r = await fetch(`${API_BASE}/data/macro/sync?mode=${mode}`, { method: 'POST' });
-        await r.json();
-        addLog(`宏观${label}完成`, 'success');
-        loadMacro();
-    } catch(e) { addLog(`宏观同步失败: ${e.message}`, 'error'); }
-}
-
-// ═══ Macro Cards ═══
-async function loadMacro() {
-    const el = document.getElementById('macro-cards');
-    try {
-        const res = await fetch(`${API_BASE}/data/macro/latest`);
-        const data = await res.json();
-        const items = data.data || [];
-        const names = {XAU:'黄金',XAG:'白银',BRENT:'原油',USD_CNY:'美元/人民币',HKD_CNY:'港币/人民币',US10YT:'美债10Y'};
-        const pending = 'DXY/US_FED_RATE/CN_PPI/US_PPI/CREDIT_IMPULSE 待接入';
-        el.innerHTML = items.map(i => {
-            const pct = i.change_pct;
-            const pctStr = pct != null ? ((pct>=0?'+':'') + pct.toFixed(2) + '%') : '';
-            const pctColor = pct != null ? (pct>=0 ? 'var(--accent-green)' : 'var(--accent-red)') : 'var(--text-micro)';
-            return `<div class="macro-card" style="cursor:pointer;" onclick="showMacroHistory('${i.code}','${names[i.code]||i.code}')" title="点击查看历史趋势">
-                <div class="label">${names[i.code]||i.code}</div>
-                <div class="value">${i.rate != null ? i.rate.toFixed(4) : '—'}</div>
-                <div class="change" style="color:${pctColor}">${pctStr||'—'}</div>
-            </div>`;
-        }).join('') + `<div style="width:100%;font-size:9px;color:var(--text-micro);margin-top:4px;">待接入: ${pending}</div>`;
-    } catch(e) { el.innerHTML = '<div style="color:var(--accent-red);">加载失败</div>'; }
-}
-
-// ═══ Watchlist ═══
-async function wlLoad() {
-    const el = document.getElementById('watchlist-table');
-    try {
-        const res = await fetch(`${API_BASE}/data/watchlist`);
-        const data = await res.json();
-        let items = data.data || [];
-        // Filters
-        const filterGroup = document.getElementById('wl-filter-group').value;
-        const filterHeld = document.getElementById('wl-filter-held').checked;
-        if (filterGroup) items = items.filter(i => (i.group_tag || '默认') === filterGroup);
-        if (filterHeld) items = items.filter(i => i.is_held);
-        // Populate group dropdown
-        const groups = [...new Set(data.data.map(i => i.group_tag || '默认'))];
-        const sel = document.getElementById('wl-filter-group');
-        const curVal = sel.value;
-        sel.innerHTML = '<option value="">全部分组</option>' + groups.map(g => `<option>${g}</option>`).join('');
-        sel.value = curVal;
-        if (!items.length) { el.innerHTML = '<div style="color:var(--text-micro);padding:20px;text-align:center;">无匹配结果，从持仓导入或手动添加</div>'; return; }
-        // Grouped
-        const grouped = {};
-        items.forEach(i => { const g = i.group_tag || '默认'; if (!grouped[g]) grouped[g] = []; grouped[g].push(i); });
-        el.innerHTML = Object.entries(grouped).map(([g, stocks]) => `
-            <div class="panel" style="margin-bottom:6px;">
-                <div class="panel-header"><span style="font-size:11px;">${escHtml(g)}</span><span style="font-size:9px;color:var(--text-micro);">(${stocks.length})</span></div>
-                <div class="panel-body" style="padding:0;">
-                    <table class="watchlist-table">
-                        <thead><tr><th style="width:80px;">代码</th><th>名称</th><th style="text-align:right;width:65px;">现价</th><th style="text-align:right;width:65px;">涨跌</th><th style="text-align:right;width:70px;">市值(亿)</th><th style="text-align:right;width:55px;">PE</th><th style="text-align:right;width:70px;">营收(亿)</th><th style="text-align:right;width:55px;">净利率</th><th style="text-align:right;width:60px;">ROE</th><th style="text-align:center;width:90px;">操作</th></tr></thead>
-                        <tbody>${stocks.map(s => {
-                            const pct = s.change_pct;
-                            const pc = pct != null ? (pct >= 0 ? 'var(--accent-green)' : 'var(--accent-red)') : 'var(--text-micro)';
-                            const ps = pct != null ? ((pct>=0?'+':'') + pct.toFixed(2) + '%') : '—';
-                            const rev = s.fin_revenue;
-                            const profit = s.fin_profit;
-                            const cost = s.fin_cost;
-                            const equity = s.fin_equity;
-                            const nm = rev ? (profit/rev*100).toFixed(1) : '—';
-                            const roe = equity ? (profit/equity*100).toFixed(1) : '—';
-                            const revYi = rev ? (rev/1e8).toFixed(1) : '—';
-                            return `<tr onclick="wlShowChart('${escHtml(s.stock_code)}','${escHtml(s.stock_name)}')" title="点击查看K线">
-                                <td style="width:80px;color:var(--accent-blue);">${escHtml(s.stock_code)}</td>
-                                <td style="color:#fff;">${escHtml(s.stock_name)}${s.is_held?'<span style="color:var(--accent-green);font-size:9px;">[持仓]</span>':''}</td>
-                                <td style="text-align:right;width:65px;">${s.price!=null?s.price.toFixed(2):'—'}</td>
-                                <td style="text-align:right;width:65px;color:${pc};">${ps}</td>
-                                <td style="text-align:right;width:70px;">${s.mcap_yi!=null?Math.round(s.mcap_yi):'—'}</td>
-                                <td style="text-align:right;width:55px;">${s.pe_ttm!=null?s.pe_ttm.toFixed(1):'—'}</td>
-                                <td style="text-align:right;width:70px;">${revYi}</td>
-                                <td style="text-align:right;width:55px;">${nm}%</td>
-                                <td style="text-align:right;width:60px;">${roe}%</td>
-                                <td style="text-align:center;width:90px;" onclick="event.stopPropagation();">
-                                    <button onclick="wlFinDetail('${escHtml(s.stock_code)}','${escHtml(s.stock_name)}')" title="财务F10" style="background:none;border:none;color:var(--accent-gold);cursor:pointer;font-size:9px;"><i class="fas fa-file-invoice"></i></button>
-                                    <button onclick="wlSyncOne('${escHtml(s.stock_code)}',this)" style="background:none;border:none;color:var(--accent-blue);cursor:pointer;font-size:9px;"><i class="fas fa-sync-alt"></i></button>
-                                    <button onclick="wlEditGroup('${escHtml(s.stock_code)}','${escHtml(s.group_tag||'默认')}')" style="background:none;border:none;color:var(--accent-gold);cursor:pointer;font-size:9px;"><i class="fas fa-tag"></i></button>
-                                    <button onclick="wlRemove('${escHtml(s.stock_code)}')" style="background:none;border:none;color:var(--accent-red);cursor:pointer;font-size:9px;"><i class="fas fa-trash"></i></button>
-                                </td>
-                            </tr>`;
-                        }).join('')}</tbody>
-                    </table>
-                </div>
-            </div>`).join('');
-    } catch(e) { el.innerHTML = '<div style="color:var(--accent-red);">加载失败</div>'; }
-}
-async function wlAdd() {
-    const code = document.getElementById('wl-code').value.trim();
-    if (!code) { addLog('请输入代码', 'warn'); return; }
-    const group = document.getElementById('wl-group').value.trim() || '默认';
-    try {
-        const res = await fetch(`${API_BASE}/data/watchlist/add?stock_code=${code}&group_tag=${encodeURIComponent(group)}`, { method: 'POST' });
-        const d = await res.json();
-        document.getElementById('wl-code').value = '';
-        wlLoad(); addLog(`已添加 ${code} (${d.name||''})`, 'success');
-    } catch(e) { addLog(`添加失败: ${e.message}`, 'error'); }
-}
-async function wlImportPositions() {
-    addLog('从持仓导入...', 'info');
-    try { const res = await fetch(`${API_BASE}/data/watchlist/import-positions`, { method: 'POST' }); const d = await res.json(); wlLoad(); addLog(`导入完成: ${d.imported||0}只`, 'success'); }
-    catch(e) { addLog(`失败: ${e.message}`, 'error'); }
-}
-async function wlSync(mode) {
-    const label = mode === 'historical' ? '补齐历史' : '同步当日';
-    addLog(`自选股${label}...`, 'info');
-    try { const res = await fetch(`${API_BASE}/data/watchlist/sync`, { method: 'POST' }); const d = await res.json(); addLog(`完成: ${d.synced||0}只`, 'success'); updateHealthTable(); wlLoad(); }
-    catch(e) { addLog(`失败: ${e.message}`, 'error'); }
-}
-async function wlSyncOne(code, btn) {
-    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
-    try { const res = await fetch(`${API_BASE}/data/sync/daily/${code}`, { method: 'POST' }); const d = await res.json(); addLog(`${code} | ${d.name||''} | ¥${d.price||'--'} | +${d.new_rows||0}行`, 'success'); wlLoad(); }
-    catch(e) { addLog(`${code} 失败: ${e.message}`, 'error'); }
-    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-sync-alt"></i>'; }
-}
-async function wlRefreshHeld() {
-    try { const res = await fetch(`${API_BASE}/data/watchlist/refresh-held`, { method: 'POST' }); const d = await res.json(); addLog(`状态更新: ${d.updated||0}只`, 'success'); wlLoad(); } catch(e) {}
-}
-async function wlRemove(code) {
-    try { await fetch(`${API_BASE}/data/watchlist/${code}`, { method: 'DELETE' }); wlLoad(); } catch(e) {}
-}
-async function wlEditGroup(code, currentGroup) {
-    const newGroup = prompt('修改分组:', currentGroup);
-    if (!newGroup || newGroup === currentGroup) return;
-    try { await fetch(`${API_BASE}/data/watchlist/${code}?group_tag=${encodeURIComponent(newGroup)}`, { method: 'PUT' }); wlLoad(); } catch(e) {}
-}
-async function wlShowChart(code, name) {
-    try {
-        const [kRes, iRes] = await Promise.all([
-            fetch(`${API_BASE}/data/daily/${code}?limit=500`),
-            fetch(`${API_BASE}/quant/indicators/${code}`)
-        ]);
-        const kdata = await kRes.json();
-        const iData = await iRes.json();
-        const ind = (iData.data && iData.data.indicators) ? iData.data.indicators : {};
-        let modalHtml = `<div style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:1000;display:flex;justify-content:center;align-items:center;backdrop-filter:blur(4px);" onclick="this.remove()">
-            <div style="background:var(--bg-card);width:90%;max-width:1000px;border-radius:8px;border:1px solid var(--border-color);overflow:hidden;" onclick="event.stopPropagation()">
-                <div style="padding:10px 14px;border-bottom:1px solid var(--border-color);display:flex;justify-content:space-between;">
-                    <span style="font-weight:700;">${escHtml(code)} ${escHtml(name)}</span>
-                    <button onclick="this.closest('div[style*=fixed]').remove()" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:16px;">&times;</button>
-                </div>
-                <div id="wl-chart" style="width:100%;height:450px;"></div>
-                <div style="padding:6px 14px;font-size:9px;color:var(--text-micro);border-top:1px solid var(--border-thin);max-height:60px;overflow-y:auto;">
-                    ${Object.entries(ind).filter(([k,v])=>v!=null&&!k.startsWith('_')).slice(0,15).map(([k,v])=>k+':'+(typeof v==='number'?v.toFixed(2):v)).join(' | ') || '暂无指标'}
-                </div>
-            </div>
-        </div>`;
-        document.body.insertAdjacentHTML('beforeend', modalHtml);
-        setTimeout(() => {
-            const c = document.getElementById('wl-chart');
-            if (!c || !window.echarts) return;
-            const chart = echarts.init(c);
-            const dates = kdata.map(d => d.trade_date);
-            const ohlc = kdata.map(d => [d.open, d.close, d.low, d.high]);
-            const vols = kdata.map(d => d.volume);
-            chart.setOption({ animation: false, tooltip: { trigger: 'axis' },
-                grid: [{ left: '8%', right: '3%', top: '5%', height: '60%' }, { left: '8%', right: '3%', top: '75%', height: '18%' }],
-                xAxis: [{ type: 'category', data: dates, axisLabel: { fontSize: 9 } }, { type: 'category', data: dates, gridIndex: 1, axisLabel: { show: false } }],
-                yAxis: [{ scale: true, splitLine: { lineStyle: { color: '#1a1a1a' } } }, { gridIndex: 1, splitLine: { show: false }, axisLabel: { fontSize: 9 } }],
-                series: [{ type: 'candlestick', data: ohlc, itemStyle: { color: '#ef232a', color0: '#14b143', borderColor: '#ef232a', borderColor0: '#14b143' } },
-                    { type: 'bar', xAxisIndex: 1, yAxisIndex: 1, data: vols, itemStyle: { color: p => ohlc[p.dataIndex]&&ohlc[p.dataIndex][1]>=ohlc[p.dataIndex][0]?'#ef232a':'#14b143' } }]
-            });
-        }, 200);
-    } catch(e) { addLog(`K线加载失败: ${e.message}`, 'error'); }
-}
-
-// ═══ Health Table ═══
-async function updateHealthTable() {
-    const tbody = document.getElementById('health-table-body');
-    try {
-        const [hRes, sRes] = await Promise.all([
-            fetch(`${API_BASE}/data/health/stocks`),
-            fetch(`${API_BASE}/data/health/overview`)
-        ]);
-        const stocks = await hRes.json();
-        const overview = await sRes.json();
-        document.getElementById('health-summary-bar').innerHTML =
-            `已同步: ${overview.synced_stocks||0}只 | 指标覆盖: ${overview.indicators_coverage||0} | 估值覆盖: ${overview.valuation_coverage||0} | 状态: ${overview.status}`;
-        const statusBadge = { HEALTHY: '<span style="color:var(--accent-green);">● HEALTHY</span>', STALE: '<span style="color:var(--accent-gold);">● STALE</span>', GAP: '<span style="color:var(--accent-red);">● GAP</span>' };
-        tbody.innerHTML = stocks.map(s => `<tr>
-            <td><span style="font-weight:600;">${escHtml(s.stock_name||s.stock_code)}</span><br><small style="color:var(--text-micro);">${s.stock_code}</small></td>
-            <td style="font-size:10px;color:var(--text-dim);">${s.earliest_date||'—'}<br>~ ${s.latest_date||'—'}</td>
-            <td style="text-align:right;font-weight:600;">${s.latest_price?'¥'+Number(s.latest_price).toFixed(2):'—'}</td>
-            <td style="text-align:center;">${statusBadge[s.status]||s.status}</td>
-            <td style="text-align:center;">
-                <button style="background:none;border:none;color:var(--accent-blue);cursor:pointer;font-size:10px;" onclick="viewDetail('${s.stock_code}')" title="体检"><i class="fas fa-search"></i></button>
-                <button style="background:none;border:none;color:var(--accent-gold);cursor:pointer;font-size:10px;" onclick="quickSyncCode('${s.stock_code}')" title="同步"><i class="fas fa-sync-alt"></i></button>
-            </td>
-        </tr>`).join('');
-    } catch(e) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--accent-red);">加载失败</td></tr>'; }
-}
-function quickSyncCode(code) {
-    addLog(`同步 ${code}...`, 'info');
-    fetch(`${API_BASE}/data/sync/daily/${code}`, { method: 'POST' }).then(r => r.json()).then(d => {
-        addLog(`${code} 完成`, 'success'); updateHealthTable();
-    }).catch(e => addLog(`${code} 失败: ${e.message}`, 'error'));
-}
-async function viewDetail(code) {
-    try {
-        const res = await fetch(`${API_BASE}/data/health/${code}`);
-        const d = await res.json();
-        Modal.alert(`${code} 数据体检`,
-            `行情: ${d.data_range?.from||'—'} ~ ${d.data_range?.to||'—'} (${d.data_range?.records||0}条)\n` +
-            `最新: 开${d.latest_quote?.open||'—'} 高${d.latest_quote?.high||'—'} 低${d.latest_quote?.low||'—'} 收${d.latest_quote?.close||'—'}\n` +
-            `涨跌: ${d.latest_quote?.change_pct!=null?d.latest_quote.change_pct.toFixed(2)+'%':'—'}`);
-    } catch(e) { addLog(`体检失败: ${e.message}`, 'error'); }
-}
-
-// ── 宏观历史趋势图 ──
-async function showMacroHistory(code, name) {
-    try {
-        const res = await fetch(`${API_BASE}/data/macro/history?code=${code}&days=365`);
-        const d = await res.json();
-        const data = d.data || [];
-        if (!data.length) { addLog(`${name} 无历史数据`, 'warn'); return; }
-        const dates = data.map(r => r.date);
-        const values = data.map(r => r.value);
-        const id = 'macro-chart-' + Date.now();
-        let modalHtml = `<div style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:1000;display:flex;justify-content:center;align-items:center;backdrop-filter:blur(4px);" onclick="this.remove()">
-            <div style="background:var(--bg-card);width:80%;max-width:800px;border-radius:8px;border:1px solid var(--border-color);overflow:hidden;" onclick="event.stopPropagation()">
-                <div style="padding:10px 14px;border-bottom:1px solid var(--border-color);display:flex;justify-content:space-between;">
-                    <span style="font-weight:700;">${escHtml(name)} 历史趋势 (${data.length}天)</span>
-                    <button onclick="this.closest('div[style*=fixed]').remove()" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:16px;">&times;</button>
-                </div>
-                <div id="${id}" style="width:100%;height:400px;"></div>
-            </div>
-        </div>`;
-        document.body.insertAdjacentHTML('beforeend', modalHtml);
-        setTimeout(() => {
-            const c = document.getElementById(id);
-            if (!c || !window.echarts) return;
-            const chart = echarts.init(c);
-            chart.setOption({
-                tooltip: { trigger: 'axis' },
-                xAxis: { type: 'category', data: dates, axisLabel: { fontSize: 9, rotate: 30 } },
-                yAxis: { type: 'value', scale: true, splitLine: { lineStyle: { color: '#1a1a1a' } } },
-                series: [{ type: 'line', data: values, smooth: true, symbol: 'none',
-                    lineStyle: { color: '#60a5fa', width: 1.5 },
-                    areaStyle: { color: 'rgba(96,165,250,0.08)' } }]
-            });
-        }, 200);
-    } catch(e) { addLog(`历史加载失败: ${e.message}`, 'error'); }
-}
-
-// ═══ Financial Reports ═══
-async function finInitDropdown() {
-    try {
-        const r = await fetch(`${API_BASE}/data/watchlist`);
-        const d = await r.json();
-        const sel = document.getElementById('fin-select');
-        sel.innerHTML = '<option value="">— 选择自选股 —</option>' +
-            (d.data||[]).map(i => `<option value="${i.stock_code}">${i.stock_code} ${i.stock_name}</option>`).join('');
-    } catch(e) {}
-}
-function finSelectStock() {
-    const code = document.getElementById('fin-select').value;
-    if (code) finLoad(code);
-}
-async function finSyncSelected() {
-    const sel = document.getElementById('fin-select');
-    const code = sel.value;
-    if (!code) { addLog('请先选择自选股', 'warn'); return; }
-    addLog(`拉取 ${code} 财报...`, 'info');
-    try {
-        const r = await fetch(`${API_BASE}/data/financial/sync/${code}`, { method: 'POST' });
-        const d = await r.json();
-        addLog(`${code}: ${d.data?.stored||0} 季度已存储`, 'success');
-        finLoad(code);
-    } catch(e) { addLog(`失败: ${e.message}`, 'error'); }
-}
-async function finBatchSync() {
-    addLog('批量拉取自选股财报...', 'info');
-    try {
-        const r = await fetch(`${API_BASE}/data/financial/sync`, { method: 'POST' });
-        const d = await r.json();
-        addLog(`完成: ${d.data?.synced_stocks||0}只 ${d.data?.total_quarters||0}季度`, 'success');
-    } catch(e) { addLog(`失败: ${e.message}`, 'error'); }
-}
-async function finLoad(code) {
-    const el = document.getElementById('financial-content');
-    try {
-        const r = await fetch(`${API_BASE}/data/financial/${code}?periods=12`);
-        const d = await r.json();
-        const rows = d.data || [];
-        if (!rows.length) { el.innerHTML = '<div style="color:var(--text-micro);padding:40px;text-align:center;">无数据, 点击"拉取财报"</div>'; return; }
-        el.innerHTML = `
-            <table class="health-table">
-                <thead><tr>
-                    <th>报告期</th><th>营收(亿)</th><th>净利润(亿)</th><th>毛利率</th><th>净利率</th>
-                    <th>现金流(亿)</th><th>存货(亿)</th><th>合同负债(亿)</th><th>应收(亿)</th>
-                    <th>总资产(亿)</th><th>负债(亿)</th><th>ROE</th>
-                </tr></thead>
-                <tbody>${rows.map(r => {
-                    const rev = (r.revenue||0)/1e8;
-                    const profit = (r.parent_profit||0)/1e8;
-                    const gm = r.revenue ? ((r.revenue-r.operate_cost)/r.revenue*100).toFixed(1) : '—';
-                    const nm = r.revenue ? (profit*1e8/r.revenue*100).toFixed(1) : '—';
-                    const ocf = (r.op_cashflow||0)/1e8;
-                    const inv = (r.inventory||0)/1e8;
-                    const cl = (r.contract_liability||0)/1e8;
-                    const ar = (r.accounts_receivable||0)/1e8;
-                    const ta = (r.total_assets||0)/1e8;
-                    const tl = (r.total_liabilities||0)/1e8;
-                    const roe = r.total_equity ? (profit*1e8/r.total_equity*100).toFixed(1) : '—';
-                    const color = profit >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
-                    return `<tr>
-                        <td>${r.report_date} <span style="font-size:9px;color:var(--text-micro);">${r.report_type}</span></td>
-                        <td style="text-align:right;">${rev.toFixed(2)}</td>
-                        <td style="text-align:right;color:${color};">${profit.toFixed(2)}</td>
-                        <td style="text-align:right;">${gm}%</td>
-                        <td style="text-align:right;">${nm}%</td>
-                        <td style="text-align:right;">${ocf.toFixed(2)}</td>
-                        <td style="text-align:right;">${inv.toFixed(2)}</td>
-                        <td style="text-align:right;">${cl.toFixed(2)}</td>
-                        <td style="text-align:right;">${ar.toFixed(2)}</td>
-                        <td style="text-align:right;">${ta.toFixed(2)}</td>
-                        <td style="text-align:right;">${tl.toFixed(2)}</td>
-                        <td style="text-align:right;">${roe}%</td>
-                    </tr>`;
-                }).join('')}</tbody>
-            </table>`;
-    } catch(e) { el.innerHTML = '<div style="color:var(--accent-red);">加载失败</div>'; }
-}
-
-// ── F10 财务明细 ──
-async function wlFinDetail(code, name) {
-    try {
-        const r = await fetch(`${API_BASE}/data/financial/${code}?periods=12`);
-        const d = await r.json();
-        const rows = d.data || [];
-        if (!rows.length) { addLog(`${code} 无财务数据, 请先在财务报告标签拉取`, 'warn'); return; }
-        const tbl = rows.map(r => {
-            const rev = (r.revenue||0)/1e8;
-            const profit = (r.parent_profit||0)/1e8;
-            const gm = r.revenue ? ((r.revenue-r.operate_cost)/r.revenue*100).toFixed(1) : '—';
-            const nm = r.revenue ? (profit*1e8/r.revenue*100).toFixed(1) : '—';
-            const roe = r.total_equity ? (profit*1e8/r.total_equity*100).toFixed(1) : '—';
-            const pc = profit >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
-            return `<tr>
-                <td>${r.report_date}<br><span style="font-size:9px;color:var(--text-micro);">${r.report_type}</span></td>
-                <td style="text-align:right;">${rev.toFixed(2)}</td>
-                <td style="text-align:right;color:${pc};">${profit.toFixed(2)}</td>
-                <td style="text-align:right;">${gm}%</td><td style="text-align:right;">${nm}%</td>
-                <td style="text-align:right;">${roe}%</td>
-                <td style="text-align:right;">${((r.op_cashflow||0)/1e8).toFixed(2)}</td>
-                <td style="text-align:right;">${((r.inventory||0)/1e8).toFixed(2)}</td>
-                <td style="text-align:right;">${((r.contract_liability||0)/1e8).toFixed(2)}</td>
-                <td style="text-align:right;">${((r.total_assets||0)/1e8).toFixed(2)}</td>
-                <td style="text-align:right;">${((r.total_liabilities||0)/1e8).toFixed(2)}</td>
-            </tr>`;
-        }).join('');
-        let html = `<div style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:1000;display:flex;justify-content:center;align-items:center;backdrop-filter:blur(4px);" onclick="this.remove()">
-            <div style="background:var(--bg-card);width:95%;max-width:1100px;max-height:85vh;border-radius:8px;border:1px solid var(--border-color);overflow:hidden;" onclick="event.stopPropagation()">
-                <div style="padding:10px 14px;border-bottom:1px solid var(--border-color);display:flex;justify-content:space-between;">
-                    <span style="font-weight:700;">${escHtml(code)} ${escHtml(name)} — 财务报告</span>
-                    <button onclick="this.closest('div[style*=fixed]').remove()" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:16px;">&times;</button>
-                </div>
-                <div style="overflow-x:auto;max-height:70vh;">
-                    <table class="health-table"><thead><tr>
-                        <th>报告期</th><th style="text-align:right;">营收(亿)</th><th style="text-align:right;">净利润(亿)</th><th style="text-align:right;">毛利率</th><th style="text-align:right;">净利率</th><th style="text-align:right;">ROE</th>
-                        <th style="text-align:right;">CF(亿)</th><th style="text-align:right;">存货(亿)</th><th style="text-align:right;">合同负债(亿)</th><th style="text-align:right;">总资产(亿)</th><th style="text-align:right;">负债(亿)</th>
-                    </tr></thead><tbody>${tbl}</tbody></table>
-                </div>
-            </div>
-        </div>`;
-        document.body.insertAdjacentHTML('beforeend', html);
-    } catch(e) { addLog(`财务加载失败: ${e.message}`, 'error'); }
-}
-
-// ═══ Sync triggers ═══
-async function syncMacroData() {
-    addLog('同步宏观数据...', 'info');
-    try { const r = await fetch(`${API_BASE}/data/forex/sync`, { method: 'POST' }); const d = await r.json(); addLog('宏观同步完成', 'success'); loadMacro(); }
-    catch(e) { addLog(`宏观同步失败: ${e.message}`, 'error'); }
-}
-async function triggerSync(mode) {
-    addLog(`触发同步: ${mode}...`, 'info');
-    try {
-        const res = await fetch(`${API_BASE}/data/sync/daily/auto`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: mode }) });
-        const data = await res.json();
-        addLog(`任务入队: ${data.task_id||data.message}`, 'success');
-        setTimeout(updateHealthTable, 5000);
-    } catch(e) { addLog(`同步失败: ${e.message}`, 'error'); }
-}
-async function triggerAsync(code) {
-    addLog(`触发异步任务: ${code}...`, 'info');
-    try {
-        const r = await fetch(`${API_BASE}/system/tasks/executions`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ task_code: code }) });
-        const d = await r.json();
-        addLog(`任务入队: ${d.id||'ok'}`, 'success');
-    } catch(e) { addLog(`失败: ${e.message}`, 'error'); }
-}
-
-function escHtml(s) { if (!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-
-document.addEventListener('DOMContentLoaded', () => {
-    loadMacro();
-    setTimeout(updateHealthTable, 1000);
-});
-window.refreshPageData = () => { loadMacro(); updateHealthTable(); };
-</script>
+<script src="js/data-tabs/core.js"></script>
+<script src="js/data-tabs/macro.js"></script>
+<script src="js/data-tabs/watchlist.js"></script>
+<script src="js/data-tabs/health.js"></script>
+<script src="js/data-tabs/financial.js"></script>
+<script src="js/data-tabs/fundamental.js"></script>
+<script src="js/data-tabs/alt.js"></script>
 </body>
 </html>

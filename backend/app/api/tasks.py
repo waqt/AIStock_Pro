@@ -83,6 +83,16 @@ async def trigger_task(req: TaskRunRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Trigger failed: {str(e)}")
 
+@router.get("/executions/{exec_id}")
+async def get_execution(exec_id: str):
+    """查询单条任务状态"""
+    async with async_session() as db:
+        exec = await db.get(TaskExecution, exec_id)
+        if not exec:
+            raise HTTPException(status_code=404, detail="Task not found")
+        return exec
+
+
 @router.delete("/executions/{exec_id}")
 async def stop_task_execution(exec_id: str):
     """终止正在运行的任务"""

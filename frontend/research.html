@@ -2,823 +2,434 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AIStock | AI 投研</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        .research-input { display: flex; gap: 10px; margin-bottom: 16px; }
-        .research-input input { flex: 1; background: #000; border: 1px solid var(--border-color); color: #fff; padding: 10px 14px; border-radius: 4px; font-size: 13px; }
-        .step-progress { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
-        .step-badge { padding: 4px 10px; border-radius: 3px; font-size: 10px; background: var(--border-color); color: var(--text-micro); }
-        .step-badge.active { background: var(--accent-blue); color: #000; }
-        .step-badge.done { background: rgba(46,213,115,0.15); color: var(--accent-green); }
-        .result-block { margin-bottom: 16px; }
-        .result-block pre { font-size: 11px; line-height: 1.6; white-space: pre-wrap; color: var(--text-dim); max-height: 300px; overflow-y: auto; }
-        .score-badge { display: inline-block; padding: 2px 8px; border-radius: 3px; font-weight: 700; }
-        .score-high { background: rgba(46,213,115,0.15); color: var(--accent-green); }
-        .summary-box { background: rgba(255,255,255,0.03); border: 1px solid var(--accent-gold); padding: 16px; border-radius: 6px; font-size: 13px; line-height: 1.8; }
-        .summary-box h2,.summary-box h3 { color: var(--accent-gold); font-size: 14px; margin: 12px 0 6px; }
-        .summary-box table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 11px; }
-        .summary-box th { text-align: left; color: var(--text-micro); padding: 4px 8px; border-bottom: 1px solid var(--border-thin); }
-        .summary-box td { padding: 4px 8px; color: var(--text-dim); border-bottom: 1px solid var(--border-thin); }
-        .chain-layer { background: rgba(255,255,255,0.02); border: 1px solid var(--border-thin); border-radius: 4px; padding: 12px; margin-bottom: 8px; }
-        .chain-layer .tier-badge { display: inline-block; padding: 1px 6px; border-radius: 2px; font-size: 10px; }
-        .tier-up { background: rgba(112,161,255,0.15); color: var(--accent-blue); }
-        .tier-mid { background: rgba(255,165,2,0.15); color: var(--accent-gold); }
-        .tier-down { background: rgba(46,213,115,0.15); color: var(--accent-green); }
-        /* V3.0 core stocks table */
-        .core-stocks-table { width: 100%; border-collapse: collapse; font-size: 11px; font-family: var(--font-mono); }
-        .core-stocks-table th { background: rgba(255,255,255,0.04); color: var(--text-micro); padding: 6px 8px; text-align: left; border-bottom: 2px solid var(--border-color); white-space: nowrap; position: sticky; top: 0; }
-        .core-stocks-table td { padding: 6px 8px; border-bottom: 1px solid var(--border-thin); color: var(--text-dim); white-space: nowrap; }
-        .core-stocks-table tr:hover td { background: rgba(255,255,255,0.03); }
-        .core-stocks-table .stock-name { color: #fff; font-weight: 600; font-family: var(--font-main); }
-        .core-stocks-table .moat-tag { display: inline-block; padding: 1px 5px; border-radius: 2px; font-size: 9px; }
-        .moat-tech { background: rgba(112,161,255,0.15); color: var(--accent-blue); }
-        .moat-oligopoly { background: rgba(46,213,115,0.15); color: var(--accent-green); }
-        .moat-substitute { background: rgba(255,165,2,0.15); color: var(--accent-gold); }
-        .moat-standard { background: rgba(255,107,107,0.15); color: var(--accent-red); }
-        .gap-bar { display: inline-block; height: 3px; border-radius: 2px; min-width: 4px; background: var(--border-color); vertical-align: middle; margin-right: 4px; }
-        .risk-tag { display: inline-block; padding: 1px 6px; border-radius: 2px; font-size: 10px; margin: 2px; }
-        .risk-high { background: rgba(255,107,107,0.15); color: var(--accent-red); }
-        .risk-mid { background: rgba(255,165,2,0.15); color: var(--accent-gold); }
-        .risk-low { background: rgba(46,213,115,0.15); color: var(--accent-green); }
-        .peer-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; border-bottom: 1px solid var(--border-thin); font-size: 11px; }
-        .watchlist-item { display: inline-block; padding: 2px 8px; margin: 2px; border-radius: 3px; font-size: 10px; background: rgba(255,255,255,0.04); border: 1px solid var(--border-thin); color: var(--text-dim); }
+        .workspace { padding: 14px; display: flex; flex-direction: column; gap: 10px; height: calc(100vh - 110px); }
+        .mode-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border-color); }
+        .mode-tab { background: none; border: none; color: var(--text-dim); cursor: pointer; padding: 8px 16px; font-size: 12px; border-bottom: 2px solid transparent; }
+        .mode-tab.active { color: #fff; border-bottom-color: var(--accent-blue); }
+        .input-row { display: flex; gap: 8px; align-items: center; }
+        .input-row input { flex: 1; background: #000; border: 1px solid var(--border-color); color: #fff; padding: 8px 12px; border-radius: 4px; font-size: 13px; }
+        .input-row select { background: #000; border: 1px solid var(--border-color); color: #fff; padding: 8px 10px; border-radius: 4px; font-size: 12px; min-width: 160px; }
+        .btn-primary { background: var(--accent-blue); color: #fff; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 12px; white-space: nowrap; }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-sm { background: none; border: 1px solid var(--border-thin); color: var(--text-dim); padding: 3px 8px; border-radius: 3px; cursor: pointer; font-size: 10px; }
+        .btn-sm:hover { color: #fff; border-color: var(--accent-blue); }
+        .btn-sm.danger:hover { color: var(--accent-red); border-color: var(--accent-red); }
+        .sector-list { display: flex; flex-direction: column; gap: 4px; max-height: 200px; overflow-y: auto; }
+        .sector-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-thin); border-radius: 4px; cursor: pointer; }
+        .sector-item:hover { background: rgba(255,255,255,0.04); }
+        .sector-item .name { color: #fff; font-size: 12px; }
+        .sector-item .meta { color: var(--text-micro); font-size: 10px; }
+        .content-area { display: flex; gap: 12px; flex: 1; min-height: 200px; }
+        .report-area { flex: 1; overflow-y: auto; background: rgba(255,255,255,0.01); border: 1px solid var(--border-thin); border-radius: 6px; padding: 16px; min-width: 0; }
+        .report-area .md-content { font-size: 12px; line-height: 1.8; }
+        .report-area .md-content h1 { font-size: 16px; margin: 0 0 12px; }
+        .report-area .md-content h2 { font-size: 14px; margin: 16px 0 8px; border-bottom: 1px solid var(--border-thin); padding-bottom: 4px; }
+        .report-area .md-content h3 { font-size: 13px; margin: 12px 0 6px; }
+        .report-area .md-content table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 11px; }
+        .report-area .md-content th { color: var(--text-micro); padding: 4px 6px; text-align: left; border-bottom: 1px solid var(--border-color); }
+        .report-area .md-content td { padding: 3px 6px; border-bottom: 1px solid var(--border-thin); color: var(--text-dim); }
+        .report-title-bar { display: none; justify-content: space-between; align-items: center; padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid var(--border-color); }
+        .report-title-bar .title { color: var(--accent-blue); font-size: 12px; }
+        .extract-panel { width: 260px; min-width: 200px; display: flex; flex-direction: column; gap: 6px; }
+        .extract-panel .stock-item { padding: 6px 8px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-thin); border-radius: 4px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .extract-panel .stock-item:hover { background: rgba(255,255,255,0.05); }
+        .status-bar { font-size: 10px; color: var(--text-micro); padding: 4px 0; }
+        /* 报告历史 */
+        .history-section { border-top: 1px solid var(--border-color); padding-top: 8px; flex-shrink: 0; }
+        .history-header { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; }
+        .history-header .title { color: #fff; font-size: 11px; }
+        .history-header .count { color: var(--text-micro); font-size: 10px; margin-left: 6px; }
+        .history-list { max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 3px; }
+        .history-item { display: flex; align-items: center; gap: 8px; padding: 5px 8px; background: rgba(255,255,255,0.01); border: 1px solid var(--border-thin); border-radius: 4px; cursor: pointer; font-size: 11px; }
+        .history-item:hover { background: rgba(255,255,255,0.03); }
+        .history-item.active { border-color: var(--accent-blue); background: rgba(64,158,255,0.06); }
+        .history-item .ind { color: var(--text-micro); margin-right: auto; }
+        .history-item .name { color: #fff; min-width: 60px; }
+        .history-item .agent-tag { color: var(--accent-green); font-size: 9px; background: rgba(76,175,80,0.1); padding: 1px 5px; border-radius: 3px; white-space: nowrap; }
+        .history-item .actions { display: flex; gap: 4px; white-space: nowrap; }
+        .badge { font-size: 9px; padding: 1px 5px; border-radius: 3px; }
+        .badge-info { background: rgba(64,158,255,0.12); color: var(--accent-blue); }
     </style>
 </head>
 <body data-page-id="research">
-    <div class="app-container">
-        <aside class="sidebar"></aside>
+<div class="app-container">
+<aside class="sidebar"></aside>
+<main class="main-content">
+<div class="top-bar"></div>
+<div class="workspace">
 
-        <main class="main-content">
-            <div class="top-bar"></div>
-
-            <div class="workspace" style="grid-template-columns: 380px 1fr; gap: 16px; padding: 16px;">
-
-                <!-- 左: 查询 + 步骤进度 -->
-                <div style="display: flex; flex-direction: column; gap: 12px;">
-                    <!-- 每日扫描 -->
-                    <div class="panel" style="border-left: 3px solid var(--accent-gold);">
-                        <div class="panel-header"><span class="panel-title">每日市场扫描</span></div>
-                        <div class="panel-body" style="text-align:center;">
-                            <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;">AI 自动扫宏观+资金流+持仓, 发现今日最热赛道</div>
-                            <button class="btn-action" onclick="startScan()" id="btn-scan" style="width:100%;justify-content:center;border-color:var(--accent-gold);color:var(--accent-gold);font-size:14px;padding:12px;">
-                                <i class="fas fa-satellite"></i> 开始扫描
-                            </button>
-                            <div id="scan-status" style="font-size:10px;color:var(--text-micro);margin-top:6px;"></div>
-                        </div>
-                    </div>
-
-                    <!-- 扫描结果: 赛道卡片 -->
-                    <div class="panel" id="panel-scan-result" style="display:none;">
-                        <div class="panel-header"><span class="panel-title">热门赛道</span></div>
-                        <div class="panel-body" id="content-scan-industries"></div>
-                    </div>
-
-                    <div class="panel">
-                        <div class="panel-header"><span class="panel-title">深度供应链分析</span></div>
-                        <div class="panel-body">
-                            <div class="research-input">
-                                <input type="text" id="research-industry" placeholder="行业或主题 (如: AI算力, 新能源...)" value="AI算力">
-                            </div>
-                            <div class="research-input">
-                                <input type="text" id="research-codes" placeholder="A股代码 (逗号分隔)" value="">
-                            </div>
-                            <button class="btn-action btn-primary" onclick="startResearch()" id="btn-research" style="width:100%; justify-content:center;">
-                                <i class="fas fa-brain"></i> 供应链下钻
-                            </button>
-                            <div style="font-size: 10px; color: var(--text-micro); margin-top: 8px;">
-                                5步: 景气信号→供应链图谱→供需瓶颈→核心标的→估值
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 步骤进度 V3.0 -->
-                    <div class="panel">
-                        <div class="panel-header"><span class="panel-title">分析进度</span></div>
-                        <div class="panel-body">
-                            <div class="step-progress" id="step-progress">
-                                <span class="step-badge">Phase1 迭代深研</span>
-                                <span class="step-badge">自检补搜</span>
-                                <span class="step-badge">Phase2 结构化报告</span>
-                            </div>
-                            <div id="step-status" style="font-size:11px;color:var(--text-dim);">等待查询...</div>
-                        </div>
-                    </div>
-
-                    <!-- 行业标签 -->
-                    <div class="panel">
-                        <div class="panel-header"><span class="panel-title">当前分析</span></div>
-                        <div class="panel-body" style="text-align:center;">
-                            <div id="current-industry" style="font-size:16px;font-weight:700;color:var(--text-dim);">—</div>
-                            <div id="stock-count" style="font-size:10px;color:var(--text-micro);margin-top:4px;"></div>
-                            <div id="data-freshness" style="font-size:9px;color:var(--text-micro);margin-top:4px;"></div>
-                        </div>
-                    </div>
-
-                    <!-- 历史研报 -->
-                    <div class="panel">
-                        <div class="panel-header">
-                            <span class="panel-title">历史研报</span>
-                            <button onclick="loadReportList()" style="background:none;border:none;color:var(--text-micro);cursor:pointer;font-size:10px;"><i class="fas fa-sync-alt"></i></button>
-                        </div>
-                        <div class="panel-body" id="content-report-history" style="max-height:400px;overflow-y:auto;">
-                            <div style="color:var(--text-micro);font-size:11px;text-align:center;">加载中...</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 右: 结果展示 -->
-                <div style="display: flex; flex-direction: column; gap: 16px;">
-                    <!-- Summary -->
-                    <div class="panel" id="panel-summary" style="display:none;">
-                        <div class="panel-header"><span class="panel-title">核心结论</span></div>
-                        <div class="panel-body">
-                            <div class="summary-box md-content" id="content-summary"></div>
-                        </div>
-                    </div>
-
-                    <!-- V3.0 核心标的表 -->
-                    <div class="panel" id="panel-core-stocks" style="display:none;">
-                        <div class="panel-header">
-                            <span class="panel-title">核心标的</span>
-                            <span style="font-size:10px;color:var(--text-micro);" id="core-stocks-count"></span>
-                        </div>
-                        <div class="panel-body" style="overflow-x:auto;max-height:500px;overflow-y:auto;" id="content-core-stocks"></div>
-                    </div>
-
-                    <!-- 供应链图谱 V3.0 -->
-                    <div class="panel" id="panel-chain" style="display:none;">
-                        <div class="panel-header"><span class="panel-title">供应链下钻 (L1→L4)</span></div>
-                        <div class="panel-body" id="content-chain"></div>
-                    </div>
-
-                    <!-- 时间维度 -->
-                    <div class="panel" id="panel-temporal" style="display:none;">
-                        <div class="panel-header"><span class="panel-title">景气周期预测</span></div>
-                        <div class="panel-body" id="content-temporal"></div>
-                    </div>
-
-                    <!-- 全球对标 -->
-                    <div class="panel" id="panel-peers" style="display:none;">
-                        <div class="panel-header"><span class="panel-title">全球对标估值</span></div>
-                        <div class="panel-body" id="content-peers"></div>
-                    </div>
-
-                    <!-- 风险提示 -->
-                    <div class="panel" id="panel-risks" style="display:none;">
-                        <div class="panel-header"><span class="panel-title">风险警示</span></div>
-                        <div class="panel-body md-content" id="content-risks"></div>
-                    </div>
-
-                    <!-- 跟踪指标 -->
-                    <div class="panel" id="panel-watchlist" style="display:none;">
-                        <div class="panel-header"><span class="panel-title">后续跟踪指标</span></div>
-                        <div class="panel-body" id="content-watchlist"></div>
-                    </div>
-
-                    <!-- 加载中 -->
-                    <div class="panel" id="panel-loading" style="display:none;">
-                        <div class="panel-body" style="text-align:center;padding:40px;">
-                            <i class="fas fa-spinner fa-spin fa-2x" style="color:var(--accent-blue);margin-bottom:12px;"></i>
-                            <div style="color:var(--text-dim);font-size:12px;">AI 正在深度分析供应链...<br><small id="loading-step" style="color:var(--text-micro);">这可能需要 60-90 秒</small></div>
-                        </div>
-                    </div>
-
-                    <!-- 空状态 -->
-                    <div class="panel" id="panel-empty">
-                        <div class="panel-body" style="text-align:center;padding:60px;">
-                            <div style="font-size:40px;margin-bottom:12px;opacity:0.3;">&#129504;</div>
-                            <div style="color:var(--text-dim);font-size:12px;">
-                                输入行业关键词, AI 将从全球供应链视角分析:<br>
-                                高景气信号 → 供应链结构 → 供需瓶颈 → 垄断标的 → 估值潜力
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </main>
+    <!-- Mode Tabs -->
+    <div class="mode-tabs">
+        <button class="mode-tab active" onclick="switchMode('auto')" data-mode="auto"><i class="fas fa-radar"></i> 自动探测高景气赛道</button>
+        <button class="mode-tab" onclick="switchMode('manual')" data-mode="manual"><i class="fas fa-search"></i> 输入行业分析</button>
+        <button class="mode-tab" onclick="switchMode('reports')" data-mode="reports"><i class="fas fa-history"></i> 报告管理</button>
     </div>
 
-    <script src="js/framework/api.js"></script>
-    <script src="js/framework/modal.js"></script>
-    <script src="js/framework/task_monitor.js"></script>
-    <script src="js/framework/markdown.js"></script>
-    <script src="js/ui.js"></script>
-    <script src="js/common.js"></script>
-    <script>
-        const STEPS_V3 = ['Phase1 迭代深研', '自检补搜', 'Phase2 结构化报告'];
+    <!-- Auto Mode -->
+    <div id="mode-auto">
+        <div class="input-row" style="margin-bottom:6px;">
+            <button class="btn-primary" id="btn-scan" onclick="scanSectors()"><i class="fas fa-satellite"></i> 扫描高景气赛道</button>
+            <span class="status-bar" id="scan-status"></span>
+        </div>
+        <div class="sector-list" id="sector-list"></div>
+    </div>
 
-        function setStep(idx, status) {
-            const badges = document.querySelectorAll('#step-progress .step-badge');
-            for (let i = 0; i < badges.length; i++) {
-                badges[i].classList.remove('active', 'done');
-                if (i < idx - 1) badges[i].classList.add('done');
-                else if (i === idx - 1) badges[i].classList.add('active');
-            }
-            document.getElementById('step-status').textContent = status || `${STEPS_V3[idx-1] || ''}...`;
-        }
+    <!-- Manual Mode -->
+    <div id="mode-manual" style="display:none;">
+        <div class="input-row" style="margin-bottom:4px;">
+            <select id="analyst-type">
+                <option value="supply_chain">产业链穿透</option>
+            </select>
+            <input type="text" id="industry-input" placeholder="输入行业关键词, 如: SOFC固体氧化物燃料电池" value="SOFC">
+            <button class="btn-primary" id="btn-analyze" onclick="startAnalysis()"><i class="fas fa-flask"></i> 开始分析</button>
+            <span class="status-bar" id="analysis-status"></span>
+        </div>
+    </div>
 
-        function hideAllPanels() {
-            ['panel-summary','panel-core-stocks','panel-chain','panel-temporal','panel-peers','panel-risks','panel-watchlist'].forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.style.display = 'none';
-            });
-        }
+    <!-- Reports Mode -->
+    <div id="mode-reports" style="display:none;">
+        <div class="input-row" style="margin-bottom:4px;">
+            <button class="btn-primary" onclick="loadReportHistory()"><i class="fas fa-sync-alt"></i> 刷新列表</button>
+            <span style="color:var(--text-micro);font-size:10px;">共 <span id="reports-total">0</span> 份报告</span>
+        </div>
+    </div>
 
-        // ── 每日扫描 ──
-        async function startScan() {
-            const btn = document.getElementById('btn-scan');
-            const status = document.getElementById('scan-status');
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 扫描中...';
-            status.textContent = '正在收集市场信号...';
-
-            try {
-                const res = await fetch(`${API_BASE}/research/scan`, {
-                    method: 'POST', headers: {'Content-Type':'application/json'}, body: '{}'
-                });
-                const result = await res.json();
-                if (!result.success) { Modal.alert('扫描失败', result.detail || ''); return; }
-                const d = result.data;
-
-                const industries = d.hot_industries || [];
-                const panel = document.getElementById('panel-scan-result');
-                const content = document.getElementById('content-scan-industries');
-                panel.style.display = '';
-                if (Array.isArray(industries) && industries.length) {
-                    content.innerHTML = industries.map((ind, idx) => `
-                        <div style="padding:10px;border-bottom:1px solid var(--border-thin);cursor:pointer;${idx===0?'border-left:3px solid var(--accent-gold);padding-left:8px;':''}"
-                             onclick="document.getElementById('research-industry').value='${(ind.name||ind.industry||'').replace(/'/g,"\\'")}';startResearch();">
-                            <div style="display:flex;justify-content:space-between;align-items:center;">
-                                <span style="font-weight:600;">${idx+1}. ${ind.name || ind.industry || ''}</span>
-                                <span class="score-badge score-high">${ind.score || '?'}/10</span>
-                            </div>
-                            <div style="font-size:11px;color:var(--text-dim);margin-top:4px;">${ind.reason || ''}</div>
-                            ${ind.a_stock_codes ? `<div style="font-size:10px;color:var(--accent-blue);margin-top:4px;">关注: ${ind.a_stock_codes.join(', ')}</div>` : ''}
-                        </div>
-                    `).join('');
-                } else {
-                    content.innerHTML = '<div style="color:var(--text-micro);padding:12px;">扫描未识别到热门赛道, 请稍后重试</div>';
-                }
-
-                if (d.briefing) {
-                    document.getElementById('panel-summary').style.display = '';
-                    document.getElementById('content-summary').innerHTML = MD.render(d.briefing);
-                }
-
-                saveCache(d);
-                showFreshness(result.freshness);
-                status.textContent = '扫描完成';
-                document.getElementById('panel-empty').style.display = 'none';
-            } catch (e) {
-                status.textContent = '扫描异常: ' + e.message;
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-satellite"></i> 开始扫描';
-            }
-        }
-
-        // ── V3.0 供应链下钻 ──
-        async function startResearch() {
-            const industry = document.getElementById('research-industry').value.trim();
-            if (!industry) { Modal.alert('提示', '请输入行业或主题'); return; }
-
-            const codes = document.getElementById('research-codes').value.split(',').map(s => s.trim()).filter(Boolean);
-            const btn = document.getElementById('btn-research');
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 分析中...';
-
-            document.getElementById('panel-empty').style.display = 'none';
-            document.getElementById('panel-loading').style.display = '';
-            document.getElementById('current-industry').textContent = industry;
-            document.getElementById('stock-count').textContent = '';
-            hideAllPanels();
-
-            try {
-                setStep(1, 'Phase 1: 搜索 → LLM分析 → 自检缺口...');
-                document.getElementById('loading-step').textContent = 'Phase 1/2: 迭代深研 (3轮搜索→分析→自检)';
-
-                const res = await fetch(`${API_BASE}/research/analyze-v4`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ question: industry, stock_codes: codes, industry, include_portfolio: true })
-                });
-                const result = await res.json();
-                if (!result.success) { Modal.alert('分析失败', result.detail || JSON.stringify(result)); return; }
-
-                const d = result.data;
-
-                // Format detection: DAG(V4.0) > V3.0 > Legacy
-                const isDAG = d.top_picks || d.detail;
-                const isV3 = d.core_stocks || d.supply_chain_map;
-
-                if (isDAG) {
-                    setStep(3, 'DAG管道完成: 5Agent并行分析');
-                    document.getElementById('loading-step').textContent = '报告生成完成';
-                    renderDagReport(d);
-                } else if (isV3) {
-                    setStep(3, 'Phase 2: 结构化深度报告生成完成');
-                    document.getElementById('loading-step').textContent = '报告生成完成';
-                    renderV3(d);
-                } else {
-                    setStep(5, 'Legacy 分析完成');
-                    document.getElementById('loading-step').textContent = '分析完成';
-                    renderLegacy(d);
-                }
-
-                document.getElementById('stock-count').textContent =
-                    (d.core_stocks || []).length ? `锁定 ${d.core_stocks.length} 只核心标的` : '';
-
-                showFreshness(result.freshness);
-                saveCache(d);
-            } catch (e) {
-                Modal.alert('分析异常', e.message);
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-brain"></i> 供应链下钻';
-                document.getElementById('panel-loading').style.display = 'none';
-            }
-        }
-
-        // ═══ V4.0 DAG 报告渲染 ════════════════════════
-
-        function renderDagReport(d) {
-            hideAllPanels();
-            const detail = d.detail || {};
-            const sc = detail.supply_chain || {};
-            const chain = sc.supply_chain_map || [];
-
-            // 1. Final Summary
-            if (d.final_summary) {
-                document.getElementById('panel-summary').style.display = '';
-                document.getElementById('content-summary').innerHTML = MD.render(d.final_summary);
-            }
-
-            // 2. Top Picks + Portfolio Allocation
-            if (d.top_picks && d.top_picks.length) {
-                renderTopPicks(d.top_picks, d.portfolio_allocation);
-            }
-
-            // 3. Supply Chain Map with level_assets (expandable)
-            if (chain.length) {
-                renderDagSupplyChain(chain);
-            }
-
-            // 4. Per-stock audit results
-            const audits = detail.audits || [];
-            if (audits.length) {
-                renderDagAudits(audits);
-            }
-
-            // 5. Key Risks + Catalysts + Timeline (文本用MD渲染)
-            if (d.key_risks || d.catalysts_to_watch || d.timeline) {
-                document.getElementById('panel-risks').style.display = '';
-                let md = '';
-                if (d.key_risks && d.key_risks.length) {
-                    md += '### 关键风险\n';
-                    md += d.key_risks.map(r => `- **${escHtml(r.type||'')}** (${escHtml(r.severity||'')})：${escHtml(r.description||r)}`).join('\n');
-                }
-                if (d.catalysts_to_watch && d.catalysts_to_watch.length) {
-                    md += '\n\n### 待观察催化剂\n';
-                    md += d.catalysts_to_watch.map(c => `- ${escHtml(c)}`).join('\n');
-                }
-                if (d.timeline) {
-                    md += `\n\n> 执行时间线: ${escHtml(d.timeline)}`;
-                }
-                document.getElementById('content-risks').innerHTML = MD.render(md);
-            }
-
-            // 6. Pipeline stats
-            if (d.pipeline_stats) {
-                const ps = d.pipeline_stats;
-                document.getElementById('stock-count').textContent =
-                    `${ps.core_stocks||0}只标的 | ${ps.stocks_audited||0}审计 | ${ps.stocks_priced||0}定价`;
-            }
-
-            // 7. Raw detail available for drill-down
-            window._dagDetail = detail;
-        }
-
-        function renderTopPicks(picks, alloc) {
-            document.getElementById('panel-core-stocks').style.display = '';
-            const allocMap = {};
-            if (alloc) alloc.forEach(a => { allocMap[a.code] = a; });
-
-            document.getElementById('content-core-stocks').innerHTML = `
-                <table class="core-stocks-table">
-                    <thead><tr>
-                        <th>排名</th><th>代码</th><th>名称</th><th>判断</th><th>置信度</th><th>仓位</th><th>角色</th>
-                    </tr></thead>
-                    <tbody>${picks.map((p,i) => {
-                        const a = allocMap[p.code] || {};
-                        return `<tr>
-                            <td style="color:var(--accent-gold);font-weight:700;">#${i+1}</td>
-                            <td style="color:var(--accent-blue);">${escHtml(p.code||'')}</td>
-                            <td class="stock-name">${escHtml(p.name||'')}</td>
-                            <td style="color:${p.verdict==='BUY'?'var(--accent-green)':'var(--text-dim)'};">${escHtml(p.verdict||'')}</td>
-                            <td>${escHtml(p.conviction||'')}</td>
-                            <td>${a.weight_pct||''}%</td>
-                            <td style="font-size:10px;color:var(--text-micro);">${escHtml(a.role||'')}</td>
-                        </tr>`;
-                    }).join('')}</tbody>
-                </table>
-            `;
-        }
-
-        function renderDagSupplyChain(chain) {
-            document.getElementById('panel-chain').style.display = '';
-            const gapColors = {10:'var(--accent-red)',9:'var(--accent-red)',8:'var(--accent-gold)',7:'var(--accent-gold)'};
-            const levelNames = {1:'L1 显性瓶颈', 2:'L2 工艺瓶颈', 3:'L3 材料瓶颈', 4:'L4 设备/测试瓶颈'};
-
-            document.getElementById('content-chain').innerHTML = chain.map(m => {
-                const gs = m.gap_score || 0;
-                const gapColor = gapColors[gs] || 'var(--text-dim)';
-                const assets = m.level_assets || [];
-                const assetRows = assets.length ? assets.map(a => `
-                    <tr>
-                        <td>${escHtml(a.code||'')}</td>
-                        <td style="color:#fff;">${escHtml(a.name||'')}</td>
-                        <td style="font-size:10px;">${escHtml(a.role||'')}</td>
-                        <td>${escHtml(a.market_share_est||'')}</td>
-                        <td>${escHtml(a.tech_level||'')}</td>
-                        <td>${a.moat_score||'?'}/10</td>
-                    </tr>`).join('') : '';
-
-                return `<div class="chain-layer" style="${gs>=8?'border-left:3px solid var(--accent-red);':''}">
-                    <div style="display:flex;justify-content:space-between;align-items:center;">
-                        <span>
-                            <span style="display:inline-block;padding:1px 6px;border-radius:2px;font-size:9px;background:rgba(255,165,2,0.15);color:var(--accent-gold);">${levelNames[m.level]||'L'+m.level}</span>
-                            <strong style="margin-left:4px;">${escHtml(m.name||'')}</strong>
-                        </span>
-                        <span style="display:flex;align-items:center;gap:6px;">
-                            <span class="gap-bar" style="width:${Math.min(gs*10,100)}px;background:${gapColor};"></span>
-                            <span class="score-badge" style="color:${gapColor};background:rgba(255,165,2,0.1);font-size:10px;">预期差 ${gs}/10</span>
-                        </span>
-                    </div>
-                    <div style="font-size:10px;color:var(--text-dim);margin-top:4px;">${escHtml(m.gap_reason||'')}</div>
-                    <div style="font-size:9px;color:var(--text-micro);margin-top:2px;">
-                        市场规模: ${escHtml(m.market_size_est||'?')} | 国产化率: ${escHtml(m.localization_rate||'?')} | 代差: ${escHtml(m.tech_generation_gap||'?')}
-                    </div>
-                    ${assetRows ? `
-                    <div style="margin-top:6px;">
-                        <div style="font-size:10px;color:var(--text-micro);margin-bottom:2px;">该层资产 (${assets.length}家):</div>
-                        <table style="width:100%;font-size:10px;">
-                            <tr style="color:var(--text-micro);"><th>代码</th><th>名称</th><th>角色</th><th>市占率</th><th>技术</th><th>垄断</th></tr>
-                            ${assetRows}
-                        </table>
-                    </div>` : ''}
-                </div>`;
-            }).join('');
-        }
-
-        function renderDagAudits(audits) {
-            document.getElementById('panel-temporal').style.display = '';
-            document.getElementById('content-temporal').innerHTML = `
-                <div class="panel-header" style="padding:0;margin-bottom:8px;">
-                    <span class="panel-title">交叉审计 (Financial + Human Capital)</span>
+    <!-- Content: Report + Extract Panel -->
+    <div class="content-area">
+        <div class="report-area" id="report-area">
+            <div class="report-title-bar" id="report-title-bar">
+                <span class="title" id="report-title-text"></span>
+                <button class="btn-sm" onclick="closeReport()"><i class="fas fa-times"></i> 关闭</button>
+            </div>
+            <div style="color:var(--text-micro);text-align:center;padding:40px;" id="report-placeholder">
+                <div style="font-size:36px;margin-bottom:10px;opacity:0.3;">&#128202;</div>
+                <div>选择分析模式后开始，或在下方报告管理中查看历史报告</div>
+            </div>
+            <div class="md-content" id="report-content" style="display:none;"></div>
+        </div>
+        <div class="extract-panel" id="extract-panel">
+            <div class="panel">
+                <div class="panel-header"><span class="panel-title"><i class="fas fa-code"></i> 提取标的</span></div>
+                <div class="panel-body" id="extract-list">
+                    <div style="color:var(--text-micro);font-size:10px;text-align:center;padding:10px;">分析完成后自动提取</div>
                 </div>
-                ${audits.map(a => {
-                    const fa = a.financial || {};
-                    const hc = a.human_capital || {};
-                    const faVerdict = fa.verdict || '?';
-                    const hcVerdict = hc.verdict || '?';
-                    const faColor = faVerdict === 'PASS' ? 'var(--accent-green)' : (faVerdict === 'FAIL' ? 'var(--accent-red)' : 'var(--accent-gold)');
-                    const hcColor = hcVerdict === 'STRONG' ? 'var(--accent-green)' : (hcVerdict === 'WEAK' ? 'var(--accent-red)' : 'var(--accent-gold)');
-                    const faFlags = (fa.flags || []).slice(0, 3);
-                    const hcScore = hc.human_capital_score || '?';
+            </div>
+        </div>
+    </div>
 
-                    return `<div class="chain-layer">
-                        <div style="display:flex;justify-content:space-between;">
-                            <strong>${escHtml(a.code||'')} ${escHtml(a.name||'')}</strong>
-                            <span>
-                                <span style="color:${faColor};font-size:10px;">财务:${faVerdict}(${fa.score||'?'})</span>
-                                <span style="margin-left:8px;color:${hcColor};font-size:10px;">人力:${hcVerdict}(${hcScore})</span>
-                            </span>
-                        </div>
-                        ${faFlags.length ? `<div style="font-size:10px;color:var(--text-dim);margin-top:4px;">${faFlags.map(f=>escHtml(f)).join('<br>')}</div>` : ''}
-                        ${hc.key_personnel_risk ? `<div style="font-size:10px;color:var(--accent-gold);margin-top:2px;">关键人风险: ${escHtml(hc.key_personnel_risk)}</div>` : ''}
-                    </div>`;
-                }).join('')}
-            `;
-        }
+    <!-- Report History Section (inside workspace) -->
+    <div class="history-section">
+        <div class="history-header">
+            <span class="title"><i class="fas fa-history"></i> 历史报告 <span class="count" id="history-count"></span></span>
+            <span>
+                <button class="btn-sm" onclick="loadReportHistory()" title="刷新"><i class="fas fa-sync-alt"></i> 刷新</button>
+                <button class="btn-sm" onclick="document.querySelector('.history-list').style.display = document.querySelector('.history-list').style.display === 'none' ? '' : 'none'" title="折叠"><i class="fas fa-chevron-up"></i></button>
+            </span>
+        </div>
+        <div class="history-list" id="report-history-list">
+            <div style="color:var(--text-micro);text-align:center;padding:10px;">加载中...</div>
+        </div>
+    </div>
 
-        // ═══ V3.0 渲染 (Legacy 兼容) ═══════════════════
+</div><!-- workspace -->
+</main>
+</div><!-- app-container -->
 
-        function renderV3(d) {
-            // Summary
-            if (d.summary) {
-                document.getElementById('panel-summary').style.display = '';
-                document.getElementById('content-summary').innerHTML = MD.render(d.summary);
-            }
+<script src="js/framework/api.js"></script>
+<script src="js/framework/modal.js"></script>
+<script src="js/framework/task_monitor.js"></script>
+<script src="js/framework/markdown.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/common.js"></script>
+<script>
+var currentMode = 'auto';
+var activeReportId = null;
 
-            // Core Stocks (the main feature)
-            if (d.core_stocks && d.core_stocks.length) {
-                renderCoreStocks(d.core_stocks);
-            }
+function switchMode(mode) {
+    currentMode = mode;
+    document.querySelectorAll('.mode-tab').forEach(function(b) { b.classList.toggle('active', b.dataset.mode === mode); });
+    document.getElementById('mode-auto').style.display = mode === 'auto' ? '' : 'none';
+    document.getElementById('mode-manual').style.display = mode === 'manual' ? '' : 'none';
+    document.getElementById('mode-reports').style.display = mode === 'reports' ? '' : 'none';
+    if (mode === 'reports') loadReportHistory();
+}
 
-            // Supply Chain Map
-            if (d.supply_chain_map && d.supply_chain_map.length) {
-                renderSupplyChainMap(d.supply_chain_map);
-            }
+async function scanSectors() {
+    var btn = document.getElementById('btn-scan');
+    var status = document.getElementById('scan-status');
+    var list = document.getElementById('sector-list');
+    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 扫描中...';
+    status.textContent = '正在扫描全球高景气赛道...';
+    list.innerHTML = '<div style="color:var(--text-micro);padding:10px;">加载中...</div>';
+    try {
+        var res = await fetch(API_BASE + '/research/scan', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({question:'全球高景气赛道'}) });
+        var d = await res.json();
+        var sectors = (d.data && d.data.hot_industries) ? d.data.hot_industries : [];
+        if (!sectors.length) { list.innerHTML = '<div style="color:var(--text-micro);padding:20px;">未发现热点赛道, 尝试刷新重试</div>'; status.textContent = '无结果'; return; }
+        status.textContent = '发现 ' + sectors.length + ' 个高景气赛道';
+        list.innerHTML = sectors.map(function(s) {
+            var nm = s.name || s.industry || s.theme || '?';
+            var stage = s.lifecycle_stage ? ' <span class="badge badge-info">'+escHtml(s.lifecycle_stage)+'</span>' : '';
+            return '<div class="sector-item" onclick="analyzeSector(\'' + escHtml(nm) + '\')">' +
+                '<span class="name">' + escHtml(nm) + stage + '</span>' +
+                '<span class="meta">' + (s.score ? '景气' + s.score : '') + ' ' + (s.type||'') + '</span>' +
+                '<button class="btn-primary" style="font-size:10px;padding:3px 8px;">分析</button></div>';
+        }).join('');
+    } catch(e) {
+        list.innerHTML = '<div style="color:var(--accent-red);">扫描失败: ' + e.message + '</div>';
+    }
+    btn.disabled = false; btn.innerHTML = '<i class="fas fa-satellite"></i> 扫描高景气赛道';
+}
 
-            // Temporal
-            if (d.temporal && d.temporal.length) {
-                renderTemporalV3(d.temporal);
-            }
+function analyzeSector(name) {
+    switchMode('manual');
+    document.getElementById('industry-input').value = name;
+    startAnalysis();
+}
 
-            // Valuation Peers
-            if (d.valuation_peers && d.valuation_peers.length) {
-                renderPeers(d.valuation_peers);
-            }
+async function startAnalysis() {
+    var industry = document.getElementById('industry-input').value.trim();
+    var atype = document.getElementById('analyst-type').value;
+    if (!industry && !['founder_audit','valuation_scan'].includes(atype)) return;
+    var btn = document.getElementById('btn-analyze');
+    var status = document.getElementById('analysis-status');
 
-            // Risk Alerts
-            if (d.risk_alerts && d.risk_alerts.length) {
-                renderRisks(d.risk_alerts);
-            }
-
-            // Watchlist
-            if (d.watchlist && d.watchlist.length) {
-                renderWatchlist(d.watchlist);
-            }
-        }
-
-        function renderCoreStocks(stocks) {
-            document.getElementById('panel-core-stocks').style.display = '';
-            document.getElementById('core-stocks-count').textContent = `(${stocks.length} 只)`;
-
-            const moatClass = {
-                '技术垄断': 'moat-tech', '寡头格局': 'moat-oligopoly',
-                '国产替代': 'moat-substitute', '标准制定': 'moat-standard'
-            };
-
-            const rows = stocks.map(s => {
-                const upside = s.upside || '';
-                const upsideColor = upside.includes('-') ? 'var(--accent-red)' : 'var(--accent-green)';
-                const moatType = s.moat_type || '';
-                const mc = moatClass[moatType] || 'moat-tech';
-                const scissorOk = (s.scissor_gap || {}).verdict || '';
-
-                return `<tr>
-                    <td style="color:var(--accent-blue);">${escHtml(s.code||'')}</td>
-                    <td class="stock-name">${escHtml(s.name||'')}</td>
-                    <td>${escHtml(s.revenue||'')}</td>
-                    <td style="color:${(s.profit_growth||'').startsWith('-')?'var(--accent-red)':'var(--accent-green)'};">${escHtml(s.profit_growth||'')}</td>
-                    <td>${escHtml(s.gross_margin||'')}</td>
-                    <td>${escHtml(s.peer_pe||'')}</td>
-                    <td>${escHtml(s.market_cap||'')}</td>
-                    <td>${escHtml(s.target_mcap||'')}</td>
-                    <td style="color:${upsideColor};">${escHtml(upside)}</td>
-                    <td><span class="moat-tag ${mc}">${escHtml(moatType)}</span></td>
-                    <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;" title="${escHtml(s.moat||'')}">${escHtml((s.moat||'').slice(0,30))}${(s.moat||'').length>30?'…':''}</td>
-                    <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;" title="${escHtml(s.key_tech||'')}">${escHtml((s.key_tech||'').slice(0,25))}${(s.key_tech||'').length>25?'…':''}</td>
-                    <td>${escHtml(s.global_peer||'')}</td>
-                    <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;" title="${escHtml(s.risk||'')}">${escHtml((s.risk||'').slice(0,25))}${(s.risk||'').length>25?'…':''}</td>
-                </tr>`;
-            }).join('');
-
-            document.getElementById('content-core-stocks').innerHTML = `
-                <table class="core-stocks-table">
-                    <thead><tr>
-                        <th>代码</th><th>名称</th><th>营收</th><th>利润增速</th><th>毛利率</th><th>对标PE</th>
-                        <th>市值</th><th>目标市值</th><th>上涨空间</th><th>护城河</th>
-                        <th>护城河原因</th><th>核心技术</th><th>全球对标</th><th>风险</th>
-                    </tr></thead>
-                    <tbody>${rows}</tbody>
-                </table>`;
-        }
-
-        function renderSupplyChainMap(map) {
-            document.getElementById('panel-chain').style.display = '';
-            const gapColors = {10:'var(--accent-red)',9:'var(--accent-red)',8:'var(--accent-gold)',7:'var(--accent-gold)',6:'var(--accent-blue)'};
-            const levelNames = {1:'L1 显性瓶颈', 2:'L2 工艺瓶颈', 3:'L3 材料瓶颈', 4:'L4 设备/测试瓶颈'};
-
-            document.getElementById('content-chain').innerHTML = map.map(m => {
-                const gs = m.gap_score || 0;
-                const gapColor = gapColors[gs] || 'var(--text-dim)';
-                const barWidth = Math.min(gs * 10, 100);
-                return `<div class="chain-layer" style="${gs>=8?'border-left:3px solid var(--accent-red);':''}">
-                    <div style="display:flex;justify-content:space-between;align-items:center;">
-                        <span>
-                            <span style="display:inline-block;padding:1px 6px;border-radius:2px;font-size:9px;background:rgba(255,165,2,0.15);color:var(--accent-gold);">${levelNames[m.level]||'L'+m.level}</span>
-                            <strong style="margin-left:4px;">${escHtml(m.name||'')}</strong>
-                        </span>
-                        <span style="display:flex;align-items:center;gap:6px;">
-                            <span class="gap-bar" style="width:${barWidth}px;background:${gapColor};"></span>
-                            <span class="score-badge" style="color:${gapColor};background:rgba(255,165,2,0.1);font-size:10px;">预期差 ${gs}/10</span>
-                        </span>
-                    </div>
-                    ${m.gap_reason ? `<div style="font-size:10px;color:var(--accent-gold);margin-top:4px;">${escHtml(m.gap_reason)}</div>` : ''}
-                </div>`;
-            }).join('');
-        }
-
-        function renderTemporalV3(temporal) {
-            if (!temporal.length || !temporal[0].segment) return;
-            document.getElementById('panel-temporal').style.display = '';
-            document.getElementById('content-temporal').innerHTML = `
-                <div style="overflow-x:auto;">
-                <table style="width:100%;font-size:10px;">
-                <tr style="color:var(--text-micro);">
-                    <th>环节</th><th>需求增速</th><th>供需缺口</th><th>缺口填补</th><th>产能过剩风险</th><th>热度</th>
-                </tr>
-                ${temporal.map(t => `
-                <tr>
-                    <td style="font-weight:600;">${escHtml(t.segment||'')}</td>
-                    <td>${escHtml(t.demand_growth||'?')}</td>
-                    <td style="color:var(--accent-red);">${escHtml(t.supply_gap||'?')}</td>
-                    <td>${escHtml(t.gap_filled||'?')}</td>
-                    <td style="color:${(t.overcapacity_risk||'').includes('202')?'var(--accent-gold)':'var(--text-dim)'};">${escHtml(t.overcapacity_risk||'暂无')}</td>
-                    <td style="color:${t.heat_level==='过热'?'var(--accent-red)':(t.heat_level==='偏热'?'var(--accent-gold)':'var(--accent-green)')};">${escHtml(t.heat_level||'?')}</td>
-                </tr>`).join('')}
-                </table></div>`;
-        }
-
-        function renderPeers(peers) {
-            document.getElementById('panel-peers').style.display = '';
-            document.getElementById('content-peers').innerHTML = peers.map(p => `
-                <div class="peer-row">
-                    <span><strong>${escHtml(p.name||'')}</strong> <span style="color:var(--text-micro);font-size:10px;">${escHtml(p.code||'')} ${escHtml(p.exchange||'')}</span></span>
-                    <span style="color:var(--text-dim);">PE ${p.pe||'?'}x | PS ${p.ps||'?'}x</span>
-                    <span style="font-size:10px;color:var(--text-micro);">${escHtml(p.relevance||'')}</span>
-                </div>
-            `).join('');
-        }
-
-        function renderRisks(risks) {
-            document.getElementById('panel-risks').style.display = '';
-            document.getElementById('content-risks').innerHTML = risks.map(r => {
-                const sevClass = r.severity === '高' ? 'risk-high' : (r.severity === '中' ? 'risk-mid' : 'risk-low');
-                return `<span class="risk-tag ${sevClass}">${escHtml(r.type||'')}: ${escHtml(r.description||'')}</span>`;
-            }).join(' ');
-        }
-
-        function renderWatchlist(items) {
-            document.getElementById('panel-watchlist').style.display = '';
-            document.getElementById('content-watchlist').innerHTML = items.map(item =>
-                `<span class="watchlist-item">${escHtml(item)}</span>`
-            ).join(' ');
-        }
-
-        // ═══ Legacy 兼容 ═════════════════════════════════
-
-        function renderLegacy(d) {
-            if (d.prosperity_signals) {
-                const p = d.prosperity_signals;
-                document.getElementById('current-industry').textContent =
-                    (p.hot_segments||[]).join(' / ') || d.industry || '';
-                document.getElementById('stock-count').textContent = '景气评分: ' + (p.prosperity_score||'?') + '/10';
-            }
-            if (d.summary) {
-                document.getElementById('panel-summary').style.display = '';
-                document.getElementById('content-summary').innerHTML = MD.render(d.summary);
-            }
-            if (d.supply_chain) {
-                const ls = d.supply_chain.recursive_layers || d.supply_chain.layers || [];
-                if (ls.length) {
-                    document.getElementById('panel-chain').style.display = '';
-                    const gc = {10:'var(--accent-red)',9:'var(--accent-red)',8:'var(--accent-gold)',7:'var(--accent-gold)'};
-                    document.getElementById('content-chain').innerHTML = ls.map(l => `
-                        <div class="chain-layer" style="${(l.expectation_gap_score||0)>=8?'border-left:3px solid var(--accent-red);':''}">
-                            <div style="display:flex;justify-content:space-between;">
-                                <span><span style="display:inline-block;padding:1px 6px;border-radius:2px;font-size:9px;background:rgba(255,165,2,0.15);color:var(--accent-gold);">L${l.level||'?'}</span> <strong>${escHtml(l.name||'')}</strong></span>
-                                ${l.expectation_gap_score?`<span class="score-badge" style="color:${gc[l.expectation_gap_score]||'var(--text-dim)'};">预期差 ${l.expectation_gap_score}/10</span>`:''}
-                            </div>
-                            <div style="font-size:10px;color:var(--text-dim);margin-top:4px;">${escHtml(l.barriers||'')}</div>
-                            ${l.gap_reason?`<div style="font-size:10px;color:var(--accent-gold);margin-top:2px;">${escHtml(l.gap_reason)}</div>`:''}
-                            ${l.a_share_peers&&l.a_share_peers.length?`<div style="font-size:9px;color:var(--accent-blue);">A股: ${l.a_share_peers.map(p=>escHtml(p.name||p.code)).join(', ')}</div>`:''}
-                        </div>`).join('');
-                }
-            }
-            if (d.temporal) {
-                const tl = Array.isArray(d.temporal) ? d.temporal : [];
-                if (tl.length && tl[0].segment) renderTemporalV3(tl);
-            }
-        }
-
-        // ═══ 工具函数 ═══════════════════════════════════
-
-        function escHtml(s) {
-            if (!s) return '';
-            return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-        }
-
-        function showFreshness(freshness) {
-            const el = document.getElementById('data-freshness');
-            if (!el) return;
-            if (!freshness) { el.textContent = ''; return; }
-            const t = freshness.generated_at || '';
-            const ds = freshness.data_sources || {};
-            const sources = Object.entries(ds).map(([k,v]) => k + ':' + (v||'').slice(0,20)).join(' | ');
-            el.textContent = '\u{1F4C5} ' + (t.slice(0,16) || '') + ' | ' + (sources.slice(0,80));
-        }
-
-        // ── 持久化 ──
-        const CACHE_KEY = 'aistock_research';
-        function saveCache(d) { try { localStorage.setItem(CACHE_KEY, JSON.stringify({t:Date.now(),d})); } catch(e) {} }
-        function loadCache() { try { const r = localStorage.getItem(CACHE_KEY); return r ? JSON.parse(r).d : null; } catch(e) { return null; } }
-
-        function restoreView(d) {
-            document.getElementById('panel-empty').style.display = 'none';
-            if (d.hot_industries) {
-                const c = document.getElementById('content-scan-industries');
-                document.getElementById('panel-scan-result').style.display = '';
-                c.innerHTML = d.hot_industries.map((ind,i) => `
-                    <div style="padding:10px;border-bottom:1px solid var(--border-thin);cursor:pointer;${i===0?'border-left:3px solid var(--accent-gold);padding-left:8px;':''}"
-                         onclick="document.getElementById('research-industry').value='${(ind.name||ind.industry||'').replace(/'/g,"\\'")}';startResearch();">
-                        <div style="display:flex;justify-content:space-between;"><span style="font-weight:600;">${i+1}. ${ind.name||ind.industry||''}</span><span class="score-badge score-high">${ind.score||'?'}/10</span></div>
-                        <div style="font-size:11px;color:var(--text-dim);margin-top:4px;">${ind.reason||''}</div>
-                    </div>`).join('');
-            }
-
-            const isDAG = d.top_picks || d.detail;
-            const isV3 = d.core_stocks || d.supply_chain_map;
-            if (isDAG) {
-                renderDagReport(d);
-                document.getElementById('current-industry').textContent = d.industry || '';
-                document.getElementById('stock-count').textContent = '';
-            } else if (isV3) {
-                renderV3(d);
-                document.getElementById('current-industry').textContent = d.industry || '';
-                document.getElementById('stock-count').textContent = (d.core_stocks||[]).length ? `锁定 ${d.core_stocks.length} 只标的` : '';
-            } else if (d.supply_chain || d.bottleneck || d.temporal || d.briefing) {
-                renderLegacy(d);
-                if (d.briefing) {
-                    document.getElementById('panel-summary').style.display = '';
-                    document.getElementById('content-summary').innerHTML = MD.render(d.briefing);
-                }
-            }
-        }
-
-        // ── 历史研报 ──
-        async function loadReportList() {
-            const el = document.getElementById('content-report-history');
-            try {
-                const res = await fetch(`${API_BASE}/research/reports?limit=20`);
-                const data = await res.json();
-                const reports = data.data || [];
-                if (!reports.length) {
-                    el.innerHTML = '<div style="color:var(--text-micro);font-size:11px;text-align:center;">暂无历史研报</div>';
-                    return;
-                }
-                el.innerHTML = reports.map(r => `
-                    <div style="padding:8px;border-bottom:1px solid var(--border-thin);cursor:pointer;display:flex;justify-content:space-between;align-items:center;"
-                         onclick="loadReportById('${r.report_id}')">
-                        <div style="flex:1;min-width:0;">
-                            <div style="font-size:11px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(r.industry||'未命名')}</div>
-                            <div style="font-size:9px;color:var(--text-micro);">${escHtml(r.agent)} | ${(r.created_at||'').slice(0,16)} | ${r.stocks_count||0}只标的</div>
-                        </div>
-                        <button onclick="event.stopPropagation();deleteReport('${r.report_id}')"
-                            style="background:none;border:none;color:var(--accent-red);cursor:pointer;font-size:10px;padding:2px 6px;"
-                            title="删除"><i class="fas fa-trash"></i></button>
-                    </div>
-                `).join('');
-            } catch(e) {
-                el.innerHTML = '<div style="color:var(--text-micro);font-size:11px;">加载失败</div>';
-            }
-        }
-
-        async function loadReportById(reportId) {
-            try {
-                const res = await fetch(`${API_BASE}/research/reports/${reportId}`);
-                const data = await res.json();
-                const report = data.data;
-                if (!report) return;
-                const d = report.data || {};
-                hideAllPanels();
-                document.getElementById('panel-empty').style.display = 'none';
-                document.getElementById('current-industry').textContent = d.industry || report.industry || '';
-                document.getElementById('stock-count').textContent = (d.core_stocks||[]).length ? (d.core_stocks.length + ' 只标的') : '';
-                const isDAG = d.top_picks || d.detail;
-                const isV3 = d.core_stocks || d.supply_chain_map;
-                if (isDAG) renderDagReport(d);
-                else if (isV3) renderV3(d);
-                else renderLegacy(d);
-            } catch(e) {
-                Modal.alert('加载失败', e.message);
-            }
-        }
-
-        async function deleteReport(reportId) {
-            const ok = await Modal.confirm('删除研报', '确定删除这份研报?');
-            if (!ok) return;
-            try {
-                await fetch(`${API_BASE}/research/reports/${reportId}`, { method: 'DELETE' });
-                loadReportList();
-            } catch(e) {
-                Modal.alert('删除失败', e.message);
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            setTimeout(() => {
-                const cache = loadCache();
-                if (cache) { restoreView(cache); document.getElementById('scan-status').textContent = '已恢复上次分析'; }
-            }, 300);
-            setTimeout(loadReportList, 500);
+    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 提交中...';
+    status.textContent = '提交异步任务...';
+    try {
+        var res = await fetch(API_BASE + '/system/tasks/executions', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({task_code: 'research_analyze', params: {industry: industry, analysis_type: atype}})
         });
+        var d = await res.json();
+        var execId = d.id;
+        status.innerHTML = '任务已提交: <span style="color:var(--accent-blue);">' + execId + '</span> | 轮询中...';
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 分析中...';
 
-    </script>
+        var pollTimer = setInterval(async function() {
+            try {
+                var pollRes = await fetch(API_BASE + '/system/tasks/executions/' + execId);
+                var exec = await pollRes.json();
+                status.textContent = (exec.progress_msg || exec.status) + ' (' + exec.progress + '%)';
+                if (exec.status === 'SUCCESS' || exec.status === 'FAILED' || exec.status === 'CANCELLED') {
+                    clearInterval(pollTimer);
+                    btn.disabled = false; btn.innerHTML = '<i class="fas fa-flask"></i> 开始分析';
+                    if (exec.status === 'SUCCESS') {
+                        status.innerHTML = '<span style="color:var(--accent-green);">分析完成!</span> 正在加载报告...';
+                        await new Promise(function(r) { setTimeout(r, 1000); });
+                        await loadReportHistory();
+                        var listRes = await fetch(API_BASE + '/research/reports?limit=1');
+                        var listData = await listRes.json();
+                        var reports = listData.data || [];
+                        if (reports.length > 0) {
+                            viewReport(reports[0].report_id);
+                            status.innerHTML = '<span style="color:var(--accent-green);">分析完成!</span> 报告已加载';
+                        } else {
+                            status.innerHTML = '<span style="color:var(--accent-green);">分析完成!</span> 请查看下方报告列表';
+                        }
+                    } else {
+                        status.innerHTML = '<span style="color:var(--accent-red);">分析失败:</span> ' + (exec.progress_msg || exec.status);
+                    }
+                }
+            } catch(e) { /* silent */ }
+        }, 3000);
+    } catch(e) {
+        status.textContent = '提交失败: ' + e.message;
+        btn.disabled = false; btn.innerHTML = '<i class="fas fa-flask"></i> 开始分析';
+    }
+}
+
+function loadAnalysts() {
+    fetch(API_BASE + '/research/analysts').then(function(r){return r.json()}).then(function(d){
+        var sel = document.getElementById('analyst-type');
+        var items = d.data || [];
+        if (!items.length) return;
+        sel.innerHTML = items.map(function(a){
+            return '<option value="' + a.type + '" title="' + escHtml(a.description || '') + '">' + escHtml(a.label) + '</option>';
+        }).join('');
+    }).catch(function(){});
+}
+
+function viewReport(id) {
+    activeReportId = id;
+    // 高亮列表
+    document.querySelectorAll('.history-item').forEach(function(el) { el.classList.remove('active'); });
+    var activeEl = document.querySelector('.history-item[data-id="' + id + '"]');
+    if (activeEl) activeEl.classList.add('active');
+
+    fetch(API_BASE + '/research/reports/' + id).then(function(r){return r.json()}).then(function(d){
+        var report = d.data || {};
+        var cio = report.data ? report.data.cio_report : (report.cio_report || '');
+        if (!cio) { Modal.alert('提示', '该报告暂无内容'); return; }
+        document.getElementById('report-placeholder').style.display = 'none';
+        document.getElementById('report-content').style.display = '';
+        document.getElementById('report-content').innerHTML = MD.render(cio);
+        // 标题栏
+        var bar = document.getElementById('report-title-bar');
+        bar.style.display = 'flex';
+        document.getElementById('report-title-text').textContent =
+            (report.data && report.data.title) || (report.title) || ((report.agent||'?') + ' — ' + (report.industry||'?')) + ' | ' + (report.created_at||'').substring(0,16);
+        // 从报告数据提取名称映射
+        var stockMap = {};
+        var sc = (report.data && report.data.supply_chain && report.data.supply_chain.core_stocks) ||
+                 (report.data && report.data.detail && report.data.detail.supply_chain && report.data.detail.supply_chain.core_stocks) ||
+                 (report.data && report.data.core_stocks) || [];
+        sc.forEach(function(s){ if(s.code && s.name) stockMap[s.code] = s.name; });
+        extractStocks(cio, stockMap);
+    }).catch(function(e){
+        Modal.alert('错误', '加载报告失败: ' + e.message);
+    });
+}
+
+function closeReport() {
+    activeReportId = null;
+    document.getElementById('report-placeholder').style.display = '';
+    document.getElementById('report-content').style.display = 'none';
+    document.getElementById('report-title-bar').style.display = 'none';
+    document.querySelectorAll('.history-item').forEach(function(el) { el.classList.remove('active'); });
+}
+
+function deleteReport(id) {
+    Modal.confirm('确认删除', '确定删除此报告? 此操作不可撤销。').then(function(ok){
+        if (!ok) return;
+        fetch(API_BASE + '/research/reports/' + id, {method:'DELETE'}).then(function(r){
+            if (!r.ok) throw new Error('删除失败');
+            if (activeReportId === id) closeReport();
+            loadReportHistory();
+        }).catch(function(e){ Modal.alert('错误', e.message); });
+    });
+}
+
+function regenerateReport(id) {
+    var btn = document.querySelector('.history-item[data-id="' + id + '"] .btn-regenerate');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+    fetch(API_BASE + '/research/reports/' + id + '/regenerate', {method:'POST'}).then(function(r){return r.json()}).then(function(d){
+        if (d.success) { loadReportHistory(); if (activeReportId === id) viewReport(id); }
+        else Modal.alert('错误', d.message || '再生失败');
+    }).catch(function(e){ Modal.alert('错误', e.message); });
+}
+
+function loadReportHistory() {
+    var el = document.getElementById('report-history-list');
+    el.innerHTML = '<div style="color:var(--text-micro);text-align:center;padding:10px;"><i class="fas fa-spinner fa-spin"></i> 加载中...</div>';
+    fetch(API_BASE + '/research/reports?limit=50').then(function(r){return r.json()}).then(function(d){
+        var items = d.data || [];
+        document.getElementById('history-count').textContent = '(' + items.length + '份)';
+        document.getElementById('reports-total').textContent = items.length;
+        if (!items.length) {
+            el.innerHTML = '<div style="color:var(--text-micro);text-align:center;padding:16px;">暂无历史报告，开始你的第一次分析吧</div>';
+            return;
+        }
+        el.innerHTML = items.map(function(r, i){
+            var nm = (r.title || r.industry || '?').substring(0, 35);
+            var agent = (r.agent || '?').substring(0, 12);
+            var tm = (r.created_at || '').substring(0, 16);
+            var isActive = r.report_id === activeReportId ? ' active' : '';
+            return '<div class="history-item' + isActive + '" data-id="' + r.report_id + '" onclick="viewReport(\'' + r.report_id + '\')">' +
+                '<span class="ind">' + (i+1) + '</span>' +
+                '<span class="name">' + escHtml(nm) + '</span>' +
+                '<span class="agent-tag">' + escHtml(agent) + '</span>' +
+                '<span style="color:var(--text-micro);font-size:9px;">' + tm + '</span>' +
+                '<span class="actions" onclick="event.stopPropagation()">' +
+                '<button class="btn-sm btn-regenerate" onclick="regenerateReport(\'' + r.report_id + '\')" title="重新生成Markdown"><i class="fas fa-redo"></i></button>' +
+                '<button class="btn-sm danger" onclick="deleteReport(\'' + r.report_id + '\')" title="删除"><i class="fas fa-trash"></i></button>' +
+                '</span></div>';
+        }).join('');
+        // 如果当前有活跃报告, 重新高亮
+        if (activeReportId) {
+            var ae = document.querySelector('.history-item[data-id="' + activeReportId + '"]');
+            if (ae) ae.classList.add('active');
+        }
+    }).catch(function(e){
+        el.innerHTML = '<div style="color:var(--accent-red);text-align:center;padding:10px;">加载失败 <button class="btn-sm" onclick="loadReportHistory()">重试</button></div>';
+    });
+}
+
+async function extractStocks(markdown, stockMap) {
+    stockMap = stockMap || {};
+    var codes = markdown.match(/\b(\d{6})\b/g) || [];
+    var unique = [];
+    codes.forEach(function(c) { if (unique.indexOf(c) < 0) unique.push(c); });
+    var el = document.getElementById('extract-list');
+    if (!unique.length) { el.innerHTML = '<div style="color:var(--text-micro);font-size:10px;text-align:center;padding:10px;">未提取到标的</div>'; return; }
+
+    // 批量查名称 (stockMap 作为优先来源, API 作为补充)
+    var infoMap = {};
+    try {
+        var infoRes = await fetch(API_BASE + '/research/stocks/batch-info', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(unique)
+        });
+        var infoData = await infoRes.json();
+        (infoData.data||[]).forEach(function(s){ infoMap[s.code] = s; });
+    } catch(e) {}
+    // 合并: stockMap 优先
+    unique.forEach(function(c){ if (stockMap[c] && !infoMap[c]) infoMap[c] = {name: stockMap[c]}; });
+
+    el.innerHTML = unique.map(function(c) {
+        var info = infoMap[c] || {};
+        var name = info.name || c;
+        var ind = info.industry ? '<span style="color:var(--text-micro);font-size:9px;">' + escHtml(info.industry) + '</span>' : '';
+        var pe = info.pe_ttm ? ' · PE' + (info.pe_ttm||'').toFixed(0) : '';
+        var mcap = info.mcap_yi ? ' · ' + (info.mcap_yi||'').toFixed(0) + '亿' : '';
+        return '<div class="stock-item">' +
+            '<div onclick="viewStock(\'' + c + '\')" title="点击查看指标数据" style="flex:1;cursor:pointer;">' +
+            '<span style="color:var(--accent-blue);font-family:var(--font-mono);">' + c + '</span> ' +
+            '<span style="color:#fff;font-size:11px;">' + escHtml(name) + '</span>' +
+            '<div>' + ind + '<span style="color:var(--text-dim);font-size:10px;">' + pe + mcap + '</span></div></div>' +
+            '<button class="btn-sm" onclick="event.stopPropagation();openAddToWatchlist(\'' + c + '\',\'' + escHtml(name) + '\')" title="添加自选" style="flex-shrink:0;">' +
+            '<i class="fas fa-plus"></i> 自选</button></div>';
+    }).join('');
+}
+
+function openAddToWatchlist(code, name) {
+    var groups = ['默认','持仓股','核心观察','待研究','高风险'];
+    var groupOpts = groups.map(function(g){ return '<option value="' + g + '">' + g + '</option>'; }).join('');
+    var html = '<div style="display:flex;flex-direction:column;gap:8px;min-width:360px;">' +
+        '<div style="color:#fff;font-size:13px;"><span style="font-family:var(--font-mono);color:var(--accent-blue);">' + code + '</span> ' + escHtml(name) + '</div>' +
+        '<label style="color:var(--text-dim);font-size:11px;">分组 <select id="addwl-group" style="background:#000;border:1px solid var(--border-color);color:#fff;padding:4px 8px;border-radius:3px;font-size:11px;width:100%;">' + groupOpts + '<option value="__new__">+ 新建分组...</option></select></label>' +
+        '<label style="color:var(--text-dim);font-size:11px;">备注 <input id="addwl-notes" placeholder="如: CPU自主架构龙头、Beneish低风险" style="width:100%;background:#000;border:1px solid var(--border-color);color:#fff;padding:4px 8px;border-radius:3px;font-size:11px;"></label>' +
+        '<div style="display:flex;gap:8px;">' +
+        '<label style="color:var(--text-dim);font-size:11px;flex:1;">目标价下限 <input id="addwl-low" type="number" step="0.01" placeholder="如 300" style="width:100%;background:#000;border:1px solid var(--border-color);color:#fff;padding:4px 8px;border-radius:3px;font-size:11px;"></label>' +
+        '<label style="color:var(--text-dim);font-size:11px;flex:1;">目标价上限 <input id="addwl-high" type="number" step="0.01" placeholder="如 500" style="width:100%;background:#000;border:1px solid var(--border-color);color:#fff;padding:4px 8px;border-radius:3px;font-size:11px;"></label></div>' +
+        '<div style="display:flex;gap:6px;justify-content:flex-end;">' +
+        '<button class="btn-sm" onclick="Modal.close()" style="padding:6px 14px;">取消</button>' +
+        '<button class="btn-primary" onclick="submitAddToWatchlist(\'' + code + '\',\'' + escHtml(name) + '\')" style="font-size:11px;">确认添加</button></div></div>';
+    Modal.custom({title: '添加自选股', content: html});
+}
+
+async function submitAddToWatchlist(code, name) {
+    var group = document.getElementById('addwl-group').value;
+    if (group === '__new__') {
+        group = prompt('输入新分组名称:');
+        if (!group) return;
+    }
+    var notes = document.getElementById('addwl-notes').value;
+    var low = document.getElementById('addwl-low').value;
+    var high = document.getElementById('addwl-high').value;
+    var params = 'stock_code=' + code + '&stock_name=' + encodeURIComponent(name) + '&group_tag=' + encodeURIComponent(group);
+    if (notes) params += '&notes=' + encodeURIComponent(notes);
+    if (low) params += '&target_price_low=' + low;
+    if (high) params += '&target_price_high=' + high;
+    try {
+        var res = await fetch(API_BASE + '/data/watchlist/add?' + params, {method:'POST'});
+        var d = await res.json();
+        if (d.success) { Modal.close(); Modal.alert('成功', '已添加 ' + name + ' 到自选股分组 [' + group + ']'); }
+        else Modal.alert('失败', d.message || '添加失败');
+    } catch(e) { Modal.alert('错误', e.message); }
+}
+
+function viewStock(code) {
+    window.open('indicators.html?stock=' + code, '_blank');
+}
+
+document.addEventListener('DOMContentLoaded', function() { loadAnalysts(); loadReportHistory(); });
+window.refreshPageData = function() { loadReportHistory(); };
+</script>
 </body>
 </html>

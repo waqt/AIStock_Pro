@@ -3,6 +3,7 @@ from ..base import BaseIndicator, register
 @register
 class OBVIndicator(BaseIndicator):
     name = "obv"
+    label = "OBV能量潮"
     category = "volume"
     params = {}
     output = ["obv"]

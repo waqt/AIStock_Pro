@@ -5,7 +5,7 @@ from datetime import date, timedelta
 import re
 
 from app.framework.database.session import async_session
-from app.models.models import MarketData, StockIndicator, Position, ExchangeRate, StockInfo, WatchlistItem, PortfolioSnapshot, FinancialStatement
+from app.models.models import MarketData, Position, ExchangeRate, StockInfo, WatchlistItem, PortfolioSnapshot, FinancialStatement
 from app.domain.market_data.sources.router import data_router
 from app.framework.tasks.engine import task_manager
 from app.framework.logger import logger
@@ -159,11 +159,9 @@ async def get_health_overview():
         )
         latest_date = latest_res.scalars().first()
 
-        # 有指标的股票数
-        ind_res = await db.execute(
-            select(func.count(func.distinct(StockIndicator.stock_code)))
-        )
-        ind_count = ind_res.scalars().first() or 0
+        # 有指标的股票数 (SQLite)
+        from app.domain.quant.engine import indicator_store
+        ind_count = len(set(r['stock_code'] for r in indicator_store.get_latest_for_codes([]) if r.get('stock_code')))
 
         # 有估值数据的股票数
         val_res = await db.execute(
@@ -243,32 +241,19 @@ async def get_stocks_health():
 
 @router.get("/health/indicators")
 async def get_indicators_health():
-    """各股票指标体检列表"""
+    """各股票指标体检列表 (SQLite 查询)"""
+    from app.domain.quant.engine import indicator_store
     async with async_session() as db:
-        res = await db.execute(
-            select(
-                StockIndicator.stock_code,
-                StockIndicator.indicator_type,
-                func.max(StockIndicator.analysis_date).label("latest_date"),
-                StockIndicator.data_json
-            )
-            .group_by(StockIndicator.stock_code, StockIndicator.indicator_type)
-            .order_by(StockIndicator.stock_code, func.max(StockIndicator.analysis_date).desc())
-        )
-        rows = res.all()
-
-        result = {}
-        for r in rows:
-            if r.stock_code not in result:
-                result[r.stock_code] = {
-                    "stock_code": r.stock_code,
-                    "indicators": []
-                }
-            result[r.stock_code]["indicators"].append({
-                "type": r.indicator_type,
-                "latest_date": str(r.latest_date) if r.latest_date else None,
-                "snapshot": r.data_json
-            })
+        pos = await db.execute(select(Position.stock_code))
+        wl = await db.execute(select(WatchlistItem.stock_code))
+        all_codes = list(set([r[0] for r in pos.all()] + [r[0] for r in wl.all()]))
+    rows = indicator_store.get_latest_for_codes(all_codes)
+    result = {}
+    for row in rows:
+        code = row.get('stock_code')
+        result[code] = {"stock_code": code, "indicators": [{"type": "DAILY", "latest_date": row.get('trade_date'), "snapshot": {
+            k: row[k] for k in row.keys() if k not in ('stock_code', 'trade_date')
+        }}]}
         return list(result.values())
 
 
@@ -297,12 +282,12 @@ async def get_stock_detail_health(stock_code: str):
 
         # 指标快照
         ind_res = await db.execute(
-            select(StockIndicator)
-            .where(StockIndicator.stock_code == stock_code)
-            .order_by(StockIndicator.analysis_date.desc())
-            .limit(1)
-        )
-        indicator = ind_res.scalars().first()
+            select(MarketData).where(MarketData.stock_code == stock_code)
+            .order_by(MarketData.trade_date.desc()).limit(1))
+        latest = md_latest.scalars().first()
+
+        from app.domain.quant.engine import indicator_store
+        indicator = indicator_store.get_latest(stock_code) or {}
 
         return {
             "stock_code": stock_code,
@@ -321,10 +306,10 @@ async def get_stock_detail_health(stock_code: str):
                 "change_pct": latest.change_pct if latest else None
             } if latest else None,
             "indicators": {
-                "type": indicator.indicator_type if indicator else None,
-                "analysis_date": str(indicator.analysis_date) if indicator else None,
-                "snapshot": indicator.data_json if indicator else None,
-                "findings": indicator.logic_chain if indicator else None
+                "type": "DAILY",
+                "analysis_date": indicator.get("trade_date"),
+                "snapshot": indicator,
+                "findings": {}
             } if indicator else None
         }
 
@@ -333,45 +318,21 @@ async def get_stock_detail_health(stock_code: str):
 # 指标注册与查询 (V5.1)
 # ═══════════════════════════════════════════
 
-from app.domain.quant.engine.indicators import INDICATOR_REGISTRY
-
-
-@router.get("/indicators/registry")
-async def get_indicator_registry():
-    """获取所有已注册的量化指标及其定义"""
-    return [
-        {
-            "code": code,
-            "name": meta["name"],
-            "category": meta["category"],
-            "params": meta.get("params", {}),
-            "description": meta.get("description", ""),
-            "output_fields": meta.get("output_fields", []),
-            "chart_overlay": meta.get("chart_overlay", False)
-        }
-        for code, meta in INDICATOR_REGISTRY.items()
-    ]
 
 
 @router.get("/indicators/{stock_code}")
 async def get_stock_indicators(stock_code: str):
-    """获取某只股票的最新指标快照"""
-    async with async_session() as db:
-        res = await db.execute(
-            select(StockIndicator)
-            .where(StockIndicator.stock_code == stock_code)
-            .order_by(StockIndicator.analysis_date.desc())
-            .limit(1)
-        )
-        row = res.scalars().first()
-        if not row:
-            return {"stock_code": stock_code, "indicators": None}
+    """获取某只股票的最新指标快照 (SQLite)"""
+    from app.domain.quant.engine import indicator_store
+    row = indicator_store.get_latest(stock_code)
+    if not row:
+        return {"stock_code": stock_code, "indicators": None}
 
-        return {
-            "stock_code": stock_code,
-            "analysis_date": str(row.analysis_date) if row.analysis_date else None,
-            "indicator_type": row.indicator_type,
-            "snapshot": row.data_json,
+    return {
+        "stock_code": stock_code,
+        "analysis_date": row.get("trade_date"),
+        "indicator_type": "DAILY",
+        "snapshot": row,
             "findings": row.logic_chain
         }
 
@@ -516,7 +477,9 @@ async def get_macro_latest():
         items = res.scalars().all()
         return {"success": True, "data": [
             {"code": i.code, "name": i.name, "rate": i.rate,
-             "change_pct": i.change_pct, "updated_at": str(i.updated_at) if i.updated_at else None}
+             "change_pct": i.change_pct,
+             "biz_date": str(i.biz_date) if i.biz_date else None,
+             "updated_at": str(i.updated_at) if i.updated_at else None}
             for i in items
         ]}
 
@@ -594,6 +557,8 @@ async def list_watchlist():
         return {"success": True, "data": [
             {"stock_code": i.stock_code, "stock_name": i.stock_name,
              "group_tag": i.group_tag, "is_held": i.is_held,
+             "notes": i.notes, "target_price_low": i.target_price_low,
+             "target_price_high": i.target_price_high,
              "added_at": str(i.added_at) if i.added_at else None,
              "price": price_map.get(i.stock_code, {}).get("price"),
              "change_pct": price_map.get(i.stock_code, {}).get("change_pct"),
@@ -611,8 +576,11 @@ async def list_watchlist():
 
 
 @router.post("/watchlist/add")
-async def add_to_watchlist(stock_code: str, stock_name: str = "", group_tag: str = "默认"):
-    """添加自选股 (自动补全名称+持仓标记)"""
+async def add_to_watchlist(stock_code: str, stock_name: str = "", group_tag: str = "默认",
+                            notes: str = "", target_price_low: float = None,
+                            target_price_high: float = None):
+    """添加自选股 (自动补全名称+持仓标记 + 触发异步同步+指标回补)"""
+    is_new = False
     async with async_session() as db:
         # 自动补全名称
         if not stock_name:
@@ -628,11 +596,28 @@ async def add_to_watchlist(stock_code: str, stock_name: str = "", group_tag: str
             existing.group_tag = group_tag
             if stock_name: existing.stock_name = stock_name
             existing.is_held = is_held
+            if notes: existing.notes = notes
+            if target_price_low is not None: existing.target_price_low = target_price_low
+            if target_price_high is not None: existing.target_price_high = target_price_high
         else:
+            is_new = True
             db.add(WatchlistItem(stock_code=stock_code, stock_name=stock_name,
-                group_tag=group_tag, is_held=is_held))
+                group_tag=group_tag, is_held=is_held,
+                notes=notes, target_price_low=target_price_low,
+                target_price_high=target_price_high))
         await db.commit()
-        return {"success": True, "message": f"Added {stock_code}", "name": stock_name, "is_held": is_held}
+
+    # 新自选股 → 触发异步行情同步+历史指标回补
+    if is_new:
+        try:
+            sid = await task_manager.run_task("sync_market", {
+                "mode": "AUTO", "target_codes": [stock_code]
+            })
+            logger.info(f"[Watchlist] {stock_code}: triggered sync_market (task={sid})")
+        except Exception as e:
+            logger.warning(f"[Watchlist] {stock_code}: failed to trigger sync: {e}")
+
+    return {"success": True, "message": f"Added {stock_code}", "name": stock_name, "is_held": is_held}
 
 
 @router.post("/watchlist/import-positions")
@@ -831,7 +816,7 @@ async def get_financial_statements(stock_code: str, periods: int = 8):
              "current_assets": r.current_assets, "fixed_assets": r.fixed_assets,
              "total_liabilities": r.total_liabilities, "total_equity": r.total_equity,
              "announce_date": str(r.announce_date) if r.announce_date else None}
-            for r in reversed(rows)  # 正序返回
+            for r in rows  # 最新在前
         ]}
 
 
@@ -866,39 +851,137 @@ async def get_fundamental_overview():
 
 @router.get("/alt/overview")
 async def get_alt_overview():
-    """另类数据总览: 筹码分布 + 拥挤度"""
+    """另类数据总览: 筹码分布 + 拥挤度 (SQLite 直读)"""
+    from app.domain.quant.engine import indicator_store
+    from collections import defaultdict
+
+    # 获取所有股票代码 (自选股+持仓)
     async with async_session() as db:
-        # 取最近30天的指标数据
-        from datetime import date, timedelta
-        cutoff = date.today() - timedelta(days=30)
+        pos_res = await db.execute(select(Position.stock_code))
+        wl_res = await db.execute(select(WatchlistItem.stock_code))
+        all_codes = list(set([r[0] for r in pos_res.all()] + [r[0] for r in wl_res.all()]))
 
-        res = await db.execute(
-            select(StockIndicator.stock_code, StockIndicator.data_json, StockIndicator.analysis_date)
-            .where(StockIndicator.analysis_date >= cutoff)
-            .order_by(StockIndicator.analysis_date.desc()).limit(200))
-        rows = res.all()
+        info_res = await db.execute(
+            select(StockInfo.stock_code, StockInfo.stock_name)
+            .where(StockInfo.stock_code.in_(all_codes)))
+        name_map = {r[0]: r[1] or r[0] for r in info_res.all()}
 
-        chip_stocks = []
-        crowd_stocks = []
-        for code, data, dt in rows:
-            if data.get('chip_concentration'):
-                chip_stocks.append({
-                    "code": code, "date": str(dt),
-                    "concentration": data.get('chip_concentration'),
-                    "pattern": data.get('chip_pattern', 'unknown'),
-                    "peak": data.get('chip_peak_price'),
-                })
-            if data.get('crowding_ratio'):
-                crowd_stocks.append({
-                    "code": code, "date": str(dt),
-                    "crowding_ratio": data.get('crowding_ratio'),
-                    "sharpe_60d": data.get('sharpe_60d'),
-                })
+    rows = indicator_store.get_latest_for_codes(all_codes)
 
-        return {"success": True, "data": {
-            "chip": sorted(chip_stocks, key=lambda x: x.get('concentration',0) or 0, reverse=True)[:20],
-            "crowding": sorted(crowd_stocks, key=lambda x: x.get('crowding_ratio',0) or 0, reverse=True)[:20],
-        }}
+    chip_stocks = []
+    crowd_stocks = []
+    for row in rows:
+        code = row.get("stock_code")
+        name = name_map.get(code, code)
+        conc = row.get("chip_concentration")
+        cr = row.get("crowding_ratio")
+        if conc:
+            chip_stocks.append({
+                "code": code, "name": name,
+                "date": row.get("trade_date"),
+                "concentration": conc,
+                "pattern": row.get("chip_pattern", "unknown"),
+                "peak": row.get("chip_peak_price"),
+            })
+        if cr is not None:
+            crowd_stocks.append({
+                "code": code, "name": name,
+                "date": row.get("trade_date"),
+                "crowding_ratio": cr,
+                "sharpe_60d": row.get("sharpe_60d"),
+            })
+
+    chip_stocks.sort(key=lambda x: x.get("concentration") or 0, reverse=True)
+    crowd_stocks.sort(key=lambda x: x.get("crowding_ratio") or 0, reverse=True)
+
+    return {"success": True, "data": {"chip": chip_stocks[:20], "crowding": crowd_stocks[:20]}}
+
+
+@router.get("/alt/crowding/industry")
+async def get_crowding_by_industry(days: int = Query(default=30, le=90)):
+    """拥挤度行业聚合: 各行业 avg_crowding_ratio + top3 (SQLite)"""
+    from collections import defaultdict
+    from app.domain.quant.engine import indicator_store
+
+    async with async_session() as db:
+        pos_res = await db.execute(select(Position.stock_code))
+        wl_res = await db.execute(select(WatchlistItem.stock_code))
+        all_codes = list(set([r[0] for r in pos_res.all()] + [r[0] for r in wl_res.all()]))
+
+        info_res = await db.execute(
+            select(StockInfo.stock_code, StockInfo.stock_name, StockInfo.industry)
+            .where(StockInfo.stock_code.in_(all_codes)))
+        info_map = {}
+        for r in info_res.all():
+            info_map[r[0]] = {"name": r[1] or r[0], "industry": r[2] or "未知"}
+
+    rows = indicator_store.get_latest_for_codes(all_codes)
+    industry_data = defaultdict(list)
+    for row in rows:
+        code = row.get("stock_code")
+        cr = row.get("crowding_ratio")
+        if cr is None: continue
+        info = info_map.get(code, {"name": code, "industry": "未知"})
+        industry_data[info["industry"]].append({
+            "code": code, "name": info["name"],
+            "crowding_ratio": float(cr),
+            "sharpe_60d": float(row["sharpe_60d"]) if row.get("sharpe_60d") else None,
+        })
+
+    result = []
+    for industry, stocks in industry_data.items():
+        avg_cr = sum(s["crowding_ratio"] for s in stocks) / len(stocks)
+        sharpe_vals = [s["sharpe_60d"] for s in stocks if s["sharpe_60d"]]
+        avg_sharpe = sum(sharpe_vals) / len(sharpe_vals) if sharpe_vals else 0.0
+        top3 = sorted(stocks, key=lambda x: x["crowding_ratio"], reverse=True)[:3]
+        result.append({
+            "industry": industry, "count": len(stocks),
+            "avg_crowding_ratio": round(avg_cr, 3),
+            "avg_sharpe_60d": round(avg_sharpe, 3),
+            "top_stocks": top3,
+        })
+    result.sort(key=lambda x: x["avg_crowding_ratio"], reverse=True)
+    return {"success": True, "data": result}
+
+
+@router.get("/alt/crowding/watchlist")
+async def get_crowding_watchlist(days: int = Query(default=30, le=120)):
+    """自选股拥挤度: 全部自选股 (SQLite 查询, 无数据显示null)"""
+    from app.domain.quant.engine import indicator_store
+
+    async with async_session() as db:
+        wl_res = await db.execute(select(WatchlistItem.stock_code, WatchlistItem.stock_name))
+        wl_map = {}
+        for r in wl_res.all():
+            wl_map[r[0]] = r[1] or r[0]
+        if not wl_map: return {"success": True, "data": []}
+
+        info_res = await db.execute(
+            select(StockInfo.stock_code, StockInfo.stock_name)
+            .where(StockInfo.stock_code.in_(list(wl_map.keys()))))
+        for r2 in info_res.all():
+            if r2[1]: wl_map[r2[0]] = r2[1]
+
+    rows = indicator_store.get_latest_for_codes(list(wl_map.keys()))
+    ind_map = {r['stock_code']: r for r in rows}
+
+    result = []
+    for code in wl_map:
+        name = wl_map[code]
+        row = ind_map.get(code)
+        if row:
+            cr = row.get("crowding_ratio")
+            result.append({
+                "code": code, "name": name,
+                "crowding_ratio": float(cr) if cr else None,
+                "sharpe_60d": float(row["sharpe_60d"]) if row.get("sharpe_60d") else None,
+                "date": row.get("trade_date"),
+            })
+        else:
+            result.append({"code": code, "name": name, "crowding_ratio": None, "sharpe_60d": None, "date": None})
+
+    result.sort(key=lambda x: (x.get("crowding_ratio") is not None, x.get("crowding_ratio") or 0), reverse=True)
+    return {"success": True, "data": result}
 
 
 @router.post("/watchlist/refresh-held")
@@ -932,14 +1015,19 @@ async def remove_from_watchlist(stock_code: str):
 
 
 @router.put("/watchlist/{stock_code}")
-async def update_watchlist(stock_code: str, group_tag: str = None, stock_name: str = None):
-    """更新自选股分组或名称"""
+async def update_watchlist(stock_code: str, group_tag: str = None, stock_name: str = None,
+                            notes: str = None, target_price_low: float = None,
+                            target_price_high: float = None):
+    """更新自选股 (分组/名称/备注/目标价)"""
     async with async_session() as db:
         item = await db.get(WatchlistItem, stock_code)
         if not item:
             raise HTTPException(status_code=404, detail="Not in watchlist")
-        if group_tag: item.group_tag = group_tag
+        if group_tag is not None: item.group_tag = group_tag
         if stock_name: item.stock_name = stock_name
+        if notes is not None: item.notes = notes
+        if target_price_low is not None: item.target_price_low = target_price_low
+        if target_price_high is not None: item.target_price_high = target_price_high
         # 如果名字为空，尝试从 StockInfo 补全
         if not item.stock_name:
             info = await db.get(StockInfo, stock_code)

@@ -1,0 +1,1478 @@
+{
+  "final_summary": "Our SOFC portfolio is anchored by a high-conviction BUY on 三环集团 (80% weight), which demonstrates a robust 5-year moat in critical ceramic components and a 30% upside. We maintain a 20% satellite HOLD in 东方锆业 as a cyclical play on zirconia supply, though we monitor its cautionary score closely. All other candidates—振华股份, 中自科技, and 潍柴动力—failed our disciplined audit, reinforcing the concentration on our top pick.",
+  "key_risks": [
+    "Zirconia raw material price volatility and supply concentration",
+    "Slow SOFC commercial adoption delaying volume ramp-up",
+    "Technology substitution risk from other fuel cell or battery chemistries"
+  ],
+  "catalysts_to_watch": [
+    "China’s hydrogen energy policy rollout and SOFC subsidy schemes",
+    "三环集团’s qualification milestones at global SOFC stack makers",
+    "东方锆业 upstream cost normalization and downstream demand recovery"
+  ],
+  "timeline": "6-12 months for upside catalysts to materialize",
+  "top_picks": [
+    {
+      "code": "300408",
+      "name": "三环集团",
+      "rank": 1,
+      "thesis": "Audit_PASS_score_75_upside_30_moat_5",
+      "verdict": "BUY",
+      "conviction": "HIGH"
+    },
+    {
+      "code": "002167",
+      "name": "东方锆业",
+      "rank": 2,
+      "thesis": "Audit_CAUTION_score_45_upside_None_monitor",
+      "verdict": "HOLD",
+      "conviction": "MEDIUM"
+    }
+  ],
+  "portfolio_allocation": [
+    {
+      "code": "300408",
+      "name": "三环集团",
+      "weight_pct": 80,
+      "role": "Core"
+    },
+    {
+      "code": "002167",
+      "name": "东方锆业",
+      "weight_pct": 20,
+      "role": "Satellite"
+    }
+  ],
+  "cio_report": "## Conclusion\\n\\nOur SOFC portfolio is anchored by a high-conviction BUY on 三环集团 (80% weight), which demonstrates a robust 5-year moat in critical ceramic components and a 30% upside. We maintain a 20% satellite HOLD in 东方锆业 as a cyclical play on zirconia supply, though we monitor its cautionary score closely. All other candidates—振华股份, 中自科技, and 潍柴动力—failed our disciplined audit, reinforcing the concentration on our top pick.\\n\\n## Recommendations\\n- **300408 三环集团** [BUY] Audit_PASS_score_75_upside_30_moat_5\\n- **002167 东方锆业** [HOLD] Audit_CAUTION_score_45_upside_None_monitor\\n\\n## Risks\\n- Zirconia raw material price volatility and supply concentration\\n- Slow SOFC commercial adoption delaying volume ramp-up\\n- Technology substitution risk from other fuel cell or battery chemistries\\n\\n## Catalysts\\n- China’s hydrogen energy policy rollout and SOFC subsidy schemes\\n- 三环集团’s qualification milestones at global SOFC stack makers\\n- 东方锆业 upstream cost normalization and downstream demand recovery",
+  "detail": {
+    "capex": {
+      "global_summary": "2026年全球科技CapEx正经历由AI驱动的超级扩张周期，MAG7中四大云厂商（微软、谷歌、亚马逊、Meta）资本支出总额预计将突破7000亿美元，同比增长77%。这一汹涌的算力基建浪潮正深刻重塑电力需求格局，直接催化了以固体氧化物燃料电池（SOFC）为代表的分布式清洁基载电源的爆发式增长，使其从示范应用跃升至AI数据中心的核心供能选项。",
+      "capex_signals": [
+        {
+          "sector": "AI数据中心电力基础设施（SOFC/分布式发电）",
+          "signal": "ACCELERATING",
+          "magnitude": "3200（2026年AI数据中心配套电力基础设施投资估算）",
+          "growth_yoy": 77,
+          "key_drivers": "超大规模云商AI数据中心电力密度激增（单机架达40-100kW），电网变压器交付周期拉长至2-3年，追求24/7不间断基载电源以实现净零排放目标。",
+          "mega_cap_source": "MAG7主导（谷歌、微软、亚马逊已签订SOFC订单）; 混合型电力解决方案投资",
+          "timeline": "2026-2030年, 与18-24个月数据中心建设周期强相关",
+          "confidence": "HIGH"
+        },
+        {
+          "sector": "先进逻辑/代工 (2nm/GAA/A14)",
+          "signal": "ACCELERATING",
+          "magnitude": "560",
+          "growth_yoy": 34,
+          "key_drivers": "AI芯片需求井喷 (GPU/ASIC), 台积电N2/A14制程节点资本密集度指数级上升, 全球制造基地扩张。",
+          "mega_cap_source": "其他(台积电/三星/英特尔) 及 MAG7(定制芯片设计支出)",
+          "timeline": "持续至2028年, A14节点将在2028年量产",
+          "confidence": "HIGH"
+        },
+        {
+          "sector": "先进封装 (CoWoS/SoIC/HBM)",
+          "signal": "ACCELERATING",
+          "magnitude": "150（仅台积电先进封装专项CapEx估算）",
+          "growth_yoy": 50,
+          "key_drivers": "AI算力芯片对HBM集成和异构集成的需求，CoWoS产能翻倍再翻倍，SoIC 3D封装技术进入爆发前夜。",
+          "mega_cap_source": "其他（台积电/三星/海力士主导）; 混合（MAG7为主要下游客户）",
+          "timeline": "2026年是关键产能释放年, 持续高投入至2028年",
+          "confidence": "HIGH"
+        },
+        {
+          "sector": "AI计算与网络 (GPU/DPU/光模块)",
+          "signal": "STABLE",
+          "magnitude": "3200 (占AI基础设施支出~75%中的核心半导体/光模块部分)",
+          "growth_yoy": 36,
+          "key_drivers": "大语言模型参数规模持续扩大, 从万亿级参数迈向十万亿级，推动800G/1.6T光模块和更大规模算力集群部署。",
+          "mega_cap_source": "MAG7主导（直接采购部署）",
+          "timeline": "强劲需求至少持续到2027年底",
+          "confidence": "HIGH"
+        }
+      ],
+      "hot_sectors": [
+        {
+          "name": "SOFC分布式发电系统（Bloom Energy等）",
+          "capex_intensity": 10,
+          "reason": "直接受益于云商AI数据中心电力全包解决方案(Energy-as-a-Service)支出，Bloom Energy已与MAG7成员签订数百兆瓦级长期购电协议，占据电力CapEx的核心环节，是解决电力瓶颈的关键路径。",
+          "a_stock_theme": "SOFC电堆/系统集成、燃料电池核心零部件、氢气及天然气重整器"
+        },
+        {
+          "name": "先进封装设备与材料",
+          "capex_intensity": 9,
+          "reason": "台积电及全球封测龙头为AI芯片（GPU/HBM）大规模扩产的直接资本投放领域，是提升算力密度的物理基础。",
+          "a_stock_theme": "先进封装设备（固晶机/键合机）、ABF载板、IC载板、半导体材料"
+        },
+        {
+          "name": "超大规模数据中心光互联",
+          "capex_intensity": 8,
+          "reason": "AI算力集群从万卡向十万/百万卡演进，内部互联瓶颈驱动800G/1.6T光模块迭代，占数据中心网络CapEx比重持续攀升。",
+          "a_stock_theme": "高速光模块/光芯片/电芯片、光通信设备"
+        }
+      ],
+      "divergence_alerts": [
+        "MAG7 CapEx计划总额与长期自由现金流之间的背离：2026年资本支出将消耗大部分经营现金流，若无明确AI回报率（ROI）验证，2027年后存在削减可能。虽然AI基建泡沫论被部分分析师驳斥为‘垃圾’，但投资者对谷歌模式（AI已见收益）与微软/亚马逊模式（巨额投资尚未完全体现在利润表）的区分已非常敏感。",
+        "SOFC部署雄心与供应链产能的现实约束：Bloom Energy等厂商虽手握巨量意向订单，但实际制造和交付能力能否匹配MAG7每年数百亿的电力设施CapEx投放节奏，存在实际产能瓶颈，可能导致交付延迟和增速暂时放缓。"
+      ],
+      "forward_looking": "未来6-12个月，SOFC赛道将进入订单向营收转化的关键验证期，Bloom Energy的新工厂产能爬坡速度可能超预期，推动相关A股供应链企业获得实质订单；台积电A14制程设备采购清单落地将明确下一代EUV和材料供应商赢家。需警惕的风险点在于，若宏观经济下行导致云厂商开始审视AI投入强度，光模块等短周期通用算力硬件的采购节奏可能出现季度性波动，但SOFC因直击电力痛点且为长周期合约，需求韧性更强。",
+      "agent": "GlobalCapexScanner",
+      "sources_count": 16
+    },
+    "supply_chain": {
+      "core_stocks": [
+        {
+          "code": "603067",
+          "name": "振华股份",
+          "segment": "铬盐原材料",
+          "role": "龙头",
+          "moat": "环保产能壁垒"
+        },
+        {
+          "code": "300408",
+          "name": "三环集团",
+          "segment": "电解质/电池",
+          "role": "核心供应商",
+          "moat": "全球供应链份额"
+        },
+        {
+          "code": "002167",
+          "name": "东方锆业",
+          "segment": "氧化锆粉体",
+          "role": "上游原料",
+          "moat": "资源一体化"
+        },
+        {
+          "code": "688737",
+          "name": "中自科技",
+          "segment": "SOFC电堆",
+          "role": "技术突破者",
+          "moat": "国产化电堆系统"
+        },
+        {
+          "code": "000338",
+          "name": "潍柴动力",
+          "segment": "系统集成",
+          "role": "产业推手",
+          "moat": "技术引进与规模化能力"
+        }
+      ],
+      "supply_chain_map": [
+        {
+          "level": 1,
+          "name": "上游关键原材料",
+          "bottleneck": "铬盐因剧毒环保限产导致全球供需缺口扩大，振华股份为唯一产能增量来源，构成硬瓶颈；氧化锆等陶瓷粉体供应相对充分",
+          "assets": [
+            {
+              "code": "603067",
+              "name": "振华股份",
+              "role": "铬盐龙头，全球主要供应商"
+            },
+            {
+              "code": "002167",
+              "name": "东方锆业",
+              "role": "氧化锆原料供应商"
+            }
+          ]
+        },
+        {
+          "level": 2,
+          "name": "电堆核心部件及密封",
+          "bottleneck": "高温玻璃/陶瓷密封热膨胀匹配、连接体高精度冲压/蚀刻、电池片长寿命制造等核心技术尚未完全自主，部分依赖国外授权或外采",
+          "assets": [
+            {
+              "code": "300408",
+              "name": "三环集团",
+              "role": "电解质及电池片核心供应商，供货Bloom"
+            },
+            {
+              "code": "300115",
+              "name": "长盈精密",
+              "role": "金属连接体冲压加工"
+            },
+            {
+              "code": "688737",
+              "name": "中自科技",
+              "role": "电堆自主开发及示范运营"
+            }
+          ]
+        },
+        {
+          "level": 3,
+          "name": "BOP辅助系统与系统集成",
+          "bottleneck": "高可靠性重整器、燃烧器、热管理及控制策略仍较大程度依赖国外技术，系统集成效率与成本尚不及海外巨头",
+          "assets": [
+            {
+              "code": "000338",
+              "name": "潍柴动力",
+              "role": "SOFC系统开发（Ceres技术合作）"
+            },
+            {
+              "code": "002911",
+              "name": "佛燃能源",
+              "role": "分布式热电联供示范系统集成商"
+            }
+          ]
+        }
+      ],
+      "findings_count": 5,
+      "agent": "SupplyChainHacker",
+      "industry": "SOFC",
+      "search_rounds": 3
+    },
+    "audits": [
+      {
+        "code": "603067",
+        "name": "振华股份",
+        "financial": {
+          "verdict": "FAIL",
+          "score": -15,
+          "flags": [
+            "⚠️ 剪刀差为负(-13.52%), 利润增速跑输营收",
+            "⚠️ 未达四连击(当前连续2季度)",
+            "✅ 合同负债surging: 在手订单充沛",
+            "🚨 经营现金流/利润 < 0.5: 利润含金量低",
+            "⚠️ Beneish M-Score=-2.12: 处于灰色区域, 需关注"
+          ],
+          "beneish": {
+            "m_score": -2.119,
+            "threshold": -1.78,
+            "interpretation": "灰色区域",
+            "components": {
+              "dsri": 1.122,
+              "gmi": 0.987,
+              "aqi": 0.967,
+              "sgi": 1.171,
+              "depi": 1,
+              "sgai": 1.113,
+              "tata": 0.0381,
+              "lvgi": 1.132
+            }
+          },
+          "scissor": {
+            "latest_gap_pct": -13.52,
+            "scissor_quarters_count": 2,
+            "is_expanding": false
+          },
+          "momentum": {
+            "consecutive_yoy_hits": 2,
+            "four_quarters_hit": false,
+            "recent_qoq_hits": 2
+          },
+          "inventory_trend": "stable",
+          "contract_liability_trend": "surging",
+          "ocf_health": "poor",
+          "metrics": [
+            {
+              "report_date": "2024-06-30",
+              "revenue": 1039650000.0,
+              "profit": 155491000.0,
+              "op_cashflow": 225160000.0,
+              "inventory": 677566000.0,
+              "contract_liability": 11197400.0,
+              "rev_qoq": null,
+              "profit_qoq": null,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": 15.0,
+              "ocf_profit_ratio": 1.45,
+              "inventory_revenue_ratio": 0.65
+            },
+            {
+              "report_date": "2024-09-30",
+              "revenue": 1006090000.0,
+              "profit": 122868000.0,
+              "op_cashflow": -9846520.0,
+              "inventory": 784481000.0,
+              "contract_liability": 20267500.0,
+              "rev_qoq": -3.23,
+              "profit_qoq": -20.98,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": 12.2,
+              "ocf_profit_ratio": -0.08,
+              "inventory_revenue_ratio": 0.78
+            },
+            {
+              "report_date": "2024-12-31",
+              "revenue": 1073130000.0,
+              "profit": 109005000.0,
+              "op_cashflow": 175437000.0,
+              "inventory": 826439000.0,
+              "contract_liability": 16602300.0,
+              "rev_qoq": 6.66,
+              "profit_qoq": -11.28,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": 10.2,
+              "ocf_profit_ratio": 1.61,
+              "inventory_revenue_ratio": 0.77
+            },
+            {
+              "report_date": "2025-03-31",
+              "revenue": 1019780000.0,
+              "profit": 117381000.0,
+              "op_cashflow": -10605300.0,
+              "inventory": 772836000.0,
+              "contract_liability": 23893400.0,
+              "rev_qoq": -4.97,
+              "profit_qoq": 7.68,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": 11.5,
+              "ocf_profit_ratio": -0.09,
+              "inventory_revenue_ratio": 0.76
+            },
+            {
+              "report_date": "2025-06-30",
+              "revenue": 1169830000.0,
+              "profit": 180552000.0,
+              "op_cashflow": 13744800.0,
+              "inventory": 844963000.0,
+              "contract_liability": 22673000.0,
+              "rev_qoq": 14.71,
+              "profit_qoq": 53.82,
+              "rev_yoy": 12.52,
+              "profit_yoy": 16.12,
+              "scissor_gap": 3.6,
+              "net_margin": 15.4,
+              "ocf_profit_ratio": 0.08,
+              "inventory_revenue_ratio": 0.72
+            },
+            {
+              "report_date": "2025-09-30",
+              "revenue": 1027490000.0,
+              "profit": 111630000.0,
+              "op_cashflow": 28920400.0,
+              "inventory": 965780000.0,
+              "contract_liability": 18879200.0,
+              "rev_qoq": -12.17,
+              "profit_qoq": -38.17,
+              "rev_yoy": 2.13,
+              "profit_yoy": -9.15,
+              "scissor_gap": -11.28,
+              "net_margin": 10.9,
+              "ocf_profit_ratio": 0.26,
+              "inventory_revenue_ratio": 0.94
+            },
+            {
+              "report_date": "2025-12-31",
+              "revenue": 1318490000.0,
+              "profit": 249473000.0,
+              "op_cashflow": 297438000.0,
+              "inventory": 1079880000.0,
+              "contract_liability": 51059100.0,
+              "rev_qoq": 28.32,
+              "profit_qoq": 123.48,
+              "rev_yoy": 22.86,
+              "profit_yoy": 128.86,
+              "scissor_gap": 106.0,
+              "net_margin": 18.9,
+              "ocf_profit_ratio": 1.19,
+              "inventory_revenue_ratio": 0.82
+            },
+            {
+              "report_date": "2026-03-31",
+              "revenue": 1194450000.0,
+              "profit": 121617000.0,
+              "op_cashflow": -126014000.0,
+              "inventory": 1284530000.0,
+              "contract_liability": 56020200.0,
+              "rev_qoq": -9.41,
+              "profit_qoq": -51.25,
+              "rev_yoy": 17.13,
+              "profit_yoy": 3.61,
+              "scissor_gap": -13.52,
+              "net_margin": 10.2,
+              "ocf_profit_ratio": -1.04,
+              "inventory_revenue_ratio": 1.08
+            }
+          ],
+          "agent": "FinancialAuditor",
+          "code": "603067",
+          "name": "振华股份",
+          "quarters_count": 8
+        },
+        "human_capital": {
+          "founder_background": {
+            "name": null,
+            "education": null,
+            "prior_experience": null,
+            "industry_years": null,
+            "notable": null
+          },
+          "core_team": {
+            "cto_name": null,
+            "cto_background": null,
+            "rd_team_size_est": null,
+            "rd_ratio_est": null,
+            "rd_investment_est": null,
+            "core_staff_stability": null
+          },
+          "patent_quality": {
+            "total_patents_est": null,
+            "invention_ratio_est": null,
+            "international_patents": null,
+            "citation_impact": null,
+            "tech_independence": null
+          },
+          "equity_incentive": {
+            "esop_coverage": null,
+            "lockup_pressure": null,
+            "insider_trend": null,
+            "incentive_health": null
+          },
+          "human_capital_score": 6,
+          "score_reason": "公司为全球铬盐龙头、高新技术企业，维生素K3产能全球前列，反映其行业积累与技术基础，但搜索结果未提供管理层背景、研发投入及股权激励等可验证的核心人力资本数据，故存在明显信息盲区。",
+          "key_personnel_risk": null,
+          "verdict": "ADEQUATE",
+          "agent": "HumanCapitalDetective",
+          "code": "603067",
+          "name": "振华股份"
+        }
+      },
+      {
+        "code": "300408",
+        "name": "三环集团",
+        "financial": {
+          "verdict": "PASS",
+          "score": 75,
+          "flags": [
+            "✅ 剪刀差为正: 利润率扩张中",
+            "✅ 四连击: 连续4季度营收+利润同比双增",
+            "✅ 近4季度中3季度环比双增",
+            "⚠️ Beneish M-Score=-2.09: 处于灰色区域, 需关注"
+          ],
+          "beneish": {
+            "m_score": -2.093,
+            "threshold": -1.78,
+            "interpretation": "灰色区域",
+            "components": {
+              "dsri": 0.903,
+              "gmi": 0.943,
+              "aqi": 1.015,
+              "sgi": 1.463,
+              "depi": 1,
+              "sgai": 0.862,
+              "tata": 0.0235,
+              "lvgi": 1.14
+            }
+          },
+          "scissor": {
+            "latest_gap_pct": 2.23,
+            "scissor_quarters_count": 2,
+            "is_expanding": true
+          },
+          "momentum": {
+            "consecutive_yoy_hits": 4,
+            "four_quarters_hit": true,
+            "recent_qoq_hits": 3
+          },
+          "inventory_trend": "stable",
+          "contract_liability_trend": "stable",
+          "ocf_health": "healthy",
+          "metrics": [
+            {
+              "report_date": "2024-06-30",
+              "revenue": 1863790000.0,
+              "profit": 592567000.0,
+              "op_cashflow": 586389000.0,
+              "inventory": 1930840000.0,
+              "contract_liability": 16059100.0,
+              "rev_qoq": null,
+              "profit_qoq": null,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": 31.8,
+              "ocf_profit_ratio": 0.99,
+              "inventory_revenue_ratio": 1.04
+            },
+            {
+              "report_date": "2024-09-30",
+              "revenue": 1953370000.0,
+              "profit": 577742000.0,
+              "op_cashflow": 734638000.0,
+              "inventory": 2123430000.0,
+              "contract_liability": 20787300.0,
+              "rev_qoq": 4.81,
+              "profit_qoq": -2.5,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": 29.6,
+              "ocf_profit_ratio": 1.27,
+              "inventory_revenue_ratio": 1.09
+            },
+            {
+              "report_date": "2024-12-31",
+              "revenue": 1994210000.0,
+              "profit": 587162000.0,
+              "op_cashflow": 896633000.0,
+              "inventory": 2180710000.0,
+              "contract_liability": 30781600.0,
+              "rev_qoq": 2.09,
+              "profit_qoq": 1.63,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": 29.4,
+              "ocf_profit_ratio": 1.53,
+              "inventory_revenue_ratio": 1.09
+            },
+            {
+              "report_date": "2025-03-31",
+              "revenue": 1833140000.0,
+              "profit": 532651000.0,
+              "op_cashflow": 242589000.0,
+              "inventory": 2171040000.0,
+              "contract_liability": 41066000.0,
+              "rev_qoq": -8.08,
+              "profit_qoq": -9.28,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": 29.1,
+              "ocf_profit_ratio": 0.46,
+              "inventory_revenue_ratio": 1.18
+            },
+            {
+              "report_date": "2025-06-30",
+              "revenue": 2315650000.0,
+              "profit": 704486000.0,
+              "op_cashflow": 885120000.0,
+              "inventory": 2163240000.0,
+              "contract_liability": 30057700.0,
+              "rev_qoq": 26.32,
+              "profit_qoq": 32.26,
+              "rev_yoy": 24.24,
+              "profit_yoy": 18.89,
+              "scissor_gap": -5.35,
+              "net_margin": 30.4,
+              "ocf_profit_ratio": 1.26,
+              "inventory_revenue_ratio": 0.93
+            },
+            {
+              "report_date": "2025-09-30",
+              "revenue": 2359570000.0,
+              "profit": 721381000.0,
+              "op_cashflow": 862747000.0,
+              "inventory": 2288760000.0,
+              "contract_liability": 35896000.0,
+              "rev_qoq": 1.9,
+              "profit_qoq": 2.4,
+              "rev_yoy": 20.79,
+              "profit_yoy": 24.86,
+              "scissor_gap": 4.07,
+              "net_margin": 30.6,
+              "ocf_profit_ratio": 1.2,
+              "inventory_revenue_ratio": 0.97
+            },
+            {
+              "report_date": "2025-12-31",
+              "revenue": 2498790000.0,
+              "profit": 659865000.0,
+              "op_cashflow": 887153000.0,
+              "inventory": 2391720000.0,
+              "contract_liability": 23886200.0,
+              "rev_qoq": 5.9,
+              "profit_qoq": -8.53,
+              "rev_yoy": 25.3,
+              "profit_yoy": 12.38,
+              "scissor_gap": -12.92,
+              "net_margin": 26.4,
+              "ocf_profit_ratio": 1.34,
+              "inventory_revenue_ratio": 0.96
+            },
+            {
+              "report_date": "2026-03-31",
+              "revenue": 2680990000.0,
+              "profit": 790900000.0,
+              "op_cashflow": 156685000.0,
+              "inventory": 2609960000.0,
+              "contract_liability": 36741200.0,
+              "rev_qoq": 7.29,
+              "profit_qoq": 19.86,
+              "rev_yoy": 46.25,
+              "profit_yoy": 48.48,
+              "scissor_gap": 2.23,
+              "net_margin": 29.5,
+              "ocf_profit_ratio": 0.2,
+              "inventory_revenue_ratio": 0.97
+            }
+          ],
+          "agent": "FinancialAuditor",
+          "code": "300408",
+          "name": "三环集团",
+          "quarters_count": 8
+        },
+        "human_capital": {
+          "founder_background": {
+            "name": "李钢",
+            "education": "本科学历",
+            "prior_experience": "曾任本公司MLCC事业部总经理、PKG事业部总经理、企业管理部总监、公司副总经理、财务总监、人力资源总监",
+            "industry_years": null,
+            "notable": null
+          },
+          "core_team": {
+            "cto_name": null,
+            "cto_background": null,
+            "rd_team_size_est": null,
+            "rd_ratio_est": null,
+            "rd_investment_est": null,
+            "core_staff_stability": "稳定——公司有院士及学科专家顾问团队，研发体系完善，长期承担国家重点项目，未见核心人员流失报道"
+          },
+          "patent_quality": {
+            "total_patents_est": null,
+            "invention_ratio_est": null,
+            "international_patents": null,
+            "citation_impact": null,
+            "tech_independence": "高——公司突破设备自制，4年研发自制三条生产线，多项设备国内外首创，基础材料自主研制"
+          },
+          "equity_incentive": {
+            "esop_coverage": null,
+            "lockup_pressure": "中——回购股份拟用于股权激励或员工持股计划，未来实施后有解禁安排",
+            "insider_trend": null,
+            "incentive_health": "健康——已投入1.75亿元回购，激励计划积极推进，绑定核心人员"
+          },
+          "human_capital_score": 7,
+          "score_reason": "董事长管理经验丰富但缺乏顶尖学历或外部大厂背景，研发团队有院士指导、技术自主性强，股权激励稳健，但核心技术人员与专利细节不透明，存在一定信息盲区",
+          "key_personnel_risk": "核心技术可能高度依赖院士顾问及个别资深专家，公开信息中无明确CTO，存在人员集中风险",
+          "verdict": "ADEQUATE",
+          "agent": "HumanCapitalDetective",
+          "code": "300408",
+          "name": "三环集团"
+        }
+      },
+      {
+        "code": "002167",
+        "name": "东方锆业",
+        "financial": {
+          "verdict": "CAUTION",
+          "score": 45,
+          "flags": [
+            "✅ 剪刀差为正: 利润率扩张中",
+            "⚠️ 未达四连击(当前连续1季度)",
+            "✅ 存货占比下降: 供不应求信号",
+            "✅ 合同负债surging: 在手订单充沛",
+            "⚠️ Beneish M-Score=-2.05: 处于灰色区域, 需关注"
+          ],
+          "beneish": {
+            "m_score": -2.054,
+            "threshold": -1.78,
+            "interpretation": "灰色区域",
+            "components": {
+              "dsri": 1.37,
+              "gmi": 0.922,
+              "aqi": 0.962,
+              "sgi": 1.061,
+              "depi": 1,
+              "sgai": 1.172,
+              "tata": -0.0078,
+              "lvgi": 0.528
+            }
+          },
+          "scissor": {
+            "latest_gap_pct": 1.34,
+            "scissor_quarters_count": 2,
+            "is_expanding": true
+          },
+          "momentum": {
+            "consecutive_yoy_hits": 1,
+            "four_quarters_hit": false,
+            "recent_qoq_hits": 1
+          },
+          "inventory_trend": "declining",
+          "contract_liability_trend": "surging",
+          "ocf_health": "healthy",
+          "metrics": [
+            {
+              "report_date": "2024-06-30",
+              "revenue": 383790111.48,
+              "profit": -26264420.2,
+              "op_cashflow": 198476866.68,
+              "inventory": 577548338.8,
+              "contract_liability": 586419529.14,
+              "rev_qoq": null,
+              "profit_qoq": null,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": -6.8,
+              "ocf_profit_ratio": null,
+              "inventory_revenue_ratio": 1.5
+            },
+            {
+              "report_date": "2024-09-30",
+              "revenue": 419528732.92,
+              "profit": 18557790.56,
+              "op_cashflow": 118987743.51,
+              "inventory": 543331940.72,
+              "contract_liability": 579646133.32,
+              "rev_qoq": 9.31,
+              "profit_qoq": 170.66,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": 4.4,
+              "ocf_profit_ratio": 6.41,
+              "inventory_revenue_ratio": 1.3
+            },
+            {
+              "report_date": "2024-12-31",
+              "revenue": 309154563.76,
+              "profit": 218155076.68,
+              "op_cashflow": 383453170.06,
+              "inventory": 631861025.79,
+              "contract_liability": 6087227.07,
+              "rev_qoq": -26.31,
+              "profit_qoq": 1075.54,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": 70.6,
+              "ocf_profit_ratio": 1.76,
+              "inventory_revenue_ratio": 2.04
+            },
+            {
+              "report_date": "2025-03-31",
+              "revenue": 284413977.46,
+              "profit": 18848430.71,
+              "op_cashflow": 46117053.72,
+              "inventory": 562815982.61,
+              "contract_liability": 9750693.26,
+              "rev_qoq": -8.0,
+              "profit_qoq": -91.36,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": 6.6,
+              "ocf_profit_ratio": 2.45,
+              "inventory_revenue_ratio": 1.98
+            },
+            {
+              "report_date": "2025-06-30",
+              "revenue": 341993642.45,
+              "profit": 10228183.23,
+              "op_cashflow": 129858934.66,
+              "inventory": 470963069.38,
+              "contract_liability": 4234100.65,
+              "rev_qoq": 20.25,
+              "profit_qoq": -45.73,
+              "rev_yoy": -10.89,
+              "profit_yoy": 138.94,
+              "scissor_gap": 149.83,
+              "net_margin": 3.0,
+              "ocf_profit_ratio": 12.7,
+              "inventory_revenue_ratio": 1.38
+            },
+            {
+              "report_date": "2025-09-30",
+              "revenue": 300629049.57,
+              "profit": 9604567.46,
+              "op_cashflow": 161839845.81,
+              "inventory": 425521523.02,
+              "contract_liability": 8186849.92,
+              "rev_qoq": -12.1,
+              "profit_qoq": -6.1,
+              "rev_yoy": -28.34,
+              "profit_yoy": -48.25,
+              "scissor_gap": -19.91,
+              "net_margin": 3.2,
+              "ocf_profit_ratio": 16.85,
+              "inventory_revenue_ratio": 1.42
+            },
+            {
+              "report_date": "2025-12-31",
+              "revenue": 317843346.45,
+              "profit": 14101492.16,
+              "op_cashflow": 57427260.7,
+              "inventory": 312996669.49,
+              "contract_liability": 8391403.2,
+              "rev_qoq": 5.73,
+              "profit_qoq": 46.82,
+              "rev_yoy": 2.81,
+              "profit_yoy": -93.54,
+              "scissor_gap": -96.35,
+              "net_margin": 4.4,
+              "ocf_profit_ratio": 4.07,
+              "inventory_revenue_ratio": 0.98
+            },
+            {
+              "report_date": "2026-03-31",
+              "revenue": 301681053.49,
+              "profit": 20245579.41,
+              "op_cashflow": 37247803.46,
+              "inventory": 346388255.8,
+              "contract_liability": 23358324.28,
+              "rev_qoq": -5.08,
+              "profit_qoq": 43.57,
+              "rev_yoy": 6.07,
+              "profit_yoy": 7.41,
+              "scissor_gap": 1.34,
+              "net_margin": 6.7,
+              "ocf_profit_ratio": 1.84,
+              "inventory_revenue_ratio": 1.15
+            }
+          ],
+          "agent": "FinancialAuditor",
+          "code": "002167",
+          "name": "东方锆业",
+          "quarters_count": 8
+        },
+        "human_capital": {
+          "founder_background": {
+            "name": "陈潮钿",
+            "education": null,
+            "prior_experience": null,
+            "industry_years": null,
+            "notable": null
+          },
+          "core_team": {
+            "cto_name": "陈仲丛",
+            "cto_background": "本科学历，高级工程师，1995年加入公司，历任车间主任、生产部经理等职，现任技术总监、副总工程师，核心技术人员，复合氧化锆项目专利发明人，曾获广东省科技进步一等奖(1998)与三等奖(2003)。",
+            "rd_team_size_est": null,
+            "rd_ratio_est": null,
+            "rd_investment_est": null,
+            "core_staff_stability": "一般"
+          },
+          "patent_quality": {
+            "total_patents_est": null,
+            "invention_ratio_est": null,
+            "international_patents": null,
+            "citation_impact": null,
+            "tech_independence": "中"
+          },
+          "equity_incentive": {
+            "esop_coverage": null,
+            "lockup_pressure": "中",
+            "insider_trend": "减持",
+            "incentive_health": "一般"
+          },
+          "human_capital_score": 6,
+          "score_reason": "核心技术团队有专利积累和行业奖项，研发投入强度较高(5.6%)，但高管近期减持，创始人背景不明，团队规模与专利质量信息有限，存在技术传承风险。",
+          "key_personnel_risk": "技术核心陈仲丛(1970年出生)年龄渐长，技术传承存在不确定性；多名高管集中披露减持计划，或影响团队信心。",
+          "verdict": "ADEQUATE",
+          "agent": "HumanCapitalDetective",
+          "code": "002167",
+          "name": "东方锆业"
+        }
+      },
+      {
+        "code": "688737",
+        "name": "中自科技",
+        "financial": {
+          "verdict": "FAIL",
+          "score": -15,
+          "flags": [
+            "⚠️ 剪刀差为负(-132.93%), 利润增速跑输营收",
+            "⚠️ 未达四连击(当前连续1季度)",
+            "✅ 合同负债surging: 在手订单充沛",
+            "🚨 经营现金流/利润 < 0.5: 利润含金量低",
+            "⚠️ Beneish M-Score=-2.36: 处于灰色区域, 需关注"
+          ],
+          "beneish": {
+            "m_score": -2.36,
+            "threshold": -1.78,
+            "interpretation": "灰色区域",
+            "components": {
+              "dsri": 0.547,
+              "gmi": 1.066,
+              "aqi": 0.809,
+              "sgi": 1.776,
+              "depi": 1,
+              "sgai": 1.332,
+              "tata": 0.011,
+              "lvgi": 1.33
+            }
+          },
+          "scissor": {
+            "latest_gap_pct": -132.93,
+            "scissor_quarters_count": 0,
+            "is_expanding": false
+          },
+          "momentum": {
+            "consecutive_yoy_hits": 1,
+            "four_quarters_hit": false,
+            "recent_qoq_hits": 2
+          },
+          "inventory_trend": "stable",
+          "contract_liability_trend": "surging",
+          "ocf_health": "poor",
+          "metrics": [
+            {
+              "report_date": "2024-06-30",
+              "revenue": 364017000.0,
+              "profit": -8932580.0,
+              "op_cashflow": 18962000.0,
+              "inventory": 351090000.0,
+              "contract_liability": 6784340.0,
+              "rev_qoq": null,
+              "profit_qoq": null,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": -2.5,
+              "ocf_profit_ratio": null,
+              "inventory_revenue_ratio": 0.96
+            },
+            {
+              "report_date": "2024-09-30",
+              "revenue": 318341000.0,
+              "profit": -19664500.0,
+              "op_cashflow": -57043000.0,
+              "inventory": 418591000.0,
+              "contract_liability": 12395700.0,
+              "rev_qoq": -12.55,
+              "profit_qoq": -120.14,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": -6.2,
+              "ocf_profit_ratio": null,
+              "inventory_revenue_ratio": 1.31
+            },
+            {
+              "report_date": "2024-12-31",
+              "revenue": 507908000.0,
+              "profit": -12120700.0,
+              "op_cashflow": -183417000.0,
+              "inventory": 360193000.0,
+              "contract_liability": 10131100.0,
+              "rev_qoq": 59.55,
+              "profit_qoq": 38.36,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": -2.4,
+              "ocf_profit_ratio": null,
+              "inventory_revenue_ratio": 0.71
+            },
+            {
+              "report_date": "2025-03-31",
+              "revenue": 402838000.0,
+              "profit": 7701600.0,
+              "op_cashflow": -170562000.0,
+              "inventory": 372064000.0,
+              "contract_liability": 12907000.0,
+              "rev_qoq": -20.69,
+              "profit_qoq": 163.54,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": 1.9,
+              "ocf_profit_ratio": -22.15,
+              "inventory_revenue_ratio": 0.92
+            },
+            {
+              "report_date": "2025-06-30",
+              "revenue": 377549000.0,
+              "profit": -19621300.0,
+              "op_cashflow": -137978000.0,
+              "inventory": 349649000.0,
+              "contract_liability": 15245900.0,
+              "rev_qoq": -6.28,
+              "profit_qoq": -354.77,
+              "rev_yoy": 3.72,
+              "profit_yoy": -119.66,
+              "scissor_gap": -123.38,
+              "net_margin": -5.2,
+              "ocf_profit_ratio": null,
+              "inventory_revenue_ratio": 0.93
+            },
+            {
+              "report_date": "2025-09-30",
+              "revenue": 410402000.0,
+              "profit": -15030500.0,
+              "op_cashflow": -12343900.0,
+              "inventory": 407968000.0,
+              "contract_liability": 10480700.0,
+              "rev_qoq": 8.7,
+              "profit_qoq": 23.4,
+              "rev_yoy": 28.92,
+              "profit_yoy": 23.57,
+              "scissor_gap": -5.35,
+              "net_margin": -3.7,
+              "ocf_profit_ratio": null,
+              "inventory_revenue_ratio": 0.99
+            },
+            {
+              "report_date": "2025-12-31",
+              "revenue": 575774000.0,
+              "profit": -29508900.0,
+              "op_cashflow": -256154000.0,
+              "inventory": 485330000.0,
+              "contract_liability": 16828800.0,
+              "rev_qoq": 40.3,
+              "profit_qoq": -96.33,
+              "rev_yoy": 13.36,
+              "profit_yoy": -143.46,
+              "scissor_gap": -156.82,
+              "net_margin": -5.1,
+              "ocf_profit_ratio": null,
+              "inventory_revenue_ratio": 0.84
+            },
+            {
+              "report_date": "2026-03-31",
+              "revenue": 715605000.0,
+              "profit": 3443140.0,
+              "op_cashflow": -37834300.0,
+              "inventory": 640580000.0,
+              "contract_liability": 54343400.0,
+              "rev_qoq": 24.29,
+              "profit_qoq": 111.67,
+              "rev_yoy": 77.64,
+              "profit_yoy": -55.29,
+              "scissor_gap": -132.93,
+              "net_margin": 0.5,
+              "ocf_profit_ratio": -10.99,
+              "inventory_revenue_ratio": 0.9
+            }
+          ],
+          "agent": "FinancialAuditor",
+          "code": "688737",
+          "name": "中自科技",
+          "quarters_count": 8
+        },
+        "human_capital": {
+          "founder_background": {
+            "name": "陈启章",
+            "education": null,
+            "prior_experience": null,
+            "industry_years": 20,
+            "notable": "公司累计获20项省部级以上科技奖，牵头或参与制定27项国家/行业标准"
+          },
+          "core_team": {
+            "cto_name": null,
+            "cto_background": null,
+            "rd_team_size_est": "200+",
+            "rd_ratio_est": null,
+            "rd_investment_est": null,
+            "core_staff_stability": "稳定"
+          },
+          "patent_quality": {
+            "total_patents_est": 200,
+            "invention_ratio_est": null,
+            "international_patents": null,
+            "citation_impact": null,
+            "tech_independence": "高"
+          },
+          "equity_incentive": {
+            "esop_coverage": "激励对象68人（占股本约1.72%）",
+            "lockup_pressure": "低",
+            "insider_trend": null,
+            "incentive_health": "健康"
+          },
+          "human_capital_score": 7,
+          "score_reason": "研发团队200余人、专利200余项，有持续获奖和标准制定能力，但创始人详细背景缺失，缺乏核心技术人员公开信息",
+          "key_personnel_risk": null,
+          "verdict": "ADEQUATE",
+          "agent": "HumanCapitalDetective",
+          "code": "688737",
+          "name": "中自科技"
+        }
+      },
+      {
+        "code": "000338",
+        "name": "潍柴动力",
+        "financial": {
+          "verdict": "FAIL",
+          "score": 25,
+          "flags": [
+            "✅ 剪刀差为正: 利润率扩张中",
+            "⚠️ 未达四连击(当前连续1季度)",
+            "⚠️ Beneish M-Score=-2.27: 处于灰色区域, 需关注"
+          ],
+          "beneish": {
+            "m_score": -2.267,
+            "threshold": -1.78,
+            "interpretation": "灰色区域",
+            "components": {
+              "dsri": 0.995,
+              "gmi": 1.037,
+              "aqi": 0.995,
+              "sgi": 1.089,
+              "depi": 1,
+              "sgai": 0.738,
+              "tata": 0.0156,
+              "lvgi": 0.993
+            }
+          },
+          "scissor": {
+            "latest_gap_pct": 4.96,
+            "scissor_quarters_count": 2,
+            "is_expanding": true
+          },
+          "momentum": {
+            "consecutive_yoy_hits": 1,
+            "four_quarters_hit": false,
+            "recent_qoq_hits": 2
+          },
+          "inventory_trend": "stable",
+          "contract_liability_trend": "stable",
+          "ocf_health": "healthy",
+          "metrics": [
+            {
+              "report_date": "2024-06-30",
+              "revenue": 56109500000.0,
+              "profit": 3303800000.0,
+              "op_cashflow": 11190700000.0,
+              "inventory": 36545900000.0,
+              "contract_liability": 13504100000.0,
+              "rev_qoq": null,
+              "profit_qoq": null,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": 5.9,
+              "ocf_profit_ratio": 3.39,
+              "inventory_revenue_ratio": 0.65
+            },
+            {
+              "report_date": "2024-09-30",
+              "revenue": 49463900000.0,
+              "profit": 2497560000.0,
+              "op_cashflow": 713047000.0,
+              "inventory": 34697400000.0,
+              "contract_liability": 12544400000.0,
+              "rev_qoq": -11.84,
+              "profit_qoq": -24.4,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": 5.0,
+              "ocf_profit_ratio": 0.29,
+              "inventory_revenue_ratio": 0.7
+            },
+            {
+              "report_date": "2024-12-31",
+              "revenue": 53736900000.0,
+              "profit": 3002270000.0,
+              "op_cashflow": 12578600000.0,
+              "inventory": 35675300000.0,
+              "contract_liability": 13914200000.0,
+              "rev_qoq": 8.64,
+              "profit_qoq": 20.21,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": 5.6,
+              "ocf_profit_ratio": 4.19,
+              "inventory_revenue_ratio": 0.66
+            },
+            {
+              "report_date": "2025-03-31",
+              "revenue": 57463800000.0,
+              "profit": 2710560000.0,
+              "op_cashflow": -4645920000.0,
+              "inventory": 36483900000.0,
+              "contract_liability": 11759500000.0,
+              "rev_qoq": 6.94,
+              "profit_qoq": -9.72,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": 4.7,
+              "ocf_profit_ratio": -1.71,
+              "inventory_revenue_ratio": 0.63
+            },
+            {
+              "report_date": "2025-06-30",
+              "revenue": 55688000000.0,
+              "profit": 2932890000.0,
+              "op_cashflow": 11483500000.0,
+              "inventory": 36574100000.0,
+              "contract_liability": 11867700000.0,
+              "rev_qoq": -3.09,
+              "profit_qoq": 8.2,
+              "rev_yoy": -0.75,
+              "profit_yoy": -11.23,
+              "scissor_gap": -10.48,
+              "net_margin": 5.3,
+              "ocf_profit_ratio": 3.92,
+              "inventory_revenue_ratio": 0.66
+            },
+            {
+              "report_date": "2025-09-30",
+              "revenue": 57418800000.0,
+              "profit": 3234100000.0,
+              "op_cashflow": 8177170000.0,
+              "inventory": 35139100000.0,
+              "contract_liability": 11415700000.0,
+              "rev_qoq": 3.11,
+              "profit_qoq": 10.27,
+              "rev_yoy": 16.08,
+              "profit_yoy": 29.49,
+              "scissor_gap": 13.41,
+              "net_margin": 5.6,
+              "ocf_profit_ratio": 2.53,
+              "inventory_revenue_ratio": 0.61
+            },
+            {
+              "report_date": "2025-12-31",
+              "revenue": 61238700000.0,
+              "profit": 2052950000.0,
+              "op_cashflow": 13666800000.0,
+              "inventory": 35235700000.0,
+              "contract_liability": 13064100000.0,
+              "rev_qoq": 6.65,
+              "profit_qoq": -36.52,
+              "rev_yoy": 13.96,
+              "profit_yoy": -31.62,
+              "scissor_gap": -45.58,
+              "net_margin": 3.4,
+              "ocf_profit_ratio": 6.66,
+              "inventory_revenue_ratio": 0.58
+            },
+            {
+              "report_date": "2026-03-31",
+              "revenue": 62563200000.0,
+              "profit": 3085460000.0,
+              "op_cashflow": -2716480000.0,
+              "inventory": 37978100000.0,
+              "contract_liability": 12187400000.0,
+              "rev_qoq": 2.16,
+              "profit_qoq": 50.29,
+              "rev_yoy": 8.87,
+              "profit_yoy": 13.83,
+              "scissor_gap": 4.96,
+              "net_margin": 4.9,
+              "ocf_profit_ratio": -0.88,
+              "inventory_revenue_ratio": 0.61
+            }
+          ],
+          "agent": "FinancialAuditor",
+          "code": "000338",
+          "name": "潍柴动力",
+          "quarters_count": 8
+        },
+        "human_capital": {
+          "founder_background": {
+            "name": "谭旭光",
+            "education": "在职研究生，工商管理硕士（具体院校未披露）",
+            "prior_experience": "1977年进入潍坊柴油机厂，历任厂长、潍柴动力党委书记/董事长/CEO，曾兼任中国重汽集团董事长等职",
+            "industry_years": 47,
+            "notable": "带领潍柴实现扭亏、研制自主欧Ⅲ发动机、收购湘火炬，获国家科技进步一等奖，被誉为“潍柴教父”"
+          },
+          "core_team": {
+            "cto_name": null,
+            "cto_background": null,
+            "rd_team_size_est": "累计引进超过10000名科技人才（宣传口径）",
+            "rd_ratio_est": null,
+            "rd_investment_est": 82.99,
+            "core_staff_stability": "稳定 — 新任董事长王志坚、马常海均为潍柴内部长期培养，系谭旭光卸任后正常交接，未出现核心技术骨干大量流失报道"
+          },
+          "patent_quality": {
+            "total_patents_est": null,
+            "invention_ratio_est": null,
+            "international_patents": null,
+            "citation_impact": null,
+            "tech_independence": "高 — 掌握高端液压、大缸径高速发动机、低排放天然气发动机、氢能动力等关键技术，突破“卡脖子”技术，获国家科技进步一等奖，核心动力总成自主可控"
+          },
+          "equity_incentive": {
+            "esop_coverage": "已实施2023年A股限制性股票激励计划，覆盖核心员工，具体比例未披露",
+            "lockup_pressure": "中 — 2023年授予登记完成，第一个解除限售期出现部分人员考核未达标或异动，但已回购注销，整体解禁压力可控",
+            "insider_trend": "持平 — 近期为回购注销部分限制性股票，无大规模减持信号，高管层稳定增持/持有",
+            "incentive_health": "健康 — 激励计划与个人绩效考核挂钩，已主动回购注销未达标份额，机制较为合理"
+          },
+          "human_capital_score": 9,
+          "score_reason": "谭旭光虽卸任，但继任者均从基层成长，研发投入超80亿，技术自主可控且曾获国家科技奖，股权激励挂钩绩效并刚性执行，人力资本厚度极强。",
+          "key_personnel_risk": "创始人/精神领袖谭旭光卸任，管理层代际传承带来的战略延续性需观察；核心技术是否过度依赖少数老专家未明确。",
+          "verdict": "STRONG",
+          "agent": "HumanCapitalDetective",
+          "code": "000338",
+          "name": "潍柴动力"
+        }
+      }
+    ],
+    "prices": [
+      {
+        "error": "LLM pricing failed",
+        "verdict": "UNKNOWN",
+        "agent": "ValuationPricer",
+        "code": "603067",
+        "name": "振华股份"
+      },
+      {
+        "valuation_summary": "三环集团作为电解质/电池核心供应商，凭借全球供应链份额和强技术自主性构筑深厚护城河，当前76.6倍TTM PE虽看似高企，但基于其连续4季度同比双增的强劲动量、30%左右的净利润率及稳定的现金流，采用PEG估值法在假定未来3年利润复合增速超40%的情景下具备合理性，给予‘BUY’评级，建议分步建仓。",
+        "moat_window": {
+          "years": 5,
+          "barrier_type": "技术专利/客户认证/产能规模/政策壁垒",
+          "threat_level": "MEDIUM",
+          "reasoning": "公司护城河深度由三方面构成：1) 技术专利：突破关键设备自制，三年研发自制三条产线，基础材料自研，技术独立性极强(人力资本审计)；2) 客户认证：全球核心供应商地位，切换成本高；3) 产能规模与政策：长期承担国家重点项目。综合评估此壁垒可有效阻挡追赶至少5年，但考虑到Beneish M-Score处于灰色区域(-2.09)及电池材料技术迭代风险，威胁等级评定为MEDIUM。"
+        },
+        "target_valuation": {
+          "base_case_mcap": 2150,
+          "unit": "亿元",
+          "bull_case_mcap": 2800,
+          "bear_case_mcap": 1600,
+          "upside_pct": 30,
+          "downside_pct": -25
+        },
+        "valuation_method": {
+          "primary": "PEG",
+          "pe_current": 76.62,
+          "pe_target": 85.0,
+          "peg_ratio": 1.2,
+          "ps_current": 10.23,
+          "ps_target": 12.0,
+          "growth_rate_est": "未来3年利润CAGR约40-45%",
+          "reasoning": "核心采用PEG估值法。标的处于高增长阶段(最近报告期营收YOY达46.25%，利润YOY达48.48%)，且利润率稳定、经营现金流健康。以当前76.6倍PE除以测算的未来三年约40%+的利润复合增速，PEG约1.2倍，低于2倍的泡沫阈值，在成长股中属合理范围。DCF因资本开支和运营波动较大而作为辅助参考，PS估值结合同业对比提供安全边际验证。"
+        },
+        "global_peer_comparison": [
+          {
+            "name": "村田制作所",
+            "code": "6981.T",
+            "pe": 25,
+            "ps": 3.5,
+            "premium_discount": "三环集团享有显著溢价(PE高出200%+)，主因：1) 作为中国新能源供应链核心标的，享受国内更高增长预期及国产替代红利；2) 更快的营收/利润增速(村田近期增速为低个位数，三环为双位数高增长)；3) 更强的技术设备自主性叙事。但高溢价也隐含了较高的增长兑现风险。"
+          },
+          {
+            "name": "三星电机",
+            "code": "009150.KS",
+            "pe": 20,
+            "ps": 1.8,
+            "premium_discount": "三环集团同样大幅溢价。三星电机MLCC业务与三环部分重叠，但三环聚焦于高端电解质/电池特陶材料，细分赛道更优，市场给予其稀缺性和高成长性以高估值。PB角度三环(10.23倍)也远高于三星电机，反映资产轻重不同及品牌/技术溢价。"
+          }
+        ],
+        "position_suggest": {
+          "allocation_pct": 10,
+          "time_horizon": "1-3年",
+          "entry_strategy": "分步建仓：基于Beneish M-Score处于灰色区域及QoQ业绩存在季节波动，建议在当前价位先建目标仓位的40%，若股价回调至1800-1900亿市值区间(约20日均线附近)或下一财报确认存货与合同负债趋势进一步优化(最新存货/营收比0.97，合同负债YOY大增)，再加仓60%。",
+          "exit_trigger": "1) PEG超过2倍(即PE升至100倍以上而增速无法同步兑现)；2) 连续两个季度出现剪刀差为负且营收YOY增速跌破20%；3) Beneish M-Score恶化突破-1.78阈值或出现重大管理层/核心技术依赖风险(如院士顾问团队变动)；4) 全球市场份额丢失，前两大客户收入占比骤降。"
+        },
+        "verdict": "BUY",
+        "risk_reward_ratio": "1:2.5 — 基于基础情景2150亿市值，上行至牛市情景2800亿(+30%)，下行至熊市情景1600亿(-25%)，风险收益比良好。核心驱动是连续4季度双增的业绩动量、稳定的高利润率(26%-32%)和强大的技术护城河，主要风险是估值高企对增速不及预期的敏感度以及M-Score灰色区域的财务质量隐忧，整体风险收益比具备吸引力。",
+        "agent": "ValuationPricer",
+        "code": "300408",
+        "name": "三环集团"
+      },
+      {
+        "error": "LLM pricing failed",
+        "verdict": "UNKNOWN",
+        "agent": "ValuationPricer",
+        "code": "002167",
+        "name": "东方锆业"
+      },
+      {
+        "valuation_summary": "中自科技作为SOFC电堆国产化技术突破者，正处于营收放量但利润承压的拐点期，当前35.89亿元市值未充分反映其护城河价值与在手订单增长潜力，给予'BUY'评级。",
+        "moat_window": {
+          "years": 5,
+          "barrier_type": "技术专利/客户认证",
+          "threat_level": "MEDIUM",
+          "reasoning": "公司拥有200+专利、20项省部级科技奖及27项国家/行业标准制定权，SOFC电堆系统国产化涉及材料、密封、长周期寿命验证，技术壁垒高。但考虑到海外巨头（如Bloom Energy）技术外溢及国内政策驱动下的潜在进入者，预计5年内可维持先发优势，后续需持续跟踪产品可靠性数据与客户认证进度。"
+        },
+        "target_valuation": {
+          "base_case_mcap": 75.0,
+          "unit": "亿元",
+          "bull_case_mcap": 105.0,
+          "bear_case_mcap": 42.0,
+          "upside_pct": 109.0,
+          "downside_pct": -20.0
+        },
+        "valuation_method": {
+          "primary": "PS",
+          "pe_current": -59.12,
+          "pe_target": null,
+          "peg_ratio": null,
+          "ps_current": 1.2,
+          "ps_target": 2.5,
+          "growth_rate_est": "未来3年营收CAGR 40%+",
+          "reasoning": "公司尚未稳定盈利（PE为负，经营性现金流持续失血），不适用PE/PEG估值。采用PS估值法：最新一期年化营收约28.6亿元，当前市值对应PS仅1.2倍。考虑到SOFC/氢能赛道的高成长性、公司技术稀缺性及在手订单（合同负债同比暴增），给予基础情形2.5倍PS（对应约75亿市值），较海外可比公司（如Bloom Energy约2.5倍PS）给出一定折价以反映盈利不确定性。"
+        },
+        "global_peer_comparison": [
+          {
+            "name": "Bloom Energy",
+            "code": "BE.US",
+            "pe": null,
+            "ps": 2.5,
+            "premium_discount": "平价基准。Bloom Energy为全球SOFC龙头，已实现规模化收入，但持续亏损。中自科技处于更早期的国产替代阶段，营收体量小但增速更高，理应享受相似或略低PS估值，当前1.2倍PS折价显著。"
+          },
+          {
+            "name": "亿华通",
+            "code": "688339.SH",
+            "pe": null,
+            "ps": 8.0,
+            "premium_discount": "高溢价参考。亿华通作为A股燃料电池系统龙头，享受极高PS溢价。中自科技SOFC路线不同，但同属氢能赛道，若技术验证成功并进入放量阶段，估值具备对标上修空间。"
+          }
+        ],
+        "position_suggest": {
+          "allocation_pct": 8,
+          "time_horizon": "1-3年",
+          "entry_strategy": "分步建仓，先建立4%底仓，待季报确认营收持续高增（YoY>30%）且经营现金流改善信号出现后加仓至8%。",
+          "exit_trigger": "①合同负债连续两个季度下滑；②经营现金流持续恶化且融资能力减弱；③核心技术人员流失或专利纠纷败诉；④全球SOFC技术路线被证伪或公司产品出现重大可靠性事故。"
+        },
+        "verdict": "BUY",
+        "risk_reward_ratio": "1:3.5 — 基础情形上涨空间约109%（至75亿），乐观情形约192%（至105亿），下行风险约20%（至42亿，接近净现金+硬资产支撑）。尽管财务质量FAIL，但合同负债爆发式增长验证需求端强劲，技术护城河清晰，高赔率足以覆盖短期财报瑕疵。",
+        "agent": "ValuationPricer",
+        "code": "688737",
+        "name": "中自科技"
+      },
+      {
+        "valuation_summary": "潍柴动力作为系统集成领域的产业推手，虽具备技术引进与规模化护城河，但近期财务审计亮起红灯（利润剪刀差波动、Beneish灰色区域），需在估值中充分计入治理与盈利质量风险溢价。",
+        "moat_window": {
+          "years": 5,
+          "barrier_type": "技术专利与规模化产能壁垒",
+          "threat_level": "MEDIUM",
+          "reasoning": "公司掌握高压液压、大缸径高速发动机及氢能等关键技术，且通过全球并购构建了完整的动力总成产业链。然而，重卡及工程机械行业周期性较强，且新兴竞争对手在电动化领域逐步渗透，预计现有技术及规模优势能提供约5年的有效缓冲期。"
+        },
+        "target_valuation": {
+          "base_case_mcap": 1850,
+          "unit": "亿元",
+          "bull_case_mcap": 2100,
+          "bear_case_mcap": 1400,
+          "upside_pct": 8.7,
+          "downside_pct": -17.7
+        },
+        "valuation_method": {
+          "primary": "PEG与可比估值法交叉验证",
+          "pe_current": 26.21,
+          "pe_target": 28.5,
+          "peg_ratio": 0.98,
+          "ps_current": 0.85,
+          "ps_target": 0.95,
+          "growth_rate_est": "未来3年利润CAGR约26.7%（根据2026Q1剪刀差转正及行业周期恢复预估）",
+          "reasoning": "公司处于业绩恢复期，近期营收增长但利润波动剧烈。采用PEG估值可兼顾当前盈利与未来成长性；当前约0.98倍PEG反映估值相对合理。鉴于财务审计'FAIL'状态，给予目标PE较当前仅小幅溢价，以反映利润质量折价。"
+        },
+        "global_peer_comparison": [
+          {
+            "name": "康明斯",
+            "code": "CMI.US",
+            "pe": 18.5,
+            "ps": 1.5,
+            "premium_discount": "潍柴享有更高PE溢价，主要基于其在中国市场的绝对龙头地位及AIDC等新业务高速增长预期，但盈利稳定性弱于康明斯。"
+          },
+          {
+            "name": "卡特彼勒",
+            "code": "CAT.US",
+            "pe": 16.2,
+            "ps": 2.8,
+            "premium_discount": "潍柴PS大幅折价，因重资产系统集成商属性导致其收入规模巨大但整体利润率偏低，市场给予的每一元收入估值远低于全球高端机械巨头。"
+          }
+        ],
+        "position_suggest": {
+          "allocation_pct": 8,
+          "time_horizon": "6-12个月",
+          "entry_strategy": "现价附近分步建仓，利用Q1经营性现金流为负及财务审计隐忧带来的市场分歧点低吸，切忌追高。",
+          "exit_trigger": "若连续两个季度剪刀差再度转负且大于-10%，或2026年全年利润增速未能恢复至15%以上，或核心管理层出现动荡，应坚决离场。"
+        },
+        "verdict": "HOLD",
+        "risk_reward_ratio": "1:1.2 — 尽管管理层传承稳健且技术底蕴深厚，但财务审计FAIL状态（Beneish灰色区域、利润剪刀差大幅波动、单季经营现金流为负）显著压低了风险收益比。当前估值已部分计价复苏预期，上行空间有限，而下行风险明确，赔率不高。",
+        "agent": "ValuationPricer",
+        "code": "000338",
+        "name": "潍柴动力"
+      }
+    ]
+  },
+  "agent": "DAGOrchestrator",
+  "industry": "SOFC",
+  "pipeline_stats": {
+    "capex_signals": 4,
+    "supply_chain_layers": 3,
+    "core_stocks": 5,
+    "stocks_audited": 5,
+    "stocks_priced": 5
+  }
+}

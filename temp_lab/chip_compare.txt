@@ -1,0 +1,36 @@
+E:/workspace/AIResearch/AIStock_Pro/backend/temp_lab/chart_chip_distribution.py:9: UserWarning: 
+This call to matplotlib.use() has no effect because the backend has already
+been chosen; matplotlib.use() must be called *before* pylab, matplotlib.pyplot,
+or matplotlib.backends is imported for the first time.
+
+The backend was *originally* set to 'Qt5Agg' by the following code:
+  File "E:/workspace/AIResearch/AIStock_Pro/backend/temp_lab/chart_chip_distribution.py", line 7, in <module>
+    import matplotlib.pyplot as plt
+  File "D:\develop_env\python_related\anaconda\Anaconda3\lib\site-packages\matplotlib\pyplot.py", line 71, in <module>
+    from matplotlib.backends import pylab_setup
+  File "D:\develop_env\python_related\anaconda\Anaconda3\lib\site-packages\matplotlib\backends\__init__.py", line 16, in <module>
+    line for line in traceback.format_stack()
+
+
+  matplotlib.use('TkAgg')
+D:\develop_env\python_related\anaconda\Anaconda3\lib\site-packages\pymysql\_auth.py:9: CryptographyDeprecationWarning: Python 3.7 is no longer supported by the Python core team and support for it is deprecated in cryptography. A future release of cryptography will remove support for Python 3.7.
+  from cryptography.hazmat.backends import default_backend
+603773: 1788 天行情, 2026-05-21 最新
+
+=== 筹码分布结果 ===
+现价: 81.02
+平均成本: 63.40
+获利比例: 83.6%
+90%成本区间: 36.63 ~ 85.25
+70%成本区间: 40.22 ~ 81.51
+90%成本集中度: 72.7%
+
+图表已保存: E:/workspace/AIResearch/AIStock_Pro/backend/temp_lab/chip_603773.png
+Exception ignored in: <function Connection.__del__ at 0x000001C32A28ABF8>
+Traceback (most recent call last):
+  File "D:\develop_env\python_related\anaconda\Anaconda3\lib\site-packages\aiomysql\connection.py", line 1131, in __del__
+  File "D:\develop_env\python_related\anaconda\Anaconda3\lib\site-packages\aiomysql\connection.py", line 339, in close
+  File "D:\develop_env\python_related\anaconda\Anaconda3\lib\asyncio\selector_events.py", line 661, in close
+  File "D:\develop_env\python_related\anaconda\Anaconda3\lib\asyncio\base_events.py", line 672, in call_soon
+  File "D:\develop_env\python_related\anaconda\Anaconda3\lib\asyncio\base_events.py", line 461, in _check_closed
+RuntimeError: Event loop is closed

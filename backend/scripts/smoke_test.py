@@ -58,7 +58,7 @@ async def run_tests():
              checks=[lambda r: r.status_code == 200]),
         Case("日线数据", "GET", "/api/data/daily/600699?limit=5",
              checks=[lambda r: r.status_code == 200]),
-        Case("指标注册表", "GET", "/api/data/indicators/registry",
+        Case("指标注册表", "GET", "/api/quant/indicators/registry",
              checks=[lambda r: r.status_code == 200,
                      lambda r: isinstance(r.json(), list),
                      lambda r: len(r.json()) >= 5]),

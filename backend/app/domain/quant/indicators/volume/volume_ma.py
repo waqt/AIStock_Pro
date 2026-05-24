@@ -3,6 +3,7 @@ from ..base import BaseIndicator, register
 @register
 class VolumeMAIndicator(BaseIndicator):
     name = "volume_ma"
+    label = "量能均线"
     category = "volume"
     params = {"periods": [5, 10, 20]}
     output = ["v_ma5", "v_ma10", "v_ma20"]

@@ -18,6 +18,7 @@ def get_registry() -> dict:
 class BaseIndicator:
     """指标算子基类 — 纯函数, 向量化, 无状态"""
     name: str = ""
+    label: str = ""     # 中文名称
     category: str = ""
     params: dict = {}
     output: list = []
@@ -30,7 +31,8 @@ class BaseIndicator:
     @classmethod
     def meta(cls) -> dict:
         return {
-            "name": cls.name, "category": cls.category,
+            "name": cls.name, "label": cls.label,
+            "category": cls.category,
             "params": cls.params, "output": cls.output,
             "requires": cls.requires,
         }

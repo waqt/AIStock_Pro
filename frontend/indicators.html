@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>AIStock | 指标数据</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <style>
+        .workspace { display: flex; gap: 14px; padding: 14px; height: calc(100vh - 110px); }
+        .left-panel { width: 380px; min-width: 340px; display: flex; flex-direction: column; gap: 8px; }
+        .right-panel { flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+        .cat-group { margin-bottom: 8px; }
+        .cat-title { font-size: 10px; color: var(--text-micro); text-transform: uppercase; margin-bottom: 4px; padding: 2px 6px; background: rgba(255,255,255,0.03); border-radius: 3px; }
+        .ind-row { display: flex; justify-content: space-between; align-items: center; padding: 3px 6px; font-size: 11px; cursor: pointer; border-radius: 3px; transition: background 0.15s; }
+        .ind-row:hover { background: rgba(255,255,255,0.04); }
+        .ind-row.active { background: rgba(96,165,250,0.12); color: #60a5fa; }
+        .ind-row .name { color: #ccc; }
+        .ind-row .val { font-family: var(--font-mono); color: var(--text-dim); text-align: right; min-width: 72px; }
+        .stock-list-item { padding: 4px 8px; font-size: 11px; cursor: pointer; border-radius: 3px; display: flex; justify-content: space-between; }
+        .stock-list-item:hover { background: rgba(255,255,255,0.04); }
+        .stock-list-item.active { background: rgba(96,165,250,0.12); color: #60a5fa; }
+        .chart-container { flex: 1; min-height: 300px; }
+        select, input { background: #000; border: 1px solid var(--border-color); color: #fff; padding: 5px 10px; border-radius: 4px; font-size: 11px; }
+        .info-bar { font-size: 10px; color: var(--text-micro); }
+    </style>
+</head>
+<body data-page-id="indicators">
+<div class="app-container">
+<aside class="sidebar"></aside>
+<main class="main-content">
+<div class="top-bar"></div>
+<div class="workspace">
+    <!-- Left: Stock Selector + Indicator Cards -->
+    <div class="left-panel">
+        <div class="panel" style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+            <div class="panel-header" style="display:flex;gap:4px;">
+                <button class="tab-btn active" onclick="switchMode('stock')" id="btn-stock">按股票</button>
+                <button class="tab-btn" onclick="switchMode('field')" id="btn-field">按指标</button>
+            </div>
+            <!-- Stock mode -->
+            <div id="mode-stock" style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+                <div style="padding:6px 10px;display:flex;gap:6px;">
+                    <select id="stock-select" onchange="selectStock()" style="flex:1;min-width:0;">
+                        <option value="">— 加载中 —</option>
+                    </select>
+                </div>
+                <div style="padding:2px 10px;" class="info-bar">
+                    <span id="stock-info-text">选择股票查看指标</span>
+                </div>
+                <div id="indicator-cards" style="flex:1;overflow-y:auto;padding:0 10px 10px;"></div>
+            </div>
+            <!-- Field mode -->
+            <div id="mode-field" style="display:none;flex:1;flex-direction:column;overflow:hidden;">
+                <div style="padding:6px 10px;display:flex;gap:6px;">
+                    <select id="field-select" onchange="selectField()" style="flex:1;min-width:0;">
+                        <option value="">— 加载中 —</option>
+                    </select>
+                </div>
+                <div style="padding:2px 10px;" class="info-bar">
+                    <span id="field-info-text">选择指标看排名</span>
+                </div>
+                <div id="field-rank-table" style="flex:1;overflow-y:auto;padding:0 8px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: Chart -->
+    <div class="right-panel">
+        <div class="panel" style="flex:1;display:flex;flex-direction:column;">
+            <div class="panel-header">
+                <span class="panel-title" id="chart-title">指标时间序列</span>
+                <span style="font-size:10px;color:var(--text-micro);margin-left:auto;" id="chart-info"></span>
+            </div>
+            <div class="chart-container" id="main-chart"></div>
+        </div>
+    </div>
+</div>
+</main>
+</div>
+
+<script src="js/framework/api.js"></script>
+<script src="js/framework/modal.js"></script>
+<script src="js/framework/task_monitor.js"></script>
+<script src="js/framework/markdown.js"></script>
+<script src="js/framework/indicator_compute.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/common.js"></script>
+<script>
+var currentMode = 'stock';
+var currentStock = '';
+var currentField = '';
+var indicatorRegistry = [];
+var catNames = { trend: '趋势', momentum: '动量', volatility: '波动', volume: '量能', crowding: '拥挤度', chip: '筹码' };
+
+function handleIndClick(el) {
+    var code = el.dataset.code;
+    var field = el.dataset.field;
+    var chart = el.dataset.chart;
+    if (chart === 'line') showChart(code, field);
+    else if (chart === 'chip') showChipChart(code);
+    // text: no action
+}
+
+// ═══ Init ═══
+document.addEventListener('DOMContentLoaded', function() {
+    // Load stock list
+    fetch(API_BASE + '/data/watchlist').then(function(r) { return r.json(); }).then(function(d) {
+        var items = d.data || [];
+        var sel = document.getElementById('stock-select');
+        sel.innerHTML = '<option value="">— 选择股票 —</option>' +
+            items.map(function(i) { return '<option value="' + i.stock_code + '">' + i.stock_code + ' ' + (i.stock_name || '') + '</option>'; }).join('');
+        if (items.length > 0) { sel.value = items[0].stock_code; selectStock(); }
+    });
+    // Load indicator registry for field mode
+    fetch(API_BASE + '/quant/indicators/registry').then(function(r) { return r.json(); }).then(function(d) {
+        indicatorRegistry = d.data || [];
+        var fs = document.getElementById('field-select');
+        fs.innerHTML = '<option value="">— 选择指标 —</option>' +
+            indicatorRegistry.map(function(i) { return '<option value="' + i.name + '">' + i.name + ' (' + (i.label || '') + ')</option>'; }).join('');
+    });
+});
+
+// ═══ Mode Switch ═══
+function switchMode(mode) {
+    currentMode = mode;
+    document.getElementById('btn-stock').classList.toggle('active', mode === 'stock');
+    document.getElementById('btn-field').classList.toggle('active', mode === 'field');
+    document.getElementById('mode-stock').style.display = mode === 'stock' ? 'flex' : 'none';
+    document.getElementById('mode-field').style.display = mode === 'field' ? 'flex' : 'none';
+    if (mode === 'stock' && currentStock) selectStock();
+    if (mode === 'field' && currentField) selectField();
+}
+
+// ═══ Stock Mode ═══
+function selectStock() {
+    var code = document.getElementById('stock-select').value;
+    if (!code) return;
+    currentStock = code;
+    document.getElementById('indicator-cards').innerHTML = '<div style="color:var(--text-micro);padding:20px;">加载中...</div>';
+    // Fetch latest indicators
+    fetch(API_BASE + '/quant/indicators/' + code).then(function(r) { return r.json(); }).then(function(d) {
+        var ind = (d.data && d.data.indicators) ? d.data.indicators : null;
+        if (!ind) { document.getElementById('indicator-cards').innerHTML = '<div style="color:var(--text-micro);padding:20px;">无指标数据</div>'; return; }
+        document.getElementById('stock-info-text').textContent = '最新: ' + (d.data.analysis_date || '?') + ' | 现价: ' + (ind.price ? ind.price.toFixed(2) : '?');
+        renderCards(ind);
+        // Auto-select first numeric indicator
+        var firstNum = indicatorRegistry.find(function(r) { return r.output.some(function(o) { return ind[o] != null; }); });
+        if (firstNum) showChart(code, firstNum.output.filter(function(o) { return ind[o] != null; })[0], indicatorRegistry);
+    }).catch(function(e) { document.getElementById('indicator-cards').innerHTML = '<div style="color:var(--accent-red);">加载失败</div>'; });
+}
+
+function renderCards(ind) {
+    var grouped = {};
+    indicatorRegistry.forEach(function(ir) {
+        var cat = ir.category;
+        if (!grouped[cat]) grouped[cat] = [];
+        ir.output.forEach(function(field) {
+            if (field in ind && ind[field] != null && !field.startsWith('_')) {
+                grouped[cat].push({ name: field, label: ir.label || field, value: ind[field] });
+            }
+        });
+    });
+    var html = '';
+    var textFields = {chip_pattern:1, chip_signal:1};
+    var chipFields = {chip_concentration:1, chip_peak_price:1, chip_avg_cost:1};
+
+    for (var cat in grouped) {
+        html += '<div class="cat-group"><div class="cat-title">' + (catNames[cat] || cat) + ' (' + grouped[cat].length + ')</div>';
+        grouped[cat].forEach(function(f) {
+            var v = f.value;
+            var isNum = typeof v === 'number';
+            var vs = isNum ? v.toFixed(4) : String(v).substring(0, 20);
+            if (textFields[f.name]) {
+                vs = '<span style="color:#a78bfa;">' + vs + '</span>';
+            }
+            if (chipFields[f.name]) {
+                vs += ' <span style="font-size:9px;color:var(--accent-gold);">[图]</span>';
+            }
+            html += '<div class="ind-row" data-code="' + currentStock + '" data-field="' + f.name + '" data-chart="' +
+                (textFields[f.name] ? 'text' : chipFields[f.name] ? 'chip' : 'line') + '"' +
+                ' onclick="handleIndClick(this)" title="点击查看">' +
+                '<span class="name">' + f.name + '</span><span class="val">' + vs + '</span></div>';
+        });
+        html += '</div>';
+    }
+    document.getElementById('indicator-cards').innerHTML = html || '<div style="color:var(--text-micro);padding:10px;">暂无指标数据</div>';
+}
+
+// ═══ Field Mode ═══
+function selectField() {
+    var field = document.getElementById('field-select').value;
+    if (!field) return;
+    currentField = field;
+    document.getElementById('field-rank-table').innerHTML = '<div style="color:var(--text-micro);padding:10px;">加载中...</div>';
+    fetch(API_BASE + '/quant/indicators/field/' + field).then(function(r) { return r.json(); }).then(function(d) {
+        var items = d.data || [];
+        document.getElementById('field-info-text').textContent = items.length + ' 只股票有数据';
+        if (!items.length) { document.getElementById('field-rank-table').innerHTML = '<div style="color:var(--text-micro);padding:20px;">无数据</div>'; return; }
+        var html = items.map(function(i) {
+            var raw = i.value;
+            var v = '—';
+            if (raw != null) {
+                if (typeof raw === 'number' || (!isNaN(Number(raw)) && raw !== '')) {
+                    v = Number(raw).toFixed(4);
+                } else {
+                    v = String(raw).substring(0, 20);
+                }
+            }
+            return '<div class="stock-list-item" onclick="viewStockFromField(\'' + i.code + '\')" title="点击查看该股票全景">' +
+                '<span>' + i.code + '</span><span style="font-size:10px;color:var(--text-micro);">' + (i.name || '') + '</span>' +
+                '<span style="font-family:var(--font-mono);">' + v + '</span></div>';
+        }).join('');
+        document.getElementById('field-rank-table').innerHTML = html;
+        // Chart: top 15 bar chart
+        var top15 = items.slice(0, 15);
+        renderFieldChart(field, top15);
+    });
+}
+
+function viewStockFromField(code) {
+    document.getElementById('stock-select').value = code;
+    switchMode('stock');
+    selectStock();
+}
+
+// ═══ Chart ═══
+function showChart(code, fieldName) {
+    document.getElementById('chart-title').textContent = code + ' — ' + fieldName;
+    document.getElementById('chart-info').textContent = '加载中...';
+    var chartDom = document.getElementById('main-chart');
+    var existing = echarts.getInstanceByDom(chartDom);
+    if (existing) existing.dispose();
+
+    fetch(API_BASE + '/quant/indicators/history/' + code + '?fields=' + fieldName + '&days=365').then(function(r) { return r.json(); }).then(function(d) {
+        var data = d.data;
+        if (!data || !data.dates || !data.dates.length) {
+            document.getElementById('chart-info').textContent = '无历史数据';
+            return;
+        }
+        document.getElementById('chart-info').textContent = data.dates.length + ' 天';
+        var values = data.fields[fieldName] || [];
+        var chart = echarts.init(chartDom);
+        chart.setOption({
+            tooltip: { trigger: 'axis' },
+            grid: { left: '8%', right: '3%', top: '8%', bottom: '5%' },
+            xAxis: { type: 'category', data: data.dates, axisLabel: { fontSize: 9, rotate: 30 } },
+            yAxis: { type: 'value', scale: true, splitLine: { lineStyle: { color: '#1a1a1a' } } },
+            series: [{
+                type: 'line', data: values, smooth: true, symbol: 'none',
+                lineStyle: { color: '#60a5fa', width: 1.5 },
+                areaStyle: { color: 'rgba(96,165,250,0.06)' }
+            }]
+        });
+    });
+}
+
+// ═══ Chip Distribution Chart ═══
+function showChipChart(code) {
+    document.getElementById('chart-title').textContent = code + ' — 筹码分布';
+    document.getElementById('chart-info').textContent = '加载中...';
+    var chartDom = document.getElementById('main-chart');
+    var existing = echarts.getInstanceByDom(chartDom);
+    if (existing) existing.dispose();
+
+    fetch(API_BASE + '/quant/indicators/chip-dist/' + code).then(function(r) { return r.json(); }).then(function(d) {
+        var data = d.data;
+        if (!data) { document.getElementById('chart-info').textContent = '无数据'; return; }
+        document.getElementById('chart-info').textContent = '获利' + data.winner_close + '% | 均成本' + data.avg_cost + ' | 集中度' + data.concentration_90 + '%';
+        var chart = echarts.init(chartDom);
+        chart.setOption({
+            tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+            grid: { left: '12%', right: '5%', top: '5%', bottom: '5%' },
+            xAxis: { type: 'value', splitLine: { lineStyle: { color: '#1a1a1a' } } },
+            yAxis: { type: 'category', data: data.prices, axisLabel: { fontSize: 9 } },
+            series: [{
+                type: 'bar', data: data.chip_pct,
+                barWidth: '90%',
+                itemStyle: {
+                    color: function(p) { return parseFloat(data.prices[p.dataIndex]) < data.avg_cost ? '#14b143' : '#ef232a'; }
+                }
+            }],
+            markLine: {
+                silent: true,
+                symbol: 'none',
+                data: [
+                    { yAxis: data.cost_50, lineStyle: { color: '#f59e0b', type: 'dashed' }, label: { formatter: '均成本 ' + data.avg_cost } },
+                    { yAxis: data.close, lineStyle: { color: '#60a5fa' }, label: { formatter: '现价 ' + data.close, position: 'start' } }
+                ]
+            }
+        });
+    });
+}
+
+function renderFieldChart(field, items) {
+    document.getElementById('chart-title').textContent = field + ' — Top 15';
+    document.getElementById('chart-info').textContent = items.length + ' 只股票';
+    var chartDom = document.getElementById('main-chart');
+    var existing = echarts.getInstanceByDom(chartDom);
+    if (existing) existing.dispose();
+    var chart = echarts.init(chartDom);
+    var names = items.map(function(i) { return i.code; });
+    var values = items.map(function(i) { return i.value; });
+    chart.setOption({
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+        grid: { left: '12%', right: '8%', top: '5%', bottom: '5%' },
+        xAxis: { type: 'value', splitLine: { lineStyle: { color: '#1a1a1a' } } },
+        yAxis: { type: 'category', data: names.reverse(), inverse: true, axisLabel: { fontSize: 10 } },
+        series: [{
+            type: 'bar', data: values.reverse(),
+            itemStyle: { color: function(p) { return new echarts.graphic.LinearGradient(0,0,1,0,[
+                {offset:0,color:'#60a5fa'},{offset:1,color:'#a78bfa'}]) } }
+        }]
+    });
+}
+
+window.refreshPageData = function() {};
+</script>
+</body>
+</html>

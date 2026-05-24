@@ -128,3 +128,109 @@ async def sync_valuation(target_codes: list = None):
 
     logger.info(f"[✅] Valuation synced: {updated} stocks")
     return updated
+
+
+async def sync_financial_factors(target_codes: list = None):
+    """同步 ROE/股息率/近3年盈利增速到 stock_info 表。
+    数据来源: akshare 新浪财务指标 (ROE) + 财报表计算 (eps_growth_3y)。
+    target_codes 为 None 时同步全部持仓+自选。
+    """
+    from app.models.models import WatchlistItem
+
+    # 确定待同步股票范围
+    async with async_session() as db:
+        if target_codes:
+            codes = list(target_codes)
+        else:
+            pos_res = await db.execute(select(Position.stock_code))
+            wl_res = await db.execute(select(WatchlistItem.stock_code))
+            codes = list(set([r[0] for r in pos_res.all()] + [r[0] for r in wl_res.all()]))
+
+    if not codes:
+        return 0
+
+    # 过滤港股（新浪财务指标只支持A股）
+    a_codes = [c for c in codes if len(c) == 6]
+    if not a_codes:
+        logger.info("[FinancialFactors] No A-share stocks to sync")
+        return 0
+
+    import akshare as ak
+    from app.models.models import FinancialStatement
+    from sqlalchemy import func
+
+    updated = 0
+    logger.info(f"[FinancialFactors] Syncing ROE/eps_growth for {len(a_codes)} A-share stocks")
+
+    async with async_session() as db:
+        for code in a_codes:
+            try:
+                # ── ROE: 从 akshare 新浪财务指标获取 ──
+                roe_val = None
+                try:
+                    df = await asyncio.to_thread(
+                        ak.stock_financial_analysis_indicator, symbol=code, start_year="2020")
+                    if df is not None and not df.empty:
+                        latest = df.iloc[-1]
+                        # 净资产收益率(%) 列 —— 取最新一期的加权ROE
+                        roe_col = None
+                        for c in df.columns:
+                            if '净资产收益率' in str(c) and '%' in str(c):
+                                roe_col = c
+                                break
+                        if roe_col is not None and str(latest[roe_col]) != 'nan':
+                            roe_val = float(latest[roe_col])
+                except Exception:
+                    pass  # ROE 获取失败不阻塞其他字段
+
+                # ── eps_growth_3y: 从财报表计算近12个季度利润复合增速 ──
+                eps_growth = None
+                try:
+                    # 取最近 12 季度 parent_profit
+                    rows = await db.execute(
+                        select(FinancialStatement.report_date, FinancialStatement.parent_profit)
+                        .where(FinancialStatement.stock_code == code)
+                        .order_by(FinancialStatement.report_date.desc())
+                        .limit(12)
+                    )
+                    profits = [(r[0], r[1]) for r in rows.all() if r[1] and r[1] != 0]
+                    if len(profits) >= 8:
+                        # TTM 利润: 最近4个季度 vs 12季度前的4个季度
+                        recent_ttm = sum(p[1] for p in profits[:4])
+                        old_ttm = sum(p[1] for p in profits[8:12]) if len(profits) >= 12 else sum(p[1] for p in profits[4:8])
+                        if old_ttm and old_ttm > 0:
+                            years = 2 if len(profits) >= 12 else 1
+                            eps_growth = round(((recent_ttm / old_ttm) ** (1 / years) - 1) * 100, 2)
+                except Exception:
+                    pass
+
+                # ── 写入 stock_info ──
+                existing = await db.get(StockInfo, code)
+                if existing:
+                    dirty = False
+                    if roe_val is not None:
+                        existing.roe = round(roe_val, 2)
+                        dirty = True
+                    if eps_growth is not None:
+                        existing.eps_growth_3y = eps_growth
+                        dirty = True
+                    if dirty:
+                        existing.updated_at = dt.now()
+                        updated += 1
+                elif roe_val is not None:
+                    # 若尚未在 stock_info (没跑过 sync_valuation), 建一条基础记录
+                    db.add(StockInfo(
+                        stock_code=code, stock_name=code,
+                        roe=round(roe_val, 2),
+                        eps_growth_3y=eps_growth,
+                    ))
+                    updated += 1
+                await asyncio.sleep(0)
+
+            except Exception as e:
+                logger.warning(f"[FinancialFactors] {code} sync failed: {e}")
+
+        await db.commit()
+
+    logger.info(f"[FinancialFactors] Synced {updated}/{len(a_codes)} stocks")
+    return updated

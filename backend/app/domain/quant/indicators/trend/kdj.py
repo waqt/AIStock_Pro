@@ -3,6 +3,7 @@ from ..base import BaseIndicator, register
 @register
 class KDJIndicator(BaseIndicator):
     name = "kdj"
+    label = "KDJ随机指标"
     category = "trend"
     params = {"n": 9, "m1": 3, "m2": 3}
     output = ["k", "d", "j"]

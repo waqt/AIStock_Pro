@@ -2,7 +2,7 @@
 from typing import List, Dict, Any, Optional
 from app.framework.database.session import async_session
 from app.models.models import (
-    StockInfo, MarketData, StockIndicator, Position, ExchangeRate
+    StockInfo, MarketData, Position, ExchangeRate
 )
 from sqlalchemy import select, func, desc
 from app.framework.logger import logger
@@ -45,30 +45,26 @@ class ResearchDataLoader:
                     "name": r.stock_name, "exchange": r.exchange,
                     "pe_ttm": r.pe_ttm, "pb": r.pb,
                     "mcap_yi": r.mcap_yi, "industry": r.industry,
+                    "roe": r.roe, "dividend_yield": r.dividend_yield,
+                    "eps_growth_3y": r.eps_growth_3y,
                 }
                 for r in rows.scalars().all()
             }
 
     async def load_indicators(self, codes: List[str]) -> Dict[str, Dict]:
-        """加载最新技术指标"""
+        """加载最新技术指标 (SQLite)"""
         if not codes:
             return {}
+        from app.domain.quant.engine import indicator_store
         result = {}
-        async with async_session() as db:
-            for code in codes:
-                row = await db.execute(
-                    select(StockIndicator)
-                    .where(StockIndicator.stock_code == code)
-                    .order_by(StockIndicator.analysis_date.desc())
-                    .limit(1)
-                )
-                ind = row.scalars().first()
-                if ind:
-                    result[code] = {
-                        "date": str(ind.analysis_date),
-                        "snapshot": ind.data_json,
-                        "findings": ind.logic_chain.get("findings", []) if ind.logic_chain else []
-                    }
+        rows = indicator_store.get_latest_for_codes(list(codes))
+        for row in rows:
+            code = row.get("stock_code")
+            if code:
+                result[code] = {
+                    "date": row.get("trade_date"),
+                    "snapshot": row,
+                }
         return result
 
     async def load_positions(self) -> List[Dict]:

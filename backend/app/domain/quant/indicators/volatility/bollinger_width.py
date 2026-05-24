@@ -3,6 +3,7 @@ from ..base import BaseIndicator, register
 @register
 class BollingerWidthIndicator(BaseIndicator):
     name = "bollinger_width"
+    label = "布林带宽"
     category = "volatility"
     params = {"period": 20}
     output = ["bb_width"]

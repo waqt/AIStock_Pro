@@ -90,19 +90,10 @@ class TimingStrategy(ABC):
     weight: float = 1.0
 
     async def load_indicators(self, stock_code: str) -> dict:
-        """加载策略所需的指标数据"""
-        from app.framework.database.session import async_session
-        from app.models.models import StockIndicator
-        from sqlalchemy import select
-        async with async_session() as db:
-            res = await db.execute(
-                select(StockIndicator.data_json)
-                .where(StockIndicator.stock_code == stock_code)
-                .order_by(StockIndicator.analysis_date.desc())
-                .limit(1)
-            )
-            row = res.scalars().first()
-            return row or {}
+        """加载策略所需的指标数据 (SQLite)"""
+        from app.domain.quant.engine import indicator_store
+        row = indicator_store.get_latest(stock_code)
+        return row or {}
 
     @abstractmethod
     async def analyze(self, stock_code: str) -> SignalResult:

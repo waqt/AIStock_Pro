@@ -25,6 +25,7 @@
         .badge-volatility { background: rgba(255,165,2,0.15); color: var(--accent-gold); }
         .badge-volume { background: rgba(255,107,107,0.15); color: var(--accent-red); }
         .badge-crowding { background: rgba(162,155,254,0.15); color: #a29bfe; }
+        .badge-chip { background: rgba(255,107,167,0.15); color: #fb6da7; }
         .result-card { background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 6px; padding: 14px; margin-bottom: 10px; }
         .strategy-row { padding: 6px 10px; border-bottom: 1px solid var(--border-thin); font-size: 12px; display: flex; justify-content: space-between; align-items: center; }
     </style>
@@ -46,7 +47,26 @@
 
                     <!-- Tab 1: Indicators -->
                     <div class="tab-panel active" id="tab-indicators" style="display:flex;flex-direction:column;gap:8px;max-height:70vh;overflow-y:auto;">
+                        <div class="panel"><div class="panel-body" id="compute-panel"></div></div>
+                        <div style="display:flex;gap:4px;margin-bottom:2px;">
+                            <button class="tab-btn active" onclick="switchSubTab('list')" id="subtab-list">算子清单</button>
+                            <button class="tab-btn" onclick="switchSubTab('data')" id="subtab-data">数据查看</button>
+                        </div>
                         <div id="indicator-list" style="color:var(--text-micro);font-size:11px;text-align:center;">加载中...</div>
+                        <div id="indicator-data-view" style="display:none;">
+                            <div class="panel" style="margin-bottom:6px;">
+                                <div class="panel-body" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                                    <select id="data-view-mode" onchange="switchDataView()" style="background:#000;border:1px solid var(--border-color);color:#fff;padding:5px 10px;border-radius:4px;font-size:11px;">
+                                        <option value="by_stock">按股票查看</option>
+                                        <option value="by_field">按指标查看</option>
+                                    </select>
+                                    <select id="data-stock-select" onchange="loadStockIndicators()" style="background:#000;border:1px solid var(--border-color);color:#fff;padding:5px 10px;border-radius:4px;font-size:11px;min-width:150px;"><option value="">— 加载中 —</option></select>
+                                    <select id="data-field-select" onchange="loadFieldData()" style="display:none;background:#000;border:1px solid var(--border-color);color:#fff;padding:5px 10px;border-radius:4px;font-size:11px;min-width:200px;"><option value="">— 加载中 —</option></select>
+                                    <span id="data-view-info" style="font-size:10px;color:var(--text-micro);"></span>
+                                </div>
+                            </div>
+                            <div id="data-view-content" style="max-height:50vh;overflow-y:auto;font-size:10px;"></div>
+                        </div>
                     </div>
 
                     <!-- Tab 2: Strategies -->
@@ -69,12 +89,6 @@
                                 <div style="display:flex;gap:6px;">
                                     <button class="btn-action" onclick="runDecision()" style="font-size:11px;flex:1;justify-content:center;">单股</button>
                                     <button class="btn-action" onclick="runPortfolio()" id="btn-portfolio" style="font-size:11px;flex:1;justify-content:center;">全部持仓</button>
-                                </div>
-                                <div style="margin-top:6px;">
-                                    <button class="btn-action" onclick="computeAllIndicators()" id="btn-compute-all"
-                                        style="font-size:11px;width:100%;justify-content:center;border-color:var(--accent-blue);color:var(--accent-blue);">
-                                        <i class="fas fa-calculator"></i> 全量计算指标
-                                    </button>
                                 </div>
                                 <div id="decision-status" style="font-size:10px;color:var(--text-micro);margin-top:6px;text-align:center;">输入代码后点击决策</div>
                             </div>
@@ -109,6 +123,7 @@
     <script src="js/framework/api.js"></script>
     <script src="js/framework/modal.js"></script>
     <script src="js/framework/task_monitor.js"></script>
+    <script src="js/framework/indicator_compute.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/common.js"></script>
     <script>
@@ -138,8 +153,8 @@
                 const res = await fetch(`${API_BASE}/quant/indicators/registry`);
                 const data = await res.json();
                 const list = data.data || [];
-                const catNames = {trend:'趋势', momentum:'动量', volatility:'波动', volume:'量能', crowding:'拥挤度'};
-                const catBadges = {trend:'badge-trend', momentum:'badge-momentum', volatility:'badge-volatility', volume:'badge-volume', crowding:'badge-crowding'};
+                const catNames = {trend:'趋势', momentum:'动量', volatility:'波动', volume:'量能', crowding:'拥挤度', chip:'筹码'};
+                const catBadges = {trend:'badge-trend', momentum:'badge-momentum', volatility:'badge-volatility', volume:'badge-volume', crowding:'badge-crowding', chip:'badge-chip'};
                 el.innerHTML = list.map(i => `
                     <div class="card" onclick="showIndicatorDetail('${i.name}')" style="cursor:pointer;">
                         <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -223,19 +238,88 @@
             await doDecide(code);
         }
 
-        async function computeAllIndicators() {
-            const btn = document.getElementById('btn-compute-all');
-            const status = document.getElementById('decision-status');
-            btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 计算中...';
-            status.textContent = '批量全量历史计算中 (约需1-3分钟)...';
-            try {
-                const res = await fetch(`${API_BASE}/quant/indicators/compute?mode=historical`, { method: 'POST' });
-                const d = await res.json();
-                const r = d.data || {};
-                status.textContent = `完成: ${r.stocks_processed||0}只, 模式=${r.mode||'?'}`;
-            } catch(e) { status.textContent = '计算异常: ' + e.message; }
-            finally { btn.disabled = false; btn.innerHTML = '<i class="fas fa-calculator"></i> 全量计算指标'; }
+        // ═══ 数据查看 (子标签) ═══
+        var dataViewMode = 'by_stock';
+
+        function switchSubTab(sub) {
+            dataViewMode = sub === 'data' ? document.getElementById('data-view-mode').value : 'by_stock';
+            document.querySelectorAll('#tab-indicators .tab-btn').forEach(function(b) { b.classList.remove('active'); });
+            document.getElementById('subtab-' + sub).classList.add('active');
+            document.getElementById('indicator-list').style.display = sub === 'list' ? '' : 'none';
+            document.getElementById('indicator-data-view').style.display = sub === 'data' ? '' : 'none';
+            if (sub === 'data') { initDataView(); switchDataView(); }
         }
+
+        function switchDataView() {
+            var mode = document.getElementById('data-view-mode').value;
+            dataViewMode = mode;
+            document.getElementById('data-stock-select').style.display = mode === 'by_stock' ? '' : 'none';
+            document.getElementById('data-field-select').style.display = mode === 'by_field' ? '' : 'none';
+            document.getElementById('data-view-content').innerHTML = '';
+            document.getElementById('data-view-info').textContent = '';
+            if (mode === 'by_stock') loadStockIndicators();
+            else loadFieldData();
+        }
+
+        function initDataView() {
+            // 懒加载股票列表
+            var ss = document.getElementById('data-stock-select');
+            if (ss.options.length <= 1) {
+                fetch(API_BASE + '/data/watchlist').then(function(r) { return r.json(); }).then(function(d) {
+                    var items = d.data || [];
+                    ss.innerHTML = '<option value="">— 选择股票 —</option>' +
+                        items.map(function(i) { return '<option value="' + i.stock_code + '">' + i.stock_code + ' ' + (i.stock_name || '') + '</option>'; }).join('');
+                }).catch(function() { ss.innerHTML = '<option value="">加载失败</option>'; });
+            }
+            // 懒加载指标列表 (按 field 查看)
+            var fs = document.getElementById('data-field-select');
+            if (fs.options.length <= 1) {
+                fetch(API_BASE + '/quant/indicators/registry').then(function(r) { return r.json(); }).then(function(d) {
+                    var list = d.data || [];
+                    fs.innerHTML = '<option value="">— 选择指标 —</option>' +
+                        list.map(function(i) { return '<option value="' + i.name + '">' + i.name + ' (' + (i.label || '') + ')</option>'; }).join('');
+                }).catch(function() { fs.innerHTML = '<option value="">加载失败</option>'; });
+            }
+        }
+
+        function loadStockIndicators() {
+            var code = document.getElementById('data-stock-select').value;
+            var el = document.getElementById('data-view-content');
+            var info = document.getElementById('data-view-info');
+            if (!code) { el.innerHTML = '<div style=\"color:var(--text-micro);padding:20px;text-align:center;\">请选择股票</div>'; return; }
+            el.innerHTML = '<div style=\"color:var(--text-micro);padding:10px;\">加载中...</div>';
+            fetch(API_BASE + '/quant/indicators/' + code).then(function(r) { return r.json(); }).then(function(d) {
+                var ind = (d.data && d.data.indicators) ? d.data.indicators : null;
+                if (!ind) { el.innerHTML = '<div style=\"color:var(--text-micro);padding:20px;text-align:center;\">无指标数据</div>'; return; }
+                info.textContent = '最新: ' + (d.data.analysis_date || '?');
+                var rows = [];
+                for (var k in ind) {
+                    if (k.startsWith('_') || k === 'stock_code' || k === 'trade_date') continue;
+                    var v = ind[k];
+                    var vs = v != null ? (typeof v === 'number' ? v.toFixed(4) : String(v).substring(0, 30)) : '—';
+                    rows.push('<tr><td style=\"color:var(--accent-blue);\">' + k + '</td><td style=\"text-align:right;font-family:var(--font-mono);\">' + vs + '</td></tr>');
+                }
+                el.innerHTML = '<table class=\"health-table\"><thead><tr><th>指标字段</th><th style=\"text-align:right;\">最新值</th></tr></thead><tbody>' + rows.join('') + '</tbody></table>';
+            }).catch(function(e) { el.innerHTML = '<div style=\"color:var(--accent-red);\">加载失败: ' + e.message + '</div>'; });
+        }
+
+        function loadFieldData() {
+            var field = document.getElementById('data-field-select').value;
+            var el = document.getElementById('data-view-content');
+            var info = document.getElementById('data-view-info');
+            if (!field) { el.innerHTML = '<div style=\"color:var(--text-micro);padding:20px;text-align:center;\">请选择指标</div>'; return; }
+            el.innerHTML = '<div style=\"color:var(--text-micro);padding:10px;\">加载中...</div>';
+            fetch(API_BASE + '/quant/indicators/field/' + field).then(function(r) { return r.json(); }).then(function(d) {
+                var items = d.data || [];
+                if (!items.length) { el.innerHTML = '<div style=\"color:var(--text-micro);padding:20px;text-align:center;\">无数据</div>'; return; }
+                info.textContent = items.length + ' 只股票';
+                el.innerHTML = '<table class=\"health-table\"><thead><tr><th>代码</th><th>名称</th><th style=\"text-align:right;\">' + field + '</th><th>日期</th></tr></thead><tbody>' +
+                    items.map(function(i) { return '<tr><td style=\"color:var(--accent-blue);\">' + i.code + '</td><td>' + (i.name || i.code) + '</td><td style=\"text-align:right;font-family:var(--font-mono);\">' + (i.value != null ? Number(i.value).toFixed(4) : '—') + '</td><td>' + (i.date || '') + '</td></tr>'; }).join('') + '</tbody></table>';
+            }).catch(function(e) { el.innerHTML = '<div style=\"color:var(--accent-red);\">加载失败: ' + e.message + '</div>'; });
+        }
+
+        // 指标计算面板由 IndicatorCompute 公共组件渲染
+        IndicatorCompute.render('compute-panel');
 
         async function runPortfolio() {
             const btn = document.getElementById('btn-portfolio');

@@ -5,6 +5,7 @@ import numpy as np
 @register
 class Sharpe60dIndicator(BaseIndicator):
     name = "sharpe_60d"
+    label = "夏普比率"
     category = "crowding"
     params = {"period": 60, "rf": 0.02}
     output = ["sharpe_60d"]

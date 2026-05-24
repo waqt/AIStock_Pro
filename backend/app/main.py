@@ -12,7 +12,7 @@ from app.models.models import TaskExecution
 from sqlalchemy import update, select
 from app.framework.tasks.engine import task_manager
 from app.framework.tasks.scheduler import scheduler
-import app.quant.tasks # 显式导入以触发装饰器
+import app.domain.quant.tasks  # 显式导入以触发注册装饰器
 
 # 导入领域路由器
 from app.api import tasks, data, positions, import_api

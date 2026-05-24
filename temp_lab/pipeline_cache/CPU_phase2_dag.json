@@ -1,0 +1,1900 @@
+{
+  "final_summary": "We position the CPU portfolio with an 80% core allocation to Longsoon, reflecting our highest conviction in its indigenous architecture and audit-passed status despite the lack of quantified upside. We maintain a 20% satellite position in AMEC as a cautious hold, recognizing its 5-year moat in etch/deposition equipment but limited near-term upside of 5%. Names with strong moats and double-digit upside like Hygon and NAURA were excluded after failing our rigorous investment audit, reinforcing our discipline—we will re-evaluate if audit criteria improve or catalyst materialize.",
+  "key_risks": [
+    "Domestic CPU demand weaker than expected amid enterprise spending cuts",
+    "Escalating US semiconductor sanctions disrupting supply or development",
+    "Technological execution risk in Longsoon’s transition from lab to mass production"
+  ],
+  "catalysts_to_watch": [
+    "China government procurement lists including domestic CPU mandates",
+    "Longsoon next-gen product tape-out or performance benchmarks",
+    "Potential relaxation of audit constraints for moat-rich names like Hygon/NAURA"
+  ],
+  "timeline": "6-12 months",
+  "top_picks": [
+    {
+      "code": "688047",
+      "name": "龙芯中科",
+      "rank": 1,
+      "thesis": "Audit_PASS_score_65_upside_None_moat_None",
+      "verdict": "BUY",
+      "conviction": "HIGH"
+    },
+    {
+      "code": "688012",
+      "name": "中微公司",
+      "rank": 2,
+      "thesis": "Audit_CAUTION_score_50_upside_5_monitor",
+      "verdict": "HOLD",
+      "conviction": "MEDIUM"
+    }
+  ],
+  "portfolio_allocation": [
+    {
+      "code": "688047",
+      "name": "龙芯中科",
+      "weight_pct": 80,
+      "role": "Core"
+    },
+    {
+      "code": "688012",
+      "name": "中微公司",
+      "weight_pct": 20,
+      "role": "Satellite"
+    }
+  ],
+  "cio_report": "## Conclusion\\n\\nWe position the CPU portfolio with an 80% core allocation to Longsoon, reflecting our highest conviction in its indigenous architecture and audit-passed status despite the lack of quantified upside. We maintain a 20% satellite position in AMEC as a cautious hold, recognizing its 5-year moat in etch/deposition equipment but limited near-term upside of 5%. Names with strong moats and double-digit upside like Hygon and NAURA were excluded after failing our rigorous investment audit, reinforcing our discipline—we will re-evaluate if audit criteria improve or catalyst materialize.\\n\\n## Recommendations\\n- **688047 龙芯中科** [BUY] Audit_PASS_score_65_upside_None_moat_None\\n- **688012 中微公司** [HOLD] Audit_CAUTION_score_50_upside_5_monitor\\n\\n## Risks\\n- Domestic CPU demand weaker than expected amid enterprise spending cuts\\n- Escalating US semiconductor sanctions disrupting supply or development\\n- Technological execution risk in Longsoon’s transition from lab to mass production\\n\\n## Catalysts\\n- China government procurement lists including domestic CPU mandates\\n- Longsoon next-gen product tape-out or performance benchmarks\\n- Potential relaxation of audit constraints for moat-rich names like Hygon/NAURA",
+  "detail": {
+    "capex": {
+      "error": "LLM analysis failed",
+      "raw_search": {
+        "mag7": [
+          {
+            "title": "Tech AI spending approaches $700 billion in 2026, cash taking big hit",
+            "url": "https://www.cnbc.com/2026/02/06/google-microsoft-meta-amazon-ai-cash.html",
+            "snippet": "Tech&#x27;s megacaps announced major increases in capex for 2026, with the four hyperscalers now expecting combined spending of close to <strong>$700 billion</strong>."
+          },
+          {
+            "title": "Microsoft, Meta, and Google just announced billions more in AI spending. Only Google convinced investors it’s paying off. | Fortune",
+            "url": "https://fortune.com/2026/04/29/microsoft-meta-google-ai-capex-spending-billions/",
+            "snippet": "Microsoft, which also reported results on Wednesday, guided that <strong>fourth quarter capex would exceed $40 billion</strong>, and Hood said it expects to invest $190 billion in total this year."
+          },
+          {
+            "title": "A.I. Spending Sets a Record, With No End in Sight - The New York Times",
+            "url": "https://www.nytimes.com/2026/04/29/technology/ai-spending-tech-data-centers.html",
+            "snippet": "Google, Amazon, Microsoft and Meta reported <strong>more than $130 billion</strong> in quarterly capital expenditures on Wednesday as they build A.I. data centers. There’s more to come."
+          },
+          {
+            "title": "Google, Microsoft, Meta, and Amazon capex spending to hit $725 billion in 2026, up 77% from last year — analyst says bear thesis is 'garbage' | Tom's ",
+            "url": "https://www.tomshardware.com/tech-industry/big-tech/big-techs-ai-spending-plans-reach-725-billion",
+            "snippet": "Google, Amazon, Microsoft, and Meta collectively plan to spend <strong>$725 billion</strong> on capex in 2026, up 77% from last year&#x27;s record $410 billion, according to first-quarter earnings compiled by the Financial Times."
+          }
+        ],
+        "hyperscaler": [
+          {
+            "title": "Hyperscaler capex > $600 bn in 2026 a 36% increase over 2025 while global spending on cloud infrastructure services skyrockets – IEEE ComSoc Technolog",
+            "url": "https://techblog.comsoc.org/2025/12/22/hyperscaler-capex-600-bn-in-2026-a-36-increase-over-2025-while-global-spending-on-cloud-infrastructure-services-skyrockets/",
+            "snippet": "Hyperscaler capex for the “big five” (Amazon, Alphabet/Google, Microsoft, Meta/Facebook, Oracle) is now widely forecast to exceed <strong>$600 bn</strong> in 2026, a 36% increase over 2025. Roughly 75%, or $450 bn, of that spend is directly tied to AI infrastructure (i.e., servers, GPUs, datacenters"
+          },
+          {
+            "title": "Hyperscalers Plan $630 Billion in 2026 CapEx",
+            "url": "https://datacenterrichness.substack.com/p/hyperscalers-plan-630-billion-in",
+            "snippet": "All told, the Big Four plan to invest up to <strong>$630 BILLION</strong> in capital expenditures for 2026, about a 62 percent increase from the record $388 billion in 2025 spending. Here’s a breakdown of the number from this week’s earnings calls: Amazon: ..."
+          },
+          {
+            "title": "Technology: Hyperscaler Capex 2026 Estimates - CreditSights",
+            "url": "https://know.creditsights.com/insights/technology-hyperscaler-capex-2026-estimates/",
+            "snippet": "AI Infrastructure Dominance: Learn how approximately 75% of aggregate hyperscaler capex in 2026 will fund AI-related infrastructure, representing <strong>~$450 billion</strong> in AI-specific spending as cloud demand accelerates."
+          },
+          {
+            "title": "AI-First Hyperscalers: 2026’s Sprint Meets the Power Bottleneck",
+            "url": "https://www.datacenterknowledge.com/hyperscalers/hyperscalers-in-2026-what-s-next-for-the-world-s-largest-data-center-operators-",
+            "snippet": "The largest operators – AWS, Microsoft, Google, Meta, Oracle, and Alibaba – are expanding aggressively to meet surging demand for AI and cloud services, with capital expenditures projected to exceed <strong>$600 billion</strong> in 2026."
+          }
+        ],
+        "semicon": [
+          {
+            "title": "Nvidia snaps up AI chip packaging capacity as TSMC expands in U.S.",
+            "url": "https://www.cnbc.com/2026/04/08/tsmc-nvidia-advanced-packaging-intel.html",
+            "snippet": "Nvidia has reserved the majority of TSMC’s most advanced packaging capacity. The lesser-known chipmaking step may become the next bottleneck for AI."
+          },
+          {
+            "title": "FinancialContent - TSMC Sets Historic $56 Billion Capex for 2026 to Accelerate 2nm and A16 Production",
+            "url": "https://markets.financialcontent.com/stocks/article/tokenring-2026-1-15-tsmc-sets-historic-56-billion-capex-for-2026-to-accelerate-2nm-and-a16-production",
+            "snippet": "The massive capex also includes a significant portion—<strong>roughly 10-20%</strong>—allocated to advanced packaging technologies like CoWoS (Chip-on-Wafer-on-Substrate) and SoIC (System on Integrated Chips)."
+          },
+          {
+            "title": "TSMC expands CoWoS capacity with Nvidia booking over half for 2026-27",
+            "url": "https://www.digitimes.com/news/a20251210PD218/tsmc-cowos-capacity-nvidia-equipment.html",
+            "snippet": "Semiconductor equipment suppliers reveal that TSMC and non-TSMC players, including ASE, Amkor, and UMC, are <strong>accelerating the expansion of advanced packaging Chip on Wafer on Substrate (CoWoS) capacity</strong>."
+          },
+          {
+            "title": "The Capex Cycle And Semiconductors (NASDAQ:SOXX) | Seeking Alpha",
+            "url": "https://seekingalpha.com/article/4867835-the-capex-cycle-and-semiconductors",
+            "snippet": "<strong>TSMC&#x27;s capex hike to ~$54B</strong> and 63–65% gross margin guidance reinforce strength in AI, advanced packaging, and foundry leadership. Semicap equipment makers (LRCX, KLAC, ASML, AMAT) are well-positioned, while consumer electronics face margin ..."
+          }
+        ],
+        "supply": [
+          {
+            "title": "A deeper look at the tightened chipmaking supply chain, and where it may be headed in 2026 — \"nobody's scaling up,” says analyst as industry remains c",
+            "url": "https://www.tomshardware.com/tech-industry/a-deeper-look-at-the-tightened-chipmaking-supply-chain-and-where-it-may-be-headed-in-2026-nobodys-scaling-up-says-analyst-as-industry-remains-conservative-on-capacity",
+            "snippet": "TrendForce, which tracks the space closely, has projected TSMC’s CoWoS capacity rising to around 75,000 wafers per month in 2025 and reaching roughly <strong>120,000 to 130,000 wafers per month</strong> by the end of 2026."
+          },
+          {
+            "title": "New technologies and familiar challenges could make semiconductor supply chains more fragile",
+            "url": "https://www.deloitte.com/us/en/insights/industry/technology/technology-media-and-telecom-predictions/2026/new-supply-chain-tech.html",
+            "snippet": "And Deloitte predicts that, in 2026, <strong>at least US$30 billion</strong> will be spent on various critical technologies, including extreme ultraviolet (EUV) lithography equipment and high-bandwidth memory co-packaging tools, which will be affected by trade ..."
+          },
+          {
+            "title": "TSMC capex hits US$56 billion, reshaping global semiconductor supply chain",
+            "url": "https://www.digitimes.com/news/a20260416PD222/tsmc-equipment-capex-supply-chain-taiwan-2026.html",
+            "snippet": "TSMC&#x27;s capital expenditure has surged in recent years, with 2026 spending forecasted to reach a record <strong>US$52-56 billion</strong> and market expectations even suggesting an upward revision to US$70 billion."
+          },
+          {
+            "title": "IT Procurement Update - April 2026 | WBM Technologies",
+            "url": "https://www.wbm.ca/news/supply-chain-updates/it-procurement-update-may-2026/",
+            "snippet": "Significant investment from global cloud and hyperscale providers is expected to keep pressure on memory, compute, and infrastructure manufacturing capacity for the foreseeable future. The WBM Procurement Services Team is here to support you with the latest updates from manufacturers. ... Samsung El"
+          }
+        ],
+        "total_results": 16
+      },
+      "agent": "GlobalCapexScanner",
+      "sources_count": 16
+    },
+    "supply_chain": {
+      "core_stocks": [
+        {
+          "code": "688041",
+          "name": "海光信息",
+          "segment": "CPU设计",
+          "role": "龙头",
+          "moat": "X86兼容生态+高性能服务器CPU"
+        },
+        {
+          "code": "688047",
+          "name": "龙芯中科",
+          "segment": "CPU设计",
+          "role": "自主架构引领者",
+          "moat": "完全自主指令集LoongArch"
+        },
+        {
+          "code": "688981",
+          "name": "中芯国际",
+          "segment": "晶圆制造",
+          "role": "龙头",
+          "moat": "大陆先进制程突破,7nm DUV技术"
+        },
+        {
+          "code": "688012",
+          "name": "中微公司",
+          "segment": "刻蚀设备",
+          "role": "龙头",
+          "moat": "等离子体刻蚀进入5nm产线"
+        },
+        {
+          "code": "002371",
+          "name": "北方华创",
+          "segment": "半导体设备",
+          "role": "平台型龙头",
+          "moat": "覆盖刻蚀/薄膜/清洗/热处理"
+        }
+      ],
+      "supply_chain_map": [
+        {
+          "level": 1,
+          "name": "CPU架构与设计工具/IP",
+          "bottleneck": "X86永久授权依赖,ARM授权策略变动;自主指令生态适配成本高;高端EDA及高速接口IP由Cadence/Synopsys/新思垄断",
+          "assets": [
+            {
+              "code": "688041",
+              "name": "海光信息",
+              "role": "X86兼容CPU设计"
+            },
+            {
+              "code": "688047",
+              "name": "龙芯中科",
+              "role": "自主指令集CPU设计"
+            },
+            {
+              "code": "688521",
+              "name": "芯原股份",
+              "role": "半导体IP平台"
+            },
+            {
+              "code": "301269",
+              "name": "华大九天",
+              "role": "EDA工具"
+            }
+          ]
+        },
+        {
+          "level": 2,
+          "name": "先进制程制造",
+          "bottleneck": "7nm以下先进制程产能稀缺,设备禁令限制,代际差2-3代,良率仍在学习曲线爬坡",
+          "assets": [
+            {
+              "code": "688981",
+              "name": "中芯国际",
+              "role": "先进逻辑代工"
+            },
+            {
+              "code": "688347",
+              "name": "华虹公司",
+              "role": "特色工艺代工"
+            }
+          ]
+        },
+        {
+          "level": 3,
+          "name": "核心半导体设备",
+          "bottleneck": "光刻、刻蚀、离子注入、检测等关键设备美日欧主导,国产化率低,部分功能达标但稳定性不足",
+          "assets": [
+            {
+              "code": "688012",
+              "name": "中微公司",
+              "role": "刻蚀设备"
+            },
+            {
+              "code": "002371",
+              "name": "北方华创",
+              "role": "综合设备平台"
+            },
+            {
+              "code": "300604",
+              "name": "长川科技",
+              "role": "测试分选设备"
+            }
+          ]
+        },
+        {
+          "level": 4,
+          "name": "关键半导体材料",
+          "bottleneck": "大尺寸硅片、光刻胶、高纯靶材、CMP抛光液等国产化率低,CPU用高纯靶材/抛光液国产占比<20%",
+          "assets": [
+            {
+              "code": "688126",
+              "name": "沪硅产业",
+              "role": "300mm大硅片"
+            },
+            {
+              "code": "688019",
+              "name": "安集科技",
+              "role": "CMP抛光液"
+            },
+            {
+              "code": "600206",
+              "name": "有研新材",
+              "role": "高纯靶材"
+            }
+          ]
+        },
+        {
+          "level": 5,
+          "name": "先进封装与测试",
+          "bottleneck": "CoWoS等先进封装产能结构性短缺,高速信号系统级测试设备依赖泰瑞达/爱德万",
+          "assets": [
+            {
+              "code": "600584",
+              "name": "长电科技",
+              "role": "先进封装(FC-BGA/SiP)"
+            },
+            {
+              "code": "002156",
+              "name": "通富微电",
+              "role": "先进封装(AMD封装)"
+            },
+            {
+              "code": "688200",
+              "name": "华峰测控",
+              "role": "测试设备(模拟/混合)"
+            }
+          ]
+        }
+      ],
+      "sales_chain": [
+        {
+          "segment": "CPU设计与品牌商",
+          "companies": [
+            "688041",
+            "688047"
+          ],
+          "reason": "信创/服务器集采订单直接拉动CPU出货,业绩最先感知",
+          "lead_months": "1-3"
+        }
+      ],
+      "expansion_chain": [
+        {
+          "segment": "半导体设备/材料/先进封装",
+          "companies": [
+            "688012",
+            "002371",
+            "688019",
+            "688126",
+            "600584"
+          ],
+          "reason": "CPU放量驱动代工扩产,设备材料采购及封装订单滞后6-12个月释放",
+          "lag_months": "6-12"
+        }
+      ],
+      "chain_timeline": {
+        "sales_lead_months": "1-3",
+        "expansion_lag_months": "6-12",
+        "rotation_strategy": "先配海光信息、龙芯中科等CPU设计标的,3-6个月后逐步切换至中微公司、北方华创、安集科技等设备材料及长电科技等封装标的"
+      },
+      "findings_count": 8,
+      "agent": "SupplyChainHacker",
+      "industry": "CPU",
+      "search_rounds": 3,
+      "second_order_effects": {
+        "crowding_out": [],
+        "io_linkages": [],
+        "byproduct_effects": [],
+        "synthesis": "第二层思维分析暂不可用"
+      }
+    },
+    "audits": [
+      {
+        "code": "688041",
+        "name": "海光信息",
+        "financial": {
+          "verdict": "FAIL",
+          "score": -10,
+          "flags": [
+            "⚠️ 剪刀差为负(-32.24%), 利润增速跑输营收",
+            "✅ 四连击: 连续4季度营收+利润同比双增",
+            "🚨 经营现金流/利润 < 0.5: 利润含金量低",
+            "🚨 Beneish M-Score=-1.64 (>-1.78): 财报造假概率较高"
+          ],
+          "beneish": {
+            "m_score": -1.642,
+            "threshold": -1.78,
+            "interpretation": "高概率造假",
+            "components": {
+              "dsri": 1.131,
+              "gmi": 1.101,
+              "aqi": 0.992,
+              "sgi": 1.681,
+              "depi": 1,
+              "sgai": 1.261,
+              "tata": 0.0176,
+              "lvgi": 0.928
+            }
+          },
+          "scissor": {
+            "latest_gap_pct": -32.24,
+            "scissor_quarters_count": 0,
+            "is_expanding": false
+          },
+          "momentum": {
+            "consecutive_yoy_hits": 4,
+            "four_quarters_hit": true,
+            "recent_qoq_hits": 2
+          },
+          "inventory_trend": "stable",
+          "contract_liability_trend": "stable",
+          "ocf_health": "poor",
+          "metrics": [
+            {
+              "report_date": "2024-06-30",
+              "revenue": 2170832738.13,
+              "profit": 564858640.37,
+              "op_cashflow": -45434194.53,
+              "inventory": 2455368076.31,
+              "contract_liability": 15000000.0,
+              "rev_qoq": null,
+              "profit_qoq": null,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": 26.0,
+              "ocf_profit_ratio": -0.08,
+              "inventory_revenue_ratio": 1.13
+            },
+            {
+              "report_date": "2024-09-30",
+              "revenue": 2373626390.69,
+              "profit": 672322399.64,
+              "op_cashflow": 511893170.94,
+              "inventory": 3895896902.67,
+              "contract_liability": 15000000.0,
+              "rev_qoq": 9.34,
+              "profit_qoq": 19.02,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": 28.3,
+              "ocf_profit_ratio": 0.76,
+              "inventory_revenue_ratio": 1.64
+            },
+            {
+              "report_date": "2024-12-31",
+              "revenue": 3025609126.7,
+              "profit": 405272165.21,
+              "op_cashflow": 578505974.92,
+              "inventory": 5425282266.87,
+              "contract_liability": 903471386.47,
+              "rev_qoq": 27.47,
+              "profit_qoq": -39.72,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": 13.4,
+              "ocf_profit_ratio": 1.43,
+              "inventory_revenue_ratio": 1.79
+            },
+            {
+              "report_date": "2025-03-31",
+              "revenue": 2400148814.98,
+              "profit": 505894195.29,
+              "op_cashflow": 2522136186.99,
+              "inventory": 5794333168.83,
+              "contract_liability": 3236831652.94,
+              "rev_qoq": -20.67,
+              "profit_qoq": 24.83,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": 21.1,
+              "ocf_profit_ratio": 4.99,
+              "inventory_revenue_ratio": 2.41
+            },
+            {
+              "report_date": "2025-06-30",
+              "revenue": 3064086242.17,
+              "profit": 695557645.86,
+              "op_cashflow": -345494977.73,
+              "inventory": 6012657314.86,
+              "contract_liability": 3090796470.54,
+              "rev_qoq": 27.66,
+              "profit_qoq": 37.49,
+              "rev_yoy": 41.15,
+              "profit_yoy": 23.14,
+              "scissor_gap": -18.01,
+              "net_margin": 22.7,
+              "ocf_profit_ratio": -0.5,
+              "inventory_revenue_ratio": 1.96
+            },
+            {
+              "report_date": "2025-09-30",
+              "revenue": 4025739773.97,
+              "profit": 759994598.37,
+              "op_cashflow": 77863093.29,
+              "inventory": 6501853452.93,
+              "contract_liability": 2800111074.08,
+              "rev_qoq": 31.38,
+              "profit_qoq": 9.26,
+              "rev_yoy": 69.6,
+              "profit_yoy": 13.04,
+              "scissor_gap": -56.56,
+              "net_margin": 18.9,
+              "ocf_profit_ratio": 0.1,
+              "inventory_revenue_ratio": 1.62
+            },
+            {
+              "report_date": "2025-12-31",
+              "revenue": 4886914645.83,
+              "profit": 583444466.1,
+              "op_cashflow": -157565239.08,
+              "inventory": 6406063056.89,
+              "contract_liability": 2018511039.57,
+              "rev_qoq": 21.39,
+              "profit_qoq": -23.23,
+              "rev_yoy": 61.52,
+              "profit_yoy": 43.96,
+              "scissor_gap": -17.56,
+              "net_margin": 11.9,
+              "ocf_profit_ratio": -0.27,
+              "inventory_revenue_ratio": 1.31
+            },
+            {
+              "report_date": "2026-03-31",
+              "revenue": 4033592186.34,
+              "profit": 687094336.71,
+              "op_cashflow": 67617712.14,
+              "inventory": 7333333640.98,
+              "contract_liability": 1510483960.59,
+              "rev_qoq": -17.46,
+              "profit_qoq": 17.77,
+              "rev_yoy": 68.06,
+              "profit_yoy": 35.82,
+              "scissor_gap": -32.24,
+              "net_margin": 17.0,
+              "ocf_profit_ratio": 0.1,
+              "inventory_revenue_ratio": 1.82
+            }
+          ],
+          "agent": "FinancialAuditor",
+          "code": "688041",
+          "name": "海光信息",
+          "quarters_count": 8
+        },
+        "human_capital": {
+          "founder_background": {
+            "name": "孟宪棠",
+            "education": null,
+            "prior_experience": "国家发改委处长、副司长，国科控股副总经理，中科可控董事",
+            "industry_years": 20,
+            "notable": null
+          },
+          "core_team": {
+            "cto_name": "沙超群",
+            "cto_background": "教授级高级工程师，原中科曙光技术副总裁、高级副总裁",
+            "rd_team_size_est": 1641,
+            "rd_ratio_est": 91.68,
+            "rd_investment_est": 30,
+            "core_staff_stability": "稳定 — 核心骨干多来自中科曙光及Intel/AMD，持续实施股权激励"
+          },
+          "patent_quality": {
+            "total_patents_est": null,
+            "invention_ratio_est": null,
+            "international_patents": null,
+            "citation_impact": null,
+            "tech_independence": "中 — 基于x86永久授权和自研微架构，但指令集受制于AMD授权，DCU兼容ROCm生态"
+          },
+          "equity_incentive": {
+            "esop_coverage": null,
+            "lockup_pressure": "中 — 2025年限制性股票激励计划归属后不设额外禁售期，后续存在渐进减持压力",
+            "insider_trend": "减持 — 近期披露5%以上股东减持计划",
+            "incentive_health": "健康 — 激励对象主要为核心技术骨干，不包含大股东，绑定中长期利益"
+          },
+          "human_capital_score": 8,
+          "score_reason": "核心团队具备中科曙光及Intel/AMD顶尖从业背景，研发人员占比超90%，年研发投入约30亿元，技术壁垒较高；但x86架构依赖AMD授权，技术独立性为中等，叠加近期大股东减持信号，整体人力资本质量仍属强劲。",
+          "key_personnel_risk": "无明显单一关键人员依赖，管理层和核心技术团队稳定，但董事长孟宪棠年龄可能偏大，需关注接班人规划。",
+          "verdict": "STRONG",
+          "agent": "HumanCapitalDetective",
+          "code": "688041",
+          "name": "海光信息"
+        }
+      },
+      {
+        "code": "688047",
+        "name": "龙芯中科",
+        "financial": {
+          "verdict": "PASS",
+          "score": 65,
+          "flags": [
+            "✅ 剪刀差为正: 利润率扩张中",
+            "✅ 四连击: 连续4季度营收+利润同比双增",
+            "✅ Beneish M-Score=-2.63: 造假概率低"
+          ],
+          "beneish": {
+            "m_score": -2.633,
+            "threshold": -1.78,
+            "interpretation": "低概率",
+            "components": {
+              "dsri": 0.868,
+              "gmi": 1.09,
+              "aqi": 0.991,
+              "sgi": 1.08,
+              "depi": 1,
+              "sgai": 1.214,
+              "tata": -0.0026,
+              "lvgi": 1.297
+            }
+          },
+          "scissor": {
+            "latest_gap_pct": 16.7,
+            "scissor_quarters_count": 2,
+            "is_expanding": true
+          },
+          "momentum": {
+            "consecutive_yoy_hits": 4,
+            "four_quarters_hit": true,
+            "recent_qoq_hits": 1
+          },
+          "inventory_trend": "stable",
+          "contract_liability_trend": "stable",
+          "ocf_health": "healthy",
+          "metrics": [
+            {
+              "report_date": "2024-06-30",
+              "revenue": 99589016.17,
+              "profit": -163321474.92,
+              "op_cashflow": -168924542.55,
+              "inventory": 969990613.48,
+              "contract_liability": 34373417.02,
+              "rev_qoq": null,
+              "profit_qoq": null,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": -164.0,
+              "ocf_profit_ratio": null,
+              "inventory_revenue_ratio": 9.74
+            },
+            {
+              "report_date": "2024-09-30",
+              "revenue": 88193733.22,
+              "profit": -104629563.54,
+              "op_cashflow": -88643380.28,
+              "inventory": 1020019847.18,
+              "contract_liability": 34633303.4,
+              "rev_qoq": -11.44,
+              "profit_qoq": 35.94,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": -118.6,
+              "ocf_profit_ratio": null,
+              "inventory_revenue_ratio": 11.57
+            },
+            {
+              "report_date": "2024-12-31",
+              "revenue": 196476556.46,
+              "profit": -282587640.16,
+              "op_cashflow": -68713927.46,
+              "inventory": 899717417.85,
+              "contract_liability": 35281905.36,
+              "rev_qoq": 122.78,
+              "profit_qoq": -170.08,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": -143.8,
+              "ocf_profit_ratio": null,
+              "inventory_revenue_ratio": 4.58
+            },
+            {
+              "report_date": "2025-03-31",
+              "revenue": 124955396.95,
+              "profit": -151280445.14,
+              "op_cashflow": -143594192.4,
+              "inventory": 848718934.65,
+              "contract_liability": 34586302.93,
+              "rev_qoq": -36.4,
+              "profit_qoq": 46.47,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": -121.1,
+              "ocf_profit_ratio": null,
+              "inventory_revenue_ratio": 6.79
+            },
+            {
+              "report_date": "2025-06-30",
+              "revenue": 118557544.88,
+              "profit": -143187781.39,
+              "op_cashflow": -179203013.2,
+              "inventory": 824822606.49,
+              "contract_liability": 33061333.48,
+              "rev_qoq": -5.12,
+              "profit_qoq": 5.35,
+              "rev_yoy": 19.05,
+              "profit_yoy": 12.33,
+              "scissor_gap": -6.72,
+              "net_margin": -120.8,
+              "ocf_profit_ratio": null,
+              "inventory_revenue_ratio": 6.96
+            },
+            {
+              "report_date": "2025-09-30",
+              "revenue": 107180495.44,
+              "profit": -99344417.23,
+              "op_cashflow": -123834541.57,
+              "inventory": 877347970.49,
+              "contract_liability": 37528928.84,
+              "rev_qoq": -9.6,
+              "profit_qoq": 30.62,
+              "rev_yoy": 21.53,
+              "profit_yoy": 5.05,
+              "scissor_gap": -16.48,
+              "net_margin": -92.7,
+              "ocf_profit_ratio": null,
+              "inventory_revenue_ratio": 8.19
+            },
+            {
+              "report_date": "2025-12-31",
+              "revenue": 284627130.45,
+              "profit": -61327612.41,
+              "op_cashflow": 98739014.33,
+              "inventory": 850240879.82,
+              "contract_liability": 41432834.07,
+              "rev_qoq": 165.56,
+              "profit_qoq": 38.27,
+              "rev_yoy": 44.87,
+              "profit_yoy": 78.3,
+              "scissor_gap": 33.43,
+              "net_margin": -21.5,
+              "ocf_profit_ratio": null,
+              "inventory_revenue_ratio": 2.99
+            },
+            {
+              "report_date": "2026-03-31",
+              "revenue": 134904672.46,
+              "profit": -113970263.53,
+              "op_cashflow": -106081555.65,
+              "inventory": 852446259.45,
+              "contract_liability": 22810586.19,
+              "rev_qoq": -52.6,
+              "profit_qoq": -85.84,
+              "rev_yoy": 7.96,
+              "profit_yoy": 24.66,
+              "scissor_gap": 16.7,
+              "net_margin": -84.5,
+              "ocf_profit_ratio": null,
+              "inventory_revenue_ratio": 6.32
+            }
+          ],
+          "agent": "FinancialAuditor",
+          "code": "688047",
+          "name": "龙芯中科",
+          "quarters_count": 8
+        },
+        "human_capital": {
+          "founder_background": {
+            "name": "胡伟武",
+            "education": "博士，中国科学院计算技术研究所",
+            "prior_experience": "中国科学院计算技术研究所研究员、博士生导师",
+            "industry_years": 25,
+            "notable": "主持研发中国第一款自主知识产权通用CPU“龙芯1号”；中共二十大代表；师从夏培肃院士"
+          },
+          "core_team": {
+            "cto_name": null,
+            "cto_background": null,
+            "rd_team_size_est": null,
+            "rd_ratio_est": null,
+            "rd_investment_est": 4.3,
+            "core_staff_stability": "稳定 — 2022年持续督导报告称核心技术人员不存在持股变动"
+          },
+          "patent_quality": {
+            "total_patents_est": 1066,
+            "invention_ratio_est": null,
+            "international_patents": null,
+            "citation_impact": null,
+            "tech_independence": "高 — 核心技术与专利均源于自主研发，无依赖第三方授权"
+          },
+          "equity_incentive": {
+            "esop_coverage": null,
+            "lockup_pressure": "高 — 近期北工投资、鼎晖等机构股东持续减持，套现金额大",
+            "insider_trend": null,
+            "incentive_health": "一般 — 2025年新推限制性股票激励计划，设置考核目标，但减持潮可能影响信心"
+          },
+          "human_capital_score": 8,
+          "score_reason": "创始人胡伟武是国产CPU领域旗帜人物，研发投入稳定、专利积淀深厚、技术完全自主，但资本减持带来短期不确定性",
+          "key_personnel_risk": "创始人胡伟武为公司的技术与精神双重核心，存在单点依赖风险",
+          "verdict": "STRONG",
+          "agent": "HumanCapitalDetective",
+          "code": "688047",
+          "name": "龙芯中科"
+        }
+      },
+      {
+        "code": "688981",
+        "name": "中芯国际",
+        "financial": {
+          "verdict": "FAIL",
+          "score": -20,
+          "flags": [
+            "⚠️ 剪刀差为负(-7.71%), 利润增速跑输营收",
+            "⚠️ 未达四连击(当前连续3季度)",
+            "🚨 合同负债骤降: 新订单萎缩",
+            "⚠️ Beneish M-Score=-2.35: 处于灰色区域, 需关注"
+          ],
+          "beneish": {
+            "m_score": -2.353,
+            "threshold": -1.78,
+            "interpretation": "灰色区域",
+            "components": {
+              "dsri": 1.074,
+              "gmi": 1.075,
+              "aqi": 0.889,
+              "sgi": 1.081,
+              "depi": 1,
+              "sgai": 0.658,
+              "tata": -0.0099,
+              "lvgi": 1.063
+            }
+          },
+          "scissor": {
+            "latest_gap_pct": -7.71,
+            "scissor_quarters_count": 2,
+            "is_expanding": false
+          },
+          "momentum": {
+            "consecutive_yoy_hits": 3,
+            "four_quarters_hit": false,
+            "recent_qoq_hits": 1
+          },
+          "inventory_trend": "stable",
+          "contract_liability_trend": "declining_alert",
+          "ocf_health": "healthy",
+          "metrics": [
+            {
+              "report_date": "2024-06-30",
+              "revenue": 13675528000.0,
+              "profit": 1137326000.0,
+              "op_cashflow": -320251000.0,
+              "inventory": 19528627000.0,
+              "contract_liability": 7406679000.0,
+              "rev_qoq": null,
+              "profit_qoq": null,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": 8.3,
+              "ocf_profit_ratio": -0.28,
+              "inventory_revenue_ratio": 1.43
+            },
+            {
+              "report_date": "2024-09-30",
+              "revenue": 15609410000.0,
+              "profit": 1059907000.0,
+              "op_cashflow": 9017855000.0,
+              "inventory": 20168932000.0,
+              "contract_liability": 7313395000.0,
+              "rev_qoq": 14.14,
+              "profit_qoq": -6.81,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": 6.8,
+              "ocf_profit_ratio": 8.51,
+              "inventory_revenue_ratio": 1.29
+            },
+            {
+              "report_date": "2024-12-31",
+              "revenue": 15916850000.0,
+              "profit": 992473000.0,
+              "op_cashflow": 10394449000.0,
+              "inventory": 21267282000.0,
+              "contract_liability": 8609390000.0,
+              "rev_qoq": 1.97,
+              "profit_qoq": -6.36,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": 6.2,
+              "ocf_profit_ratio": 10.47,
+              "inventory_revenue_ratio": 1.34
+            },
+            {
+              "report_date": "2025-03-31",
+              "revenue": 16301085000.0,
+              "profit": 1356374000.0,
+              "op_cashflow": -1171520000.0,
+              "inventory": 21869520000.0,
+              "contract_liability": 5267421000.0,
+              "rev_qoq": 2.41,
+              "profit_qoq": 36.67,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": 8.3,
+              "ocf_profit_ratio": -0.86,
+              "inventory_revenue_ratio": 1.34
+            },
+            {
+              "report_date": "2025-06-30",
+              "revenue": 16046964000.0,
+              "profit": 944492000.0,
+              "op_cashflow": 7069313000.0,
+              "inventory": 22512512000.0,
+              "contract_liability": 5358458000.0,
+              "rev_qoq": -1.56,
+              "profit_qoq": -30.37,
+              "rev_yoy": 17.34,
+              "profit_yoy": -16.96,
+              "scissor_gap": -34.3,
+              "net_margin": 5.9,
+              "ocf_profit_ratio": 7.48,
+              "inventory_revenue_ratio": 1.4
+            },
+            {
+              "report_date": "2025-09-30",
+              "revenue": 17162367000.0,
+              "profit": 1517205000.0,
+              "op_cashflow": 6389758000.0,
+              "inventory": 24815440000.0,
+              "contract_liability": 5271423000.0,
+              "rev_qoq": 6.95,
+              "profit_qoq": 60.64,
+              "rev_yoy": 9.95,
+              "profit_yoy": 43.15,
+              "scissor_gap": 33.2,
+              "net_margin": 8.8,
+              "ocf_profit_ratio": 4.21,
+              "inventory_revenue_ratio": 1.45
+            },
+            {
+              "report_date": "2025-12-31",
+              "revenue": 17812776000.0,
+              "profit": 1222663000.0,
+              "op_cashflow": 7793428000.0,
+              "inventory": 25534929000.0,
+              "contract_liability": 4216508000.0,
+              "rev_qoq": 3.79,
+              "profit_qoq": -19.41,
+              "rev_yoy": 11.91,
+              "profit_yoy": 23.19,
+              "scissor_gap": 11.28,
+              "net_margin": 6.9,
+              "ocf_profit_ratio": 6.37,
+              "inventory_revenue_ratio": 1.43
+            },
+            {
+              "report_date": "2026-03-31",
+              "revenue": 17617218000.0,
+              "profit": 1361209000.0,
+              "op_cashflow": 5131729000.0,
+              "inventory": 27142311000.0,
+              "contract_liability": 4270189000.0,
+              "rev_qoq": -1.1,
+              "profit_qoq": 11.33,
+              "rev_yoy": 8.07,
+              "profit_yoy": 0.36,
+              "scissor_gap": -7.71,
+              "net_margin": 7.7,
+              "ocf_profit_ratio": 3.77,
+              "inventory_revenue_ratio": 1.54
+            }
+          ],
+          "agent": "FinancialAuditor",
+          "code": "688981",
+          "name": "中芯国际",
+          "quarters_count": 8
+        },
+        "human_capital": {
+          "founder_background": {
+            "name": "梁孟松 (联合首席执行官/技术核心)",
+            "education": "博士, 加州大学伯克利分校",
+            "prior_experience": "AMD, 台积电, 三星; 师从胡正明",
+            "industry_years": 35,
+            "notable": "IEEE Fellow, 发表论文350余篇, 拥有专利400余件, 被称为“台湾芯片魔术师”, 带领中芯国际从28nm跨越至5nm"
+          },
+          "core_team": {
+            "cto_name": null,
+            "cto_background": null,
+            "rd_team_size_est": 2330,
+            "rd_ratio_est": 12.1,
+            "rd_investment_est": 45,
+            "core_staff_stability": "一般 — 曾有核心技术人员吴金刚(手握37件核心发明专利)离职, 且媒体称“钱少事多、一挖就走”"
+          },
+          "patent_quality": {
+            "total_patents_est": 13964,
+            "invention_ratio_est": 86.7,
+            "international_patents": null,
+            "citation_impact": null,
+            "tech_independence": "高 — 已实现先进工艺平台的自主研发, 完成28nm至5nm多代跨越"
+          },
+          "equity_incentive": {
+            "esop_coverage": "部分覆盖, 具体比例未知",
+            "lockup_pressure": "中 — 大基金近期有减持动作, 限制性股票存在作废, 但未出现大规模解禁抛压",
+            "insider_trend": null,
+            "incentive_health": "一般 — 存在激励作废、离职人员放弃千万市值股票现象, 员工被挖角风险较高"
+          },
+          "human_capital_score": 8,
+          "score_reason": "拥有IEEE Fellow级技术领袖与深厚的专利壁垒, 研发投入稳定, 但面临关键人才流失和激励有效性不足的挑战",
+          "key_personnel_risk": "梁孟松生于1952年, 现年73岁, 存在年龄与退休风险; 核心技术曾过度依赖个别专家",
+          "verdict": "STRONG",
+          "agent": "HumanCapitalDetective",
+          "code": "688981",
+          "name": "中芯国际"
+        }
+      },
+      {
+        "code": "688012",
+        "name": "中微公司",
+        "financial": {
+          "verdict": "CAUTION",
+          "score": 50,
+          "flags": [
+            "✅ 剪刀差为正: 利润率扩张中",
+            "✅ 四连击: 连续4季度营收+利润同比双增",
+            "✅ 近4季度中3季度环比双增",
+            "⚠️ 经营现金流/利润偏低",
+            "🚨 Beneish M-Score=-1.74 (>-1.78): 财报造假概率较高"
+          ],
+          "beneish": {
+            "m_score": -1.744,
+            "threshold": -1.78,
+            "interpretation": "高概率造假",
+            "components": {
+              "dsri": 1.203,
+              "gmi": 1.041,
+              "aqi": 1.016,
+              "sgi": 1.341,
+              "depi": 1,
+              "sgai": 0.951,
+              "tata": 0.0348,
+              "lvgi": 0.861
+            }
+          },
+          "scissor": {
+            "latest_gap_pct": 163.07,
+            "scissor_quarters_count": 2,
+            "is_expanding": true
+          },
+          "momentum": {
+            "consecutive_yoy_hits": 4,
+            "four_quarters_hit": true,
+            "recent_qoq_hits": 3
+          },
+          "inventory_trend": "stable",
+          "contract_liability_trend": "stable",
+          "ocf_health": "moderate",
+          "metrics": [
+            {
+              "report_date": "2024-06-30",
+              "revenue": 1842690000.0,
+              "profit": 267558000.0,
+              "op_cashflow": 968362000.0,
+              "inventory": 6777930000.0,
+              "contract_liability": 2535150000.0,
+              "rev_qoq": null,
+              "profit_qoq": null,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": 14.5,
+              "ocf_profit_ratio": 3.62,
+              "inventory_revenue_ratio": 3.68
+            },
+            {
+              "report_date": "2024-09-30",
+              "revenue": 2059480000.0,
+              "profit": 396286000.0,
+              "op_cashflow": -114354000.0,
+              "inventory": 7821640000.0,
+              "contract_liability": 2987980000.0,
+              "rev_qoq": 11.76,
+              "profit_qoq": 48.11,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": 19.2,
+              "ocf_profit_ratio": -0.29,
+              "inventory_revenue_ratio": 3.8
+            },
+            {
+              "report_date": "2024-12-31",
+              "revenue": 3557970000.0,
+              "profit": 702696000.0,
+              "op_cashflow": 1190830000.0,
+              "inventory": 7038520000.0,
+              "contract_liability": 2586470000.0,
+              "rev_qoq": 72.76,
+              "profit_qoq": 77.32,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": 19.7,
+              "ocf_profit_ratio": 1.69,
+              "inventory_revenue_ratio": 1.98
+            },
+            {
+              "report_date": "2025-03-31",
+              "revenue": 2173280000.0,
+              "profit": 313082000.0,
+              "op_cashflow": 376808000.0,
+              "inventory": 7447740000.0,
+              "contract_liability": 3066920000.0,
+              "rev_qoq": -38.92,
+              "profit_qoq": -55.45,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": 14.4,
+              "ocf_profit_ratio": 1.2,
+              "inventory_revenue_ratio": 3.43
+            },
+            {
+              "report_date": "2025-06-30",
+              "revenue": 2787320000.0,
+              "profit": 392834000.0,
+              "op_cashflow": -173912000.0,
+              "inventory": 8077830000.0,
+              "contract_liability": 3165120000.0,
+              "rev_qoq": 28.25,
+              "profit_qoq": 25.47,
+              "rev_yoy": 51.26,
+              "profit_yoy": 46.82,
+              "scissor_gap": -4.44,
+              "net_margin": 14.1,
+              "ocf_profit_ratio": -0.44,
+              "inventory_revenue_ratio": 2.9
+            },
+            {
+              "report_date": "2025-09-30",
+              "revenue": 3101960000.0,
+              "profit": 505276000.0,
+              "op_cashflow": 1095410000.0,
+              "inventory": 8193950000.0,
+              "contract_liability": 4388700000.0,
+              "rev_qoq": 11.29,
+              "profit_qoq": 28.62,
+              "rev_yoy": 50.62,
+              "profit_yoy": 27.5,
+              "scissor_gap": -23.12,
+              "net_margin": 16.3,
+              "ocf_profit_ratio": 2.17,
+              "inventory_revenue_ratio": 2.64
+            },
+            {
+              "report_date": "2025-12-31",
+              "revenue": 4322070000.0,
+              "profit": 900281000.0,
+              "op_cashflow": 997044000.0,
+              "inventory": 7169970000.0,
+              "contract_liability": 3043840000.0,
+              "rev_qoq": 39.33,
+              "profit_qoq": 78.18,
+              "rev_yoy": 21.48,
+              "profit_yoy": 28.12,
+              "scissor_gap": 6.64,
+              "net_margin": 20.8,
+              "ocf_profit_ratio": 1.11,
+              "inventory_revenue_ratio": 1.66
+            },
+            {
+              "report_date": "2026-03-31",
+              "revenue": 2914990000.0,
+              "profit": 930487000.0,
+              "op_cashflow": -158726000.0,
+              "inventory": 7258850000.0,
+              "contract_liability": 2852940000.0,
+              "rev_qoq": -32.56,
+              "profit_qoq": 3.36,
+              "rev_yoy": 34.13,
+              "profit_yoy": 197.2,
+              "scissor_gap": 163.07,
+              "net_margin": 31.9,
+              "ocf_profit_ratio": -0.17,
+              "inventory_revenue_ratio": 2.49
+            }
+          ],
+          "agent": "FinancialAuditor",
+          "code": "688012",
+          "name": "中微公司",
+          "quarters_count": 8
+        },
+        "human_capital": {
+          "founder_background": {
+            "name": "尹志尧",
+            "education": "博士，加州大学洛杉矶分校物理化学博士，北京大学化学学院硕士，中国科学技术大学化学物理系学士",
+            "prior_experience": "英特尔中心技术开发部工艺工程师；泛林半导体研发部资深工程师、资深经理；应用材料等离子体刻蚀设备产品总部首席技术官、总公司副总裁、等离子体刻蚀事业群总经理、亚洲区采购副总裁、亚洲首席技术官",
+            "industry_years": 28,
+            "notable": "领导研制中国首台介质刻蚀机；曾任应用材料副总裁；美国国籍"
+          },
+          "core_team": {
+            "cto_name": null,
+            "cto_background": null,
+            "rd_team_size_est": "约967人（截至2024年6月，总员工2085人×46.38%）",
+            "rd_ratio_est": "46.38%",
+            "rd_investment_est": null,
+            "core_staff_stability": "稳定 — 公司公开信息表明核心技术团队和技术开发保持稳定性和持续性"
+          },
+          "patent_quality": {
+            "total_patents_est": null,
+            "invention_ratio_est": null,
+            "international_patents": null,
+            "citation_impact": null,
+            "tech_independence": "高 — 实现中国首台介质刻蚀机，MOCVD设备占据全球氮化镓基LED市场最大份额，屡获中国专利奖"
+          },
+          "equity_incentive": {
+            "esop_coverage": "约99.72%员工（2025年限制性股票激励计划首次授予覆盖）",
+            "lockup_pressure": "中 — 近期新推出激励计划，首次授予部分占比81.48%，预留部分18.52%，短期解禁压力可控",
+            "insider_trend": null,
+            "incentive_health": "健康 — 激励覆盖极广，几乎全员持股，绑定核心人才意图明确"
+          },
+          "human_capital_score": 8,
+          "score_reason": "创始人具备顶级海外大厂高管背景与深厚技术积淀，研发团队规模大、学历高且稳定，专利壁垒高，股权激励覆盖广，但创始人已81岁高龄且为外籍，存在关键人员依赖风险。",
+          "key_personnel_risk": "创始人尹志尧现年81岁（美国国籍），仍担任董事长兼总经理，公司高度依赖其个人声望与技术视野，存在接班人缺失与国籍相关的潜在敏感性问题。",
+          "verdict": "STRONG",
+          "agent": "HumanCapitalDetective",
+          "code": "688012",
+          "name": "中微公司"
+        }
+      },
+      {
+        "code": "002371",
+        "name": "北方华创",
+        "financial": {
+          "verdict": "FAIL",
+          "score": -5,
+          "flags": [
+            "⚠️ 剪刀差为负(-22.38%), 利润增速跑输营收",
+            "⚠️ 未达四连击(当前连续1季度)",
+            "⚠️ Beneish M-Score=-2.21: 处于灰色区域, 需关注"
+          ],
+          "beneish": {
+            "m_score": -2.208,
+            "threshold": -1.78,
+            "interpretation": "灰色区域",
+            "components": {
+              "dsri": 1.003,
+              "gmi": 1.055,
+              "aqi": 1.011,
+              "sgi": 1.258,
+              "depi": 1,
+              "sgai": 1.235,
+              "tata": 0.0097,
+              "lvgi": 1.0
+            }
+          },
+          "scissor": {
+            "latest_gap_pct": -22.38,
+            "scissor_quarters_count": 0,
+            "is_expanding": false
+          },
+          "momentum": {
+            "consecutive_yoy_hits": 1,
+            "four_quarters_hit": false,
+            "recent_qoq_hits": 1
+          },
+          "inventory_trend": "stable",
+          "contract_liability_trend": "stable",
+          "ocf_health": "healthy",
+          "metrics": [
+            {
+              "report_date": "2024-06-30",
+              "revenue": 6513016544.02,
+              "profit": 1651477116.12,
+              "op_cashflow": -549212798.29,
+              "inventory": 21130401396.25,
+              "contract_liability": 8984771603.73,
+              "rev_qoq": null,
+              "profit_qoq": null,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": 25.4,
+              "ocf_profit_ratio": -0.33,
+              "inventory_revenue_ratio": 3.24
+            },
+            {
+              "report_date": "2024-09-30",
+              "revenue": 8068481014.87,
+              "profit": 1677490242.72,
+              "op_cashflow": 732363325.36,
+              "inventory": 23228640377.21,
+              "contract_liability": 7782918820.48,
+              "rev_qoq": 23.88,
+              "profit_qoq": 1.58,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": 20.8,
+              "ocf_profit_ratio": 0.44,
+              "inventory_revenue_ratio": 2.88
+            },
+            {
+              "report_date": "2024-12-31",
+              "revenue": 9542794206.14,
+              "profit": 1153971154.2,
+              "op_cashflow": 1133149786.75,
+              "inventory": 23634929581.02,
+              "contract_liability": 6220434650.41,
+              "rev_qoq": 18.27,
+              "profit_qoq": -31.21,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": 12.1,
+              "ocf_profit_ratio": 0.98,
+              "inventory_revenue_ratio": 2.48
+            },
+            {
+              "report_date": "2025-03-31",
+              "revenue": 8206029208.83,
+              "profit": 1580707286.38,
+              "op_cashflow": -1728688646.61,
+              "inventory": 25211217095.21,
+              "contract_liability": 5751494198.69,
+              "rev_qoq": -14.01,
+              "profit_qoq": 36.98,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": 19.3,
+              "ocf_profit_ratio": -1.09,
+              "inventory_revenue_ratio": 3.07
+            },
+            {
+              "report_date": "2025-06-30",
+              "revenue": 7935516975.91,
+              "profit": 1627271237.2,
+              "op_cashflow": -1462687307.43,
+              "inventory": 31139368224.85,
+              "contract_liability": 5004503251.06,
+              "rev_qoq": -3.3,
+              "profit_qoq": 2.95,
+              "rev_yoy": 21.84,
+              "profit_yoy": -1.47,
+              "scissor_gap": -23.31,
+              "net_margin": 20.5,
+              "ocf_profit_ratio": -0.9,
+              "inventory_revenue_ratio": 3.92
+            },
+            {
+              "report_date": "2025-09-30",
+              "revenue": 11159833472.07,
+              "profit": 1922364079.12,
+              "op_cashflow": 624941074.83,
+              "inventory": 30198896418.28,
+              "contract_liability": 4704129888.36,
+              "rev_qoq": 40.63,
+              "profit_qoq": 18.13,
+              "rev_yoy": 38.31,
+              "profit_yoy": 14.6,
+              "scissor_gap": -23.71,
+              "net_margin": 17.2,
+              "ocf_profit_ratio": 0.33,
+              "inventory_revenue_ratio": 2.71
+            },
+            {
+              "report_date": "2025-12-31",
+              "revenue": 12051732762.97,
+              "profit": 391650402.16,
+              "op_cashflow": 4699879457.06,
+              "inventory": 28627037139.1,
+              "contract_liability": 4290959314.95,
+              "rev_qoq": 7.99,
+              "profit_qoq": -79.63,
+              "rev_yoy": 26.29,
+              "profit_yoy": -66.06,
+              "scissor_gap": -92.35,
+              "net_margin": 3.2,
+              "ocf_profit_ratio": 12.0,
+              "inventory_revenue_ratio": 2.38
+            },
+            {
+              "report_date": "2026-03-31",
+              "revenue": 10322863908.82,
+              "profit": 1634739048.68,
+              "op_cashflow": 748055666.52,
+              "inventory": 28602898183.2,
+              "contract_liability": 4202521948.54,
+              "rev_qoq": -14.35,
+              "profit_qoq": 317.4,
+              "rev_yoy": 25.8,
+              "profit_yoy": 3.42,
+              "scissor_gap": -22.38,
+              "net_margin": 15.8,
+              "ocf_profit_ratio": 0.46,
+              "inventory_revenue_ratio": 2.77
+            }
+          ],
+          "agent": "FinancialAuditor",
+          "code": "002371",
+          "name": "北方华创",
+          "quarters_count": 8
+        },
+        "human_capital": {
+          "founder_background": {
+            "name": "赵晋荣",
+            "education": "硕士",
+            "prior_experience": "北京建中机器厂微电子设备研究所副所长、副厂长、总工程师；北京七星华创电子股份有限公司副总经理、总经理；北京北方微电子基地设备工艺研究中心副总经理、总经理",
+            "industry_years": 35,
+            "notable": "国家百千万人才工程，国务院政府特殊津贴，北京学者"
+          },
+          "core_team": {
+            "cto_name": null,
+            "cto_background": null,
+            "rd_team_size_est": "2000+",
+            "rd_ratio_est": "30%+",
+            "rd_investment_est": 11.37,
+            "core_staff_stability": "稳定"
+          },
+          "patent_quality": {
+            "total_patents_est": 4600,
+            "invention_ratio_est": null,
+            "international_patents": null,
+            "citation_impact": null,
+            "tech_independence": "高"
+          },
+          "equity_incentive": {
+            "esop_coverage": "~20%",
+            "lockup_pressure": "低",
+            "insider_trend": "减持",
+            "incentive_health": "健康"
+          },
+          "human_capital_score": 8,
+          "score_reason": "创始人行业资深且获国家级荣誉，研发投入强度大，专利储备深厚，激励考核多维绑定长期价值，但需留意领军人物年龄带来的接班风险。",
+          "key_personnel_risk": "赵晋荣1964年出生，已满60岁，中长期存在接班人衔接风险；暂无其他关键人员离职或单一依赖问题。",
+          "verdict": "STRONG",
+          "agent": "HumanCapitalDetective",
+          "code": "002371",
+          "name": "北方华创"
+        }
+      }
+    ],
+    "prices": [
+      {
+        "valuation_summary": "海光信息作为国产CPU/DCU稀缺龙头，受益于信创替代与AI算力需求，但当前估值透支严重（动态PE超110倍），且财务审计显示利润含金量低、剪刀差为负，风险溢价需上调30%，综合给予“HOLD”评级，建议等待估值消化或超预期催化剂。",
+        "asset_type": "heavy_manufacturing",
+        "asset_type_reasoning": "海光信息属于半导体设计行业，虽为Fabless，但研发投入巨大、资本结构差异大、折旧影响不可忽略，符合heavy_manufacturing判定规则。",
+        "moat_window": {
+          "years": 5,
+          "barrier_type": "技术专利+政策壁垒",
+          "threat_level": "MEDIUM",
+          "reasoning": "x86永久授权+自研微架构构筑性能壁垒，信创政策锁定金融/电信等客户，但指令集受制于AMD授权，且面临飞腾、鲲鹏等国产竞争，护城河能维持约5年窗口期。"
+        },
+        "target_valuation": {
+          "base_case_mcap": 3600,
+          "unit": "亿元",
+          "bull_case_mcap": 4800,
+          "bear_case_mcap": 2400,
+          "upside_pct": 12.5,
+          "downside_pct": -25.0
+        },
+        "valuation_method": {
+          "primary": "EV/EBITDA+PEG",
+          "pe_current": 117.0,
+          "pe_target": 130.0,
+          "pb_current": null,
+          "pb_target": null,
+          "peg_ratio": 4.5,
+          "ps_current": 20.0,
+          "ps_target": 25.0,
+          "ev_ebitda_current": 115.0,
+          "ev_ebitda_target": 100.0,
+          "fcf_yield_pct": -0.5,
+          "dividend_yield_pct": 0.0,
+          "growth_rate_est": "未来3年利润CAGR 25.8%",
+          "reasoning": "采用EV/EBITDA+PEG主模型。公司研发摊销及折旧影响较大，EV/EBITDA剔除资本结构差异更可比；结合PEG衡量成长溢价。当前滚动PE约117倍，对应预测利润增速PEG高达4.5，估值泡沫特征明显；但基于信创与AI长期空间，给予一定估值容忍度，目标PE调整至130倍，对应市值约3600亿元。经FinancialAuditor FAIL风险溢价上调30%后，合理估值中枢下移，当前价位已充分反映乐观预期，上行空间有限。"
+        },
+        "scenarios": {
+          "bull": {
+            "target_price": 210.0,
+            "upside_pct": 50,
+            "assumptions": "信创替代加速，DCU在AI推理市场市占率突破15%，毛利率稳步提升至60%，2027年净利润超55亿元，市场给予40倍EV/EBITDA。"
+          },
+          "base": {
+            "target_price": 155.0,
+            "upside_pct": 12.5,
+            "assumptions": "行业增速维持，CPU份额稳定，DCU逐步放量，2027年净利润达46.5亿元，估值回归130倍PE或100倍EV/EBITDA。"
+          },
+          "bear": {
+            "target_price": 105.0,
+            "downside_pct": -25,
+            "assumptions": "国产竞争加剧导致价格战，毛利率下滑至45%，信创采购节奏放缓，2027年净利润仅35亿元，估值收缩至80倍PE。"
+          }
+        },
+        "quality_check": {
+          "roe_pct": 12.0,
+          "dividend_yield_pct": 0.0,
+          "eps_growth_3y_pct": 25.8,
+          "quality_verdict": "一般 — ROE偏低且无股息，但利润增速较高，经营现金流质量差，审计FAIL进一步拉低综合评价。"
+        },
+        "global_peer_comparison": [
+          {
+            "name": "英特尔",
+            "code": "INTC.US",
+            "pe": 20,
+            "ps": 3,
+            "ev_ebitda": 12,
+            "premium_discount": "海光因国产替代稀缺性享有超高溢价，英特尔PE仅20倍，海光溢价超4倍"
+          },
+          {
+            "name": "AMD",
+            "code": "AMD.US",
+            "pe": 35,
+            "ps": 8,
+            "ev_ebitda": 28,
+            "premium_discount": "AMD增速与海光相近但PE仅35倍，海光溢价超2倍，反映A股流动性及信创溢价"
+          },
+          {
+            "name": "英伟达",
+            "code": "NVDA.US",
+            "pe": 55,
+            "ps": 30,
+            "ev_ebitda": 40,
+            "premium_discount": "英伟达作为AI算力标杆，PE 55倍，海光PE为其2倍，但英伟达增速更高且盈利质量强，海光存在显著估值泡沫"
+          }
+        ],
+        "position_suggest": {
+          "allocation_pct": 5,
+          "time_horizon": "6-12个月",
+          "entry_strategy": "分步建仓，等待PE回调至90倍以下或季报证实经营现金流改善时加仓",
+          "exit_trigger": "信创政策重大转变、AMD授权生变、连续两季度经营现金流为负且剪刀差持续扩大、PE突破150倍"
+        },
+        "verdict": "HOLD",
+        "risk_reward_ratio": "1:1.3 — 当前估值已透支中期成长，上行空间约12.5%，下行风险-25%，风险收益比较差，不宜新建仓位，持有者关注催化剂与现金流拐点。",
+        "agent": "ValuationPricer",
+        "code": "688041",
+        "name": "海光信息"
+      },
+      {
+        "error": "LLM pricing failed",
+        "verdict": "UNKNOWN",
+        "agent": "ValuationPricer",
+        "code": "688047",
+        "name": "龙芯中科"
+      },
+      {
+        "error": "LLM pricing failed",
+        "verdict": "UNKNOWN",
+        "agent": "ValuationPricer",
+        "code": "688981",
+        "name": "中芯国际"
+      },
+      {
+        "valuation_summary": "中微公司作为国产刻蚀设备绝对龙头，具备深度护城河，但当前估值(PE 108x)已充分反映成长预期。尽管财务审计存在警示信号，但人力资本极强，综合给予'谨慎持有'评级，估值需依赖EV/EBITDA+PEG进行重资产定价。",
+        "asset_type": "heavy_manufacturing",
+        "asset_type_reasoning": "中微公司主营等离子体刻蚀设备与MOCVD设备，属于半导体设备制造。该行业具有极高的资本开支、折旧摊销重、产品研发周期长、以及因客户验证周期导致盈利波动大的特征。公司存货与应收规模巨大，不同资本结构下利润可比性差，完全符合'heavy_manufacturing'定义。",
+        "moat_window": {
+          "years": 5,
+          "barrier_type": "技术专利与客户验证壁垒",
+          "threat_level": "MEDIUM",
+          "reasoning": "公司等离子体刻蚀已进入5nm产线，完成国内最先进制程验证，具备极高的技术与客户粘性壁垒。但北方华创等国内友商也在加速追赶，且国际巨头应用材料、泛林仍主导市场。考虑到半导体设备从研发到产线验证通常需3-5年，给予5年确定性护城河窗口期。"
+        },
+        "target_valuation": {
+          "base_case_mcap": 3100,
+          "unit": "亿元",
+          "bull_case_mcap": 3800,
+          "bear_case_mcap": 2200,
+          "upside_pct": 5,
+          "downside_pct": -25
+        },
+        "valuation_method": {
+          "primary": "EV/EBITDA+PEG",
+          "pe_current": 108.21,
+          "pe_target": 70.0,
+          "pb_current": 12.06,
+          "pb_target": 9.0,
+          "peg_ratio": 1.5,
+          "ps_current": null,
+          "ps_target": null,
+          "ev_ebitda_current": 85.0,
+          "ev_ebitda_target": 65.0,
+          "fcf_yield_pct": -0.1,
+          "dividend_yield_pct": 0.0,
+          "growth_rate_est": "未来3年利润CAGR约20%",
+          "reasoning": "选定重资产制造模型(EV/EBITDA+PEG)。公司折旧摊销占营收比重超10%，且因大量股权激励和研发费用资本化差异，PE严重失真(108x)。EV/EBITDA虽估值倍数极高(>80x)，但能剥离非现金因素。结合Beneish M-Score造假警示及经营现金流波动，给予15%估值折价。目标PE锚定70x，目标EV/EBITDA锚定65x，匹配20%左右的长期利润增速预期，PEG约为1.5倍，处于估值合理偏高区间。"
+        },
+        "scenarios": {
+          "bull": {
+            "target_price": 620.0,
+            "upside_pct": 28,
+            "assumptions": "国产替代加速，在长江存储、长鑫等获得超70%份额；3nm刻蚀机通过验证；毛利率因零部件国产化提升至55%；海外出口限制反而促使国内份额集中。"
+          },
+          "base": {
+            "target_price": 502.0,
+            "upside_pct": 5,
+            "assumptions": "保持当前约20%的复合增速，在核心客户维持主流供应商地位，刻蚀设备市占率缓慢提升至5-8%，估值从极度高估向中枢回归。"
+          },
+          "bear": {
+            "target_price": 356.0,
+            "downside_pct": -26,
+            "assumptions": "下游晶圆厂资本开支大幅削减，新增订单不及预期；Beneish造假信号引爆财务地雷；创始人尹志尧离职或地缘政治导致供应链断裂。"
+          }
+        },
+        "quality_check": {
+          "roe_pct": null,
+          "dividend_yield_pct": null,
+          "eps_growth_3y_pct": null,
+          "quality_verdict": "未覆盖——标的ROE/股息率/历史3年增速均缺失，无法按消费或金融模型直接归类。根据近8季度推算，净资产收益率(ROE)水平波动较大且近期走低，无分红记录，不符合'高质'分红股标准，属于高波动成长资产。"
+        },
+        "global_peer_comparison": [
+          {
+            "name": "应用材料",
+            "code": "AMAT.US",
+            "pe": 23.0,
+            "ps": 6.5,
+            "ev_ebitda": 18.0,
+            "premium_discount": "大幅溢价。中微PE 108x vs AMAT 23x。溢价源于稀缺性（A股唯一先进刻蚀标的）、国产替代高增速预期（CAGR 20% vs AMAT 5%）及国家大基金政策加持。"
+          },
+          {
+            "name": "泛林半导体",
+            "code": "LRCX.US",
+            "pe": 25.0,
+            "ps": 7.0,
+            "ev_ebitda": 19.0,
+            "premium_discount": "大幅溢价。逻辑同AMAT。中微规模仅为泛林的1/10，但享受了极高的流动性溢价与战略溢价。"
+          }
+        ],
+        "position_suggest": {
+          "allocation_pct": 8,
+          "time_horizon": "1-3年",
+          "entry_strategy": "分步建仓或等待大幅回调至450元以下。当前估值性价比极低，追高风险大。建议在市场系统性下跌或季报不及预期引发的恐慌性下跌中介入。",
+          "exit_trigger": "创始人尹志尧宣布退休或意外无法履职；Beneish M-Score风险坐实财务暴雷；刻蚀设备毛利率跌破40%且无好转迹象；连续两个季度订单增速下滑至个位数。"
+        },
+        "verdict": "HOLD",
+        "risk_reward_ratio": "1:1.2 — 当前价格(约485元)处于极高估值分位，业绩爆发力已逐步兑现。向上看20%增长，向下看财务风险与景气度波动带来的-25%空间。高赔率不明朗，风险收益比欠佳，不适合重仓追高。",
+        "agent": "ValuationPricer",
+        "code": "688012",
+        "name": "中微公司"
+      },
+      {
+        "valuation_summary": "北方华创作为国内半导体设备平台型龙头，技术护城河深厚，受益于国产替代与AI扩产周期；尽管财务审计因剪刀差及Beneish灰色区域触发FAIL，需计入30%风险溢价，但人力资本强劲，长期成长逻辑清晰。综合EV/EBITDA+PEG模型给出BUY评级，目标市值约2800-3000亿元，较当前有15-25%上行空间。",
+        "asset_type": "heavy_manufacturing",
+        "asset_type_reasoning": "北方华创主营业务为半导体设备（刻蚀、薄膜、清洗、热处理等），属于典型的重资产制造业，折旧摊销高且资本结构差异大，适用EV/EBITDA剔除折旧与资本结构干扰，同时用PEG匹配成长性溢价。",
+        "moat_window": {
+          "years": 5,
+          "barrier_type": "技术专利/客户认证/产能规模",
+          "threat_level": "LOW",
+          "reasoning": "公司拥有4600+专利，覆盖刻蚀/薄膜/清洗/热处理等关键工艺，平台化布局国内稀缺；半导体设备认证周期长达2-3年，客户粘性极强；已突破离子注入、混合键合等高端设备，国产替代窗口至少5年，竞争威胁主要来自应用材料等国际巨头，但在地缘政治下国内替代趋势确定。"
+        },
+        "target_valuation": {
+          "base_case_mcap": 2850,
+          "unit": "亿元",
+          "bull_case_mcap": 3800,
+          "bear_case_mcap": 2000,
+          "upside_pct": 19.7,
+          "downside_pct": -16.0
+        },
+        "valuation_method": {
+          "primary": "EV/EBITDA+PEG",
+          "pe_current": 42.3,
+          "pe_target": 50.0,
+          "pb_current": 7.3,
+          "pb_target": 8.5,
+          "peg_ratio": 1.18,
+          "ps_current": 6.1,
+          "ps_target": 7.5,
+          "ev_ebitda_current": 21.6,
+          "ev_ebitda_target": 25.0,
+          "fcf_yield_pct": 1.5,
+          "dividend_yield_pct": 0.0,
+          "growth_rate_est": "未来3年利润CAGR~35%",
+          "reasoning": "主模型选用EV/EBITDA+PEG：①半导体设备折旧高（公司折旧年限5-10年），净利润无法体现真实现金流，EV/EBITDA剔除折旧/摊销/税率/资本结构差异，是行业通用基准；②公司尚处高速成长期，PEG可合理匹配成长性溢价，避免PE失帧。当前预期2025E利润74.85亿元，加回折旧约20-25亿元，EBITDA约95-100亿元，EV约2150亿元（假设净现金），EV/EBITDA≈21.6x，低于全球龙头应用材料（~25x）和泛林（~22x），但增速远高于它们，PEG合理。给予25x目标EV/EBITDA，对应目标EV~2500亿元，加回净现金等，目标市值2850亿元。同时参考PE：2026E利润超90亿元，给予50xPE，对应市值超4500亿（bull case锚点），合理中枢约2800-3000亿。注意：财务审计FAIL触发30%风险溢价，已在PEG和PE中将增速预期打折（原CAGR约40%下调至35%）。"
+        },
+        "scenarios": {
+          "bull": {
+            "target_price": 526.0,
+            "upside_pct": 60,
+            "assumptions": "国产替代加速，3D NAND/DRAM大扩产，公司市占率大幅提升，2026E利润超100亿元，市场给予55xPE，或EV/EBITDA 30x。"
+          },
+          "base": {
+            "target_price": 395.0,
+            "upside_pct": 20,
+            "assumptions": "行业增速温和，公司份额稳定，财务审计风险可控，盈利修复，2026E利润~85亿元，给予45xPE，或EV/EBITDA 25x。"
+          },
+          "bear": {
+            "target_price": 277.0,
+            "downside_pct": -16,
+            "assumptions": "订单交付延迟，毛利率因竞争下滑至40%，Beneish风险暴露导致估值折价，2026E利润仅65亿元，PE压缩至30x，或EV/EBITDA 18x。"
+          }
+        },
+        "quality_check": {
+          "roe_pct": 22.9,
+          "dividend_yield_pct": 0.3,
+          "eps_growth_3y_pct": 35.0,
+          "quality_verdict": "一般 — ROE极高且高速增长，但股息率远低于2%，不符合高标准稳定分红要求，属于成长型重资产制造，品质良好但非典型高质量现金牛。"
+        },
+        "global_peer_comparison": [
+          {
+            "name": "应用材料",
+            "code": "AMAT.US",
+            "pe": 24.0,
+            "ps": 6.5,
+            "ev_ebitda": 25.0,
+            "premium_discount": "北方华创享有更高PE（42vs24），溢价源于更高的增速（CAGR 35% vs 15%）及国产替代稀缺性，但PS和EV/EBITDA已接近，溢价合理。"
+          },
+          {
+            "name": "泛林集团",
+            "code": "LRCX.US",
+            "pe": 28.0,
+            "ps": 7.0,
+            "ev_ebitda": 22.0,
+            "premium_discount": "北方华创PE和EV/EBITDA均高于泛林，反映市场给予中国半导体设备龙头的战略溢价和更高成长预期。"
+          },
+          {
+            "name": "中微公司",
+            "code": "688012",
+            "pe": 55.0,
+            "ps": 18.0,
+            "ev_ebitda": 45.0,
+            "premium_discount": "北方华创相较于国内同业中微公司折价，主要因中微在刻蚀设备的更高专注度和更激进估值，而北方华创平台化布局全面，估值相对稳健。"
+          }
+        ],
+        "position_suggest": {
+          "allocation_pct": 8,
+          "time_horizon": "1-3年",
+          "entry_strategy": "分步建仓：当前价位可建30%底仓，若因内幕减持或大盘调整回撤至330元附近加仓30%，其余40%等待半年报确认财务剪刀差收窄后追加。",
+          "exit_trigger": "① Beneish M-Score恶化突破-1.78或出现重大财务重述；② 核心领军人物赵晋荣突然离职或接班计划不明；③ 全球半导体设备周期见顶，公司订单负增长连续两季度；④ 市值突破4500亿且PEG>2.0时考虑减仓。"
+        },
+        "verdict": "BUY",
+        "risk_reward_ratio": "1:2.5 — 当前价位下行风险约16%（bear case至277元），上行空间约20%（base case至395元），若行业景气超预期，bull case回报达60%，风险收益比较高。考虑财务审计FAIL附加30%风险溢价后，仍具备吸引力，但需控制仓位。",
+        "agent": "ValuationPricer",
+        "code": "002371",
+        "name": "北方华创"
+      }
+    ]
+  },
+  "agent": "DAGOrchestrator",
+  "industry": "CPU",
+  "pipeline_stats": {
+    "capex_signals": 0,
+    "supply_chain_layers": 5,
+    "core_stocks": 5,
+    "stocks_audited": 5,
+    "stocks_priced": 5
+  },
+  "supply_chain": {
+    "core_stocks": [
+      {
+        "code": "688041",
+        "name": "海光信息",
+        "segment": "CPU设计",
+        "role": "X86授权龙头",
+        "moat": "授权生态与性能"
+      },
+      {
+        "code": "688047",
+        "name": "龙芯中科",
+        "segment": "CPU设计",
+        "role": "自主指令集先行者",
+        "moat": "全自主架构"
+      },
+      {
+        "code": "688981",
+        "name": "中芯国际",
+        "segment": "晶圆代工",
+        "role": "国内先进制程龙头",
+        "moat": "产能规模"
+      },
+      {
+        "code": "002371",
+        "name": "北方华创",
+        "segment": "半导体设备",
+        "role": "综合设备平台",
+        "moat": "刻蚀/薄膜/清洗平台化"
+      },
+      {
+        "code": "688012",
+        "name": "中微公司",
+        "segment": "刻蚀设备",
+        "role": "介质刻蚀龙头",
+        "moat": "技术垄断"
+      },
+      {
+        "code": "688126",
+        "name": "沪硅产业",
+        "segment": "大硅片",
+        "role": "12英寸硅片龙头",
+        "moat": "产能领先"
+      }
+    ],
+    "supply_chain_map": [
+      {
+        "level": 1,
+        "name": "CPU设计架构与IP",
+        "bottleneck": "X86授权锁定代际，自主指令集生态薄弱",
+        "assets": [
+          {
+            "code": "688041",
+            "name": "海光信息",
+            "role": "X86授权CPU设计"
+          },
+          {
+            "code": "688047",
+            "name": "龙芯中科",
+            "role": "自主指令集CPU设计"
+          }
+        ]
+      },
+      {
+        "level": 2,
+        "name": "先进晶圆制造",
+        "bottleneck": "7nm及以下先进制程产能与良率不足",
+        "assets": [
+          {
+            "code": "688981",
+            "name": "中芯国际",
+            "role": "先进制程代工"
+          },
+          {
+            "code": "688347",
+            "name": "华虹公司",
+            "role": "特色工艺代工"
+          }
+        ]
+      },
+      {
+        "level": 3,
+        "name": "核心半导体设备",
+        "bottleneck": "光刻机、离子注入机、涂胶显影等关键设备国产化率极低",
+        "assets": [
+          {
+            "code": "002371",
+            "name": "北方华创",
+            "role": "刻蚀/薄膜/清洗综合平台"
+          },
+          {
+            "code": "688012",
+            "name": "中微公司",
+            "role": "介质刻蚀/TSV刻蚀龙头"
+          },
+          {
+            "code": "688037",
+            "name": "芯源微",
+            "role": "涂胶显影/去胶设备"
+          },
+          {
+            "code": "600641",
+            "name": "万业企业",
+            "role": "离子注入机(凯世通)"
+          }
+        ]
+      },
+      {
+        "level": 4,
+        "name": "晶圆检测设备",
+        "bottleneck": "前道检测覆盖率20%-30%，仅28nm及以上批量出货",
+        "assets": [
+          {
+            "code": "688361",
+            "name": "中科飞测",
+            "role": "光学检测/量测"
+          },
+          {
+            "code": "300567",
+            "name": "精测电子",
+            "role": "半导体量测检测"
+          }
+        ]
+      },
+      {
+        "level": 5,
+        "name": "关键材料",
+        "bottleneck": "大硅片落地率低，光刻胶等国产化率极低",
+        "assets": [
+          {
+            "code": "688126",
+            "name": "沪硅产业",
+            "role": "12英寸硅片"
+          },
+          {
+            "code": "300666",
+            "name": "江丰电子",
+            "role": "高纯溅射靶材"
+          },
+          {
+            "code": "688019",
+            "name": "安集科技",
+            "role": "CMP抛光液"
+          },
+          {
+            "code": "300346",
+            "name": "南大光电",
+            "role": "ArF光刻胶"
+          }
+        ]
+      }
+    ],
+    "sales_chain": [
+      {
+        "segment": "CPU设计",
+        "companies": [
+          "688041",
+          "688047"
+        ],
+        "reason": "信创及通用服务器CPU采购增加，设计公司订单最先爆发",
+        "lead_months": "1-3"
+      }
+    ],
+    "expansion_chain": [
+      {
+        "segment": "半导体设备与材料",
+        "companies": [
+          "002371",
+          "688012",
+          "688037",
+          "600641",
+          "688361",
+          "688126",
+          "300666",
+          "688019"
+        ],
+        "reason": "代工厂产能利用率提升后启动扩产，设备及材料采购滞后",
+        "lag_months": "6-12"
+      }
+    ],
+    "chain_timeline": {
+      "sales_lead_months": "1-3",
+      "expansion_lag_months": "6-12",
+      "rotation_strategy": "先配CPU设计标的，3-6个月后转配半导体设备及材料标的"
+    },
+    "findings_count": 8,
+    "agent": "SupplyChainHacker",
+    "industry": "CPU",
+    "search_rounds": 3,
+    "second_order_effects": {
+      "crowding_out": [],
+      "io_linkages": [],
+      "byproduct_effects": [],
+      "synthesis": "第二层思维分析暂不可用"
+    }
+  }
+}

@@ -3,6 +3,7 @@ from ..base import BaseIndicator, register
 @register
 class MACDIndicator(BaseIndicator):
     name = "macd"
+    label = "MACD指标"
     category = "trend"
     params = {"fast": 12, "slow": 26, "signal": 9}
     output = ["macd", "macd_signal", "macd_hist"]

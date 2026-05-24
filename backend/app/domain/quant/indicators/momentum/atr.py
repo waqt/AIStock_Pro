@@ -3,6 +3,7 @@ from ..base import BaseIndicator, register
 @register
 class ATRIndicator(BaseIndicator):
     name = "atr"
+    label = "ATR真实波幅"
     category = "momentum"
     params = {"period": 14}
     output = ["atr"]

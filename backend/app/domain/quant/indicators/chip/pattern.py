@@ -1,80 +1,112 @@
-"""筹码形态识别 — 六大形态判定 + 操作信号"""
+"""筹码形态识别 — 单峰/双峰/多峰 + 高低位判定 (对齐行业标准)"""
 from ..base import BaseIndicator, register
 import numpy as np
+import pandas as pd
 
 @register
 class ChipPatternIndicator(BaseIndicator):
     name = "chip_pattern"
+    label = "筹码形态识别"
     category = "chip"
-    params = {"window": 90, "concentration_threshold": 12.0}
-    output = ["chip_pattern", "chip_signal", "chip_pattern_detail"]
-    requires = ["close"]
+    params = {"window": 0, "conc_dense": 0.12, "conc_dispersed": 0.20, "peak_dominance": 0.5}
+    output = ["chip_pattern", "chip_signal"]
+    requires = ["close", "chip_concentration", "chip_peak_price", "chip_peaks", "chip_is_single_peak"]
 
     @classmethod
     def compute(cls, df):
-        """需要依赖 chip_concentration 和 chip_peak_price 的输出。
-        这里只做形态判断逻辑, 数据从 context 传入。
-        """
-        # 此算子需要前置 chip_concentration 和 chip_peak_price 的结果
-        # 实际使用时由 IndicatorLoader 串联调用
-        return {"chip_pattern": "unknown", "chip_signal": "HOLD", "chip_pattern_detail": {}}
+        n = len(df)
+        min_days = 60
+        c_dense = cls.params["conc_dense"]
+        c_dispersed = cls.params["conc_dispersed"]
+        peak_dom = cls.params["peak_dominance"]
 
-    @classmethod
-    def classify(cls, close: float, concentration: float, peaks: list,
-                prev_concentration: float = None, price_change_20d: float = 0) -> dict:
-        """根据筹码集中度 + 峰值 + 价格位置 → 形态判定"""
-        if concentration is None:
-            return {"chip_pattern": "insufficient_data", "chip_signal": "HOLD", "chip_pattern_detail": {}}
+        pattern_series = pd.Series("insufficient_data", index=df.index, dtype=str)
+        signal_series = pd.Series("HOLD", index=df.index, dtype=str)
 
-        pattern = "unknown"
-        signal = "HOLD"
-        detail = {}
+        if n < min_days:
+            return {"chip_pattern": pattern_series, "chip_signal": signal_series}
 
-        # 形态1: 低位单峰密集 — 集中度高, 单峰, 价格在峰值附近
-        if concentration >= 12.0 and len(peaks) == 1:
-            pattern = "低位单峰密集"
-            signal = "BUY"
-            detail = {"meaning": "主力吸筹完毕, 筹码锁定度高", "action": "高配/买入"}
+        conc_col = df["chip_concentration"].values
+        peak_price_col = df["chip_peak_price"].values
+        peaks_col = df["chip_peaks"].values
+        is_single_col = df["chip_is_single_peak"].values
+        close = df["close"].values
+        high = df["high"].values
+        low = df["low"].values
 
-        # 形态2: 洗盘回归密集 — 集中度高, 价格回调<20%
-        elif concentration >= 10.0 and len(peaks) == 1 and price_change_20d < 0 and price_change_20d > -20:
-            pattern = "洗盘回归密集"
-            signal = "BUY"
-            detail = {"meaning": "主力拉升后洗盘, 底部筹码未动", "action": "加仓"}
+        for i in range(min_days, n):
+            conc = conc_col[i]
+            if conc is None or (isinstance(conc, float) and pd.isna(conc)):
+                continue
 
-        # 形态3: 多峰密集上行 — 多峰, 仍有底部峰
-        elif 8.0 <= concentration < 12.0 and len(peaks) >= 2:
-            pattern = "多峰密集上行"
-            signal = "BUY"
-            detail = {"meaning": "趋势拉升, 筹码滚雪球式换手", "action": "持有, 上调止损"}
+            conc = float(conc)
+            cl = float(close[i])
+            pk = float(peak_price_col[i]) if peak_price_col[i] is not None and not (isinstance(peak_price_col[i], float) and pd.isna(peak_price_col[i])) else cl
 
-        # 形态4: 向上突破高位密集 — 价格高于峰值, 放量
-        elif concentration >= 8.0 and close > peaks[0] if peaks else False:
-            pattern = "向上突破高位密集"
-            signal = "BUY"
-            detail = {"meaning": "突破高位筹码密集区", "action": "逐步减仓, 若换手率过高撤离"}
+            peaks_val = peaks_col[i]
+            peaks = peaks_val if isinstance(peaks_val, list) else []
+            n_peaks = len(peaks)
 
-        # 形态5: 上峰消失, 高位分散 — 集中度低, 多峰在高位
-        elif concentration < 8.0 and len(peaks) >= 2:
-            if prev_concentration and concentration < prev_concentration * 0.7:
-                pattern = "上峰消失高位分散"
-                signal = "SELL"
-                detail = {"meaning": "主力已彻底派发, 散户站岗", "action": "强制清仓"}
+            # 250日价格区间分位
+            price_250_low = float(np.min(low[max(0, i-250):i+1])) if i >= 50 else float(np.min(low[:i+1]))
+            price_250_high = float(np.max(high[max(0, i-250):i+1])) if i >= 50 else float(np.max(high[:i+1]))
+            price_range = price_250_high - price_250_low if price_250_high > price_250_low else 1.0
+            peak_pct = (pk - price_250_low) / price_range  # 峰值在250日区间的分位(0~1)
 
-        # 形态6: 缺失筹码(跳空缺口) — 急涨急跌
-        elif concentration < 5.0:
-            pattern = "筹码分散"
+            pattern = "多峰密集"
             signal = "HOLD"
-            detail = {"meaning": "筹码不集中, 无明显主力迹象", "action": "观望"}
 
-        # 低集中度
-        if concentration < 5.0 and prev_concentration and prev_concentration > 8.0:
-            pattern = "上峰消失高位分散"
-            signal = "SELL"
-            detail = {"meaning": "筹码从集中变分散, 主力出货", "action": "强制清仓"}
+            if conc <= c_dense and n_peaks == 1:
+                # 单峰密集: 高位 or 低位
+                if peak_pct <= 0.35:
+                    pattern = "低位单峰密集"
+                    signal = "BUY"
+                elif peak_pct >= 0.65:
+                    pattern = "高位单峰密集"
+                    signal = "SELL"
+                else:
+                    pattern = "单峰密集"
+                    signal = "HOLD"
 
-        return {
-            "chip_pattern": pattern,
-            "chip_signal": signal,
-            "chip_pattern_detail": detail,
-        }
+            elif conc <= c_dispersed and n_peaks >= 2:
+                # 双峰或多峰: 判断价格靠近哪个峰
+                if n_peaks == 2:
+                    p1, p2 = peaks[0], peaks[1]
+                    d1, d2 = abs(cl - p1), abs(cl - p2)
+                    if d1 < d2:
+                        pattern = "双峰密集(近下峰)"
+                        signal = "BUY" if cl < p2 * 1.05 else "HOLD"
+                    else:
+                        pattern = "双峰密集(近上峰)"
+                        signal = "SELL" if cl > p1 * 0.95 else "HOLD"
+                else:
+                    # 多峰 (>2): 找最近的两个主峰
+                    sorted_peaks = sorted(peaks, key=lambda p: abs(cl - p))
+                    nearest = sorted_peaks[:2]
+                    if len(nearest) == 2 and abs(nearest[0] - nearest[1]) > price_range * 0.03:
+                        p_low = min(nearest)
+                        p_high = max(nearest)
+                        d_low, d_high = abs(cl - p_low), abs(cl - p_high)
+                        if d_low < d_high:
+                            pattern = "双峰密集(近下峰)"
+                            signal = "BUY"
+                        else:
+                            pattern = "双峰密集(近上峰)"
+                            signal = "SELL"
+                    else:
+                        pattern = "多峰密集"
+                        signal = "HOLD"
+
+            elif conc > c_dispersed:
+                # 筹码发散
+                pattern = "多峰密集"
+                signal = "HOLD"
+
+            if n_peaks == 0:
+                pattern = "筹码分散"
+                signal = "HOLD"
+
+            pattern_series.iloc[i] = pattern
+            signal_series.iloc[i] = signal
+
+        return {"chip_pattern": pattern_series, "chip_signal": signal_series}

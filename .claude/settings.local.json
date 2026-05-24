@@ -1,26 +1,4 @@
 {
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "if [ \"${CLAUDE_TOOL_USE_FILE_PATH: -3}\" = \".py\" ]; then cd E:/workspace/AIResearch/AIStock_Pro/backend && D:/develop_env/python_related/anaconda/Anaconda3/envs/aiteacher/python.exe -m py_compile \"${CLAUDE_TOOL_USE_FILE_PATH}\" 2>&1 | head -3; fi"
-          }
-        ]
-      },
-      {
-        "matcher": "Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "if [ \"${CLAUDE_TOOL_USE_FILE_PATH: -3}\" = \".py\" ]; then cd E:/workspace/AIResearch/AIStock_Pro/backend && D:/develop_env/python_related/anaconda/Anaconda3/envs/aiteacher/python.exe -m py_compile \"${CLAUDE_TOOL_USE_FILE_PATH}\" 2>&1 | head -3; fi"
-          }
-        ]
-      }
-    ]
-  },
   "permissions": {
     "allow": [
       "Bash(Get-ChildItem -Path \"E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\" -Depth 1)",
@@ -102,7 +80,146 @@
       "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f'Positions: {len\\(d\\)}'\\)\")",
       "Bash(curl -s -X POST \"http://127.0.0.1:8000/api/quant/indicators/compute/688012\" --max-time 30)",
       "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\)['data']; print\\(f'computed: {d[\\\\\"computed\\\\\"]} indicators'\\); print\\('names:', d.get\\('indicators',[]\\)[:10]\\)\")",
-      "Bash(curl -s -X POST http://127.0.0.1:8000/api/quant/decide/688012 --max-time 90)"
+      "Bash(curl -s -X POST http://127.0.0.1:8000/api/quant/decide/688012 --max-time 90)",
+      "Bash(curl -s -X POST \"http://127.0.0.1:8000/api/data/portfolio/snapshot\" --max-time 15)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d,indent=2,ensure_ascii=False\\)\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f'count={d.get\\(\\\\\"count\\\\\",\\\\\"err\\\\\"\\)} daily={d.get\\(\\\\\"daily_profit_loss\\\\\",\\\\\"err\\\\\"\\)} cum={d.get\\(\\\\\"cumulative_profit_loss\\\\\",\\\\\"err\\\\\"\\)} mv={d.get\\(\\\\\"total_market_value\\\\\",\\\\\"err\\\\\"\\)}'\\) if d.get\\('success'\\) else print\\(d.get\\('detail','error'\\)\\)\")",
+      "Bash(curl -s -X POST \"http://127.0.0.1:8000/api/data/macro/sync?mode=daily\" --max-time 15)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('synced:', list\\(d.get\\('data',{}\\).keys\\(\\)\\)\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('OK:', list\\(d.get\\('data',{}\\).keys\\(\\)\\) if d.get\\('success'\\) else d.get\\('detail','error'\\)\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); r=d.get\\('data',{}\\); print\\('OK:', sorted\\(list\\(r.keys\\(\\)\\)\\)\\)\")",
+      "Bash(curl -s \"http://127.0.0.1:8000/api/data/macro/history?code=US10YT&days=30\" --max-time 10)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); data=d['data']; print\\(f'US10YT history: {len\\(data\\)} points, latest: {data[-1][\\\\\"date\\\\\"]} = {data[-1][\\\\\"value\\\\\"]}'\\)\")",
+      "Bash(curl -s \"http://127.0.0.1:8000/api/data/macro/history?code=US10YT\" --max-time 10)",
+      "Bash(curl -s \"http://127.0.0.1:8000/api/data/macro/history?code=US10YT&days=5\" --max-time 10)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\)['data']; print\\(f'Points: {len\\(d\\)}'\\); [print\\(f'  {p[\\\\\"date\\\\\"]}: {p[\\\\\"value\\\\\"]}'\\) for p in d[-3:]] if d else print\\('Empty'\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\)['data']; print\\(f'Points: {len\\(d\\)}'\\); [print\\(f'  {p[\\\\\"date\\\\\"]}: {p[\\\\\"value\\\\\"]}'\\) for p in d[-3:]] if d else print\\('Empty - needs sync first'\\)\")",
+      "Bash(curl -s -X POST \"http://127.0.0.1:8000/api/data/macro/sync?mode=daily\" --max-time 60)",
+      "Bash(curl -s \"http://127.0.0.1:8000/api/data/macro/history?code=US10YT&days=3\" --max-time 10)",
+      "Bash(curl -s 'http://127.0.0.1:8000/api/data/macro/history?code=__TRACKED_VAR__&days=3' --max-time 5)",
+      "WebFetch(domain:example.com)",
+      "Bash(npm install *)",
+      "Bash(curl -s \"http://127.0.0.1:8000/api/data/daily/688256?limit=5\" --max-time 10)",
+      "Bash(curl -s \"http://127.0.0.1:8000/api/data/health/stocks\" --max-time 10)",
+      "Bash(python -c \"import sys,json; stocks=json.load\\(sys.stdin\\); codes=[s['stock_code'] for s in stocks]; print\\('Available stock codes:', codes\\)\")",
+      "Bash(curl -s \"http://127.0.0.1:8000/api/data/daily/688012?limit=5\" --max-time 10)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f'Records: {len\\(d\\)}'\\)\")",
+      "Bash(curl -s -X POST \"http://127.0.0.1:8000/api/data/sync/daily/688256?mode=daily\" --max-time 30)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d, ensure_ascii=False\\)\\)\")",
+      "Bash(curl -s \"http://127.0.0.1:8000/api/data/daily/688256?limit=3\" --max-time 10)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f'Records: {len\\(d\\)}'\\) if isinstance\\(d,list\\) else print\\('Not a list:', str\\(d\\)[:100]\\)\")",
+      "PowerShell(& 'D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe' -c \"import tushare; print\\('tushare version:', tushare.__version__\\)\")",
+      "PowerShell(& 'D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe' E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\backend\\\\temp_lab\\\\test_wl_sync.py 2>&1)",
+      "Bash(curl -s \"http://127.0.0.1:8000/api/data/macro/latest\" --max-time 10)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('success:', d.get\\('success'\\), 'items:', len\\(d.get\\('data',[]\\)\\)\\)\")",
+      "Bash(Select-String -Pattern \"catch|Fundamentals|Quick actions\" -Context 1,1)",
+      "Bash(node *)",
+      "Bash(python -c \"import sys; sys.path.insert\\(0,'.'\\); from app.domain.quant.api.indicators import router; print\\('indicators.py OK'\\)\")",
+      "Bash(python -c \"import sys; sys.path.insert\\(0,'.'\\); import py_compile; py_compile.compile\\('app/api/data.py', doraise=True\\); print\\('data.py compiles OK'\\)\")",
+      "Bash(curl -s http://127.0.0.1:8000/api/data/alt/crowding/watchlist?days=30)",
+      "Bash(curl -s http://127.0.0.1:8000/api/data/alt/crowding/industry?days=30)",
+      "Bash(curl -s \"http://127.0.0.1:8000/api/data/alt/overview\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('chip count:', len\\(d['data']['chip']\\)\\); [print\\(c['code'], c.get\\('concentration'\\), c.get\\('pattern'\\), c.get\\('peak'\\)\\) for c in d['data']['chip'][:5]]\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); c=d['data']['chip']; print\\('chip:', len\\(c\\), 'stocks'\\); [print\\('  '+x['code'], x.get\\('name',''\\), 'conc='+str\\(x.get\\('concentration'\\)\\), 'pattern='+str\\(x.get\\('pattern'\\)\\)\\) for x in c]; print\\('crowding:', len\\(d['data']['crowding']\\), 'stocks'\\)\")",
+      "Bash(python -m py_compile backend/app/domain/quant/engine/indicator_runner.py)",
+      "Bash(python -m py_compile \"E:/workspace/AIResearch/AIStock_Pro/backend/app/domain/quant/engine/indicator_runner.py\")",
+      "Bash(curl -s -X POST \"http://127.0.0.1:8000/api/quant/indicators/compute/688072?mode=snapshot\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('computed:', d.get\\('data',{}\\).get\\('computed'\\), 'indicators'\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); c=[x for x in d['data']['chip'] if x['code']=='688072']; print\\('688072 pattern:', c[0]['pattern'] if c else 'NOT FOUND'\\)\")",
+      "Bash(curl -s \"http://127.0.0.1:8000/api/quant/indicators/registry\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); reg=d.get\\('data',{}\\); chip=[k for k in reg.keys\\(\\) if 'chip' in k]; print\\('Chip indicators:', chip if chip else 'NONE FOUND'\\)\")",
+      "Bash(python -m py_compile \"E:/workspace/AIResearch/AIStock_Pro/backend/app/domain/quant/api/indicators.py\")",
+      "Bash(curl -s \"http://127.0.0.1:8000/api/quant/indicators/688072\")",
+      "Bash(curl -s \"http://127.0.0.1:8000/api/quant/indicators/603773\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); ind=d.get\\('data',{}\\).get\\('indicators',{}\\); print\\('chip_pattern:', ind.get\\('chip_pattern','?'\\), '| chip_concentration:', ind.get\\('chip_concentration','?'\\), '| chip_peaks:', ind.get\\('chip_peaks','?'\\), '| price:', ind.get\\('price','?'\\)\\)\")",
+      "Bash(curl -s \"http://127.0.0.1:8000/api/quant/indicators/coverage\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\)['data']; stocks=[x for x in d['details'] if x['indicator_days']>0][:3]; [print\\(f'{s[\\\\\"code\\\\\"]} {s[\\\\\"name\\\\\"]}: days={s[\\\\\"indicator_days\\\\\"]} missing={s[\\\\\"missing_indicators\\\\\"]}'\\) for s in stocks]\")",
+      "Bash(python -c \"import sys,json; print\\('Server OK:', len\\(json.load\\(sys.stdin\\)['data']\\), 'indicators'\\)\")",
+      "Bash(curl -s \"http://127.0.0.1:8000/api/quant/indicators/002409\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); data=d.get\\('data'\\); print\\('Has data:', data is not None\\); if data: ind=data.get\\('indicators',{}\\); print\\('chip_pattern:', ind.get\\('chip_pattern','?'\\)\\); print\\('chip_concentration:', ind.get\\('chip_concentration','?'\\)\\); print\\('chip_peak_price:', ind.get\\('chip_peak_price','?'\\)\\); print\\('chip_peaks:', ind.get\\('chip_peaks','?'\\)\\); print\\('price:', ind.get\\('price','?'\\)\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); data=d.get\\('data'\\); has= data is not None; print\\('Has data:', has\\); ind=data.get\\('indicators',{}\\) if data else {}; print\\('pattern:', ind.get\\('chip_pattern','?'\\)\\); print\\('conc:', ind.get\\('chip_concentration','?'\\)\\); print\\('peaks:', ind.get\\('chip_peaks','?'\\)\\); print\\('price:', ind.get\\('price','?'\\)\\)\")",
+      "Bash(python -m py_compile \"E:/workspace/AIResearch/AIStock_Pro/backend/app/domain/quant/indicators/chip/pattern.py\")",
+      "Bash(python -c \"import sys,json; print\\(json.load\\(sys.stdin\\).get\\('data',{}\\).get\\('computed','?'\\), 'indicators computed'\\)\")",
+      "Bash(curl -s \"http://127.0.0.1:8000/api/data/health/overview\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\)['data']; total_days=sum\\(x['indicator_days'] for x in d['details']\\); print\\(f'Stocks: {d[\\\\\"total_stocks\\\\\"]} | Total indicator rows: {total_days} | Has zero days: {sum\\(1 for x in d[\\\\\"details\\\\\"] if x[\\\\\"indicator_days\\\\\"]==0\\)} missing'\\)\")",
+      "Bash(curl -s -X POST \"http://127.0.0.1:8000/api/quant/indicators/compute/603773?mode=snapshot\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('OK:', d.get\\('data',{}\\).get\\('computed','?'\\)\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); ind=d['data']['indicators']; print\\('pattern:', ind.get\\('chip_pattern'\\)\\); print\\('signal:', ind.get\\('chip_signal'\\)\\); print\\('conc:', ind.get\\('chip_concentration'\\)\\); print\\('peaks:', ind.get\\('chip_peaks'\\)\\)\")",
+      "Bash(python -m py_compile \"E:/workspace/AIResearch/AIStock_Pro/backend/app/domain/quant/engine/indicator_store.py\")",
+      "Bash(python -m py_compile \"E:/workspace/AIResearch/AIStock_Pro/backend/app/api/data.py\")",
+      "Bash(curl -s -X POST \"http://127.0.0.1:8000/api/quant/indicators/compute/603773?mode=historical\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('days:', d.get\\('data',{}\\).get\\('days_computed','?'\\)\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); ind=d['data']['indicators']; print\\('pattern:', ind.get\\('chip_pattern'\\)\\); print\\('conc:', ind.get\\('chip_concentration'\\)\\); print\\('crowding:', ind.get\\('crowding_ratio'\\)\\); print\\('ma5:', ind.get\\('ma5'\\)\\); print\\('rsi:', ind.get\\('rsi'\\)\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\)['data']; print\\('Chip:', len\\(d['chip']\\), 'Crowd:', len\\(d['crowding']\\)\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\)['data']; zero=[x for x in d['details'] if x['indicator_days']==0]; print\\('Zero days:'\\); [print\\(f'  {x[\\\\\"code\\\\\"]} {x[\\\\\"name\\\\\"]}: md={x[\\\\\"has_market_data\\\\\"]}'\\) for x in zero]; has=[x for x in d['details'] if x['indicator_days']>0]; print\\(f'\\\\nWith data: {len\\(has\\)} stocks, avg days: {sum\\(x[\\\\\"indicator_days\\\\\"] for x in has\\)//max\\(len\\(has\\),1\\)}'\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\)['data']; zero=[x for x in d['details'] if x['indicator_days']==0]; [print\\(f'{x[\\\\\"code\\\\\"]} {x[\\\\\"name\\\\\"]} md_last={x[\\\\\"md_last_date\\\\\"]}'\\) for x in zero]\")",
+      "Bash(python *)",
+      "Bash(findstr /v \"Cryptography pymysql Exception Traceback File RuntimeError ignored\")",
+      "Bash(findstr /V \"Cryptography pymysql\")",
+      "Bash(D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe *)",
+      "Bash(\"D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe\" -m pip install numba -q)",
+      "Bash(\"D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe\" -m py_compile \"E:/workspace/AIResearch/AIStock_Pro/backend/app/domain/quant/indicators/chip/concentration.py\")",
+      "Bash(\"D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe\" -m py_compile \"E:/workspace/AIResearch/AIStock_Pro/backend/app/domain/quant/indicators/chip/peak_price.py\")",
+      "Bash(\"D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe\" -m py_compile \"E:/workspace/AIResearch/AIStock_Pro/backend/app/main.py\")",
+      "Bash(\"D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe\" -m py_compile \"E:/workspace/AIResearch/AIStock_Pro/backend/app/domain/quant/tasks.py\")",
+      "Bash(\"D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe\" -m py_compile \"E:/workspace/AIResearch/AIStock_Pro/backend/app/domain/portfolio/services/ai_import.py\")",
+      "Bash(\"D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe\" -m py_compile \"E:/workspace/AIResearch/AIStock_Pro/backend/app/models/models.py\")",
+      "Bash(git -C \"E:/workspace/AIResearch/AIStock_Pro\" status --short)",
+      "Bash(Get-Content *)",
+      "Bash(Find \"E:/workspace/AIResearch/AIStock_Pro/docs\" -type f -name \"*.md\")",
+      "Bash(Sort-Object)",
+      "WebFetch(domain:zhuanlan.zhihu.com)",
+      "WebFetch(domain:www.toutiao.com)",
+      "Bash(curl -s -X POST \"http://127.0.0.1:8000/api/research/supply-chain-hacker\" -H \"Content-Type: application/json\" -d @- -o \"E:/workspace/AIResearch/AIStock_Pro/backend/temp_lab/sofc_supply_chain.json\")",
+      "Bash(curl -s http://127.0.0.1:8000/api/data/health/__TRACKED_VAR__)",
+      "Bash(curl -s -X POST http://127.0.0.1:8000/api/data/watchlist/add?stock_code=__TRACKED_VAR__)",
+      "Bash(curl -s -X POST http://127.0.0.1:8000/api/data/financial/sync/__TRACKED_VAR__)",
+      "Bash(curl -s -X POST \"http://127.0.0.1:8000/api/research/analyze-v4\" -H \"Content-Type: application/json\" -d @-)",
+      "Bash(curl -s -X POST \"http://127.0.0.1:8000/api/research/analyze-v4\" -H \"Content-Type: application/json\" -d @- -o \"E:/workspace/AIResearch/AIStock_Pro/backend/temp_lab/sofc_dag_full.json\")",
+      "Bash(curl -s -X POST \"http://127.0.0.1:8000/api/research/analyze-v4\" -H \"Content-Type: application/json\" -d @- -o \"E:/workspace/AIResearch/AIStock_Pro/backend/temp_lab/sofc_investor.json\")",
+      "Bash(curl -s -X POST \"http://127.0.0.1:8000/api/research/analyze-v4\" -H \"Content-Type: application/json\" -d @- -o \"E:/workspace/AIResearch/AIStock_Pro/backend/temp_lab/sofc_final.json\")",
+      "Bash(curl -s -X POST \"http://127.0.0.1:8000/api/research/analyze-v4\" -H \"Content-Type: application/json\" -d @- -o \"E:/workspace/AIResearch/AIStock_Pro/backend/temp_lab/sofc_final2.json\")",
+      "Bash(curl -s -X POST \"http://127.0.0.1:8000/api/research/analyze-v4?skip_phase1=true\" -H \"Content-Type: application/json\" -d @-)",
+      "Bash(taskkill /F /IM python.exe)",
+      "Bash(start \"\" \"E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\run_backend.bat\")",
+      "Bash(curl -s http://127.0.0.1:8000/api/data/health/overview)",
+      "Bash(curl -s -X POST \"http://127.0.0.1:8000/api/research/analyze-v4?skip_phase1=true\" -H \"Content-Type: application/json\" -d @- -o \"E:/workspace/AIResearch/AIStock_Pro/backend/temp_lab/sofc_mvp.json\")",
+      "Bash(git -C \"E:/workspace/AIResearch/AIStock_Pro\" diff \"backend/app/domain/research/agents/dag_orchestrator.py\")",
+      "Bash(git -C \"E:/workspace/AIResearch/AIStock_Pro\" checkout -- \"backend/app/domain/research/agents/dag_orchestrator.py\")",
+      "Bash(curl -s -X POST \"http://127.0.0.1:8000/api/research/analyze-v4?skip_phase1=true\" -H \"Content-Type: application/json\" -d '{\"industry\":\"SOFC\",\"include_portfolio\":false}')",
+      "Bash(time echo '{\"question\":\"全球高景气赛道\"}')",
+      "Bash(curl -s -X POST \"http://127.0.0.1:8000/api/research/scan\" -H \"Content-Type: application/json\" -d @-)",
+      "Bash(curl -s -X POST \"http://127.0.0.1:8000/api/research/reports/20260524_134425_产业链穿透_CPU/regenerate\")",
+      "Bash(curl -s -w \"\\\\nHTTP %{http_code}\" -X POST \"http://127.0.0.1:8000/api/research/reports/20260524_134425_产业链穿透_CPU/regenerate\")",
+      "Bash(git add *)",
+      "Bash(git commit --no-verify -m 'chore: cleanup temp_lab, add tomorrow plan + directory structure spec *)",
+      "Bash(cp \"E:/workspace/AIResearch/AIStock_Pro/backend/temp_lab/SOFC_phase\"* \"E:/workspace/AIResearch/AIStock_Pro/temp_lab/pipeline_cache/\")",
+      "Bash(cp \"E:/workspace/AIResearch/AIStock_Pro/backend/temp_lab/CPU_phase\"* \"E:/workspace/AIResearch/AIStock_Pro/temp_lab/pipeline_cache/\")",
+      "Bash(cp \"E:/workspace/AIResearch/AIStock_Pro/backend/temp_lab/chip_\"*\".png\" \"E:/workspace/AIResearch/AIStock_Pro/temp_lab/chip_charts/\")",
+      "Bash(cp \"E:/workspace/AIResearch/AIStock_Pro/backend/temp_lab/\"*\"phase\"*\".json\" \"E:/workspace/AIResearch/AIStock_Pro/temp_lab/pipeline_cache/\")",
+      "Bash(git commit --no-verify -m 'chore: consolidate to single temp_lab/ directory, delete backend/temp_lab/ *)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ \"${CLAUDE_TOOL_USE_FILE_PATH: -3}\" = \".py\" ]; then cd E:/workspace/AIResearch/AIStock_Pro/backend && D:/develop_env/python_related/anaconda/Anaconda3/envs/aiteacher/python.exe -m py_compile \"${CLAUDE_TOOL_USE_FILE_PATH}\" 2>&1 | head -3; fi"
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ \"${CLAUDE_TOOL_USE_FILE_PATH: -3}\" = \".py\" ]; then cd E:/workspace/AIResearch/AIStock_Pro/backend && D:/develop_env/python_related/anaconda/Anaconda3/envs/aiteacher/python.exe -m py_compile \"${CLAUDE_TOOL_USE_FILE_PATH}\" 2>&1 | head -3; fi"
+          }
+        ]
+      }
     ]
   }
 }

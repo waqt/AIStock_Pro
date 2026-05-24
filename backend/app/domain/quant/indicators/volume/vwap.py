@@ -3,6 +3,7 @@ from ..base import BaseIndicator, register
 @register
 class VWAPIndicator(BaseIndicator):
     name = "vwap"
+    label = "VWAP均价"
     category = "volume"
     params = {}
     output = ["vwap"]

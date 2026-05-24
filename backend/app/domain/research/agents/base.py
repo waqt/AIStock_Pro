@@ -87,33 +87,45 @@ class ResearchAgent(BaseAgent):
             m = re.search(r'```(?:json)?\s*([\s\S]*?)```', text)
             if m:
                 text = m.group(1).strip()
-        if text.startswith('{'):
-            depth = 0
+        # 括号计数截断 + 自动补全
+        if text.startswith('{') or text.startswith('['):
+            brace_depth = 0
+            bracket_depth = 0
+            in_string = False
             end = 0
             for i, ch in enumerate(text):
-                if ch == '{':
-                    depth += 1
-                elif ch == '}':
-                    depth -= 1
-                    if depth == 0:
-                        end = i + 1
-                        break
+                if ch == '"' and (i == 0 or text[i-1] != '\\'):
+                    in_string = not in_string
+                if not in_string:
+                    if ch == '{': brace_depth += 1
+                    elif ch == '}': brace_depth -= 1
+                    elif ch == '[': bracket_depth += 1
+                    elif ch == ']': bracket_depth -= 1
+                if brace_depth == 0 and bracket_depth == 0:
+                    end = i + 1
             if end > 0:
                 text = text[:end]
-        elif text.startswith('['):
-            depth = 0
-            end = 0
-            for i, ch in enumerate(text):
-                if ch == '[':
-                    depth += 1
-                elif ch == ']':
-                    depth -= 1
-                    if depth == 0:
-                        end = i + 1
-                        break
-            if end > 0:
-                text = text[:end]
+            elif brace_depth > 0 or bracket_depth > 0:
+                # 截断了: 自动补闭合括号
+                text = text.rstrip(',\n')
+                if bracket_depth > 0:
+                    text += ']' * bracket_depth
+                if brace_depth > 0:
+                    text += '}' * brace_depth
         try:
             return json.loads(text)
         except json.JSONDecodeError:
-            return {"raw_text": text[:800]}
+            # 常见 LLM JSON 错误修复
+            fixed = text
+            # 1. 去除尾部逗号
+            fixed = re.sub(r',\s*([}\]])', r'\1', fixed)
+            # 2. 修复字符串值内的换行 (LLM 常在长文本中换行)
+            fixed = re.sub(r'(?<=": )"([^"]*\n[^"]*)"', lambda m: '"' + m.group(1).replace('\n', '\\n') + '"', fixed)
+            # 3. 去除控制字符 (除了 \n \t)
+            fixed = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', fixed)
+            # 4. 尾部清理
+            fixed = fixed.strip().rstrip(',')
+            try:
+                return json.loads(fixed)
+            except json.JSONDecodeError:
+                return {"raw_text": text[:800], "parse_error": True}

@@ -1,5 +1,5 @@
 """投研分析 API"""
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 from datetime import datetime
@@ -14,6 +14,7 @@ from app.domain.research.agents.human_capital_detective import HumanCapitalDetec
 from app.domain.research.agents.global_capex_scanner import GlobalCapexScanner
 from app.domain.research.agents.dag_orchestrator import DAGOrchestrator
 from app.domain.research.agents.market_scanner import MarketScanner
+from app.domain.research.pipelines import PIPELINES
 from app.domain.research.services.data_loader import data_loader
 from app.domain.research.services.report_store import save_report, list_reports, get_report, delete_report
 from app.framework.logger import logger
@@ -26,6 +27,7 @@ class ResearchRequest(BaseModel):
     stock_codes: List[str] = []
     industry: Optional[str] = None
     include_portfolio: bool = True
+    analysis_type: Optional[str] = None  # supply_chain | macro_cycle | founder_audit | valuation_scan
 
 
 # ── 初始化协调器 ───────────────────
@@ -41,26 +43,104 @@ def _get_coordinator():
 
 # ── 端点 ────────────────────────────
 
-@router.post("/analyze-v4")
-async def research_analyze_v4(req: ResearchRequest):
-    """V4.0 DAG 编排 — 5专家并行管道, 完整投研报告"""
-    try:
-        from app.framework.ai.providers.deepseek import DeepSeekProvider
-        provider = DeepSeekProvider()
-        orchestrator = DAGOrchestrator(provider=provider)
-        context = {"question": req.question, "stock_codes": req.stock_codes,
-                   "industry": req.industry or req.question, "include_portfolio": req.include_portfolio}
-        result = await orchestrator.analyze(context)
-        save_report("DAGOrchestrator", req.industry or req.question, result)
-        return {"success": True, "data": result, "freshness": ResearchAgent.freshness_stamp()}
-    except Exception as e:
-        logger.error(f"[❌] DAG pipeline failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+@router.get("/analysts")
+async def list_analysts():
+    """列出所有可用的投研分析师类型"""
+    result = []
+    for name, info in PIPELINES.items():
+        result.append({"type": name, "label": info["label"], "description": info["description"]})
+    return {"success": True, "data": result}
 
 
 @router.post("/analyze")
 async def research_analyze(req: ResearchRequest):
-    """V3.0 多智能体联合投研分析 (同步, 向后兼容)"""
+    """统一投研入口 — 根据 analysis_type 选择 Pipeline"""
+    from app.framework.ai.providers.deepseek import DeepSeekProvider
+    provider = DeepSeekProvider()
+    pipe_type = req.analysis_type or "supply_chain"
+    pipeline = PIPELINES.get(pipe_type)
+    if not pipeline:
+        raise HTTPException(status_code=400, detail=f"Unknown analysis type: {pipe_type}")
+    logger.info(f"[Analyze] Pipeline: {pipe_type} ({pipeline['label']}), industry={req.industry or req.question}")
+    result = await pipeline["func"](industry=req.industry or req.question, provider=provider,
+        params={"stock_codes": req.stock_codes, "include_portfolio": req.include_portfolio})
+    save_report(pipeline["label"], req.industry or req.question, result)
+    return {"success": True, "data": result, "freshness": ResearchAgent.freshness_stamp()}
+
+
+@router.post("/analyze-v4")
+async def research_analyze_v4(req: ResearchRequest, skip_phase1: bool = Query(False)):
+    """V4.0 DAG 编排 — 分阶段执行, 支持断点续跑。
+    skip_phase1=true → 读已有 Phase1 文件, 只重跑 Phase2 (审计+定价+报告)。适合修复审计/定价 bug 后快速验证。"""
+    import os, json as _json, time as _time
+    from app.framework.ai.providers.deepseek import DeepSeekProvider
+    industry = req.industry or req.question
+    slug = industry.replace(" ", "_")[:20]
+    out_dir = os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "temp_lab")
+    os.makedirs(out_dir, exist_ok=True)
+
+    provider = DeepSeekProvider()
+    t0 = _time.time()
+
+    # ═══ Phase 1: 供应链扫描 → 落盘 ═══
+    sc_path = os.path.join(out_dir, f"{slug}_phase1_sc.json")
+    if skip_phase1 and os.path.exists(sc_path):
+        hacker_result = _json.load(open(sc_path, "r", encoding="utf-8"))
+        logger.info(f"[analyze-v4] Phase1 SKIPPED (loaded from cache): {len(hacker_result.get('core_stocks',[]))} stocks")
+    else:
+        hacker = SupplyChainHacker(provider=provider)
+        hacker_result = await hacker.analyze({
+            "industry": industry, "stock_codes": req.stock_codes,
+            "include_portfolio": False})
+        with open(sc_path, "w", encoding="utf-8") as f:
+            _json.dump(hacker_result, f, ensure_ascii=False, indent=2)
+        logger.info(f"[analyze-v4] Phase1 SC saved ({_time.time()-t0:.0f}s): {len(hacker_result.get('core_stocks',[]))} stocks")
+
+    # ═══ Phase 2: 审计+定价 → 落盘 ═══
+    core_stocks = hacker_result.get("core_stocks", [])
+    codes = [s["code"] for s in core_stocks if s.get("code")]
+    orchestrator = DAGOrchestrator(provider=provider)
+    context = {
+        "question": req.question, "stock_codes": codes, "industry": industry,
+        "include_portfolio": req.include_portfolio,
+        "_supply_chain_prefetched": hacker_result,
+    }
+    dag_result = await orchestrator.analyze(context)
+    dag_path = os.path.join(out_dir, f"{slug}_phase2_dag.json")
+    with open(dag_path, "w", encoding="utf-8") as f:
+        _json.dump(dag_result, f, ensure_ascii=False, indent=2)
+    logger.info(f"[analyze-v4] Phase2 DAG saved ({_time.time()-t0:.0f}s total)")
+
+    # ═══ Phase 3: 组装报告 → 落盘 ═══
+    dag_result["supply_chain"] = hacker_result
+    save_report("DAGOrchestrator", industry, dag_result)
+    return {"success": True, "data": dag_result, "freshness": ResearchAgent.freshness_stamp()}
+
+
+@router.post("/report/{slug}")
+async def regenerate_report(slug: str):
+    """从已保存的 Phase1+Phase2 数据重新生成报告 (不改搜索和审计, 秒级迭代)"""
+    import os, json as _json
+    out_dir = os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "temp_lab")
+    sc_path = os.path.join(out_dir, f"{slug}_phase1_sc.json")
+    dag_path = os.path.join(out_dir, f"{slug}_phase2_dag.json")
+
+    if not os.path.exists(sc_path):
+        raise HTTPException(status_code=404, detail=f"Phase1 not found: {sc_path}")
+    if not os.path.exists(dag_path):
+        raise HTTPException(status_code=404, detail=f"Phase2 not found: {dag_path}")
+
+    hacker = _json.load(open(sc_path, "r", encoding="utf-8"))
+    dag = _json.load(open(dag_path, "r", encoding="utf-8"))
+    dag["supply_chain"] = hacker
+
+    return {"success": True, "data": dag,
+            "note": f"Report from cached data. Edit _synthesize_basic in dag_orchestrator.py and retry this endpoint to iterate on report format."}
+
+
+@router.post("/analyze-v3")
+async def research_analyze_v3(req: ResearchRequest):
+    """V3.0 多智能体联合投研分析 (同步, 向后兼容) — 路径 /analyze-v3"""
     try:
         coordinator = _get_coordinator()
         context = {"question": req.question, "stock_codes": req.stock_codes,
@@ -200,6 +280,31 @@ async def market_scan():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/stocks/batch-info")
+async def batch_stock_info(codes: List[str]):
+    """批量获取股票基本信息 (供投研标的提取面板使用)"""
+    if not codes:
+        return {"success": True, "data": []}
+    from app.framework.database.session import async_session
+    from app.models.models import StockInfo
+    from sqlalchemy import select
+    async with async_session() as db:
+        res = await db.execute(
+            select(StockInfo).where(StockInfo.stock_code.in_(codes[:30])))
+        rows = {r.stock_code: r for r in res.scalars().all()}
+        result = []
+        for code in codes:
+            s = rows.get(code)
+            result.append({
+                "code": code,
+                "name": s.stock_name if s else code,
+                "industry": s.industry if s else None,
+                "pe_ttm": s.pe_ttm if s else None,
+                "mcap_yi": s.mcap_yi if s else None,
+            })
+        return {"success": True, "data": result}
+
+
 @router.get("/data/stock/{code}")
 async def get_stock_data(code: str):
     """获取单只股票的完整投研数据"""
@@ -244,6 +349,49 @@ async def scrape_url(url: str = None, urls: str = None):
     else:
         raise HTTPException(status_code=400, detail="需要 url 或 urls 参数")
     return {"success": True, "data": result}
+
+
+@router.post("/reports/{report_id}/regenerate")
+async def regenerate_report_markdown(report_id: str):
+    """用已存储的结构化数据重新生成完整中文 Markdown 报告。
+    不改供应链扫描和审计数据, 只重跑 _synthesize_basic。
+    适用于历史报告格式迁移或报告模板迭代。
+    """
+    report = get_report(report_id)
+    if not report:
+        raise HTTPException(status_code=404, detail=f"Report {report_id} not found")
+
+    data = report.get("data", {})
+    detail = data.get("detail", {})
+    hacker = detail.get("supply_chain") or data.get("supply_chain", {})
+    capex = detail.get("capex", {})
+    audits = detail.get("audits", [])
+    prices = detail.get("prices", [])
+    industry = report.get("industry", "")
+
+    if not hacker:
+        raise HTTPException(status_code=400, detail="Report has no supply_chain data, cannot regenerate")
+
+    from app.domain.research.agents.dag_orchestrator import DAGOrchestrator
+    orchestrator = DAGOrchestrator(provider=None)  # _synthesize_basic 不需要 provider
+    basic = await orchestrator._synthesize_basic(industry, capex, hacker, audits, prices)
+
+    # 更新报告
+    data["cio_report"] = basic["cio_report"]
+    data["top_picks"] = basic.get("top_picks", data.get("top_picks", []))
+    data["final_summary"] = basic.get("final_summary", "")
+    data["key_risks"] = basic.get("key_risks", [])
+    data["catalysts_to_watch"] = basic.get("catalysts_to_watch", [])
+
+    import os, json as _json
+    from app.domain.research.services.report_store import REPORTS_DIR
+    # 直接覆盖原文件
+    filepath = os.path.join(REPORTS_DIR, f"{report_id}.json")
+    with open(filepath, "w", encoding="utf-8") as f:
+        report["data"] = data
+        _json.dump(report, f, ensure_ascii=False, indent=2, default=str)
+
+    return {"success": True, "message": f"Report {report_id} regenerated", "data": report}
 
 
 @router.delete("/reports/{report_id}")

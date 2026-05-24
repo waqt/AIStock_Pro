@@ -121,19 +121,10 @@ class DecisionCenter:
         )
 
     async def _load_all_indicators(self, stock_code: str) -> dict:
-        from app.framework.database.session import async_session
-        from app.models.models import StockIndicator
-        from sqlalchemy import select
+        from app.domain.quant.engine import indicator_store
         try:
-            async with async_session() as db:
-                res = await db.execute(
-                    select(StockIndicator.data_json)
-                    .where(StockIndicator.stock_code == stock_code)
-                    .order_by(StockIndicator.analysis_date.desc())
-                    .limit(1)
-                )
-                row = res.scalars().first()
-                return row or {}
+            row = indicator_store.get_latest(stock_code)
+            return row or {}
         except Exception:
             return {}
 

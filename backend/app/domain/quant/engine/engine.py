@@ -6,9 +6,7 @@ import asyncio
 
 from app.framework.database.session import async_session
 from app.domain.market_data.sources.router import data_router
-from app.domain.quant.engine.indicators import Indicators
-from app.domain.quant.engine.patterns import Patterns
-from app.models.models import StockIndicator, Position, MarketData, TaskExecution
+from app.models.models import Position, MarketData, TaskExecution
 from app.framework.logger import logger
 from app.framework.tasks.engine import task_manager
 
@@ -91,69 +89,6 @@ class QuantEngine:
             )
             logger.info(f"[+] {stock_code}: synced {len(new_rows)} new daily records")
         return len(new_rows)
-
-    # ═══════════════════════════════════════════
-    # 指标计算
-    # ═══════════════════════════════════════════
-
-    async def calculate_indicators(self, stock_code: str) -> dict:
-        """计算单股全部技术指标并存储"""
-        res = await self.db.execute(
-            select(MarketData)
-            .where(MarketData.stock_code == stock_code)
-            .order_by(MarketData.trade_date.asc())
-        )
-        rows = res.scalars().all()
-        if not rows:
-            return {}
-
-        import pandas as pd
-        df = pd.DataFrame([{
-            'trade_date': r.trade_date,
-            'open': r.open, 'high': r.high, 'low': r.low, 'close': r.close,
-            'volume': r.volume, 'amount': r.amount
-        } for r in rows])
-
-        df = Indicators.calculate_all(df)
-        findings = Patterns.scan(df)
-        latest = df.iloc[-1]
-
-        indicator_snapshot = {
-            "price": float(latest['close']),
-            "ma5": float(latest['ma5']) if pd.notna(latest.get('ma5')) else None,
-            "ma10": float(latest['ma10']) if pd.notna(latest.get('ma10')) else None,
-            "ma20": float(latest['ma20']) if pd.notna(latest.get('ma20')) else None,
-            "ma60": float(latest['ma60']) if pd.notna(latest.get('ma60')) else None,
-            "ma120": float(latest['ma120']) if pd.notna(latest.get('ma120')) else None,
-            "ma250": float(latest['ma250']) if pd.notna(latest.get('ma250')) else None,
-            "rsi": float(latest['rsi']) if pd.notna(latest.get('rsi')) else None,
-            "macd": float(latest['macd']) if pd.notna(latest.get('macd')) else None,
-            "macd_signal": float(latest['macd_signal']) if pd.notna(latest.get('macd_signal')) else None,
-            "macd_hist": float(latest['macd_hist']) if pd.notna(latest.get('macd_hist')) else None,
-            "bb_upper": float(latest['bb_upper']) if pd.notna(latest.get('bb_upper')) else None,
-            "bb_mid": float(latest['bb_mid']) if pd.notna(latest.get('bb_mid')) else None,
-            "bb_lower": float(latest['bb_lower']) if pd.notna(latest.get('bb_lower')) else None,
-            "v_ma5": float(latest['v_ma5']) if pd.notna(latest.get('v_ma5')) else None,
-            "v_ma10": float(latest['v_ma10']) if pd.notna(latest.get('v_ma10')) else None,
-            "v_ma20": float(latest['v_ma20']) if pd.notna(latest.get('v_ma20')) else None,
-        }
-
-        # 覆盖式写入今日指标
-        await self.db.execute(
-            delete(StockIndicator).where(
-                StockIndicator.stock_code == stock_code,
-                StockIndicator.analysis_date == date.today()
-            )
-        )
-        self.db.add(StockIndicator(
-            stock_code=stock_code,
-            indicator_type="FULL_SCAN",
-            data_json=indicator_snapshot,
-            logic_chain={"findings": findings} if findings else None,
-            analysis_date=date.today()
-        ))
-
-        return {"snapshot": indicator_snapshot, "findings": findings}
 
     # ═══════════════════════════════════════════
     # 更新持仓损益
@@ -254,7 +189,29 @@ class QuantEngine:
             from app.domain.market_data.services.valuation import sync_valuation
             val_count = await sync_valuation(target_codes)
             if exec_id:
-                await task_manager.update_progress(exec_id, 100, f"估值同步完成: {val_count}只")
+                await task_manager.update_progress(exec_id, 98, f"估值同步完成: {val_count}只")
+
+            # ── 节点 5: STOCK_INFO ──
+            from app.domain.market_data.services.valuation import sync_stock_info
+            all_codes = list(set(p.stock_code for p in positions))
+            for idx, code in enumerate(all_codes):
+                await asyncio.sleep(0.05)
+                await sync_stock_info(code)
+            if exec_id:
+                await task_manager.update_progress(exec_id, 99, f"行业同步完成: {len(all_codes)}只")
+
+            # ── 节点 6: INDICATORS (可选, target_codes 指定时触发历史回补) ──
+            if target_codes:
+                from app.domain.quant.engine.indicator_runner import IndicatorRunner
+                for code in target_codes:
+                    await asyncio.sleep(0)
+                    try:
+                        r = await IndicatorRunner.compute_historical(code)
+                        logger.info(f"[SyncEngine] {code}: {r.get('days_computed',0)} days indicators")
+                    except Exception as e:
+                        logger.warning(f"[SyncEngine] {code} indicators failed: {e}")
+            if exec_id:
+                await task_manager.update_progress(exec_id, 100, f"同步完成: {len(all_codes)}只")
 
             logger.info("[✅] Batch sync+analyze complete.")
         except asyncio.CancelledError:

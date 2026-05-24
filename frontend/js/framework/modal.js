@@ -102,5 +102,18 @@ const Modal = {
                 ['确认删除', 'btn-modal-danger', () => resolve(true)]
             ]);
         });
+    },
+
+    custom({title, content}) {
+        this._ensureDOM();
+        document.getElementById('dark-modal-title').textContent = title;
+        document.getElementById('dark-modal-body').innerHTML = content;
+        document.getElementById('dark-modal-actions').innerHTML = '';
+        document.getElementById('dark-modal-overlay').classList.add('open');
+    },
+
+    close() {
+        var overlay = document.getElementById('dark-modal-overlay');
+        if (overlay) overlay.classList.remove('open');
     }
 };

@@ -37,16 +37,6 @@ class MarketData(Base):
         UniqueConstraint('stock_code', 'trade_date', name='uq_market_data_code_date'),
     )
 
-class StockIndicator(Base):
-    """量化指标与分析结论"""
-    __tablename__ = "stock_indicators"
-    id = Column(Integer, primary_key=True, index=True)
-    stock_code = Column(String(20), index=True)
-    indicator_type = Column(String(50)) # e.g., 'HYBRID_LOGIC'
-    data_json = Column(JSON) # 存储 MA, RSI, MACD 等数值快照
-    logic_chain = Column(JSON) # 存储 AI 推演过程
-    analysis_date = Column(Date, index=True)
-
 class TaskDefinition(Base):
     """任务定义表 (Registry) - 记录系统拥有的任务能力"""
     __tablename__ = "task_definitions"
@@ -88,12 +78,13 @@ class TradeHistory(Base):
     notes = Column(Text, nullable=True, comment="备注")
 
 class ExchangeRate(Base):
-    """汇率与宏观指数 — HKD_CNY, USD_CNY, USD_IDX, XAU, XAG, BRENT"""
+    """汇率与宏观指数 — HKD_CNY, USD_CNY, USD_IDX, XAU, XAG, BRENT, US10YT, US_FED_RATE..."""
     __tablename__ = "exchange_rates"
-    code = Column(String(20), primary_key=True)  # HKD_CNY, USD_CNY, USD_IDX, XAU, XAG, BRENT
+    code = Column(String(20), primary_key=True)  # 指标代码
     name = Column(String(50), nullable=True, comment="显示名称")
     rate = Column(Float, nullable=False, comment="最新价")
     change_pct = Column(Float, nullable=True, comment="涨跌幅(%)")
+    biz_date = Column(Date, nullable=True, comment="数据业务日期")
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
 
@@ -104,6 +95,23 @@ class MacroHistory(Base):
     code = Column(String(30), index=True, comment="指标代码")
     obs_date = Column(Date, comment="观测日期")
     value = Column(Float, comment="指标值")
+    created_at = Column(DateTime, default=datetime.now)
+
+
+class ReportRegistry(Base):
+    """报告注册表 — 索引所有 JSON 报告文件的元数据, 供 workflow 检索"""
+    __tablename__ = "report_registry"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    report_type = Column(String(30), nullable=False, comment="macro/supply_chain/market_scan/capex_scan")
+    report_id = Column(String(100), nullable=False, unique=True, comment="文件名(不含.json)")
+    title = Column(String(200), nullable=True, comment="可读标题")
+    industry = Column(String(80), nullable=True, comment="行业(macro为NULL)")
+    agent = Column(String(80), nullable=True, comment="生成方")
+    filepath = Column(String(500), nullable=True, comment="相对路径")
+    generated_at = Column(DateTime, nullable=False, comment="报告生成时间")
+    valid_until = Column(DateTime, nullable=True, comment="有效期(NULL=永不过期)")
+    status = Column(String(20), default="valid", comment="valid/expired/regenerated")
+    summary = Column(String(200), nullable=True, comment="摘要")
     created_at = Column(DateTime, default=datetime.now)
 
 
@@ -120,6 +128,9 @@ class StockInfo(Base):
     mcap_yi = Column(Float, nullable=True, comment="总市值(亿)")
     float_mcap_yi = Column(Float, nullable=True, comment="流通市值(亿)")
     turnover_pct = Column(Float, nullable=True, comment="换手率(%)")
+    roe = Column(Float, nullable=True, comment="净资产收益率(%)")
+    dividend_yield = Column(Float, nullable=True, comment="股息率(%)")
+    eps_growth_3y = Column(Float, nullable=True, comment="近3年盈利复合增速(%)")
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
 
@@ -158,6 +169,9 @@ class WatchlistItem(Base):
     group_tag = Column(String(30), default="默认")  # 分组标签
     is_held = Column(Boolean, default=False)  # 是否已持仓
     sort_order = Column(Integer, default=0)
+    notes = Column(Text, nullable=True, comment="备注")
+    target_price_low = Column(Float, nullable=True, comment="目标价下限")
+    target_price_high = Column(Float, nullable=True, comment="目标价上限")
     added_at = Column(DateTime, default=datetime.now)
 
 

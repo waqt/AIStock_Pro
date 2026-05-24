@@ -4,6 +4,7 @@ from ..base import BaseIndicator, register
 @register
 class TurnoverRatioIndicator(BaseIndicator):
     name = "turnover_ratio"
+    label = "拥挤度(换手)"
     category = "crowding"
     params = {"short": 20, "long": 120}
     output = ["turnover_20d", "turnover_120d", "crowding_ratio"]

@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Dict, Any, Optional
 
 from app.framework.database.session import get_db
-from app.core.ai_service import AIImportService
+from app.domain.portfolio.services.ai_import import AIImportService
 from app.framework.tasks.engine import task_manager
 from app.framework.logger import logger
 from app.models.schemas import (

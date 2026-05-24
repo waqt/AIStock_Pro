@@ -3,6 +3,7 @@ from ..base import BaseIndicator, register
 @register
 class RSIIndicator(BaseIndicator):
     name = "rsi"
+    label = "RSI相对强弱"
     category = "momentum"
     params = {"period": 14}
     output = ["rsi"]

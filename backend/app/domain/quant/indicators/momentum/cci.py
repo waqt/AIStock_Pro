@@ -3,6 +3,7 @@ from ..base import BaseIndicator, register
 @register
 class CCIIndicator(BaseIndicator):
     name = "cci"
+    label = "CCI商品通道"
     category = "momentum"
     params = {"period": 20}
     output = ["cci"]

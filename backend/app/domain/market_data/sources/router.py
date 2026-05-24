@@ -6,6 +6,28 @@ from app.domain.market_data.sources.base import DataSourceProtocol, SourceStatus
 from app.domain.market_data.sources.sina import SinaSource
 from app.domain.market_data.sources.akshare import AkShareSource
 from app.framework.logger import logger
+import re
+
+
+def _parse_biz_date(s: str):
+    """解析业务日期, 兼容多种格式:
+    '2026-05-20' / '2026年04月份' / '2026-04-30'
+    """
+    from datetime import date as _d
+    if not s: return None
+    s = str(s).strip()
+    # ISO format
+    try: return _d.fromisoformat(s)
+    except: pass
+    # Chinese format: '2026年04月份' or '2026年04月'
+    import re
+    m = re.match(r'(\d{4})\s*年\s*(\d{1,2})\s*月', s)
+    if m:
+        return _d(int(m.group(1)), int(m.group(2)), 1)
+    # Try first 10 chars as ISO
+    try: return _d.fromisoformat(s[:10])
+    except: pass
+    return None
 
 
 class DataRouter:
@@ -178,63 +200,173 @@ class DataRouter:
         except Exception as e:
             logger.warning(f"[⚠️] Sina macro fetch failed: {e}")
 
-        # ── Phase 2: akshare 美债收益率 ──
+        # ── Phase 2: akshare 宏观指标 ──
         try:
             import akshare as ak
+            import math, pandas as pd
             loop = __import__('asyncio').get_event_loop()
 
-            # 美国10年期国债收益率 (ak.bond_zh_us_rate)
+            # ── 中美债券收益率 (bond_zh_us_rate) ──
             try:
                 df = await loop.run_in_executor(None, ak.bond_zh_us_rate)
                 if df is not None and not df.empty:
-                    import math
-                    # 列名可能是中文或英文, 找包含 "10" 且非中国国债的列
                     cols = list(df.columns)
-                    date_col = cols[0]  # 第一列是日期
-                    # 排除日期列和第2-5列(中国国债2/5/10/30), 剩余的是美国国债列
-                    us_cols = cols[5:] if len(cols) > 5 else []
-                    us10y_col = [c for c in us_cols if ('10' in c or '10' in str(c))]
-                    if not us10y_col:
-                        # 回退: 找第一个包含 '10' 的非中国列
-                        us10y_col = [c for c in cols[1:] if ('10' in c or '10' in str(c)) and ('2' not in c or '10' in c)][:1]
-                    if us10y_col:
-                        latest = df.sort_values(date_col).iloc[-1]
-                        val = float(latest[us10y_col[0]])
-                        if not math.isnan(val):
-                            result['US10YT'] = {'name': 'US10YT', 'price': val, 'change_pct': None}
-                            await self._save_macro_history('US10YT', df, date_col, us10y_col[0])
-                            logger.info(f"[✅] US10YT: {val}%")
+                    date_col = cols[0]
+                    # 精确列名匹配
+                    col_map = {
+                        'US10YT': '美国国债收益率10年',
+                        'CN10YT': '中国国债收益率10年',
+                        'US2Y': '美国国债收益率2年',
+                        'CN2Y': '中国国债收益率2年',
+                    }
+                    for code, col_name in col_map.items():
+                        if col_name in cols:
+                            latest = df.sort_values(date_col).iloc[-1]
+                            val = float(latest[col_name])
+                            biz_d = str(latest[date_col])[:10]
+                            if not math.isnan(val):
+                                result[code] = {'name': code, 'price': val, 'change_pct': None, 'biz_date': biz_d}
+                                await self._save_macro_history(code, df, date_col, col_name)
+                                logger.info(f"[✅] {code}: {val}% ({biz_d})")
             except Exception as e:
-                logger.warning(f"[⚠️] US10YT fetch failed: {e}")
+                logger.warning(f"[⚠️] bond_zh_us_rate fetch failed: {e}")
+
+            # ── 美联储利率 ──
+            try:
+                df = await loop.run_in_executor(None, ak.macro_bank_usa_interest_rate)
+                if df is not None and not df.empty:
+                    # 列: indicator, date, value, forecast, previous
+                    latest = df[df['value'].notna()].iloc[-1] if 'value' in df.columns else df.iloc[-1]
+                    val_col = 'value' if 'value' in df.columns else df.columns[-2]
+                    date_c = df.columns[1] if len(df.columns) > 1 else df.columns[0]
+                    val = float(latest[val_col])
+                    biz_d = str(latest[date_c])[:10]
+                    if not math.isnan(val):
+                        result['US_FED_RATE'] = {'name': '美联储利率', 'price': val, 'change_pct': None, 'biz_date': biz_d}
+                        logger.info(f"[✅] US_FED_RATE: {val}% ({biz_d})")
+            except Exception as e:
+                logger.warning(f"[⚠️] US_FED_RATE fetch failed: {e}")
+
+            # ── 中国 LPR ──
+            try:
+                df = await loop.run_in_executor(None, ak.macro_china_lpr)
+                if df is not None and not df.empty:
+                    latest = df.sort_values(df.columns[0]).iloc[-1]
+                    lpr1y = float(latest['LPR1Y']) if 'LPR1Y' in df.columns else None
+                    if lpr1y and not math.isnan(lpr1y):
+                        biz_d = str(latest[df.columns[0]])[:10]
+                        result['CN_LPR1Y'] = {'name': 'LPR 1年期', 'price': lpr1y, 'change_pct': None, 'biz_date': biz_d}
+                        # 存历史
+                        hist_df = df[['trade_date' if 'trade_date' in df.columns else df.columns[0], 'LPR1Y']].copy()
+                        hist_df.columns = ['obs_date', 'value']
+                        hist_df['obs_date'] = pd.to_datetime(hist_df['obs_date']).dt.date
+                        await self._save_macro_df('CN_LPR1Y', hist_df)
+                        logger.info(f"[✅] CN_LPR1Y: {lpr1y}% ({biz_d})")
+            except Exception as e:
+                logger.warning(f"[⚠️] CN_LPR1Y fetch failed: {e}")
+
+            # ── 中国 M2 同比 ──
+            try:
+                df = await loop.run_in_executor(None, ak.macro_china_money_supply)
+                if df is not None and not df.empty:
+                    m2_col = [c for c in df.columns if 'M2' in str(c) and '同比' in str(c)]
+                    if m2_col and df.columns[0]:
+                        latest = df.sort_values(df.columns[0]).iloc[-1]
+                        val = float(latest[m2_col[0]])
+                        biz_d = str(latest[df.columns[0]])[:10]
+                        if not math.isnan(val):
+                            result['CN_M2_YOY'] = {'name': 'M2同比', 'price': val, 'change_pct': None, 'biz_date': biz_d}
+                            logger.info(f"[✅] CN_M2_YOY: {val}% ({biz_d})")
+            except Exception as e:
+                logger.warning(f"[⚠️] CN_M2_YOY fetch failed: {e}")
+
+            # ── 中国 PMI ──
+            try:
+                df = await loop.run_in_executor(None, ak.macro_china_pmi)
+                if df is not None and not df.empty:
+                    date_c = df.columns[0]
+                    latest = df.sort_values(date_c).iloc[-1]
+                    biz_d = str(latest[date_c])[:10]
+                    for col, code in [('制造业', 'CN_PMI_MFG'), ('非制造业', 'CN_PMI_NONMFG')]:
+                        mcol = [c for c in df.columns if col in str(c) and '同比' not in str(c)][:1]
+                        if mcol:
+                            val = float(latest[mcol[0]])
+                            if not math.isnan(val):
+                                result[code] = {'name': f'中国{col}PMI', 'price': val, 'change_pct': None, 'biz_date': biz_d}
+                                logger.info(f"[✅] {code}: {val} ({biz_d})")
+            except Exception as e:
+                logger.warning(f"[⚠️] CN_PMI fetch failed: {e}")
+
+            # ── 美国 ISM PMI ──
+            try:
+                df = await loop.run_in_executor(None, ak.macro_usa_ism_pmi)
+                if df is not None and not df.empty:
+                    if 'value' in df.columns:
+                        latest = df[df['value'].notna()].iloc[-1]
+                        val = float(latest['value'])
+                        biz_d = str(latest['date']) if 'date' in df.columns else ''
+                        biz_d = biz_d[:10]
+                        if not math.isnan(val):
+                            result['US_ISM_PMI'] = {'name': '美国ISM PMI', 'price': val, 'change_pct': None, 'biz_date': biz_d}
+                            logger.info(f"[✅] US_ISM_PMI: {val} ({biz_d})")
+            except Exception as e:
+                logger.warning(f"[⚠️] US_ISM_PMI fetch failed: {e}")
+
+            # ── 美国 CPI 同比 ──
+            try:
+                df = await loop.run_in_executor(None, ak.macro_usa_cpi_yoy)
+                if df is not None and not df.empty:
+                    if 'value' in df.columns:
+                        latest = df[df['value'].notna()].iloc[-1]
+                        val = float(latest['value'])
+                        biz_d = str(latest['date']) if 'date' in df.columns else ''
+                        biz_d = biz_d[:10]
+                        if not math.isnan(val):
+                            result['US_CPI_YOY'] = {'name': '美国CPI同比', 'price': val, 'change_pct': None, 'biz_date': biz_d}
+                            logger.info(f"[✅] US_CPI_YOY: {val}% ({biz_d})")
+            except Exception as e:
+                logger.warning(f"[⚠️] US_CPI_YOY fetch failed: {e}")
+
+            # ── 中国 CPI 同比 ──
+            try:
+                df = await loop.run_in_executor(None, ak.macro_china_cpi_yearly)
+                if df is not None and not df.empty:
+                    if 'value' in df.columns:
+                        latest = df[df['value'].notna()].iloc[-1]
+                        val = float(latest['value'])
+                        biz_d = str(latest['date']) if 'date' in df.columns else ''
+                        biz_d = biz_d[:10]
+                        if not math.isnan(val):
+                            result['CN_CPI_YOY'] = {'name': '中国CPI同比', 'price': val, 'change_pct': None, 'biz_date': biz_d}
+                            logger.info(f"[✅] CN_CPI_YOY: {val}% ({biz_d})")
+            except Exception as e:
+                logger.warning(f"[⚠️] CN_CPI_YOY fetch failed: {e}")
 
         except Exception as e:
             logger.warning(f"[⚠️] akshare macro fetch failed: {e}")
 
-        # ── 注: 以下数据源待接入 ──
-        # DXY (美元指数): Sina hf_DINIW 返回空; akshare currency_latest 需要第三方 API key
-        # US_FED_RATE: ak.macro_bank_usa_interest_rate 列名乱码+NaN, 数据质量不可用
-        # CN_PPI: ak.macro_china_ppi_yearly 最新值 NaN
-        # US_PPI: 需要 FRED API key
-        # CREDIT_IMPULSE: 需要 PBOC 社融 + GDP 计算逻辑
-
-        # ── 写入 ExchangeRate 表 ──
+        # ── Phase 3: 写入 ExchangeRate 表 ──
         if result:
             from app.framework.database.session import async_session
             from app.models.models import ExchangeRate
-            import math
+            import math as _m
             async with async_session() as db:
                 for code, info in result.items():
                     price = info['price']
-                    if price is None or (isinstance(price, float) and math.isnan(price)):
+                    if price is None or (isinstance(price, float) and _m.isnan(price)):
                         continue
+                    biz_d = info.get('biz_date')
+                    biz_date = _parse_biz_date(biz_d) if biz_d else None
                     existing = await db.get(ExchangeRate, code)
                     if existing:
                         existing.rate = price
                         existing.change_pct = info.get('change_pct')
+                        existing.biz_date = biz_date
                         existing.updated_at = dt.now()
                     else:
                         db.add(ExchangeRate(code=code, name=info.get('name', code),
-                            rate=price, change_pct=info.get('change_pct')))
+                            rate=price, change_pct=info.get('change_pct'),
+                            biz_date=biz_date))
                 await db.commit()
             logger.info(f"[✅] Macro data synced: {list(result.keys())}")
         return result
@@ -276,6 +408,35 @@ class DataRouter:
                 db.add(MacroHistory(code=code, obs_date=dt_val, value=val))
             await db.commit()
             logger.info(f"[MacroHistory] Saved {code}: {len(df)} rows")
+
+    @staticmethod
+    async def _save_macro_df(code: str, df):
+        """将已格式化的 DataFrame (obs_date, value) 存入 macro_history"""
+        from app.framework.database.session import async_session
+        from app.models.models import MacroHistory
+        import math
+        async with async_session() as db:
+            from sqlalchemy import select
+            for i in range(len(df)):
+                row = df.iloc[i]
+                dt_val = row['obs_date']
+                val = row['value']
+                if pd.isna(val): continue
+                try:
+                    val = float(val)
+                    if math.isnan(val) or math.isinf(val): continue
+                except (ValueError, TypeError): continue
+                if hasattr(dt_val, 'date'): dt_val = dt_val.date()
+                else:
+                    from datetime import date as _d
+                    try: dt_val = _d.fromisoformat(str(dt_val)[:10])
+                    except: continue
+                res = await db.execute(
+                    select(MacroHistory).where(
+                        MacroHistory.code == code, MacroHistory.obs_date == dt_val))
+                if res.scalars().first(): continue
+                db.add(MacroHistory(code=code, obs_date=dt_val, value=val))
+            await db.commit()
 
 
 # 全局单例

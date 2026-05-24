@@ -13,6 +13,47 @@
 <!-- 页面业务 JS 放在最后 -->
 ```
 
+## 多 Tab 页面 — 命名空间隔离 (★ 强制)
+
+多 Tab 页面（如 data.html）**禁止将所有 JS 写在一个 `<script>` 块中**。必须拆分为独立模块文件，通过 `DataTabs` 命名空间隔离：
+
+```
+js/data-tabs/
+├── core.js        # DataTabs.Core (addLog) + DataTabs.switchTab 路由
+├── macro.js       # DataTabs.Macro = { load, sync, showHistory }
+├── watchlist.js   # DataTabs.Watchlist = { load, add, remove, ... }
+├── ...
+```
+
+**模块文件模板：**
+```javascript
+window.DataTabs = window.DataTabs || {};
+DataTabs.Xxx = {
+  async load() {
+    const data = await fetch(`${API_BASE}/data/xxx`);
+    // 只操作自己 Tab 的 DOM: document.getElementById('tab-xxx')
+  }
+};
+```
+
+**HTML onclick 使用命名空间：**
+```html
+<!-- ✅ 正确 -->
+<button onclick="DataTabs.Macro.sync('daily')">同步</button>
+<button onclick="DataTabs.Watchlist.add()">添加</button>
+
+<!-- ❌ 错误 — 全局函数污染 -->
+<button onclick="syncMacro('daily')">同步</button>
+```
+
+**关键规则：**
+- ✅ 每个 Tab 一个文件，一个文件只改自己 Tab 的 DOM
+- ✅ 跨 Tab 调用用 `DataTabs.Xxx.method()` 命名空间
+- ✅ 一个 Tab 报错不影响其他 Tab（JS 文件独立加载）
+- ✅ 共享工具放 `core.js`（addLog、switchTab）
+- ❌ 禁止在 `<script>` 标签内写超过 20 行 JS
+- ❌ 禁止在 `window` 上挂全局函数（除 `DataTabs`、`refreshPageData`）
+
 ## 页面模板
 
 ```html

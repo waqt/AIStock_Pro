@@ -3,6 +3,7 @@ from ..base import BaseIndicator, register
 @register
 class BollingerIndicator(BaseIndicator):
     name = "bollinger"
+    label = "布林带"
     category = "volatility"
     params = {"period": 20, "std": 2}
     output = ["bb_upper", "bb_mid", "bb_lower"]

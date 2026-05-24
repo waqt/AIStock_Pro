@@ -1,0 +1,21 @@
+D:\develop_env\python_related\anaconda\Anaconda3\lib\site-packages\pymysql\_auth.py:9: CryptographyDeprecationWarning: Python 3.7 is no longer supported by the Python core team and support for it is deprecated in cryptography. A future release of cryptography will remove support for Python 3.7.
+  from cryptography.hazmat.backends import default_backend
+688012: 504 days, close=475.8, range=[73.3~446.7]
+Target: 获利89.87% 均成本357.76 90%=[270.4~491.9]
+
+half= 10d | 获利100.0% | 均成本  389.7 | 90%=[  315.5~  442.4] | 集中度 32.5%
+half= 15d | 获利100.0% | 均成本  381.8 | 90%=[  310.8~  441.5] | 集中度 33.8%
+half= 20d | 获利100.0% | 均成本  375.1 | 90%=[  306.2~  440.6] | 集中度 35.3%
+half= 30d | 获利100.0% | 均成本  363.4 | 90%=[  280.0~  438.7] | 集中度 42.9%
+half= 45d | 获利100.0% | 均成本  349.5 | 90%=[  259.5~  436.8] | 集中度 50.0%
+half= 60d | 获利100.0% | 均成本  339.2 | 90%=[  214.7~  435.0] | 集中度 63.4%
+half= 90d | 获利100.0% | 均成本  324.8 | 90%=[  197.0~  430.3] | 集中度 71.2%
+half=180d | 获利100.0% | 均成本  303.4 | 90%=[  183.0~  416.3] | 集中度 75.3%
+Exception ignored in: <function Connection.__del__ at 0x000001870018DE18>
+Traceback (most recent call last):
+  File "D:\develop_env\python_related\anaconda\Anaconda3\lib\site-packages\aiomysql\connection.py", line 1131, in __del__
+  File "D:\develop_env\python_related\anaconda\Anaconda3\lib\site-packages\aiomysql\connection.py", line 339, in close
+  File "D:\develop_env\python_related\anaconda\Anaconda3\lib\asyncio\selector_events.py", line 661, in close
+  File "D:\develop_env\python_related\anaconda\Anaconda3\lib\asyncio\base_events.py", line 672, in call_soon
+  File "D:\develop_env\python_related\anaconda\Anaconda3\lib\asyncio\base_events.py", line 461, in _check_closed
+RuntimeError: Event loop is closed
