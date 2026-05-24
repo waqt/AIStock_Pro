@@ -199,17 +199,12 @@ class MarketScanner(ResearchAgent):
 }}
 
 ## 规则
-- phase 仅限: theme_emergence / demand_explosion / bottleneck_formation / capital_frenzy / capacity_release / commoditization
-- type 仅限: demand_explosion / supply_shock / policy_driven / replacement_cycle / capex_cycle / inventory_cycle
-- demand_quality 仅限: real_demand / inventory_restock / policy_pull_forward / channel_stuffing
-- depth 仅限: 深 / 中 / 浅
-- asymmetry 仅限: 强非对称 / 对称 / 负非对称
-- priority 仅限: 高 / 中 / 低 / 跳过
-- weight 仅限: 主导 / 重要 / 辅助 (不要输出百分比数字)
-- market_repricing_stage 仅限: 早期 / 中期 / 晚期
 - 所有数值引用(增速/交期/规模)必须来自搜索结果, 不得编造
 - 如果搜索结果质量不足以支撑判断, 在 evidence 中标注"数据有限"
-- 如果 enter_step3=false, kill_reasons 必须至少填1条, 从以下选: 需求来自渠道补库存/已进入资本狂热后期/估值透支3年增长/政策抢装非真实需求/供给扩张>需求/传导链<3层Alpha空间有限"""
+- 如果 enter_step3=false, kill_reasons 必须至少填1条"""
+        # 注入权威术语表, 确保语义一致
+        from app.framework.pipeline.glossary import step2_glossary
+        prompt += step2_glossary()
 
         try:
             text = await asyncio.wait_for(
