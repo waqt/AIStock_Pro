@@ -16,6 +16,7 @@
 | [05_Step7_11_Remaining](05_Step7_11_Remaining.md) | Steps 7-11: 财务→估值→预期差→风险→结论 |
 | [06_GPT_Reviews](06_GPT_Reviews.md) | GPT 评审反馈、system_dynamics 输出、验证框架 |
 | [07_Implementation](07_Implementation.md) | 实施优先级、文件变更、验收标准 |
+| [08_Pipeline_Operations](08_Pipeline_Operations.md) | Pipeline 运营: 多场景/失败恢复/结论溯源 |
 
 ## 设计原则
 
