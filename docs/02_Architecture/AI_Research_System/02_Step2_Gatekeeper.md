@@ -6,7 +6,17 @@ Step 2 是整个 Pipeline 的入口过滤器。它不替代 Step 3-11 做深度�
 
 > 这个行业值不值得进入 Step 3，花 3 分钟做昂贵的产业链拆解 + 审计 + 估值？
 
-决策依据不是"这个行业好不好"，而是"这个行业是否存在值得深挖的 Alpha 潜力"。
+### 核心原则: 五错配
+
+Step 2 的目标不是"发现好行业"，而是发现同时满足以下条件的产业系统：
+
+1. **供需错配** — 需求增速 > 供给响应速度
+2. **时间错配** — 扩产周期远长于需求爆发周期
+3. **认知错配** — 市场尚未充分理解产业变化的深度
+4. **利润迁移** — 利润正在从一个环节流向另一个环节
+5. **尚未充分定价** — 当前估值未反映上述错配
+
+缺少任何一条，都不值得进入 Step 3。
 
 ---
 
@@ -88,8 +98,15 @@ Step 2 是整个 Pipeline 的入口过滤器。它不替代 Step 3-11 做深度�
   "propagation": {
     "depth": "深",
     // 深(>5层) | 中(3-5层) | 浅(<3层)
-    "chain": "变压器 → 开关柜 → 铜 → 电缆 → 电力电子 → 液冷 → 柴油发电机",
-    "alpha_implication": "长传导=每解决一个瓶颈就创造新瓶颈, 多轮轮动机会"
+    "transmission_order": [
+      {"stage": 1, "node": "变压器", "reason": "交期最先拉长至12个月+, 供给刚性最强"},
+      {"stage": 2, "node": "铜", "reason": "原材料价格传导, 滞后3-6个月"},
+      {"stage": 3, "node": "开关柜/电缆", "reason": "中游制造跟随涨价"},
+      {"stage": 4, "node": "液冷/柴油发电机", "reason": "AI机柜密度提升→散热需求最后爆发"}
+    ],
+    "last_beneficiary": "柴油发电机",
+    "last_bottleneck": "高压变压器 — 扩产周期3-5年, 最后解决",
+    "alpha_implication": "先配变压器(最先受益), 中期切换铜/电缆, 后期关注液冷/柴发"
   },
 
   // ═══ 块 5: 最终判断 ═══
@@ -99,6 +116,28 @@ Step 2 是整个 Pipeline 的入口过滤器。它不替代 Step 3-11 做深度�
     // 高 | 中 | 低 | 跳过 — 定性排序, 不做数字
     "rationale": "AI电力需求确定性高, 供给刚性极强(电网建设3-5年), 传导链深(7层), 市场认知仍停留在概念阶段, 预期差大",
     "key_uncertainties": ["AI算力需求增速是否放缓", "电网投资是否因财政压力推迟"]
+  },
+
+  // ═══ 块 6: 拒绝理由 — 仅在 enter_step3=false 时输出 ═══
+  "kill_reasons": [],
+  // 如果 enter_step3=false, 必须填写至少一条拒绝理由:
+  // "需求主要来自渠道补库存, 非真实终端消费"
+  // "行业已进入资本狂热后期, CAPEX增速>需求增速"
+  // "估值已提前透支3年增长, 无安全边际"
+  // "景气来自政策抢装而非真实需求, 持续性存疑"
+  // "供给扩张速度远超需求, 12个月内进入过剩"
+  // "产业链传导深度<3层, Alpha空间有限"
+
+  // ═══ 辅助信息 ═══
+  "time_horizon": {
+    "alpha_window": "6-12个月",
+    // 市场重新定价的窗口期
+    "profit_expansion_window": "12-24个月",
+    // 利润扩张的持续时间
+    "capacity_relief_eta": "2028H1",
+    // 产能释放、供需缓解的预计时间
+    "market_repricing_stage": "早期"
+    // 早期(刚开始反映) | 中期(已部分定价) | 晚期(接近充分定价)
   },
 
   // ═══ 辅助信息 ═══
@@ -120,6 +159,10 @@ Step 2 是整个 Pipeline 的入口过滤器。它不替代 Step 3-11 做深度�
 | `payoff.asymmetry` | 枚举 | "强非对称"/"对称"/"负非对称" |
 | `propagation.depth` | 枚举 | "深"/"中"/"浅" |
 | `verdict.priority` | 枚举 | "高"/"中"/"低"/"跳过" |
+| `kill_reasons` | 文本数组 | 仅 enter_step3=false 时填写, 从 6 条预设中选至少 1 条 |
+| `time_horizon.alpha_window` | 文本 | 市场重新定价的窗口期, 如 "6-12个月" |
+| `time_horizon.market_repricing_stage` | 枚举 | "早期"/"中期"/"晚期" |
+| `propagation.transmission_order[].stage` | 整数 | 传导顺序, 1=最先受益 |
 | 所有带 "evidence" 的字段 | 文本 | 必须引用搜索中的具体数据或事实 |
 | 所有带 "narrative/rationale" 的字段 | 文本 | LLM 自由发挥, 1-3 句 |
 
@@ -150,7 +193,8 @@ Step 2 只输出定性标签。需要量化的指标（supply_rigidity、pricing
    - 第 2 轮: 供需缺口 + 产能 + 交期
    - 第 3 轮: 竞争格局 + 政策环境
    - 第 4 轮: 产业链传导链 + 上下游
-3. 输出完整 5 块（同 auto, 但 `verdict` 中优先级固定为"高"）
+3. 输出完整 6 块（同 auto）
+4. **manual 模式也必须允许拒绝**: 用户输入"核聚变"这类主题阶段行业时, `enter_step3` 可以为 false, `kill_reasons` 说明原因。防止系统被用户 narrative 劫持
 
 ### 4.3 搜索策略
 
@@ -173,9 +217,10 @@ Step 2 只输出定性标签。需要量化的指标（supply_rigidity、pricing
 
 | 消费方 | 字段 | 用途 |
 |--------|------|------|
-| Pipeline | `verdict.enter_step3` | false → 跳过该行业 |
+| Pipeline | `verdict.enter_step3` | false → 跳过该行业; kill_reasons 记录原因 |
 | Pipeline | `verdict.priority` | 排序, top N 进入 Step 3 |
-| Step 3 | `propagation.chain` | 作为 L1-L4 展开的骨架 |
+| Step 3 | `propagation.transmission_order` | 作为 L1-L4 展开的顺序骨架 (stage 1→L1, stage 2→L2...) |
+| Step 4 | `propagation.transmission_order` | 沿传导顺序做 system_dynamics 推演 |
 | Step 3 | `prosperity.type` | supply_shock → 搜索聚焦产能/交期; demand_explosion → 搜索聚焦订单/渗透率 |
 | Step 4 | `prosperity.type` | supply_shock → 走供给冲击推演路径; demand_explosion → 走需求爆发推演路径 |
 | Step 4 | `cycle_position.phase` | bottleneck_formation → 走资源挤占+瓶颈迁移模板 |
@@ -187,13 +232,26 @@ Step 2 只输出定性标签。需要量化的指标（supply_rigidity、pricing
 
 ---
 
-## 6. 实现
+## 6. 故意不做的事（防止职责蔓延）
 
-### 6.1 修改文件
+以下建议经评估后**不纳入** Step 2，归属其他 Step：
+
+| 建议 | 拒绝理由 | 正确归属 |
+|------|---------|---------|
+| 资本市场状态 (crowding/ownership) | Step 2 只有 web search, 无法获取 ETF持仓/机构配置数据 | Step 9 ExpectationGapAgent |
+| 共识状态 (market_attention/consensus) | 需要券商覆盖数据、卖方评级分布, Step 2 拿不到 | Step 9 |
+| 研究路线 (research_path/research_template) | 下游 Step 已经通过 phase+type 自主决定路径, 再加会导致紧耦合 | 不需要, 下游自决策 |
+| 产业细节 (supply_rigidity 评分/利润率分布) | 这是 Step 3 的工作 | Step 3 |
+
+---
+
+## 7. 实现
+
+### 7.1 修改文件
 
 `backend/app/domain/research/agents/market_scanner.py`
 
-### 6.2 改动内容
+### 7.2 改动内容
 
 | 改动 | 说明 |
 |------|------|
@@ -202,13 +260,13 @@ Step 2 只输出定性标签。需要量化的指标（supply_rigidity、pricing
 | 新增 `_deep_dive_manual()` | manual 模式: 指定行业 → 4 轮搜索 → LLM → 深度全景 |
 | Prompt 重写 | 按 6 阶段 × 6 类型的矩阵组织提问, 强制输出定性标签 |
 
-### 6.3 改动量
+### 7.3 改动量
 
 ~80 行
 
 ---
 
-## 7. 验收
+## 8. 验收
 
 1. `python -m py_compile market_scanner.py` 通过
 2. curl `POST /research/scan` 返回的 `hot_industries` 包含 `cycle_position` 和 `prosperity` 块
