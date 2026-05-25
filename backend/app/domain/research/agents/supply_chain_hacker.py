@@ -155,7 +155,7 @@ class SupplyChainHacker(ResearchAgent):
 
             try:
                 text = await asyncio.wait_for(
-                    self.provider.chat_pro(prompt, max_tokens=2048), timeout=45)
+                    self.provider.chat_pro(prompt, max_tokens=2048), timeout=60)
                 if trace: trace.record_llm(prompt, text, model="deepseek-v4-pro")
                 result = self.parse_json(text)
                 if isinstance(result, dict):
@@ -248,7 +248,7 @@ class SupplyChainHacker(ResearchAgent):
 每个维度至少1条, 最多3条。聚焦非共识、反直觉洞察。"""
 
         try:
-            text = await asyncio.wait_for(self.provider.chat_pro(prompt, max_tokens=4096), timeout=60)
+            text = await asyncio.wait_for(self.provider.chat_pro(prompt, max_tokens=4096), timeout=90)
             if trace: trace.record_llm(prompt, text, model="deepseek-v4-pro")
             result = self.parse_json(text)
             if isinstance(result, dict):
@@ -397,7 +397,7 @@ class SupplyChainHacker(ResearchAgent):
 - scarcity_ranking 按供给刚性从高到低排"""
 
         try:
-            text = await asyncio.wait_for(self.provider.chat_pro(prompt, max_tokens=8192), timeout=120)
+            text = await asyncio.wait_for(self.provider.chat_pro(prompt, max_tokens=8192), timeout=180)
             if trace: trace.record_llm(prompt, text, model="deepseek-v4-pro")
             result = self.parse_json(text)
             if isinstance(result, dict) and result.get("parse_error"):
@@ -462,7 +462,7 @@ class SupplyChainHacker(ResearchAgent):
 all_assets 至少 5-8 家, tier1龙头/tier2追赶者/tier3新进入者。moat_level 用定性标签(absolute_monopoly/strong/medium/weak)"""
 
         try:
-            text = await asyncio.wait_for(self.provider.chat_pro(prompt, max_tokens=4096), timeout=60)
+            text = await asyncio.wait_for(self.provider.chat_pro(prompt, max_tokens=4096), timeout=90)
             result = self.parse_json(text)
             if isinstance(result, dict):
                 result["agent"] = self.name
