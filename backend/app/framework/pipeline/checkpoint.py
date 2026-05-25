@@ -110,6 +110,70 @@ def load_manifest(run_id: str) -> dict | None:
     return None
 
 
+def update_manifest(run_id: str, updates: dict) -> bool:
+    """更新 manifest 的部分字段 (合并写入)"""
+    manifest = load_manifest(run_id) or {}
+    manifest.update(updates)
+    save_manifest(run_id, manifest)
+    return True
+
+
+def find_checkpoint_file(run_id: str, step: str) -> str | None:
+    """查找指定 step 的检查点文件路径"""
+    run_dir = os.path.join(CHECKPOINT_DIR, run_id)
+    if not os.path.isdir(run_dir):
+        return None
+    for fn in os.listdir(run_dir):
+        if fn.startswith(f"{step}_") and fn.endswith(".json"):
+            return os.path.join(run_dir, fn)
+    return None
+
+
+def update_checkpoint_output(run_id: str, step: str, new_output: dict) -> str | None:
+    """覆写指定 step 的检查点 output — 用于手动编辑后保存"""
+    cp_file = find_checkpoint_file(run_id, step)
+    if not cp_file:
+        return None
+    with open(cp_file, "r", encoding="utf-8") as f:
+        record = json.load(f)
+    record["output"] = new_output
+    record["edited_at"] = datetime.now().isoformat()
+    with open(cp_file, "w", encoding="utf-8") as f:
+        json.dump(record, f, ensure_ascii=False, indent=2, default=str)
+    # 标记 manifest
+    manifest = load_manifest(run_id) or {}
+    edited = manifest.get("edited_steps", [])
+    if step not in edited:
+        edited.append(step)
+    manifest["edited_steps"] = edited
+    save_manifest(run_id, manifest)
+    return cp_file
+
+
+def make_display_name(run_id: str, industry: str = "") -> str:
+    """run_id → 项目显示名: {industry}-{YYYYMMDD}-#{n}"""
+    # run_id 格式: 20260525_SOFC_v2
+    parts = run_id.split("_", 1)
+    date_str = parts[0]  # 20260525
+    # 格式化日期: 20260525 → 2026-05-25
+    try:
+        formatted_date = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
+    except Exception:
+        formatted_date = date_str
+    # 提取版本号
+    version = "1"
+    if "_v" in run_id:
+        try:
+            version = run_id.rsplit("_v", 1)[-1]
+        except Exception:
+            pass
+    label = industry or "未命名"
+    # 简称(如SOFC)加"产业链深研"后缀, 长名称直接使用
+    if len(label) <= 8:
+        label = f"{label}产业链深研"
+    return f"{label}-{formatted_date}-#{version}"
+
+
 def generate_run_id(industry: str) -> str:
     """生成 run_id: {YYYYMMDD}_{safe_slug}_v{n}, 自动递增版本号"""
     import re

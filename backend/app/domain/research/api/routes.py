@@ -363,6 +363,148 @@ async def batch_stock_info(codes: List[str]):
         return {"success": True, "data": result}
 
 
+# ═══════════════════════════════════════════
+# Pipeline 运维 API
+# ═══════════════════════════════════════════
+
+class ResumeRequest(BaseModel):
+    from_step: str = "step3_sc_hacker"
+    force: bool = False
+
+
+@router.get("/pipeline/runs")
+async def list_pipeline_runs(limit: int = Query(default=20, ge=1, le=100)):
+    """列出所有 Pipeline run 历史"""
+    try:
+        from app.framework.pipeline.checkpoint import list_runs, make_display_name
+        runs = list_runs()
+        for r in runs:
+            r["display_name"] = make_display_name(r["run_id"], r.get("industry", ""))
+        return {"success": True, "data": runs[:limit], "total": len(runs)}
+    except Exception as e:
+        logger.error(f"[PipelineAPI] List runs failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/pipeline/{run_id}")
+async def get_pipeline_run(run_id: str):
+    """单 run 详情: manifest + 各 step 检查点列表"""
+    try:
+        from app.framework.pipeline.checkpoint import (
+            load_manifest, list_checkpoints, CHECKPOINT_DIR, make_display_name
+        )
+        manifest = load_manifest(run_id)
+        checkpoints = list_checkpoints(run_id)
+        steps = {}
+        for cp in checkpoints:
+            s = cp.get("step", "unknown")
+            steps[s] = {
+                "step": s, "saved_at": cp.get("saved_at"),
+                "elapsed_seconds": cp.get("elapsed"), "file": cp.get("file"),
+            }
+        import os
+        run_dir = os.path.join(CHECKPOINT_DIR, run_id)
+        for s in list(steps.keys()):
+            # trace 文件名为 {step}.trace.txt (不含hash, 每次覆盖)
+            tf = os.path.join(run_dir, f"{s}.trace.txt")
+            if os.path.exists(tf):
+                steps[s]["has_trace"] = True
+        return {"success": True, "data": {
+            "run_id": run_id,
+            "display_name": make_display_name(run_id, manifest.get("industry", "") if manifest else ""),
+            "manifest": manifest,
+            "steps": steps,
+        }}
+    except Exception as e:
+        logger.error(f"[PipelineAPI] Get run failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/pipeline/{run_id}/trace/{step}")
+async def get_pipeline_trace(run_id: str, step: str):
+    """读取某 step 的溯源日志"""
+    import os, json as _json
+    from app.framework.pipeline.checkpoint import CHECKPOINT_DIR
+    tp = os.path.join(CHECKPOINT_DIR, run_id, f"{step}.trace.txt")
+    if not os.path.exists(tp):
+        raise HTTPException(status_code=404, detail=f"Trace not found: {run_id}/{step}")
+    events = []
+    with open(tp, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                try:
+                    events.append(_json.loads(line))
+                except Exception:
+                    events.append({"raw": line[:500]})
+    return {"success": True, "data": {"run_id": run_id, "step": step, "event_count": len(events), "events": events}}
+
+
+@router.post("/pipeline/{run_id}/resume")
+async def resume_pipeline_run(run_id: str, req: ResumeRequest = ResumeRequest()):
+    """从指定 step 断点续跑"""
+    try:
+        from app.framework.pipeline.checkpoint import load_manifest
+        manifest = load_manifest(run_id)
+        if not manifest:
+            raise HTTPException(status_code=404, detail=f"Run not found: {run_id}")
+        return {"success": True, "data": {
+            "run_id": run_id, "from_step": req.from_step,
+            "status": "not_implemented",
+            "message": "PipelineRunner 尚未实现。手动操作: (1) 编辑 checkpoint JSON → (2) curl Agent 端点重跑下游",
+            "manifest_industry": manifest.get("industry", ""),
+        }}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[PipelineAPI] Resume failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/pipeline/{run_id}/checkpoint/{step}")
+async def get_checkpoint_output(run_id: str, step: str):
+    """读取指定 step 的检查点 output 内容"""
+    try:
+        from app.framework.pipeline.checkpoint import find_checkpoint_file
+        cp_file = find_checkpoint_file(run_id, step)
+        if not cp_file:
+            raise HTTPException(status_code=404, detail=f"Checkpoint not found: {run_id}/{step}")
+        import json as _json
+        with open(cp_file, "r", encoding="utf-8") as f:
+            record = _json.load(f)
+        return {"success": True, "data": {
+            "run_id": run_id, "step": step,
+            "output": record.get("output", {}),
+            "saved_at": record.get("saved_at"),
+        }}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[PipelineAPI] Get checkpoint failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class CheckpointEditRequest(BaseModel):
+    output: dict  # 新的 checkpoint output 内容
+
+
+@router.put("/pipeline/{run_id}/checkpoint/{step}")
+async def save_checkpoint_edit(run_id: str, step: str, body: CheckpointEditRequest):
+    """保存手动编辑后的 checkpoint output"""
+    try:
+        from app.framework.pipeline.checkpoint import update_checkpoint_output
+        result = update_checkpoint_output(run_id, step, body.output)
+        if not result:
+            raise HTTPException(status_code=404, detail=f"Checkpoint not found: {run_id}/{step}")
+        logger.info(f"[PipelineAPI] Checkpoint edited: {run_id}/{step} → {result}")
+        return {"success": True, "data": {"run_id": run_id, "step": step, "saved": result}}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[PipelineAPI] Checkpoint edit failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/data/stock/{code}")
 async def get_stock_data(code: str):
     """获取单只股票的完整投研数据"""

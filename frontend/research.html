@@ -6,53 +6,53 @@
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        .workspace { padding: 14px; display: flex; flex-direction: column; gap: 10px; height: calc(100vh - 110px); }
-        .mode-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border-color); }
-        .mode-tab { background: none; border: none; color: var(--text-dim); cursor: pointer; padding: 8px 16px; font-size: 12px; border-bottom: 2px solid transparent; }
-        .mode-tab.active { color: #fff; border-bottom-color: var(--accent-blue); }
-        .input-row { display: flex; gap: 8px; align-items: center; }
-        .input-row input { flex: 1; background: #000; border: 1px solid var(--border-color); color: #fff; padding: 8px 12px; border-radius: 4px; font-size: 13px; }
-        .input-row select { background: #000; border: 1px solid var(--border-color); color: #fff; padding: 8px 10px; border-radius: 4px; font-size: 12px; min-width: 160px; }
-        .btn-primary { background: var(--accent-blue); color: #fff; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 12px; white-space: nowrap; }
-        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-        .btn-sm { background: none; border: 1px solid var(--border-thin); color: var(--text-dim); padding: 3px 8px; border-radius: 3px; cursor: pointer; font-size: 10px; }
-        .btn-sm:hover { color: #fff; border-color: var(--accent-blue); }
-        .btn-sm.danger:hover { color: var(--accent-red); border-color: var(--accent-red); }
-        .sector-list { display: flex; flex-direction: column; gap: 4px; max-height: 200px; overflow-y: auto; }
-        .sector-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-thin); border-radius: 4px; cursor: pointer; }
-        .sector-item:hover { background: rgba(255,255,255,0.04); }
-        .sector-item .name { color: #fff; font-size: 12px; }
-        .sector-item .meta { color: var(--text-micro); font-size: 10px; }
-        .content-area { display: flex; gap: 12px; flex: 1; min-height: 200px; }
-        .report-area { flex: 1; overflow-y: auto; background: rgba(255,255,255,0.01); border: 1px solid var(--border-thin); border-radius: 6px; padding: 16px; min-width: 0; }
-        .report-area .md-content { font-size: 12px; line-height: 1.8; }
-        .report-area .md-content h1 { font-size: 16px; margin: 0 0 12px; }
-        .report-area .md-content h2 { font-size: 14px; margin: 16px 0 8px; border-bottom: 1px solid var(--border-thin); padding-bottom: 4px; }
-        .report-area .md-content h3 { font-size: 13px; margin: 12px 0 6px; }
-        .report-area .md-content table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 11px; }
-        .report-area .md-content th { color: var(--text-micro); padding: 4px 6px; text-align: left; border-bottom: 1px solid var(--border-color); }
-        .report-area .md-content td { padding: 3px 6px; border-bottom: 1px solid var(--border-thin); color: var(--text-dim); }
-        .report-title-bar { display: none; justify-content: space-between; align-items: center; padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid var(--border-color); }
-        .report-title-bar .title { color: var(--accent-blue); font-size: 12px; }
-        .extract-panel { width: 260px; min-width: 200px; display: flex; flex-direction: column; gap: 6px; }
-        .extract-panel .stock-item { padding: 6px 8px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-thin); border-radius: 4px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
-        .extract-panel .stock-item:hover { background: rgba(255,255,255,0.05); }
-        .status-bar { font-size: 10px; color: var(--text-micro); padding: 4px 0; }
-        /* 报告历史 */
-        .history-section { border-top: 1px solid var(--border-color); padding-top: 8px; flex-shrink: 0; }
-        .history-header { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; }
-        .history-header .title { color: #fff; font-size: 11px; }
-        .history-header .count { color: var(--text-micro); font-size: 10px; margin-left: 6px; }
-        .history-list { max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 3px; }
-        .history-item { display: flex; align-items: center; gap: 8px; padding: 5px 8px; background: rgba(255,255,255,0.01); border: 1px solid var(--border-thin); border-radius: 4px; cursor: pointer; font-size: 11px; }
-        .history-item:hover { background: rgba(255,255,255,0.03); }
-        .history-item.active { border-color: var(--accent-blue); background: rgba(64,158,255,0.06); }
-        .history-item .ind { color: var(--text-micro); margin-right: auto; }
-        .history-item .name { color: #fff; min-width: 60px; }
-        .history-item .agent-tag { color: var(--accent-green); font-size: 9px; background: rgba(76,175,80,0.1); padding: 1px 5px; border-radius: 3px; white-space: nowrap; }
-        .history-item .actions { display: flex; gap: 4px; white-space: nowrap; }
-        .badge { font-size: 9px; padding: 1px 5px; border-radius: 3px; }
-        .badge-info { background: rgba(64,158,255,0.12); color: var(--accent-blue); }
+        .workspace { padding: 10px; display: flex; gap: 10px; height: calc(100vh - 110px); }
+        /* Left: project list */
+        .proj-list-panel { width: 280px; min-width: 220px; display: flex; flex-direction: column; gap: 6px; border-right: 1px solid var(--border-color); padding-right: 8px; }
+        .proj-list-panel .header { display: flex; justify-content: space-between; align-items: center; }
+        .proj-list-panel .header .title { color: #fff; font-size: 12px; }
+        .proj-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 3px; }
+        .proj-item { padding: 8px 10px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-thin); border-radius: 4px; cursor: pointer; }
+        .proj-item:hover { background: rgba(255,255,255,0.04); }
+        .proj-item.active { border-color: var(--accent-blue); background: rgba(64,158,255,0.06); }
+        .proj-item .name { color: #fff; font-size: 11px; }
+        .proj-item .meta { color: var(--text-micro); font-size: 9px; margin-top: 3px; }
+        .proj-item .status-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 4px; }
+        .status-dot.ok { background: var(--accent-green); }
+        .status-dot.fail { background: var(--accent-red); }
+        .status-dot.running { background: var(--accent-yellow); }
+        /* Right: detail */
+        .detail-panel { flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; overflow-y: auto; }
+        .detail-header { display: flex; justify-content: space-between; align-items: center; }
+        .detail-header .name { color: var(--accent-blue); font-size: 13px; }
+        .detail-header .meta { color: var(--text-micro); font-size: 10px; }
+        /* Step cards */
+        .step-cards { display: flex; flex-direction: column; gap: 4px; }
+        .step-card { background: rgba(255,255,255,0.02); border: 1px solid var(--border-thin); border-radius: 4px; overflow: hidden; }
+        .step-card-header { display: flex; align-items: center; gap: 8px; padding: 6px 10px; cursor: pointer; }
+        .step-card-header:hover { background: rgba(255,255,255,0.03); }
+        .step-card-header .step-name { color: #fff; font-size: 11px; flex: 1; }
+        .step-card-header .step-meta { color: var(--text-micro); font-size: 9px; }
+        .step-card-header .step-icon { font-size: 12px; width: 16px; text-align: center; }
+        .step-actions { padding: 4px 10px 6px; display: flex; gap: 6px; border-top: 1px solid var(--border-thin); }
+        /* Output / Trace panels */
+        .output-panel, .trace-panel { background: rgba(0,0,0,0.3); border: 1px solid var(--border-thin); border-radius: 4px; margin: 0 8px 8px; }
+        .output-panel .header, .trace-panel .header { display: flex; justify-content: space-between; align-items: center; padding: 4px 10px; border-bottom: 1px solid var(--border-thin); }
+        .output-panel .header .title, .trace-panel .header .title { color: var(--text-dim); font-size: 10px; }
+        .output-editor { width: 100%; min-height: 300px; background: #000; color: var(--accent-green); border: none; padding: 10px; font-family: var(--font-mono); font-size: 11px; resize: vertical; }
+        .output-view { padding: 10px; font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); max-height: 400px; overflow-y: auto; white-space: pre-wrap; }
+        .trace-list { max-height: 300px; overflow-y: auto; padding: 6px; }
+        .trace-event { padding: 4px 8px; border-bottom: 1px solid var(--border-thin); font-size: 10px; }
+        .trace-event .type { color: var(--accent-blue); }
+        .trace-event .detail { color: var(--text-dim); margin-left: 8px; }
+        /* Buttons */
+        .btn-proj { background: none; border: 1px solid var(--border-thin); color: var(--text-dim); padding: 3px 8px; border-radius: 3px; cursor: pointer; font-size: 10px; white-space: nowrap; }
+        .btn-proj:hover { color: #fff; border-color: var(--accent-blue); }
+        .btn-proj.primary { background: var(--accent-blue); color: #fff; border-color: var(--accent-blue); }
+        .btn-proj.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-proj.success { border-color: var(--accent-green); color: var(--accent-green); }
+        .btn-proj.success:hover { background: rgba(76,175,80,0.1); }
+        .placeholder { color: var(--text-micro); text-align: center; padding: 40px; font-size: 12px; }
     </style>
 </head>
 <body data-page-id="research">
@@ -62,76 +62,57 @@
 <div class="top-bar"></div>
 <div class="workspace">
 
-    <!-- Mode Tabs -->
-    <div class="mode-tabs">
-        <button class="mode-tab active" onclick="switchMode('auto')" data-mode="auto"><i class="fas fa-radar"></i> 自动探测高景气赛道</button>
-        <button class="mode-tab" onclick="switchMode('manual')" data-mode="manual"><i class="fas fa-search"></i> 输入行业分析</button>
-        <button class="mode-tab" onclick="switchMode('reports')" data-mode="reports"><i class="fas fa-history"></i> 报告管理</button>
-    </div>
-
-    <!-- Auto Mode -->
-    <div id="mode-auto">
-        <div class="input-row" style="margin-bottom:6px;">
-            <button class="btn-primary" id="btn-scan" onclick="scanSectors()"><i class="fas fa-satellite"></i> 扫描高景气赛道</button>
-            <span class="status-bar" id="scan-status"></span>
+    <!-- Left: Project List -->
+    <div class="proj-list-panel">
+        <div class="header">
+            <span class="title"><i class="fas fa-project-diagram"></i> 投研项目</span>
+            <button class="btn-proj primary" onclick="newProject()"><i class="fas fa-plus"></i> 新建</button>
         </div>
-        <div class="sector-list" id="sector-list"></div>
-    </div>
-
-    <!-- Manual Mode -->
-    <div id="mode-manual" style="display:none;">
-        <div class="input-row" style="margin-bottom:4px;">
-            <select id="analyst-type">
-                <option value="supply_chain">产业链穿透</option>
-            </select>
-            <input type="text" id="industry-input" placeholder="输入行业关键词, 如: SOFC固体氧化物燃料电池" value="SOFC">
-            <button class="btn-primary" id="btn-analyze" onclick="startAnalysis()"><i class="fas fa-flask"></i> 开始分析</button>
-            <span class="status-bar" id="analysis-status"></span>
+        <div class="proj-list" id="proj-list">
+            <div class="placeholder">加载中...</div>
         </div>
     </div>
 
-    <!-- Reports Mode -->
-    <div id="mode-reports" style="display:none;">
-        <div class="input-row" style="margin-bottom:4px;">
-            <button class="btn-primary" onclick="loadReportHistory()"><i class="fas fa-sync-alt"></i> 刷新列表</button>
-            <span style="color:var(--text-micro);font-size:10px;">共 <span id="reports-total">0</span> 份报告</span>
+    <!-- Right: Project Detail -->
+    <div class="detail-panel" id="detail-panel">
+        <div class="placeholder" id="detail-empty">
+            <div style="font-size:36px;margin-bottom:10px;opacity:0.3;">&#128202;</div>
+            <div>选择一个项目查看详情，或点击「新建」开始投研</div>
         </div>
-    </div>
-
-    <!-- Content: Report + Extract Panel -->
-    <div class="content-area">
-        <div class="report-area" id="report-area">
-            <div class="report-title-bar" id="report-title-bar">
-                <span class="title" id="report-title-text"></span>
-                <button class="btn-sm" onclick="closeReport()"><i class="fas fa-times"></i> 关闭</button>
-            </div>
-            <div style="color:var(--text-micro);text-align:center;padding:40px;" id="report-placeholder">
-                <div style="font-size:36px;margin-bottom:10px;opacity:0.3;">&#128202;</div>
-                <div>选择分析模式后开始，或在下方报告管理中查看历史报告</div>
-            </div>
-            <div class="md-content" id="report-content" style="display:none;"></div>
-        </div>
-        <div class="extract-panel" id="extract-panel">
-            <div class="panel">
-                <div class="panel-header"><span class="panel-title"><i class="fas fa-code"></i> 提取标的</span></div>
-                <div class="panel-body" id="extract-list">
-                    <div style="color:var(--text-micro);font-size:10px;text-align:center;padding:10px;">分析完成后自动提取</div>
+        <div id="detail-content" style="display:none;">
+            <div class="detail-header">
+                <div>
+                    <span class="name" id="detail-name"></span>
+                    <span class="meta" id="detail-meta"></span>
+                </div>
+                <div style="display:flex;gap:4px;">
+                    <button class="btn-proj" onclick="refreshProject()"><i class="fas fa-sync-alt"></i> 刷新</button>
                 </div>
             </div>
-        </div>
-    </div>
-
-    <!-- Report History Section (inside workspace) -->
-    <div class="history-section">
-        <div class="history-header">
-            <span class="title"><i class="fas fa-history"></i> 历史报告 <span class="count" id="history-count"></span></span>
-            <span>
-                <button class="btn-sm" onclick="loadReportHistory()" title="刷新"><i class="fas fa-sync-alt"></i> 刷新</button>
-                <button class="btn-sm" onclick="document.querySelector('.history-list').style.display = document.querySelector('.history-list').style.display === 'none' ? '' : 'none'" title="折叠"><i class="fas fa-chevron-up"></i></button>
-            </span>
-        </div>
-        <div class="history-list" id="report-history-list">
-            <div style="color:var(--text-micro);text-align:center;padding:10px;">加载中...</div>
+            <!-- Step Cards -->
+            <div class="step-cards" id="step-cards"></div>
+            <!-- Output Panel -->
+            <div class="output-panel" id="output-panel" style="display:none;">
+                <div class="header">
+                    <span class="title" id="output-title"></span>
+                    <div style="display:flex;gap:4px;">
+                        <button class="btn-proj" id="btn-edit" onclick="toggleEdit()"><i class="fas fa-edit"></i> 编辑</button>
+                        <button class="btn-proj success" id="btn-save" onclick="saveEdit()" style="display:none;"><i class="fas fa-check"></i> 保存</button>
+                        <button class="btn-proj" id="btn-cancel" onclick="toggleEdit()" style="display:none;"><i class="fas fa-times"></i> 取消</button>
+                        <button class="btn-proj" onclick="loadTrace(currentStep)"><i class="fas fa-search"></i> 溯源</button>
+                        <button class="btn-proj" onclick="closeOutput()"><i class="fas fa-times"></i></button>
+                    </div>
+                </div>
+                <div id="output-content"></div>
+            </div>
+            <!-- Trace Panel -->
+            <div class="trace-panel" id="trace-panel" style="display:none;">
+                <div class="header">
+                    <span class="title" id="trace-title"></span>
+                    <button class="btn-proj" onclick="document.getElementById('trace-panel').style.display='none'"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="trace-list" id="trace-list"></div>
+            </div>
         </div>
     </div>
 
@@ -146,290 +127,250 @@
 <script src="js/ui.js"></script>
 <script src="js/common.js"></script>
 <script>
-var currentMode = 'auto';
-var activeReportId = null;
+var currentRunId = null;
+var currentStep = null;
+var currentOutput = null;
+var editMode = false;
 
-function switchMode(mode) {
-    currentMode = mode;
-    document.querySelectorAll('.mode-tab').forEach(function(b) { b.classList.toggle('active', b.dataset.mode === mode); });
-    document.getElementById('mode-auto').style.display = mode === 'auto' ? '' : 'none';
-    document.getElementById('mode-manual').style.display = mode === 'manual' ? '' : 'none';
-    document.getElementById('mode-reports').style.display = mode === 'reports' ? '' : 'none';
-    if (mode === 'reports') loadReportHistory();
-}
+// ═══ Project List ═══════════════════════════════
 
-async function scanSectors() {
-    var btn = document.getElementById('btn-scan');
-    var status = document.getElementById('scan-status');
-    var list = document.getElementById('sector-list');
-    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 扫描中...';
-    status.textContent = '正在扫描全球高景气赛道...';
-    list.innerHTML = '<div style="color:var(--text-micro);padding:10px;">加载中...</div>';
+async function loadProjects() {
+    var el = document.getElementById('proj-list');
     try {
-        var res = await fetch(API_BASE + '/research/scan', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({question:'全球高景气赛道'}) });
+        var res = await fetch(API_BASE + '/research/pipeline/runs');
         var d = await res.json();
-        var sectors = (d.data && d.data.hot_industries) ? d.data.hot_industries : [];
-        if (!sectors.length) { list.innerHTML = '<div style="color:var(--text-micro);padding:20px;">未发现热点赛道, 尝试刷新重试</div>'; status.textContent = '无结果'; return; }
-        status.textContent = '发现 ' + sectors.length + ' 个高景气赛道';
-        list.innerHTML = sectors.map(function(s) {
-            var nm = s.name || s.industry || s.theme || '?';
-            var stage = s.lifecycle_stage ? ' <span class="badge badge-info">'+escHtml(s.lifecycle_stage)+'</span>' : '';
-            return '<div class="sector-item" onclick="analyzeSector(\'' + escHtml(nm) + '\')">' +
-                '<span class="name">' + escHtml(nm) + stage + '</span>' +
-                '<span class="meta">' + (s.score ? '景气' + s.score : '') + ' ' + (s.type||'') + '</span>' +
-                '<button class="btn-primary" style="font-size:10px;padding:3px 8px;">分析</button></div>';
-        }).join('');
-    } catch(e) {
-        list.innerHTML = '<div style="color:var(--accent-red);">扫描失败: ' + e.message + '</div>';
-    }
-    btn.disabled = false; btn.innerHTML = '<i class="fas fa-satellite"></i> 扫描高景气赛道';
-}
-
-function analyzeSector(name) {
-    switchMode('manual');
-    document.getElementById('industry-input').value = name;
-    startAnalysis();
-}
-
-async function startAnalysis() {
-    var industry = document.getElementById('industry-input').value.trim();
-    var atype = document.getElementById('analyst-type').value;
-    if (!industry && !['founder_audit','valuation_scan'].includes(atype)) return;
-    var btn = document.getElementById('btn-analyze');
-    var status = document.getElementById('analysis-status');
-
-    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 提交中...';
-    status.textContent = '提交异步任务...';
-    try {
-        var res = await fetch(API_BASE + '/system/tasks/executions', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({task_code: 'research_analyze', params: {industry: industry, analysis_type: atype}})
-        });
-        var d = await res.json();
-        var execId = d.id;
-        status.innerHTML = '任务已提交: <span style="color:var(--accent-blue);">' + execId + '</span> | 轮询中...';
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 分析中...';
-
-        var pollTimer = setInterval(async function() {
-            try {
-                var pollRes = await fetch(API_BASE + '/system/tasks/executions/' + execId);
-                var exec = await pollRes.json();
-                status.textContent = (exec.progress_msg || exec.status) + ' (' + exec.progress + '%)';
-                if (exec.status === 'SUCCESS' || exec.status === 'FAILED' || exec.status === 'CANCELLED') {
-                    clearInterval(pollTimer);
-                    btn.disabled = false; btn.innerHTML = '<i class="fas fa-flask"></i> 开始分析';
-                    if (exec.status === 'SUCCESS') {
-                        status.innerHTML = '<span style="color:var(--accent-green);">分析完成!</span> 正在加载报告...';
-                        await new Promise(function(r) { setTimeout(r, 1000); });
-                        await loadReportHistory();
-                        var listRes = await fetch(API_BASE + '/research/reports?limit=1');
-                        var listData = await listRes.json();
-                        var reports = listData.data || [];
-                        if (reports.length > 0) {
-                            viewReport(reports[0].report_id);
-                            status.innerHTML = '<span style="color:var(--accent-green);">分析完成!</span> 报告已加载';
-                        } else {
-                            status.innerHTML = '<span style="color:var(--accent-green);">分析完成!</span> 请查看下方报告列表';
-                        }
-                    } else {
-                        status.innerHTML = '<span style="color:var(--accent-red);">分析失败:</span> ' + (exec.progress_msg || exec.status);
-                    }
-                }
-            } catch(e) { /* silent */ }
-        }, 3000);
-    } catch(e) {
-        status.textContent = '提交失败: ' + e.message;
-        btn.disabled = false; btn.innerHTML = '<i class="fas fa-flask"></i> 开始分析';
-    }
-}
-
-function loadAnalysts() {
-    fetch(API_BASE + '/research/analysts').then(function(r){return r.json()}).then(function(d){
-        var sel = document.getElementById('analyst-type');
-        var items = d.data || [];
-        if (!items.length) return;
-        sel.innerHTML = items.map(function(a){
-            return '<option value="' + a.type + '" title="' + escHtml(a.description || '') + '">' + escHtml(a.label) + '</option>';
-        }).join('');
-    }).catch(function(){});
-}
-
-function viewReport(id) {
-    activeReportId = id;
-    // 高亮列表
-    document.querySelectorAll('.history-item').forEach(function(el) { el.classList.remove('active'); });
-    var activeEl = document.querySelector('.history-item[data-id="' + id + '"]');
-    if (activeEl) activeEl.classList.add('active');
-
-    fetch(API_BASE + '/research/reports/' + id).then(function(r){return r.json()}).then(function(d){
-        var report = d.data || {};
-        var cio = report.data ? report.data.cio_report : (report.cio_report || '');
-        if (!cio) { Modal.alert('提示', '该报告暂无内容'); return; }
-        document.getElementById('report-placeholder').style.display = 'none';
-        document.getElementById('report-content').style.display = '';
-        document.getElementById('report-content').innerHTML = MD.render(cio);
-        // 标题栏
-        var bar = document.getElementById('report-title-bar');
-        bar.style.display = 'flex';
-        document.getElementById('report-title-text').textContent =
-            (report.data && report.data.title) || (report.title) || ((report.agent||'?') + ' — ' + (report.industry||'?')) + ' | ' + (report.created_at||'').substring(0,16);
-        // 从报告数据提取名称映射
-        var stockMap = {};
-        var sc = (report.data && report.data.supply_chain && report.data.supply_chain.core_stocks) ||
-                 (report.data && report.data.detail && report.data.detail.supply_chain && report.data.detail.supply_chain.core_stocks) ||
-                 (report.data && report.data.core_stocks) || [];
-        sc.forEach(function(s){ if(s.code && s.name) stockMap[s.code] = s.name; });
-        extractStocks(cio, stockMap);
-    }).catch(function(e){
-        Modal.alert('错误', '加载报告失败: ' + e.message);
-    });
-}
-
-function closeReport() {
-    activeReportId = null;
-    document.getElementById('report-placeholder').style.display = '';
-    document.getElementById('report-content').style.display = 'none';
-    document.getElementById('report-title-bar').style.display = 'none';
-    document.querySelectorAll('.history-item').forEach(function(el) { el.classList.remove('active'); });
-}
-
-function deleteReport(id) {
-    Modal.confirm('确认删除', '确定删除此报告? 此操作不可撤销。').then(function(ok){
-        if (!ok) return;
-        fetch(API_BASE + '/research/reports/' + id, {method:'DELETE'}).then(function(r){
-            if (!r.ok) throw new Error('删除失败');
-            if (activeReportId === id) closeReport();
-            loadReportHistory();
-        }).catch(function(e){ Modal.alert('错误', e.message); });
-    });
-}
-
-function regenerateReport(id) {
-    var btn = document.querySelector('.history-item[data-id="' + id + '"] .btn-regenerate');
-    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
-    fetch(API_BASE + '/research/reports/' + id + '/regenerate', {method:'POST'}).then(function(r){return r.json()}).then(function(d){
-        if (d.success) { loadReportHistory(); if (activeReportId === id) viewReport(id); }
-        else Modal.alert('错误', d.message || '再生失败');
-    }).catch(function(e){ Modal.alert('错误', e.message); });
-}
-
-function loadReportHistory() {
-    var el = document.getElementById('report-history-list');
-    el.innerHTML = '<div style="color:var(--text-micro);text-align:center;padding:10px;"><i class="fas fa-spinner fa-spin"></i> 加载中...</div>';
-    fetch(API_BASE + '/research/reports?limit=50').then(function(r){return r.json()}).then(function(d){
-        var items = d.data || [];
-        document.getElementById('history-count').textContent = '(' + items.length + '份)';
-        document.getElementById('reports-total').textContent = items.length;
-        if (!items.length) {
-            el.innerHTML = '<div style="color:var(--text-micro);text-align:center;padding:16px;">暂无历史报告，开始你的第一次分析吧</div>';
+        var runs = d.data || [];
+        if (!runs.length) {
+            el.innerHTML = '<div class="placeholder">暂无项目，点击「新建」开始投研</div>';
             return;
         }
-        el.innerHTML = items.map(function(r, i){
-            var nm = (r.title || r.industry || '?').substring(0, 35);
-            var agent = (r.agent || '?').substring(0, 12);
-            var tm = (r.created_at || '').substring(0, 16);
-            var isActive = r.report_id === activeReportId ? ' active' : '';
-            return '<div class="history-item' + isActive + '" data-id="' + r.report_id + '" onclick="viewReport(\'' + r.report_id + '\')">' +
-                '<span class="ind">' + (i+1) + '</span>' +
-                '<span class="name">' + escHtml(nm) + '</span>' +
-                '<span class="agent-tag">' + escHtml(agent) + '</span>' +
-                '<span style="color:var(--text-micro);font-size:9px;">' + tm + '</span>' +
-                '<span class="actions" onclick="event.stopPropagation()">' +
-                '<button class="btn-sm btn-regenerate" onclick="regenerateReport(\'' + r.report_id + '\')" title="重新生成Markdown"><i class="fas fa-redo"></i></button>' +
-                '<button class="btn-sm danger" onclick="deleteReport(\'' + r.report_id + '\')" title="删除"><i class="fas fa-trash"></i></button>' +
-                '</span></div>';
+        el.innerHTML = runs.map(function(r) {
+            var active = r.run_id === currentRunId ? ' active' : '';
+            var dot = r.status === 'completed' ? 'ok' : (r.status === 'failed' ? 'fail' : 'running');
+            return '<div class="proj-item' + active + '" onclick="selectProject(\'' + r.run_id + '\')">' +
+                '<div class="name">' + escHtml(r.display_name || r.run_id) + '</div>' +
+                '<div class="meta"><span class="status-dot ' + dot + '"></span>' +
+                escHtml(r.status || '?') + ' · ' + (r.elapsed_seconds || 0) + 's</div></div>';
         }).join('');
-        // 如果当前有活跃报告, 重新高亮
-        if (activeReportId) {
-            var ae = document.querySelector('.history-item[data-id="' + activeReportId + '"]');
-            if (ae) ae.classList.add('active');
-        }
-    }).catch(function(e){
-        el.innerHTML = '<div style="color:var(--accent-red);text-align:center;padding:10px;">加载失败 <button class="btn-sm" onclick="loadReportHistory()">重试</button></div>';
-    });
-}
-
-async function extractStocks(markdown, stockMap) {
-    stockMap = stockMap || {};
-    var codes = markdown.match(/\b(\d{6})\b/g) || [];
-    var unique = [];
-    codes.forEach(function(c) { if (unique.indexOf(c) < 0) unique.push(c); });
-    var el = document.getElementById('extract-list');
-    if (!unique.length) { el.innerHTML = '<div style="color:var(--text-micro);font-size:10px;text-align:center;padding:10px;">未提取到标的</div>'; return; }
-
-    // 批量查名称 (stockMap 作为优先来源, API 作为补充)
-    var infoMap = {};
-    try {
-        var infoRes = await fetch(API_BASE + '/research/stocks/batch-info', {
-            method: 'POST', headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(unique)
-        });
-        var infoData = await infoRes.json();
-        (infoData.data||[]).forEach(function(s){ infoMap[s.code] = s; });
-    } catch(e) {}
-    // 合并: stockMap 优先
-    unique.forEach(function(c){ if (stockMap[c] && !infoMap[c]) infoMap[c] = {name: stockMap[c]}; });
-
-    el.innerHTML = unique.map(function(c) {
-        var info = infoMap[c] || {};
-        var name = info.name || c;
-        var ind = info.industry ? '<span style="color:var(--text-micro);font-size:9px;">' + escHtml(info.industry) + '</span>' : '';
-        var pe = info.pe_ttm ? ' · PE' + (info.pe_ttm||'').toFixed(0) : '';
-        var mcap = info.mcap_yi ? ' · ' + (info.mcap_yi||'').toFixed(0) + '亿' : '';
-        return '<div class="stock-item">' +
-            '<div onclick="viewStock(\'' + c + '\')" title="点击查看指标数据" style="flex:1;cursor:pointer;">' +
-            '<span style="color:var(--accent-blue);font-family:var(--font-mono);">' + c + '</span> ' +
-            '<span style="color:#fff;font-size:11px;">' + escHtml(name) + '</span>' +
-            '<div>' + ind + '<span style="color:var(--text-dim);font-size:10px;">' + pe + mcap + '</span></div></div>' +
-            '<button class="btn-sm" onclick="event.stopPropagation();openAddToWatchlist(\'' + c + '\',\'' + escHtml(name) + '\')" title="添加自选" style="flex-shrink:0;">' +
-            '<i class="fas fa-plus"></i> 自选</button></div>';
-    }).join('');
-}
-
-function openAddToWatchlist(code, name) {
-    var groups = ['默认','持仓股','核心观察','待研究','高风险'];
-    var groupOpts = groups.map(function(g){ return '<option value="' + g + '">' + g + '</option>'; }).join('');
-    var html = '<div style="display:flex;flex-direction:column;gap:8px;min-width:360px;">' +
-        '<div style="color:#fff;font-size:13px;"><span style="font-family:var(--font-mono);color:var(--accent-blue);">' + code + '</span> ' + escHtml(name) + '</div>' +
-        '<label style="color:var(--text-dim);font-size:11px;">分组 <select id="addwl-group" style="background:#000;border:1px solid var(--border-color);color:#fff;padding:4px 8px;border-radius:3px;font-size:11px;width:100%;">' + groupOpts + '<option value="__new__">+ 新建分组...</option></select></label>' +
-        '<label style="color:var(--text-dim);font-size:11px;">备注 <input id="addwl-notes" placeholder="如: CPU自主架构龙头、Beneish低风险" style="width:100%;background:#000;border:1px solid var(--border-color);color:#fff;padding:4px 8px;border-radius:3px;font-size:11px;"></label>' +
-        '<div style="display:flex;gap:8px;">' +
-        '<label style="color:var(--text-dim);font-size:11px;flex:1;">目标价下限 <input id="addwl-low" type="number" step="0.01" placeholder="如 300" style="width:100%;background:#000;border:1px solid var(--border-color);color:#fff;padding:4px 8px;border-radius:3px;font-size:11px;"></label>' +
-        '<label style="color:var(--text-dim);font-size:11px;flex:1;">目标价上限 <input id="addwl-high" type="number" step="0.01" placeholder="如 500" style="width:100%;background:#000;border:1px solid var(--border-color);color:#fff;padding:4px 8px;border-radius:3px;font-size:11px;"></label></div>' +
-        '<div style="display:flex;gap:6px;justify-content:flex-end;">' +
-        '<button class="btn-sm" onclick="Modal.close()" style="padding:6px 14px;">取消</button>' +
-        '<button class="btn-primary" onclick="submitAddToWatchlist(\'' + code + '\',\'' + escHtml(name) + '\')" style="font-size:11px;">确认添加</button></div></div>';
-    Modal.custom({title: '添加自选股', content: html});
-}
-
-async function submitAddToWatchlist(code, name) {
-    var group = document.getElementById('addwl-group').value;
-    if (group === '__new__') {
-        group = prompt('输入新分组名称:');
-        if (!group) return;
+    } catch(e) {
+        el.innerHTML = '<div class="placeholder" style="color:var(--accent-red);">加载失败<br><button class="btn-proj" onclick="loadProjects()">重试</button></div>';
     }
-    var notes = document.getElementById('addwl-notes').value;
-    var low = document.getElementById('addwl-low').value;
-    var high = document.getElementById('addwl-high').value;
-    var params = 'stock_code=' + code + '&stock_name=' + encodeURIComponent(name) + '&group_tag=' + encodeURIComponent(group);
-    if (notes) params += '&notes=' + encodeURIComponent(notes);
-    if (low) params += '&target_price_low=' + low;
-    if (high) params += '&target_price_high=' + high;
+}
+
+// ═══ Project Detail ═══════════════════════════════
+
+async function selectProject(runId) {
+    currentRunId = runId;
+    closeOutput();
+    document.getElementById('trace-panel').style.display = 'none';
+    document.querySelectorAll('.proj-item').forEach(function(el) { el.classList.remove('active'); });
+    var el = document.querySelector('.proj-item[onclick*="' + runId + '"]');
+    if (el) el.classList.add('active');
+    await loadProjectDetail();
+}
+
+async function refreshProject() {
+    if (currentRunId) await loadProjectDetail();
+}
+
+async function loadProjectDetail() {
+    if (!currentRunId) return;
+    document.getElementById('detail-empty').style.display = 'none';
+    document.getElementById('detail-content').style.display = '';
     try {
-        var res = await fetch(API_BASE + '/data/watchlist/add?' + params, {method:'POST'});
+        var res = await fetch(API_BASE + '/research/pipeline/' + currentRunId);
         var d = await res.json();
-        if (d.success) { Modal.close(); Modal.alert('成功', '已添加 ' + name + ' 到自选股分组 [' + group + ']'); }
-        else Modal.alert('失败', d.message || '添加失败');
-    } catch(e) { Modal.alert('错误', e.message); }
+        var data = d.data || {};
+        var m = data.manifest || {};
+        document.getElementById('detail-name').textContent = data.display_name || currentRunId;
+        document.getElementById('detail-meta').textContent =
+            (m.started_at || '').substring(0,16) + ' · ' + (m.mode || '?') + ' · ' + (m.status || '?') + ' · ' + (m.elapsed_seconds || 0) + 's';
+        // Step cards
+        var steps = data.steps || {};
+        var stepNames = Object.keys(steps);
+        if (!stepNames.length) {
+            document.getElementById('step-cards').innerHTML = '<div class="placeholder" style="font-size:11px;">暂无步骤数据</div>';
+            return;
+        }
+        stepNames.sort();
+        var cardsHtml = '';
+        stepNames.forEach(function(s) {
+            var info = steps[s];
+            var icon = '✅'; // fallback
+            cardsHtml += '<div class="step-card">' +
+                '<div class="step-card-header" onclick="toggleStep(\'' + s + '\')">' +
+                '<span class="step-icon">' + icon + '</span>' +
+                '<span class="step-name">' + escHtml(s) + '</span>' +
+                '<span class="step-meta">' + (info.elapsed_seconds || 0) + 's' +
+                (info.has_trace ? ' · trace ✓' : '') + '</span></div>' +
+                '<div class="step-actions">' +
+                '<button class="btn-proj" onclick="event.stopPropagation();loadOutput(\'' + s + '\')"><i class="fas fa-file-code"></i> 查看输出</button>' +
+                (info.has_trace ? '<button class="btn-proj" onclick="event.stopPropagation();loadTrace(\'' + s + '\')"><i class="fas fa-search"></i> 查看溯源</button>' : '') +
+                '</div></div>';
+        });
+        document.getElementById('step-cards').innerHTML = cardsHtml;
+    } catch(e) {
+        document.getElementById('step-cards').innerHTML = '<div class="placeholder" style="color:var(--accent-red);">加载失败: ' + e.message + '</div>';
+    }
 }
 
-function viewStock(code) {
-    window.open('indicators.html?stock=' + code, '_blank');
+// ═══ Output Viewer + JSON Editor ═════════════════
+
+async function loadOutput(step) {
+    currentStep = step;
+    editMode = false;
+    document.getElementById('btn-edit').style.display = '';
+    document.getElementById('btn-save').style.display = 'none';
+    document.getElementById('btn-cancel').style.display = 'none';
+    document.getElementById('output-panel').style.display = '';
+    document.getElementById('output-title').textContent = '节点输出: ' + step;
+    var container = document.getElementById('output-content');
+    container.innerHTML = '<div style="color:var(--text-micro);text-align:center;padding:20px;"><i class="fas fa-spinner fa-spin"></i> 加载中...</div>';
+    try {
+        var res = await fetch(API_BASE + '/research/pipeline/' + currentRunId + '/checkpoint/' + step);
+        var d = await res.json();
+        var output = (d.data || {}).output || {};
+        currentOutput = {step: step, output: output};
+        var jsonStr = JSON.stringify(output, null, 2);
+        container.innerHTML = '<textarea class="output-editor" id="output-editor" readonly>' + escHtml(jsonStr) + '</textarea>';
+    } catch(e) {
+        container.innerHTML = '<div class="placeholder" style="color:var(--accent-red);">加载失败: ' + e.message + '</div>';
+    }
 }
 
-document.addEventListener('DOMContentLoaded', function() { loadAnalysts(); loadReportHistory(); });
-window.refreshPageData = function() { loadReportHistory(); };
+function toggleEdit() {
+    editMode = !editMode;
+    var ta = document.getElementById('output-editor');
+    document.getElementById('btn-edit').style.display = editMode ? 'none' : '';
+    document.getElementById('btn-save').style.display = editMode ? '' : 'none';
+    document.getElementById('btn-cancel').style.display = editMode ? '' : 'none';
+    if (ta) ta.readOnly = !editMode;
+    if (!editMode) {
+        // Cancel — reload original
+        if (ta && currentOutput) {
+            ta.value = currentOutput._original || ta.value;
+        }
+    } else {
+        // Enter edit — save original
+        if (ta) currentOutput._original = ta.value;
+    }
+}
+
+async function saveEdit() {
+    var ta = document.getElementById('output-editor');
+    if (!ta || !currentStep) return;
+    var newOutput;
+    try {
+        newOutput = JSON.parse(ta.value);
+    } catch(e) {
+        Modal.alert('JSON 格式错误', '请检查 JSON 语法: ' + e.message);
+        return;
+    }
+    try {
+        var res = await fetch(API_BASE + '/research/pipeline/' + currentRunId + '/checkpoint/' + currentStep, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({output: newOutput})
+        });
+        var d = await res.json();
+        if (d.success) {
+            editMode = false;
+            document.getElementById('btn-edit').style.display = '';
+            document.getElementById('btn-save').style.display = 'none';
+            document.getElementById('btn-cancel').style.display = 'none';
+            if (ta) ta.readOnly = true;
+            Modal.alert('保存成功', '检查点已更新: ' + d.data.saved);
+        } else {
+            Modal.alert('保存失败', d.message || '未知错误');
+        }
+    } catch(e) {
+        Modal.alert('保存失败', e.message);
+    }
+}
+
+function closeOutput() {
+    currentStep = null;
+    currentOutput = null;
+    editMode = false;
+    document.getElementById('output-panel').style.display = 'none';
+    document.getElementById('trace-panel').style.display = 'none';
+}
+
+// ═══ Trace Viewer ═══════════════════════════════
+
+async function loadTrace(step) {
+    var panel = document.getElementById('trace-panel');
+    var list = document.getElementById('trace-list');
+    panel.style.display = '';
+    document.getElementById('trace-title').textContent = '溯源日志: ' + step;
+    list.innerHTML = '<div style="color:var(--text-micro);text-align:center;padding:10px;"><i class="fas fa-spinner fa-spin"></i> 加载中...</div>';
+    try {
+        var res = await fetch(API_BASE + '/research/pipeline/' + currentRunId + '/trace/' + step);
+        var d = await res.json();
+        var events = (d.data || {}).events || [];
+        if (!events.length) {
+            list.innerHTML = '<div class="placeholder" style="font-size:11px;">暂无溯源记录</div>';
+            return;
+        }
+        list.innerHTML = events.map(function(e, i) {
+            var typeIcon = e.type === 'search' ? '🔍' : (e.type === 'llm' ? '🤖' : (e.type === 'note' ? '📝' : '📎'));
+            var detail = '';
+            if (e.type === 'search') {
+                detail = 'q=' + escHtml((e.query || '').substring(0, 60)) + ' · r=' + (e.result_count || 0);
+            } else if (e.type === 'llm') {
+                detail = 'prompt=' + (e.prompt||'').length + ' chars · response=' + (e.response||'').length + ' chars';
+            } else if (e.type === 'note') {
+                detail = escHtml((e.value || '').substring(0, 120));
+            }
+            return '<div class="trace-event"><span class="type">' + typeIcon + ' ' + e.type + '</span><span class="detail">' + detail + '</span></div>';
+        }).join('');
+    } catch(e) {
+        list.innerHTML = '<div class="placeholder" style="color:var(--accent-red);">加载失败: ' + e.message + '</div>';
+    }
+}
+
+// ═══ New Project ═══════════════════════════════
+
+function newProject() {
+    var html = '<div style="display:flex;flex-direction:column;gap:8px;min-width:360px;">' +
+        '<label style="color:var(--text-dim);font-size:11px;">行业/主题</label>' +
+        '<input id="new-industry" placeholder="如: SOFC固体氧化物燃料电池" style="width:100%;background:#000;border:1px solid var(--border-color);color:#fff;padding:8px 12px;border-radius:4px;font-size:13px;">' +
+        '<div style="display:flex;gap:6px;justify-content:flex-end;margin-top:8px;">' +
+        '<button class="btn-proj" onclick="Modal.close()">取消</button>' +
+        '<button class="btn-proj primary" onclick="submitNewProject()">开始分析</button></div></div>';
+    Modal.custom({title: '新建投研项目', content: html});
+    setTimeout(function() {
+        var inp = document.getElementById('new-industry');
+        if (inp) { inp.focus(); inp.addEventListener('keydown', function(e) { if (e.key === 'Enter') submitNewProject(); }); }
+    }, 200);
+}
+
+async function submitNewProject() {
+    var industry = document.getElementById('new-industry').value.trim();
+    if (!industry) return;
+    Modal.close();
+    try {
+        var res = await fetch(API_BASE + '/research/scan', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({mode: 'manual', target_industry: industry})
+        });
+        var d = await res.json();
+        if (d.success) {
+            await loadProjects();
+            if (d.run_id) selectProject(d.run_id);
+        } else {
+            Modal.alert('分析失败', d.message || '未知错误');
+        }
+    } catch(e) {
+        Modal.alert('错误', e.message);
+    }
+}
+
+function escHtml(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+document.addEventListener('DOMContentLoaded', function() { loadProjects(); });
+window.refreshPageData = function() { loadProjects(); if (currentRunId) loadProjectDetail(); };
 </script>
 </body>
 </html>
