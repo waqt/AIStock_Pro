@@ -1,5 +1,5 @@
 """
-MarketScanner V5.8 — Pipeline Gatekeeper
+MarketScanner V5.9 — Pipeline Gatekeeper (granularity + mismatch + evidence_quality)
 双模式: auto(扫描验证) / manual(单行业深挖)
 输出: 6块定性判断 + 结构化证据 + Step3指引
 V5.8: 证据层结构化 + 自适应搜索降级 + PDF过滤 + Step3决策摘要
@@ -188,17 +188,23 @@ class MarketScanner(ResearchAgent):
                 prompt += f"  [{i+1}.{j+1}] {r['title']}: {r['snippet'][:200]}\n"
 
         prompt += f"""
-## 输出: 纯 JSON (6 块, 全定性, 每个结论必须附证据数组)
+## 输出: 纯 JSON (7 块, 全定性, 每个结论必须附证据数组)
 
 {{
   "industry": "{industry}",
+
+  "industry_granularity": {{
+    "type": "specific_industry",
+    "action": "allow",
+    "reason": "为什么判定为该粒度类型 (1句话)"
+  }},
 
   "cycle_position": {{
     "phase": "theme_emergence",
     "sub_phase": "early",
     "evidence": [
-      {{"fact": "具体事实1, 引用搜索结果中的具体数据", "from": "search[1.2]·报告标题"}},
-      {{"fact": "具体事实2", "from": "search[3.1]·文章标题"}}
+      {{"fact": "具体事实1", "from": "search[1.2]·报告标题",
+        "quality": {{"level": "high", "source_type": "industry_data"}}}}
     ],
     "next_phase": "...",
     "estimated_duration": "12-18个月",
@@ -209,13 +215,14 @@ class MarketScanner(ResearchAgent):
     "type": "demand_explosion",
     "demand_quality": "real_demand",
     "demand_evidence": [
-      {{"fact": "市场规模从A增至B, CAGR=X%", "from": "search[1.X]·报告标题"}}
+      {{"fact": "市场规模从A增至B", "from": "search[1.X]·报告标题",
+        "quality": {{"level": "medium", "source_type": "sell_side_report"}}}}
     ],
     "growth_narrative": "行业增速 vs 供给响应的矛盾描述",
     "core_contradiction": "当前最核心的供需矛盾是什么",
     "driver_decomposition": [
       {{"driver": "驱动力1", "weight": "主导", "certainty": "高", "duration": "3-5年", "leading_indicator": "...",
-        "evidence": [{{"fact": "...", "from": "search[X.Y]·..."}}]}}
+        "evidence": [{{"fact": "...", "from": "search[X.Y]·...", "quality": {{"level": "high", "source_type": "company_filing"}}}}]}}
     ]
   }},
 
@@ -223,7 +230,8 @@ class MarketScanner(ResearchAgent):
     "asymmetry": "强非对称",
     "narrative": "判断依据: 如果景气兑现会怎样, 如果证伪会怎样",
     "evidence": [
-      {{"fact": "支撑非对称判断的关键事实", "from": "search[X.Y]·..."}}
+      {{"fact": "支撑非对称判断的关键事实", "from": "search[X.Y]·...",
+        "quality": {{"level": "medium", "source_type": "sell_side_report"}}}}
     ]
   }},
 
@@ -231,7 +239,7 @@ class MarketScanner(ResearchAgent):
     "depth": "深",
     "transmission_order": [
       {{"stage": 1, "node": "环节名", "reason": "最先受益的原因",
-        "evidence": [{{"fact": "...", "from": "search[X.Y]·..."}}]}}
+        "evidence": [{{"fact": "...", "from": "search[X.Y]·...", "quality": {{"level": "medium", "source_type": "news_media"}}}}]}}
     ],
     "last_beneficiary": "...",
     "last_bottleneck": "...",
@@ -243,35 +251,64 @@ class MarketScanner(ResearchAgent):
     "profit_expansion_window": "12-24个月",
     "capacity_relief_eta": "2028H1",
     "market_repricing_stage": "早期",
-    "evidence": [{{"fact": "支撑时间判断的证据", "from": "search[X.Y]·..."}}]
+    "evidence": [{{"fact": "支撑时间判断的证据", "from": "search[X.Y]·...",
+      "quality": {{"level": "medium", "source_type": "sell_side_report"}}}}]
+  }},
+
+  "mismatch_analysis": {{
+    "supply_demand_mismatch": "strong",
+    "timing_mismatch": "moderate",
+    "expectation_gap": "weak",
+    "profit_redistribution": "strong",
+    "pricing_gap": "uncertain",
+    "evidence": [
+      {{"fact": "支撑逐项判断的关键事实", "from": "search[X.Y]·...",
+        "quality": {{"level": "medium", "source_type": "sell_side_report"}}}}
+    ]
   }},
 
   "verdict": {{
     "enter_step3": true,
     "priority": "高",
-    "rationale": "基于五错配原则的判断理由, 说明哪几条满足、哪条不确定",
+    "rationale": "基于 mismatch_analysis 的结果说明: 哪几条错配程度高、哪条不确定、为什么综合判断为进入/跳过",
     "key_uncertainties": ["不确定性1", "不确定性2"],
     "evidence": [
-      {{"fact": "支撑 verdict 的关键事实或数据缺失说明", "from": "search[X.Y]·..."}}
+      {{"fact": "支撑 verdict 的关键事实", "from": "search[X.Y]·...",
+        "quality": {{"level": "medium", "source_type": "sell_side_report"}}}}
     ]
   }},
 
   "kill_reasons": []
 }}
 
-## 证据格式要求 (★ 强制)
+## industry_granularity 粒度判定 (★ 在分析之前先判定)
+- specific_industry (CoWoS/HBM/SOFC/CPU等具体产业) → action=allow
+- subsector (半导体设备/创新药等子板块) → action=allow
+- macro_theme (新质生产力/AI新基建/国产替代等宏观主题) → action=split_or_skip, 强制 enter_step3=false, kill_reasons填"传导链<3层Alpha空间有限"
+- asset_class (黄金ETF/REITs等) → action=skip, enter_step3=false
+- 如果判定为 macro_theme 或 asset_class, 后续 6 块仍需填写但 verdict 必须拒绝
+
+## evidence_quality 证据质量 (★ 每条 evidence 必须标注)
+- quality.level: high / medium / low
+- quality.source_type 枚举:
+  company_filing(公司财报/公告) | industry_data(海关/行业协会/产能统计) | official_policy(政府文件/产业规划) |
+  sell_side_report(券商研报) | news_media(财经媒体) | self_media(自媒体/知乎/公众号) | ai_summary(AI摘要)
+
+## 证据格式要求
 - 每个结论块的 evidence 数组至少包含 1 条证据
-- 每条证据的 "from" 字段必须用 "search[轮次.序号]·来源简称" 格式, 如 "search[1.2]·慧博出品"
-- 如果某轮搜索无结果, evidence 中标注 {{"fact": "该维度搜索结果为空, 数据不足", "from": "search[2]·无结果"}}
-- fact 必须是搜索文字中明确出现的具体事实, 不得凭空编造
-- 不要用 "数据有限" 作为唯一证据 — 如果有任何搜索结果, 必须引用具体内容
+- from 格式: "search[轮次.序号]·来源简称", 如 "search[1.2]·慧博出品"
+- 如果某轮搜索无结果, evidence 中标注 {{"fact": "该维度搜索结果为空", "from": "search[2]·无结果", "quality": {{"level": "low", "source_type": "ai_summary"}}}}
+
+## mismatch_analysis 取值: strong / moderate / weak / uncertain
+- strong: 搜索结果有明确数据支撑该错配
+- moderate: 有间接证据, 逻辑链需要一步推断
+- weak: 证据薄弱或矛盾
+- uncertain: 完全没有数据, 不确定
 
 ## 规则
-- 所有数值引用(增速/交期/规模)必须来自搜索结果
-- 如果 enter_step3=false, kill_reasons 必须使用以下标准枚举值之一:
-  需求来自渠道补库存 | 已进入资本狂热后期 | 估值透支3年增长 |
-  政策抢装非真实需求 | 供给扩张>需求 | 传导链<3层Alpha空间有限
-  如果上述都不完全匹配, 选最接近的一个, 同时在 rationale 中说明具体原因"""
+- 不要在 rationale 中使用"五错配全部满足/不满足"等笼统表述 — 必须引用 mismatch_analysis 的具体结果
+- 如果 enter_step3=false, kill_reasons 必须使用标准枚举值(需求来自渠道补库存/已进入资本狂热后期/估值透支3年增长/政策抢装非真实需求/供给扩张>需求/传导链<3层Alpha空间有限), 选最接近的
+- 所有数值引用必须来自搜索结果, 不得编造"""
         # 注入权威术语表 (放在规则后面, 距离核心指令近)
         from app.framework.pipeline.glossary import step2_glossary
         prompt += step2_glossary()
@@ -297,13 +334,12 @@ class MarketScanner(ResearchAgent):
 
     @staticmethod
     def _build_step3_guidance(output: dict) -> dict:
-        """基于 Step 2 的实际输出值, 生成 Step 3 可消费的决策摘要。
-        替代直接注入 glossary 原始定义 — 只传 Step 2 判断的具体值 + 含义。
-        """
         cp = output.get("cycle_position", {})
         pr = output.get("prosperity", {})
         pp = output.get("propagation", {})
         v = output.get("verdict", {})
+        ma = output.get("mismatch_analysis", {})
+        ig = output.get("industry_granularity", {})
 
         # 周期阶段的含义映射
         phase_meanings = {
@@ -334,6 +370,8 @@ class MarketScanner(ResearchAgent):
             "propagation_depth": pp.get("depth", "中"),
             "enter_step3": v.get("enter_step3", False),
             "priority": v.get("priority", "低"),
+            "mismatch_summary": f"S={ma.get('supply_demand_mismatch','?')}/T={ma.get('timing_mismatch','?')}/E={ma.get('expectation_gap','?')}/P={ma.get('profit_redistribution','?')}/$={ma.get('pricing_gap','?')}",
+            "industry_granularity": ig.get("type", "unknown"),
             "search_focus": (
                 f"周期阶段={phase} → {phase_meanings.get(phase, '')}; "
                 f"景气类型={ptype} → {prosperity_meanings.get(ptype, '')}"
