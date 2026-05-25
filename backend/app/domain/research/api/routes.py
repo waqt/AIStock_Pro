@@ -312,103 +312,96 @@ async def list_agents():
     return {"success": True, "data": AGENT_REGISTRY}
 
 
-@router.post("/scan")
-async def market_scan(req: ScanRequest = ScanRequest()):
-    """投研分析入口 — 根据 agent_id + mode_id 路由到不同分析逻辑"""
-    try:
-        from app.framework.ai.providers.deepseek import DeepSeekProvider
-        from app.framework.pipeline.checkpoint import (
-            generate_run_id, hash_input, load_checkpoint,
-            save_checkpoint, save_manifest,
-        )
-        from app.framework.pipeline.trace import TraceContext
+async def _do_scan(req: ScanRequest):
+    """投研分析核心逻辑 (同步/异步模式复用)"""
+    from app.framework.ai.providers.deepseek import DeepSeekProvider
+    from app.framework.pipeline.checkpoint import (
+        generate_run_id, hash_input, load_checkpoint,
+        save_checkpoint, save_manifest,
+    )
+    from app.framework.pipeline.trace import TraceContext
 
-        # 兼容旧参数
-        target = req.target or req.target_industry or req.question
-        agent_id = req.agent_id
-        mode_id = req.mode_id
+    target = req.target or req.target_industry or req.question
+    agent_id = req.agent_id
+    mode_id = req.mode_id
 
-        # 查找智能体定义
-        agent_def = next((a for a in AGENT_REGISTRY if a["id"] == agent_id), None)
-        if not agent_def:
-            raise HTTPException(status_code=400, detail=f"Unknown agent: {agent_id}")
-        mode_def = next((m for m in agent_def["modes"] if m["id"] == mode_id), None)
-        if not mode_def:
-            raise HTTPException(status_code=400, detail=f"Unknown mode '{mode_id}' for agent '{agent_id}'")
+    agent_def = next((a for a in AGENT_REGISTRY if a["id"] == agent_id), None)
+    if not agent_def:
+        raise HTTPException(status_code=400, detail=f"Unknown agent: {agent_id}")
+    mode_def = next((m for m in agent_def["modes"] if m["id"] == mode_id), None)
+    if not mode_def:
+        raise HTTPException(status_code=400, detail=f"Unknown mode '{mode_id}' for agent '{agent_id}'")
+    if mode_def["input_type"] != "none" and not target:
+        raise HTTPException(status_code=400, detail=f"Mode '{mode_id}' requires input: {mode_def['input_type']}")
 
-        # 验证输入
-        if mode_def["input_type"] != "none" and not target:
-            raise HTTPException(status_code=400, detail=f"Mode '{mode_id}' requires input: {mode_def['input_type']}")
+    scanner = MarketScanner(provider=DeepSeekProvider())
 
-        scanner = MarketScanner(provider=DeepSeekProvider())
+    if mode_id == "auto_scan":
+        import os as _os
+        macro_path = _os.path.join(_os.path.dirname(__file__), "..", "..", "..", "..", "data", "macro_report.json")
+        macro_path = _os.path.abspath(macro_path)
+        hypothesis = []
+        target = "高景气赛道扫描"
+        if _os.path.exists(macro_path):
+            import json as _json
+            with open(macro_path, "r", encoding="utf-8") as f:
+                macro = _json.load(f)
+            themes = macro.get("data", {}).get("executive_summary", {}).get("top_3_themes", [])
+            hypothesis = [{"sector": t.get("theme", t.get("name", "")), "name": t.get("theme", "")} for t in themes[:4] if t.get("theme")]
+            if hypothesis: target = "全局扫描-" + datetime.now().strftime("%Y%m%d-%H%M")
+        ctx = {"mode": "auto", "hypothesis_sectors": hypothesis}
+        if not hypothesis: ctx = {"mode": "auto"}
+    else:
+        ctx = {"mode": "manual" if mode_def["input_type"] != "none" else "auto"}
+        if target: ctx["target_industry"] = target
 
-        # auto_scan: 从 Step1 宏观报告提取候选行业 → 批量验证
-        if mode_id == "auto_scan":
-            import os as _os
-            macro_path = _os.path.join(_os.path.dirname(__file__), "..", "..", "..", "..", "data", "macro_report.json")
-            macro_path = _os.path.abspath(macro_path)
-            hypothesis = []
-            target = "高景气赛道扫描"
-            if _os.path.exists(macro_path):
-                import json as _json
-                with open(macro_path, "r", encoding="utf-8") as f:
-                    macro = _json.load(f)
-                themes = macro.get("data", {}).get("executive_summary", {}).get("top_3_themes", [])
-                hypothesis = [{"sector": t.get("theme", t.get("name", "")), "name": t.get("theme", "")} for t in themes[:4] if t.get("theme")]
-                if hypothesis:
-                    target = "全局扫描-" + datetime.now().strftime("%Y%m%d-%H%M")
-            ctx = {"mode": "auto", "hypothesis_sectors": hypothesis}
-            if not hypothesis:
-                ctx = {"mode": "auto"}  # 无宏观报告时退化为 legacy
-        else:
-            ctx = {"mode": "manual" if mode_def["input_type"] != "none" else "auto"}
-            if target:
-                ctx["target_industry"] = target
+    report_label = target if target else "每日扫描"
+    step = "step2_gatekeeper"
+    run_id = generate_run_id(report_label)
+    t0 = __import__("time").time()
 
-        report_label = target if target else "每日扫描"
-        step = "step2_gatekeeper"
-        run_id = generate_run_id(report_label)
-        t0 = __import__("time").time()
-
-        # 检查点缓存 (hash 包含日期+代码版本, 每天自动过期 / 代码升级自动破缓存)
-        input_hash = hash_input({
-            "mode": req.mode,
-            "target": target,
-            "date": __import__("datetime").datetime.now().strftime("%Y%m%d"),
-            "agent_version": "market_scanner_v5.8",
-        })
-        cached = load_checkpoint(step, run_id, input_hash)
-        if cached:
-            logger.info(f"[MarketScanner] CACHE HIT: {run_id}/{step} ({input_hash})")
-            return {"success": True, "data": cached,
-                    "from_cache": True, "run_id": run_id,
-                    "freshness": ResearchAgent.freshness_stamp()}
-
-        # 执行
-        trace = TraceContext(run_id)
-        result = await scanner.analyze(ctx, trace=trace)
-
-        # 落盘: 检查点 + trace + manifest
-        elapsed = round(__import__("time").time() - t0, 1)
-        try:
-            save_checkpoint(step, run_id, input_hash, result,
-                            {"elapsed": elapsed, "input_summary": f"mode={req.mode}, target={target}"})
-            trace.write(step)
-            save_manifest(run_id, {
-                "run_id": run_id, "industry": report_label, "mode": req.mode,
-                "status": "completed", "started_at": trace.to_dict()["started_at"],
-                "completed_at": __import__("datetime").datetime.now().isoformat(),
-                "elapsed_seconds": elapsed,
-                "step": step, "input_hash": input_hash,
-            })
-            logger.info(f"[MarketScanner] Checkpoint saved: {run_id}/{step} ({elapsed}s, {trace.to_dict()['event_count']} trace events)")
-        except Exception as e:
-            logger.warning(f"[MarketScanner] Checkpoint/trace save failed (non-fatal): {e}")
-
-        # 保存报告 (保持原有)
-        save_report("MarketScanner", report_label, result)
-        return {"success": True, "data": result, "run_id": run_id,
+    input_hash = hash_input({
+        "mode": req.mode, "target": target,
+        "date": __import__("datetime").datetime.now().strftime("%Y%m%d"),
+        "agent_version": "market_scanner_v5.8",
+    })
+    cached = load_checkpoint(step, run_id, input_hash)
+    if cached:
+        logger.info(f"[MarketScanner] CACHE HIT: {run_id}/{step}")
+        return {"success": True, "data": cached, "from_cache": True, "run_id": run_id,
                 "freshness": ResearchAgent.freshness_stamp()}
+
+    trace = TraceContext(run_id)
+    result = await scanner.analyze(ctx, trace=trace)
+
+    elapsed = round(__import__("time").time() - t0, 1)
+    try:
+        save_checkpoint(step, run_id, input_hash, result, {"elapsed": elapsed, "input_summary": f"mode={req.mode}, target={target}"})
+        trace.write(step)
+        save_manifest(run_id, {"run_id": run_id, "industry": report_label, "mode": req.mode,
+            "status": "completed", "started_at": trace.to_dict()["started_at"],
+            "completed_at": __import__("datetime").datetime.now().isoformat(),
+            "elapsed_seconds": elapsed, "step": step, "input_hash": input_hash})
+    except Exception as e:
+        logger.warning(f"[MarketScanner] Checkpoint save failed (non-fatal): {e}")
+
+    save_report("MarketScanner", report_label, result)
+    return {"success": True, "data": result, "run_id": run_id,
+            "freshness": ResearchAgent.freshness_stamp()}
+
+
+@router.post("/scan")
+async def market_scan(req: ScanRequest = ScanRequest(), async_mode: bool = Query(default=False)):
+    """投研分析入口 — ?async=true 后台执行, 立即返回 exec_id"""
+    if async_mode:
+        from app.framework.tasks.engine import TaskEngine
+        exec_id = await TaskEngine.run_task("research_analyze", {
+            "agent_id": req.agent_id, "mode_id": req.mode_id, "target": req.target or req.target_industry or req.question,
+        })
+        return {"success": True, "data": {"exec_id": exec_id, "status": "PENDING"},
+                "message": "任务已提交, 轮询 GET /system/tasks/executions/" + exec_id}
+    try:
+        return await _do_scan(req)
     except HTTPException:
         raise
     except Exception as e:

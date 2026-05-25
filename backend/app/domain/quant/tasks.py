@@ -107,11 +107,32 @@ async def calculate_indicators_task(
     logger.info(f"[CalcIndicators] DONE | {summary}")
 
 
-@task_manager.register(code="research_analyze", name="投研深度分析", description="产业链穿透+审计+定价+综合报告 (支持多Pipeline)")
+@task_manager.register(code="research_analyze", name="投研深度分析", description="产业链穿透+审计+定价+综合报告 (支持多模式)")
 async def research_analyze_task(exec_id: str = None, industry: str = "", question: str = "",
-                                  analysis_type: str = "supply_chain", codes_str: str = ""):
-    """V5.7 投研异步任务 — 从 Pipeline 注册表动态选择分析类型, 支持后台执行"""
+                                  analysis_type: str = "supply_chain", codes_str: str = "",
+                                  agent_id: str = "", mode_id: str = "", target: str = ""):
+    """V5.8 投研异步任务 — 兼容旧 Pipeline + 新 agent/mode 系统"""
     import json as _json, os, time as _time
+
+    # 新参数优先 (agent_id + mode_id + target)
+    if agent_id and mode_id:
+        logger.info(f"[ResearchTask] Starting: agent={agent_id}, mode={mode_id}, target={target}")
+        t0 = _time.time()
+        if exec_id: await task_manager.update_progress(exec_id, 5, f"正在分析: {target or mode_id}")
+        try:
+            from app.domain.research.api.routes import ScanRequest, _do_scan
+            result = await _do_scan(ScanRequest(agent_id=agent_id, mode_id=mode_id, target=target))
+            if exec_id: await task_manager.update_progress(exec_id, 95, "分析完成, 落盘中...")
+            elapsed = _time.time() - t0
+            if exec_id: await task_manager.update_progress(exec_id, 100, f"完成: {target or mode_id}, {elapsed:.0f}s")
+            logger.info(f"[ResearchTask] DONE: {target or mode_id}, {elapsed:.0f}s")
+        except Exception as e:
+            logger.error(f"[ResearchTask] Failed: {e}")
+            if exec_id: await task_manager.update_progress(exec_id, 100, f"失败: {e}")
+            raise
+        return
+
+    # 旧参数兼容
     industry = industry or question
     if not industry and not codes_str:
         raise RuntimeError("必须指定 industry / question / codes_str 参数")

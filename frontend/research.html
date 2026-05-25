@@ -502,21 +502,42 @@ async function submitNewProject() {
     var inp = document.getElementById('new-target');
     if (inp && inp.offsetParent !== null) target = inp.value.trim();
 
-    // 根据 mode_id 的 input_type 验证
     if (target === '' && newProjectModeId !== 'auto_scan') return;
     Modal.close();
     try {
-        var res = await fetch(API_BASE + '/research/scan', {
+        // 异步提交: 立即返回 exec_id, 后台执行
+        var res = await fetch(API_BASE + '/research/scan?async_mode=true', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({agent_id: newProjectAgentId, mode_id: newProjectModeId, target: target})
         });
         var d = await res.json();
-        if (d.success) {
+        if (d.success && d.data && d.data.exec_id) {
+            var execId = d.data.exec_id;
+            Modal.alert('任务已提交', '分析任务已在后台启动 (ID: ' + execId.substring(0,8) + '...)。\n\n完成后会自动出现在项目列表中，你可以关闭页面稍后查看。');
+            // 轮询等待完成后刷新列表
+            var pollTimer = setInterval(async function() {
+                try {
+                    var pollRes = await fetch(API_BASE + '/system/tasks/executions/' + execId);
+                    var exec = await pollRes.json();
+                    if (exec.status === 'SUCCESS' || exec.status === 'FAILED') {
+                        clearInterval(pollTimer);
+                        await loadProjects();
+                        // 找到新项目并选中
+                        if (exec.status === 'SUCCESS') {
+                            // 延迟一点等 checkpoint 落盘
+                            setTimeout(async function() { await loadProjects(); }, 2000);
+                        }
+                    }
+                } catch(e) {}
+            }, 3000);
             await loadProjects();
-            if (d.run_id) selectProject(d.run_id);
+        } else if (d.success && d.run_id) {
+            // 同步模式 fallback (缓存命中)
+            await loadProjects();
+            selectProject(d.run_id);
         } else {
-            Modal.alert('分析失败', d.message || '未知错误');
+            Modal.alert('提交失败', d.message || '未知错误');
         }
     } catch(e) {
         Modal.alert('错误', e.message);
