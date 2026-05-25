@@ -354,8 +354,13 @@ async def market_scan(req: ScanRequest = ScanRequest()):
         run_id = generate_run_id(report_label)
         t0 = __import__("time").time()
 
-        # 检查点缓存
-        input_hash = hash_input({"mode": req.mode, "target": target})
+        # 检查点缓存 (hash 包含日期+代码版本, 每天自动过期 / 代码升级自动破缓存)
+        input_hash = hash_input({
+            "mode": req.mode,
+            "target": target,
+            "date": __import__("datetime").datetime.now().strftime("%Y%m%d"),
+            "agent_version": "market_scanner_v5.8",
+        })
         cached = load_checkpoint(step, run_id, input_hash)
         if cached:
             logger.info(f"[MarketScanner] CACHE HIT: {run_id}/{step} ({input_hash})")
@@ -445,11 +450,12 @@ async def list_pipeline_runs(limit: int = Query(default=20, ge=1, le=100)):
 
 @router.get("/pipeline/{run_id}")
 async def get_pipeline_run(run_id: str):
-    """单 run 详情: manifest + 各 step 检查点列表"""
+    """单 run 详情: manifest + 各 step 检查点列表 (含虚拟 Step1 宏观)"""
     try:
         from app.framework.pipeline.checkpoint import (
             load_manifest, list_checkpoints, CHECKPOINT_DIR, make_display_name
         )
+        import os
         manifest = load_manifest(run_id)
         checkpoints = list_checkpoints(run_id)
         steps = {}
@@ -459,13 +465,28 @@ async def get_pipeline_run(run_id: str):
                 "step": s, "saved_at": cp.get("saved_at"),
                 "elapsed_seconds": cp.get("elapsed"), "file": cp.get("file"),
             }
-        import os
         run_dir = os.path.join(CHECKPOINT_DIR, run_id)
         for s in list(steps.keys()):
-            # trace 文件名为 {step}.trace.txt (不含hash, 每次覆盖)
             tf = os.path.join(run_dir, f"{s}.trace.txt")
             if os.path.exists(tf):
                 steps[s]["has_trace"] = True
+
+        # 虚拟 Step 1: 宏观报告 (全局共享, 不在 run 目录下)
+        macro_path = os.path.join(CHECKPOINT_DIR, "..", "macro_report.json")
+        macro_path = os.path.abspath(macro_path)
+        if os.path.exists(macro_path):
+            macro_stat = os.stat(macro_path)
+            steps["step1_macro"] = {
+                "step": "step1_macro",
+                "saved_at": __import__("datetime").datetime.fromtimestamp(macro_stat.st_mtime).isoformat(),
+                "elapsed_seconds": 0,
+                "file": macro_path,
+                "has_trace": False,
+                "is_shared": True,  # 标记为全局共享步骤
+            }
+            # 按 step 名排序, step1 在最前
+            steps = dict(sorted(steps.items()))
+
         return {"success": True, "data": {
             "run_id": run_id,
             "display_name": make_display_name(run_id, manifest.get("industry", "") if manifest else ""),
@@ -522,11 +543,32 @@ async def resume_pipeline_run(run_id: str, req: ResumeRequest = ResumeRequest())
 async def get_checkpoint_output(run_id: str, step: str):
     """读取指定 step 的检查点 output 内容"""
     try:
+        import json as _json, os
         from app.framework.pipeline.checkpoint import find_checkpoint_file
+
+        # 虚拟 Step 1: 直接读 macro_report.json
+        if step == "step1_macro":
+            macro_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "data", "macro_report.json")
+            macro_path = os.path.abspath(macro_path)
+            if not os.path.exists(macro_path):
+                raise HTTPException(status_code=404, detail="Macro report not found")
+            with open(macro_path, "r", encoding="utf-8") as f:
+                macro = _json.load(f)
+            return {"success": True, "data": {
+                "run_id": run_id, "step": "step1_macro",
+                "output": {
+                    "generated_at": macro.get("generated_at", ""),
+                    "valid_until": macro.get("valid_until", ""),
+                    "generated_by": macro.get("generated_by", ""),
+                    "executive_summary": macro.get("data", {}).get("executive_summary", {}),
+                    "top_3_themes": macro.get("data", {}).get("top_3_themes", []),
+                },
+                "saved_at": macro.get("generated_at", ""),
+            }}
+
         cp_file = find_checkpoint_file(run_id, step)
         if not cp_file:
             raise HTTPException(status_code=404, detail=f"Checkpoint not found: {run_id}/{step}")
-        import json as _json
         with open(cp_file, "r", encoding="utf-8") as f:
             record = _json.load(f)
         return {"success": True, "data": {

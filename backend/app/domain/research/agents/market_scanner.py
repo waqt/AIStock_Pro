@@ -1,9 +1,10 @@
 """
-MarketScanner V5.7 — Pipeline Gatekeeper
+MarketScanner V5.8 — Pipeline Gatekeeper
 双模式: auto(扫描验证) / manual(单行业深挖)
-输出: 6块定性判断, 不做数值评分
+输出: 6块定性判断 + 结构化证据 + Step3指引
+V5.8: 证据层结构化 + 自适应搜索降级 + PDF过滤 + Step3决策摘要
 """
-import asyncio, json
+import asyncio, json, re
 from decimal import Decimal
 from typing import Dict, Any, List
 from app.domain.research.agents.base import ResearchAgent
@@ -20,11 +21,47 @@ def _j(obj): return json.dumps(obj, ensure_ascii=False, cls=_SafeEncoder)
 
 
 class MarketScanner(ResearchAgent):
-    """Pipeline Gatekeeper V5.7 — 定性筛选, 不做数值评分"""
+    """Pipeline Gatekeeper V5.8 — 定性筛选 + 结构化证据 + 自适应搜索"""
 
     def __init__(self, provider=None):
         super().__init__(provider=provider, data_loader=data_loader)
         self.name = "MarketScanner"
+
+    # ═══ 搜索工具 ═══════════════════════════════
+
+    @staticmethod
+    def _clean_snippet(text: str) -> str:
+        """过滤 PDF 二进制、HTML标签、不可读字符"""
+        if not text: return ""
+        # PDF 二进制: 出现 PDF header 直接丢弃整条
+        if "%PDF" in text or "endstream" in text or "endobj" in text:
+            return ""
+        # 去掉 HTML 标签
+        text = re.sub(r'<[^>]+>', '', text)
+        # 去掉控制字符
+        text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', text)
+        return text[:250]
+
+    async def _search_with_fallback(self, queries: List[str], num: int = 4, trace=None) -> List:
+        """自适应搜索: 逐级降级, 结果为空时自动换词重试"""
+        all_items = {}
+        for q in queries:
+            items = []
+            for r in await self.data_loader.search_web(q, num=num):
+                snippet = self._clean_snippet(r.get("snippet", ""))
+                if not snippet and not r.get("title", ""):
+                    continue
+                items.append({"title": r.get("title", ""), "snippet": snippet})
+            if trace:
+                trace.record_search(q, items)
+            if items:
+                return {"query": q, "results": items}  # 返回第一个非空结果
+            # 0 结果 → 记录并尝试下一个 (简化 query)
+            logger.debug(f"[{self.name}] Search empty for '{q[:60]}', trying fallback")
+        return {"query": queries[0], "results": []}  # 全部失败
+
+
+    # ═══ 主入口 ═══════════════════════════════
 
     async def analyze(self, context: Dict[str, Any], trace=None) -> Dict[str, Any]:
         ctx = await self.load_context(context)
@@ -32,7 +69,6 @@ class MarketScanner(ResearchAgent):
         if not self.provider:
             return {"error": "No AI provider"}
 
-        # auto 模式: 从 Step1 hypothesis_sectors 获取候选清单
         if mode == "manual":
             target = ctx.get("target_industry") or ctx.get("question", "")
             if not target:
@@ -40,9 +76,11 @@ class MarketScanner(ResearchAgent):
             result = await self._deep_dive_manual(target, trace=trace)
             result["agent"] = self.name
             result["mode"] = "manual"
+            # 附加 Step 3 决策指引
+            if not result.get("error"):
+                result["_step3_guidance"] = self._build_step3_guidance(result)
             return result
 
-        # auto 模式 (默认, 向后兼容)
         hypothesis = ctx.get("hypothesis_sectors", [])
         if hypothesis:
             result = await self._scan_auto(hypothesis, trace=trace)
@@ -59,71 +97,70 @@ class MarketScanner(ResearchAgent):
             "hot_industries": industries, "briefing": briefing,
         }
 
-    # ═══ auto 模式: 从 Step1 候选清单验证 ═══════════
+    # ═══ auto 模式 ═══════════════════════════
 
     async def _scan_auto(self, hypothesis_sectors: List[Dict], trace=None) -> Dict:
-        """对 Step1 的 benefited_sectors 做验证+排序+补漏"""
         results = []
         for h in hypothesis_sectors[:5]:
             sector = h.get("sector", h.get("name", ""))
             if not sector: continue
             logger.info(f"[{self.name}] Scanning: {sector}")
-            # 2 轮搜索
             search_data = []
             for q in [f"{sector} 景气度 增速 供需 产能 2026",
                        f"{sector} 产能利用率 CAPEX 扩产周期 龙头订单 2026"]:
-                items = []
-                for r in await self.data_loader.search_web(q, num=3):
-                    items.append({"title": r.get("title",""), "snippet": r.get("snippet","")[:250]})
-                if trace:
-                    trace.record_search(q, items)
-                search_data.append({"query": q, "results": items})
-
-            # LLM 评估
+                sd = await self._search_with_fallback([q], num=3, trace=trace)
+                search_data.append(sd)
             evaluation = await self._evaluate_industry(sector, search_data, h, trace=trace)
             if evaluation:
                 results.append(evaluation)
 
-        # 排序: 高 > 中 > 低 > 跳过
         priority_order = {"高": 0, "中": 1, "低": 2, "跳过": 3}
         results.sort(key=lambda r: priority_order.get(
             (r.get("verdict", {}).get("priority", "低")), 3))
         return {"industries": results, "count": len(results)}
 
-    # ═══ manual 模式: 单行业深挖 ═══════════
+    # ═══ manual 模式: 自适应搜索 ═══════════
 
     async def _deep_dive_manual(self, industry: str, trace=None) -> Dict:
-        """对用户指定的行业做 4 轮深度分析"""
+        """对用户指定的行业做 4 轮自适应深度搜索"""
         logger.info(f"[{self.name}] Deep dive: {industry}")
         search_data = []
-        queries = [
-            f"{industry} 行业概况 市场规模 TAM 增速 2026",
-            f"{industry} 供需缺口 产能利用率 交期 CAPEX 扩产周期 2026",
-            f"{industry} 竞争格局 政策环境 国产化率 全球份额 2026",
-            f"{industry} 产业链 上游 下游 传导 瓶颈 成本结构 2026",
+
+        # 4 个搜索维度, 每个带降级 chain
+        search_chains = [
+            [f"{industry} 行业概况 市场规模 TAM 增速 2026",
+             f"{industry} 市场规模 增速 2026",
+             f"{industry} market size growth 2026"],
+            [f"{industry} 供需缺口 产能利用率 交期 CAPEX 扩产周期 2026",
+             f"{industry} 产能 扩产 瓶颈 供应链 2026",
+             f"{industry} supply chain bottleneck capacity"],
+            [f"{industry} 竞争格局 政策环境 国产化率 全球份额 2026",
+             f"{industry} 国产替代 竞争 龙头 企业 2026",
+             f"{industry} competition landscape china 2026"],
+            [f"{industry} 产业链 上游 下游 传导 瓶颈 成本结构 2026",
+             f"{industry} 产业链 上下游 关键环节 2026",
+             f"{industry} supply chain upstream downstream"],
         ]
-        for q in queries:
-            items = []
-            for r in await self.data_loader.search_web(q, num=4):
-                items.append({"title": r.get("title",""), "snippet": r.get("snippet","")[:250]})
-            if trace:
-                trace.record_search(q, items)
-            search_data.append({"query": q, "results": items})
+
+        for chain in search_chains:
+            sd = await self._search_with_fallback(chain, num=4, trace=trace)
+            search_data.append(sd)
 
         evaluation = await self._evaluate_industry(industry, search_data, {}, trace=trace)
         if evaluation:
             evaluation["mode"] = "manual"
             if trace:
-                trace.record_note("verdict", f"enter_step3={evaluation.get('verdict',{}).get('enter_step3')}, "
-                                    f"priority={evaluation.get('verdict',{}).get('priority')}, "
-                                    f"kill_reasons={evaluation.get('kill_reasons',[])}")
+                trace.record_note("verdict",
+                    f"enter_step3={evaluation.get('verdict',{}).get('enter_step3')}, "
+                    f"priority={evaluation.get('verdict',{}).get('priority')}, "
+                    f"kill_reasons={evaluation.get('kill_reasons',[])}")
         return evaluation or {"error": "LLM evaluation failed", "industry": industry}
 
-    # ═══ LLM 评估 (auto + manual 共用) ═══════════
+    # ═══ LLM 评估 (共用) ═══════════════════════
 
     async def _evaluate_industry(self, industry: str, search_data: List,
                                   hypothesis: Dict = None, trace=None) -> Dict:
-        """LLM 按 6 块定性结构评估一个行业"""
+        """LLM 按 6 块定性结构评估一个行业 — 每个结论带结构化证据"""
         h_info = _j(hypothesis)[:500] if hypothesis else "无预判信息"
 
         prompt = f"""你是买方资本配置分析师(Pipeline Gatekeeper)。你的任务不是描述行业, 而是判断这个行业是否值得进入深度推演。
@@ -143,46 +180,58 @@ class MarketScanner(ResearchAgent):
 
 ## 搜索结果
 """
-        for sd in search_data:
-            prompt += f"\n### {sd['query']}\n"
-            for r in sd["results"][:3]:
-                prompt += f"- {r['title']}: {r['snippet'][:200]}\n"
+        for i, sd in enumerate(search_data):
+            prompt += f"\n### 搜索[{i+1}]: {sd['query']}\n"
+            if not sd["results"]:
+                prompt += "  (无结果)\n"
+            for j, r in enumerate(sd["results"][:3]):
+                prompt += f"  [{i+1}.{j+1}] {r['title']}: {r['snippet'][:200]}\n"
 
         prompt += f"""
-## 输出: 纯 JSON (6 块, 全定性, 不出现 1-10 数字评分)
+## 输出: 纯 JSON (6 块, 全定性, 每个结论必须附证据数组)
 
 {{
   "industry": "{industry}",
 
   "cycle_position": {{
-    "phase": "bottleneck_formation",
+    "phase": "theme_emergence",
     "sub_phase": "early",
-    "evidence": "引用搜索结果中的具体数据支撑此判断",
+    "evidence": [
+      {{"fact": "具体事实1, 引用搜索结果中的具体数据", "from": "search[1.2]·报告标题"}},
+      {{"fact": "具体事实2", "from": "search[3.1]·文章标题"}}
+    ],
     "next_phase": "...",
     "estimated_duration": "12-18个月",
     "phase_switch_trigger": "..."
   }},
 
   "prosperity": {{
-    "type": "supply_shock",
+    "type": "demand_explosion",
     "demand_quality": "real_demand",
-    "demand_evidence": "引用搜索结果证据",
+    "demand_evidence": [
+      {{"fact": "市场规模从A增至B, CAGR=X%", "from": "search[1.X]·报告标题"}}
+    ],
     "growth_narrative": "行业增速 vs 供给响应的矛盾描述",
     "core_contradiction": "当前最核心的供需矛盾是什么",
     "driver_decomposition": [
-      {{"driver": "驱动力1", "weight": "主导", "certainty": "高", "duration": "3-5年", "leading_indicator": "..."}}
+      {{"driver": "驱动力1", "weight": "主导", "certainty": "高", "duration": "3-5年", "leading_indicator": "...",
+        "evidence": [{{"fact": "...", "from": "search[X.Y]·..."}}]}}
     ]
   }},
 
   "payoff": {{
     "asymmetry": "强非对称",
-    "narrative": "判断依据: 如果景气兑现会怎样, 如果证伪会怎样"
+    "narrative": "判断依据: 如果景气兑现会怎样, 如果证伪会怎样",
+    "evidence": [
+      {{"fact": "支撑非对称判断的关键事实", "from": "search[X.Y]·..."}}
+    ]
   }},
 
   "propagation": {{
     "depth": "深",
     "transmission_order": [
-      {{"stage": 1, "node": "环节名", "reason": "最先受益的原因"}}
+      {{"stage": 1, "node": "环节名", "reason": "最先受益的原因",
+        "evidence": [{{"fact": "...", "from": "search[X.Y]·..."}}]}}
     ],
     "last_beneficiary": "...",
     "last_bottleneck": "...",
@@ -193,32 +242,45 @@ class MarketScanner(ResearchAgent):
     "alpha_window": "6-12个月",
     "profit_expansion_window": "12-24个月",
     "capacity_relief_eta": "2028H1",
-    "market_repricing_stage": "早期"
+    "market_repricing_stage": "早期",
+    "evidence": [{{"fact": "支撑时间判断的证据", "from": "search[X.Y]·..."}}]
   }},
 
   "verdict": {{
     "enter_step3": true,
     "priority": "高",
-    "rationale": "基于五错配原则的判断理由, 2-3句",
-    "key_uncertainties": ["不确定性1", "不确定性2"]
+    "rationale": "基于五错配原则的判断理由, 说明哪几条满足、哪条不确定",
+    "key_uncertainties": ["不确定性1", "不确定性2"],
+    "evidence": [
+      {{"fact": "支撑 verdict 的关键事实或数据缺失说明", "from": "search[X.Y]·..."}}
+    ]
   }},
 
   "kill_reasons": []
 }}
 
+## 证据格式要求 (★ 强制)
+- 每个结论块的 evidence 数组至少包含 1 条证据
+- 每条证据的 "from" 字段必须用 "search[轮次.序号]·来源简称" 格式, 如 "search[1.2]·慧博出品"
+- 如果某轮搜索无结果, evidence 中标注 {{"fact": "该维度搜索结果为空, 数据不足", "from": "search[2]·无结果"}}
+- fact 必须是搜索文字中明确出现的具体事实, 不得凭空编造
+- 不要用 "数据有限" 作为唯一证据 — 如果有任何搜索结果, 必须引用具体内容
+
 ## 规则
-- 所有数值引用(增速/交期/规模)必须来自搜索结果, 不得编造
-- 如果搜索结果质量不足以支撑判断, 在 evidence 中标注"数据有限"
-- 如果 enter_step3=false, kill_reasons 必须至少填1条"""
-        # 注入权威术语表, 确保语义一致
+- 所有数值引用(增速/交期/规模)必须来自搜索结果
+- 如果 enter_step3=false, kill_reasons 必须使用以下标准枚举值之一:
+  需求来自渠道补库存 | 已进入资本狂热后期 | 估值透支3年增长 |
+  政策抢装非真实需求 | 供给扩张>需求 | 传导链<3层Alpha空间有限
+  如果上述都不完全匹配, 选最接近的一个, 同时在 rationale 中说明具体原因"""
+        # 注入权威术语表 (放在规则后面, 距离核心指令近)
         from app.framework.pipeline.glossary import step2_glossary
         prompt += step2_glossary()
 
         try:
             text = await asyncio.wait_for(
-                self.provider.chat_flash(prompt, max_tokens=3072), timeout=45)
+                self.provider.chat_flash(prompt, max_tokens=4096), timeout=60)
             if trace:
-                trace.record_llm(prompt, text, model=getattr(self.provider, 'model', 'unknown'))
+                trace.record_llm(prompt, text, model=getattr(self.provider, 'model', 'deepseek-v4-flash'))
             result = self.parse_json(text)
             if isinstance(result, dict):
                 logger.info(f"[{self.name}] {industry}: priority={result.get('verdict',{}).get('priority','?')}, "
@@ -230,6 +292,55 @@ class MarketScanner(ResearchAgent):
         except Exception as e:
             logger.warning(f"[{self.name}] {industry}: {e}")
         return {}
+
+    # ═══ Step2 → Step3 决策指引 ═════════════════
+
+    @staticmethod
+    def _build_step3_guidance(output: dict) -> dict:
+        """基于 Step 2 的实际输出值, 生成 Step 3 可消费的决策摘要。
+        替代直接注入 glossary 原始定义 — 只传 Step 2 判断的具体值 + 含义。
+        """
+        cp = output.get("cycle_position", {})
+        pr = output.get("prosperity", {})
+        pp = output.get("propagation", {})
+        v = output.get("verdict", {})
+
+        # 周期阶段的含义映射
+        phase_meanings = {
+            "theme_emergence": "技术验证阶段, 收入未体现 — 搜索时关注技术路线和专利, 而非产能数据",
+            "demand_explosion": "订单暴增, 渗透率快速拉升 — 搜索时关注下游订单和产能扩张计划",
+            "bottleneck_formation": "交期暴涨, 供给不足 — 搜索时重点找产能/交期/设备约束数据",
+            "capital_frenzy": "全行业扩产 — 关注新增供给投放时点和价格松动信号",
+            "capacity_release": "产能释放, 价格松动 — 关注成本最低者和出清节奏",
+            "commoditization": "价格战, ROE崩塌 — 关注竞争格局和成本曲线",
+        }
+        phase = cp.get("phase", "unknown")
+
+        prosperity_meanings = {
+            "demand_explosion": "需求驱动 — 分析框架: 找产能扩张瓶颈和订单传导链",
+            "supply_shock": "供给冲击 — 分析框架: 找供给约束源头和替代方案",
+            "policy_driven": "政策驱动 — 分析框架: 关注政策稳定性窗口和补贴退坡风险",
+            "replacement_cycle": "更新周期 — 分析框架: 关注存量替换节奏和换机周期",
+            "capex_cycle": "资本开支周期 — 分析框架: 关注CAPEX达产时点和供需拐点",
+            "inventory_cycle": "库存周期 — 分析框架: 区分补库和终端真实需求",
+        }
+        ptype = pr.get("type", "unknown")
+
+        return {
+            "cycle_phase": phase,
+            "cycle_meaning": phase_meanings.get(phase, ""),
+            "prosperity_type": ptype,
+            "prosperity_meaning": prosperity_meanings.get(ptype, ""),
+            "propagation_depth": pp.get("depth", "中"),
+            "enter_step3": v.get("enter_step3", False),
+            "priority": v.get("priority", "低"),
+            "search_focus": (
+                f"周期阶段={phase} → {phase_meanings.get(phase, '')}; "
+                f"景气类型={ptype} → {prosperity_meanings.get(ptype, '')}"
+            ),
+            "key_uncertainties": v.get("key_uncertainties", []),
+            "core_contradiction": pr.get("core_contradiction", ""),
+        }
 
     # ═══ 旧版方法 (向后兼容) ═══════════════════════
 
@@ -268,13 +379,13 @@ class MarketScanner(ResearchAgent):
 {_j(signals['macro'])}
 
 ## 要求
-1. 每个行业输出: name, score(1-10), lifecycle_stage(导入期/成长期/成熟期/衰退期), stage_evidence, type(短期热点/中期趋势), reason, global_drivers, a_stock_codes
+1. 每个行业输出: name, score(1-10), lifecycle_stage, stage_evidence, type, reason, global_drivers, a_stock_codes
 2. 优先关注有资金流入支撑的行业
 3. 区分短期热点 vs 中期趋势
 4. 搜索结果中提到的股票代码必须包含在 a_stock_codes 中
 
 请输出纯 JSON 数组:
-[{{"name":"AI算力","score":9,"lifecycle_stage":"成长期","stage_evidence":"AI芯片渗透率5%→15%, 四大云厂商capex+40%","type":"中期趋势","reason":"英伟达B200量产+...","global_drivers":"MAG7 capex +40%","a_stock_codes":["688256","300308"]}}]"""
+[{{"name":"AI算力","score":9,"lifecycle_stage":"成长期","stage_evidence":"...","type":"中期趋势","reason":"...","global_drivers":"...","a_stock_codes":["688256","300308"]}}]"""
         text = await asyncio.wait_for(
             self.provider.chat_flash(prompt, max_tokens=2048), timeout=30) or ""
         return self.parse_json(text)
@@ -321,7 +432,7 @@ class MarketScanner(ResearchAgent):
 
     @staticmethod
     def build_prompt(ctx):
-        return "MarketScanner V5.7"
+        return "MarketScanner V5.8"
 
     @staticmethod
     async def stream(ctx):
