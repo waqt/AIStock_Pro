@@ -114,18 +114,57 @@ async def research_analyze_task(exec_id: str = None, industry: str = "", questio
     """V5.8 投研异步任务 — 兼容旧 Pipeline + 新 agent/mode 系统"""
     import json as _json, os, time as _time
 
-    # 新参数优先 (agent_id + mode_id + target)
+    # 新参数优先 (agent_id + mode_id + target) — 支持多步 Pipeline 串联
     if agent_id and mode_id:
         logger.info(f"[ResearchTask] Starting: agent={agent_id}, mode={mode_id}, target={target}")
         t0 = _time.time()
-        if exec_id: await task_manager.update_progress(exec_id, 5, f"正在分析: {target or mode_id}")
+        if exec_id: await task_manager.update_progress(exec_id, 5, f"Step2: 正在搜索分析 {target or mode_id}")
+
         try:
             from app.domain.research.api.routes import ScanRequest, _do_scan
             result = await _do_scan(ScanRequest(agent_id=agent_id, mode_id=mode_id, target=target))
-            if exec_id: await task_manager.update_progress(exec_id, 95, "分析完成, 落盘中...")
-            elapsed = _time.time() - t0
-            if exec_id: await task_manager.update_progress(exec_id, 100, f"完成: {target or mode_id}, {elapsed:.0f}s")
-            logger.info(f"[ResearchTask] DONE: {target or mode_id}, {elapsed:.0f}s")
+            step2_data = result.get("data", {})
+            enter_step3 = step2_data.get("verdict", {}).get("enter_step3", False)
+            run_id = result.get("run_id", "")
+            step2_elapsed = _time.time() - t0
+
+            if exec_id:
+                await task_manager.update_progress(exec_id, 40,
+                    f"Step2完成: {step2_data.get('verdict',{}).get('priority','?')}, enter_step3={enter_step3}, {step2_elapsed:.0f}s")
+
+            # Step 3: 产业链拆解 (仅当 enter_step3=true 且非 auto_scan)
+            if enter_step3 and mode_id in ("manual_industry", "stock_deep"):
+                if exec_id: await task_manager.update_progress(exec_id, 45, "Step3: 产业链系统拆解...")
+                logger.info(f"[ResearchTask] Chain Step2->Step3: {target or mode_id}")
+                try:
+                    from app.domain.research.agents.supply_chain_hacker import SupplyChainHacker
+                    from app.framework.ai.providers.deepseek import DeepSeekProvider
+                    from app.framework.pipeline.checkpoint import save_checkpoint, hash_input
+                    from app.framework.pipeline.trace import TraceContext
+
+                    hacker = SupplyChainHacker(provider=DeepSeekProvider())
+                    step2_guidance = step2_data.get("_step3_guidance", {})
+                    ctx = {"industry": target or mode_id, "step2_guidance": step2_guidance}
+                    trace = TraceContext(run_id)
+                    step3_result = await hacker.analyze(ctx, trace=trace)
+
+                    ih = hash_input({"industry": target or mode_id, "step2_phase": step2_guidance.get("cycle_phase",""),
+                                     "date": _time.strftime("%Y%m%d"), "agent_version": "supply_chain_hacker_v5.8"})
+                    save_checkpoint("step3_sc_hacker", run_id, ih, step3_result, {"elapsed": 0})
+                    trace.write("step3_sc_hacker")
+
+                    if exec_id: await task_manager.update_progress(exec_id, 98, "Step3完成, 落盘中...")
+                    logger.info(f"[ResearchTask] Step3 DONE: {len(step3_result.get('supply_chain_map',[]))} layers")
+                except Exception as e:
+                    logger.warning(f"[ResearchTask] Step3 failed (non-fatal): {e}")
+                    if exec_id: await task_manager.update_progress(exec_id, 50, f"Step3失败(不阻塞): {e}")
+
+            total_elapsed = _time.time() - t0
+            summary = f"完成: {target or mode_id}"
+            if enter_step3 and mode_id in ("manual_industry", "stock_deep"):
+                summary += " (Step2+Step3串联)"
+            if exec_id: await task_manager.update_progress(exec_id, 100, summary + f", {total_elapsed:.0f}s")
+            logger.info(f"[ResearchTask] DONE: {summary}, {total_elapsed:.0f}s")
         except Exception as e:
             logger.error(f"[ResearchTask] Failed: {e}")
             if exec_id: await task_manager.update_progress(exec_id, 100, f"失败: {e}")

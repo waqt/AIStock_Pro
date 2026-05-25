@@ -246,21 +246,7 @@ async def supply_chain_level_analysis(req: LevelAnalysisRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/supply-chain-hacker")
-async def supply_chain_hacker_analysis(req: ResearchRequest):
-    """V4.0 供应链降维穿透 — 纯瓶颈定位 + 标的映射 (不含财务/估值)"""
-    try:
-        from app.framework.ai.providers.deepseek import DeepSeekProvider
-        provider = DeepSeekProvider()
-        hacker = SupplyChainHacker(provider=provider)
-        context = {"question": req.question, "stock_codes": req.stock_codes,
-                   "industry": req.industry or req.question, "include_portfolio": req.include_portfolio}
-        result = await hacker.analyze(context)
-        save_report("SupplyChainHacker", req.industry or req.question, result)
-        return {"success": True, "data": result, "freshness": ResearchAgent.freshness_stamp()}
-    except Exception as e:
-        logger.error(f"[❌] Supply chain hacker failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+# (旧的 /supply-chain-hacker 已迁移至 V5.8 版本 — 见下方 @router.post("/supply-chain-hacker"))
 
 
 @router.post("/audit/human-capital")
@@ -415,8 +401,17 @@ class SupplyChainRequest(BaseModel):
 
 
 @router.post("/supply-chain-hacker")
-async def supply_chain_hacker(req: SupplyChainRequest = SupplyChainRequest()):
-    """Step 3: 产业链系统拆解"""
+async def supply_chain_hacker(req: SupplyChainRequest = SupplyChainRequest(),
+                                async_mode: bool = Query(default=False)):
+    """Step 3: 产业链系统拆解 — ?async_mode=true 后台执行"""
+    if async_mode:
+        from app.framework.tasks.engine import TaskEngine
+        exec_id = await TaskEngine.run_task("research_analyze", {
+            "agent_id": "supply_chain", "mode_id": "step3_standalone",
+            "target": req.industry, "step2_output": req.step2_output,
+        })
+        return {"success": True, "data": {"exec_id": exec_id, "status": "PENDING"},
+                "message": "Step3任务已提交, 轮询 GET /system/tasks/executions/" + exec_id}
     try:
         from app.framework.ai.providers.deepseek import DeepSeekProvider
         from app.framework.pipeline.checkpoint import (
