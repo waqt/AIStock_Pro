@@ -340,14 +340,30 @@ async def market_scan(req: ScanRequest = ScanRequest()):
         if mode_def["input_type"] != "none" and not target:
             raise HTTPException(status_code=400, detail=f"Mode '{mode_id}' requires input: {mode_def['input_type']}")
 
-        # auto_scan: 不需要 target
-        if mode_id == "auto_scan":
-            target = "高景气赛道扫描"
-
         scanner = MarketScanner(provider=DeepSeekProvider())
-        ctx = {"mode": "manual" if mode_def["input_type"] != "none" else "auto"}
-        if target:
-            ctx["target_industry"] = target
+
+        # auto_scan: 从 Step1 宏观报告提取候选行业 → 批量验证
+        if mode_id == "auto_scan":
+            import os as _os
+            macro_path = _os.path.join(_os.path.dirname(__file__), "..", "..", "..", "..", "data", "macro_report.json")
+            macro_path = _os.path.abspath(macro_path)
+            hypothesis = []
+            target = "高景气赛道扫描"
+            if _os.path.exists(macro_path):
+                import json as _json
+                with open(macro_path, "r", encoding="utf-8") as f:
+                    macro = _json.load(f)
+                themes = macro.get("data", {}).get("executive_summary", {}).get("top_3_themes", [])
+                hypothesis = [{"sector": t.get("theme", t.get("name", "")), "name": t.get("theme", "")} for t in themes[:4] if t.get("theme")]
+                if hypothesis:
+                    target = "全局扫描-" + datetime.now().strftime("%Y%m%d-%H%M")
+            ctx = {"mode": "auto", "hypothesis_sectors": hypothesis}
+            if not hypothesis:
+                ctx = {"mode": "auto"}  # 无宏观报告时退化为 legacy
+        else:
+            ctx = {"mode": "manual" if mode_def["input_type"] != "none" else "auto"}
+            if target:
+                ctx["target_industry"] = target
 
         report_label = target if target else "每日扫描"
         step = "step2_gatekeeper"
