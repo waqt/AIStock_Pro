@@ -32,8 +32,10 @@ class Settings(BaseSettings):
     DOUBAO_MODEL: str = "doubao-seed-2-0-mini-260428"
     TUSHARE_TOKEN: Optional[str] = None
 
-    # Web Search (Brave Search API — free 2000 queries/month)
+    # Web Search (Brave Search API — $5/1k queries)
     BRAVE_API_KEY: Optional[str] = None
+    # Tavily Search API — AI-optimized, $8/1k, 1000 free/month
+    TAVILY_API_KEY: Optional[str] = None
 
     # Proxy (for Gemini etc.)
     HTTP_PROXY: Optional[str] = None

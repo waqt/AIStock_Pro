@@ -351,14 +351,19 @@ class ResearchDataLoader:
 
 
     async def search_web(self, query: str, num: int = 5) -> List[Dict]:
-        """网络搜索 — Brave Search (优先, 高质量) → DDG (免费兜底)
+        """网络搜索 — Brave + Tavily 双源并行 → DDG (免费兜底)
         通过 Clash 代理 (127.0.0.1:7890) 访问海外服务。
+        Brave: 英文/全球视野, 速度快, 独立30B+索引
+        Tavily: AI优化, 结构化输出, 免费1000次/月
         """
         from app.framework.config import settings
+        import asyncio
         CLASH_PROXY = "http://127.0.0.1:7890"
+        all_results = []
 
-        # 1. Brave Search 优先 (付费 Key, 高质量结构化结果)
-        if settings.BRAVE_API_KEY:
+        async def _search_brave():
+            if not settings.BRAVE_API_KEY:
+                return []
             try:
                 import httpx
                 url = "https://api.search.brave.com/res/v1/web/search"
@@ -367,7 +372,7 @@ class ResearchDataLoader:
                     "Accept-Encoding": "gzip",
                     "X-Subscription-Token": settings.BRAVE_API_KEY,
                 }
-                params = {"q": query, "count": min(num, 10)}
+                params = {"q": query, "count": min(num, 10), "search_lang": "zh"}
                 async with httpx.AsyncClient(proxy=CLASH_PROXY, timeout=15.0) as client:
                     resp = await client.get(url, headers=headers, params=params)
                     if resp.status_code == 200:
@@ -378,16 +383,70 @@ class ResearchDataLoader:
                                 "title": r.get("title", "")[:150],
                                 "url": r.get("url", ""),
                                 "snippet": r.get("description", "")[:400],
+                                "source": "brave",
                             })
                         if results:
-                            logger.info(f"[Brave search OK: {len(results)} results for '{query[:40]}']")
-                            return results
+                            logger.info(f"[Brave] {len(results)} results for '{query[:40]}'")
+                        return results
                     else:
-                        logger.warning(f"[Brave search HTTP {resp.status_code}: {resp.text[:100]}]")
+                        logger.warning(f"[Brave] HTTP {resp.status_code}: {resp.text[:100]}")
             except Exception as e:
-                logger.warning(f"[Brave search failed: {type(e).__name__}: {e}]")
+                logger.warning(f"[Brave] Failed: {type(e).__name__}: {e}")
+            return []
 
-        # 2. DDG 兜底 (免费)
+        async def _search_tavily():
+            if not settings.TAVILY_API_KEY:
+                return []
+            try:
+                import httpx
+                url = "https://api.tavily.com/search"
+                headers = {"Content-Type": "application/json"}
+                body = {
+                    "api_key": settings.TAVILY_API_KEY,
+                    "query": query,
+                    "max_results": min(num, 10),
+                    "search_depth": "basic",
+                    "include_answer": False,
+                }
+                async with httpx.AsyncClient(proxy=CLASH_PROXY, timeout=20.0) as client:
+                    resp = await client.post(url, headers=headers, json=body)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        results = []
+                        for r in (data.get("results", []) or [])[:num]:
+                            results.append({
+                                "title": r.get("title", "")[:150],
+                                "url": r.get("url", ""),
+                                "snippet": r.get("content", "")[:400],
+                                "source": "tavily",
+                            })
+                        if results:
+                            logger.info(f"[Tavily] {len(results)} results for '{query[:40]}'")
+                        return results
+                    else:
+                        logger.warning(f"[Tavily] HTTP {resp.status_code}: {resp.text[:100]}")
+            except Exception as e:
+                logger.warning(f"[Tavily] Failed: {type(e).__name__}: {e}")
+            return []
+
+        # 双源并行搜索
+        brave_results, tavily_results = await asyncio.gather(
+            _search_brave(), _search_tavily()
+        )
+
+        # 合并去重 (按 URL)
+        seen_urls = set()
+        for r in brave_results + tavily_results:
+            url = r.get("url", "")
+            if url and url not in seen_urls:
+                seen_urls.add(url)
+                all_results.append(r)
+
+        if all_results:
+            logger.info(f"[Search] Merged {len(brave_results)}B + {len(tavily_results)}T → {len(all_results)} unique for '{query[:40]}'")
+            return all_results[:num]
+
+        # 2. DDG 兜底 (Brave+Tavily 均失败时)
         try:
             import re, httpx
             url = "https://html.duckduckgo.com/html/"
