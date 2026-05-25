@@ -22,6 +22,36 @@ from app.framework.logger import logger
 router = APIRouter(prefix="/api/research", tags=["投研分析"])
 
 
+# ═══ 分析智能体注册表 ═══════════════════════
+# 新增智能体只需在此加一条, 前端自动加载
+
+AGENT_REGISTRY = [
+    {
+        "id": "supply_chain",
+        "name": "产业链分析智能体",
+        "desc": "产业链穿透 + 系统动力学 + CIO报告",
+        "icon": "sitemap",
+        "modes": [
+            {"id": "auto_scan",          "name": "全局扫描",
+             "desc": "自动扫描当前高景气赛道，选择后进行完整分析",
+             "input_type": "none", "placeholder": ""},
+            {"id": "manual_industry",    "name": "定性产业分析",
+             "desc": "手动输入产业名称，展开全产业链穿透分析",
+             "input_type": "industry", "placeholder": "输入行业关键词, 如: SOFC固体氧化物燃料电池"},
+            {"id": "stock_deep",         "name": "公司深度分析",
+             "desc": "输入股票代码或公司名，进行行业+公司双轨深度分析",
+             "input_type": "stock_code", "placeholder": "输入6位代码或公司名, 如: 688012中微公司"},
+            {"id": "stock_audit",        "name": "公司财务审计",
+             "desc": "输入股票代码，仅运行财务质量审计(Step7)",
+             "input_type": "stock_code", "placeholder": "输入6位代码, 如: 688012"},
+        ],
+    },
+    # 未来扩展:
+    # {"id": "financial_analysis", "name": "财务分析智能体", ...},
+    # {"id": "quant_trading", "name": "量化交易智能体", ...},
+]
+
+
 class ResearchRequest(BaseModel):
     question: str = ""
     stock_codes: List[str] = []
@@ -31,10 +61,13 @@ class ResearchRequest(BaseModel):
 
 
 class ScanRequest(BaseModel):
-    """Step 2 看门人请求"""
-    mode: str = "auto"            # auto (验证Step1假设) | manual (用户指定行业深度分析)
-    target_industry: str = ""     # manual 模式: 目标行业名
-    question: str = ""            # 兼容旧参数, 等同于 target_industry
+    """投研分析请求 — 支持多智能体 + 多模式"""
+    agent_id: str = "supply_chain"   # 智能体ID
+    mode_id: str = "manual_industry" # 模式ID
+    target: str = ""                 # 行业名/股票代码 (根据 mode.input_type)
+    mode: str = "auto"               # [废弃] 兼容旧参数
+    target_industry: str = ""        # [废弃] 兼容旧参数
+    question: str = ""               # [废弃] 兼容旧参数
 
 
 # ── 初始化协调器 ───────────────────
@@ -273,9 +306,15 @@ async def global_capex_scan(req: ResearchRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/agents")
+async def list_agents():
+    """返回已注册的分析智能体及其支持的模式"""
+    return {"success": True, "data": AGENT_REGISTRY}
+
+
 @router.post("/scan")
 async def market_scan(req: ScanRequest = ScanRequest()):
-    """Step 2 看门人 — auto (验证Step1假设) | manual (指定行业深度分析)"""
+    """投研分析入口 — 根据 agent_id + mode_id 路由到不同分析逻辑"""
     try:
         from app.framework.ai.providers.deepseek import DeepSeekProvider
         from app.framework.pipeline.checkpoint import (
@@ -284,13 +323,31 @@ async def market_scan(req: ScanRequest = ScanRequest()):
         )
         from app.framework.pipeline.trace import TraceContext
 
+        # 兼容旧参数
+        target = req.target or req.target_industry or req.question
+        agent_id = req.agent_id
+        mode_id = req.mode_id
+
+        # 查找智能体定义
+        agent_def = next((a for a in AGENT_REGISTRY if a["id"] == agent_id), None)
+        if not agent_def:
+            raise HTTPException(status_code=400, detail=f"Unknown agent: {agent_id}")
+        mode_def = next((m for m in agent_def["modes"] if m["id"] == mode_id), None)
+        if not mode_def:
+            raise HTTPException(status_code=400, detail=f"Unknown mode '{mode_id}' for agent '{agent_id}'")
+
+        # 验证输入
+        if mode_def["input_type"] != "none" and not target:
+            raise HTTPException(status_code=400, detail=f"Mode '{mode_id}' requires input: {mode_def['input_type']}")
+
+        # auto_scan: 不需要 target
+        if mode_id == "auto_scan":
+            target = "高景气赛道扫描"
+
         scanner = MarketScanner(provider=DeepSeekProvider())
-        target = req.target_industry or req.question
-        ctx = {"mode": req.mode}
+        ctx = {"mode": "manual" if mode_def["input_type"] != "none" else "auto"}
         if target:
             ctx["target_industry"] = target
-        if req.mode == "manual" and not target:
-            raise HTTPException(status_code=400, detail="manual mode requires target_industry")
 
         report_label = target if target else "每日扫描"
         step = "step2_gatekeeper"

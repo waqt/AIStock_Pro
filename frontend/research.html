@@ -385,31 +385,123 @@ async function loadTrace(step) {
     }
 }
 
-// ═══ New Project ═══════════════════════════════
+// ═══ New Project — 两步 Modal ═══════════════
 
-function newProject() {
-    var html = '<div style="display:flex;flex-direction:column;gap:8px;min-width:360px;">' +
-        '<label style="color:var(--text-dim);font-size:11px;">行业/主题</label>' +
-        '<input id="new-industry" placeholder="如: SOFC固体氧化物燃料电池" style="width:100%;background:#000;border:1px solid var(--border-color);color:#fff;padding:8px 12px;border-radius:4px;font-size:13px;">' +
+var newProjectAgentId = 'supply_chain';
+var newProjectModeId = 'manual_industry';
+
+async function newProject() {
+    // 加载智能体列表
+    var agents = [];
+    try {
+        var res = await fetch(API_BASE + '/research/agents');
+        var d = await res.json();
+        agents = d.data || [];
+    } catch(e) { agents = []; }
+
+    if (!agents.length) {
+        // 兜底: 直接显示输入框
+        showNewProjectStep2('supply_chain', {id:'manual_industry',name:'定性产业分析',input_type:'industry',placeholder:'输入行业关键词'});
+        return;
+    }
+
+    showNewProjectStep1(agents);
+}
+
+function showNewProjectStep1(agents) {
+    var cards = agents.map(function(a, i) {
+        var checked = i === 0 ? ' checked' : '';
+        return '<label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:rgba(255,255,255,0.02);border:1px solid var(--border-thin);border-radius:6px;cursor:pointer;margin-bottom:6px;">' +
+            '<input type="radio" name="agent" value="' + a.id + '"' + checked + ' onchange="newProjectAgentId=this.value" style="margin-top:3px;">' +
+            '<div><div style="color:#fff;font-size:13px;">' + escHtml(a.name) + '</div>' +
+            '<div style="color:var(--text-dim);font-size:10px;">' + escHtml(a.desc) + '</div></div></label>';
+    }).join('');
+
+    var html = '<div style="min-width:420px;">' +
+        '<div style="color:var(--text-dim);font-size:11px;margin-bottom:8px;">选择分析智能体</div>' +
+        cards +
         '<div style="display:flex;gap:6px;justify-content:flex-end;margin-top:8px;">' +
         '<button class="btn-proj" onclick="Modal.close()">取消</button>' +
-        '<button class="btn-proj primary" onclick="submitNewProject()">开始分析</button></div></div>';
-    Modal.custom({title: '新建投研项目', content: html});
+        '<button class="btn-proj primary" onclick="showNewProjectStep2(newProjectAgentId)">下一步</button></div></div>';
+    Modal.custom({title: '新建投研项目 — 第1步', content: html});
+}
+
+function showNewProjectStep2(agentId, fallbackMode) {
+    if (fallbackMode) {
+        // 兜底模式
+        renderStep2(agentId, [fallbackMode]);
+        return;
+    }
+    // 从注册表找到智能体的模式列表
+    fetch(API_BASE + '/research/agents').then(function(r){return r.json()}).then(function(d){
+        var agents = d.data || [];
+        var agent = agents.find(function(a){ return a.id === agentId; });
+        var modes = agent ? agent.modes : [{id:'manual_industry',name:'定性产业分析',input_type:'industry',placeholder:'输入行业关键词'}];
+        renderStep2(agentId, modes);
+    }).catch(function(){
+        renderStep2(agentId, [{id:'manual_industry',name:'定性产业分析',input_type:'industry',placeholder:'输入行业关键词'}]);
+    });
+}
+
+function renderStep2(agentId, modes) {
+    newProjectAgentId = agentId;
+    newProjectModeId = modes[0].id;
+
+    var modeRadios = modes.map(function(m, i) {
+        var checked = i === 0 ? ' checked' : '';
+        return '<label style="display:block;padding:8px 10px;background:rgba(255,255,255,0.02);border:1px solid var(--border-thin);border-radius:4px;cursor:pointer;margin-bottom:4px;">' +
+            '<input type="radio" name="mode" value="' + m.id + '"' + checked + ' onchange="onModeChange(this)" data-input="' + m.input_type + '" data-placeholder="' + escHtml(m.placeholder || '') + '"> ' +
+            '<span style="color:#fff;font-size:12px;">' + escHtml(m.name) + '</span>' +
+            '<div style="color:var(--text-micro);font-size:9px;margin-left:20px;">' + escHtml(m.desc) + '</div></label>';
+    }).join('');
+
+    var firstMode = modes[0];
+    var showInput = firstMode.input_type !== 'none';
+
+    var html = '<div style="min-width:440px;">' +
+        '<div style="color:var(--text-dim);font-size:11px;margin-bottom:8px;">选择分析模式</div>' +
+        modeRadios +
+        '<div id="new-input-area" style="margin-top:8px;' + (showInput ? '' : 'display:none;') + '">' +
+        '<input id="new-target" placeholder="' + escHtml(firstMode.placeholder || '') + '" style="width:100%;background:#000;border:1px solid var(--border-color);color:#fff;padding:8px 12px;border-radius:4px;font-size:13px;"></div>' +
+        '<div style="display:flex;gap:6px;justify-content:space-between;margin-top:10px;">' +
+        '<button class="btn-proj" onclick="showNewProjectStep1([]);">← 返回</button>' +
+        '<div>' +
+        '<button class="btn-proj" onclick="Modal.close()">取消</button>' +
+        '<button class="btn-proj primary" onclick="submitNewProject()">开始分析</button></div></div></div>';
+    Modal.custom({title: '新建投研项目 — 第2步', content: html});
+
+    // 自动聚焦输入框
     setTimeout(function() {
-        var inp = document.getElementById('new-industry');
+        var inp = document.getElementById('new-target');
         if (inp) { inp.focus(); inp.addEventListener('keydown', function(e) { if (e.key === 'Enter') submitNewProject(); }); }
     }, 200);
 }
 
+function onModeChange(radio) {
+    newProjectModeId = radio.value;
+    var area = document.getElementById('new-input-area');
+    var inp = document.getElementById('new-target');
+    if (radio.dataset.input === 'none') {
+        area.style.display = 'none';
+    } else {
+        area.style.display = '';
+        if (inp) inp.placeholder = radio.dataset.placeholder || '';
+    }
+}
+
 async function submitNewProject() {
-    var industry = document.getElementById('new-industry').value.trim();
-    if (!industry) return;
+    var target = '';
+    var inp = document.getElementById('new-target');
+    if (inp && inp.offsetParent !== null) target = inp.value.trim();
+
+    // 根据 mode_id 的 input_type 验证
+    if (target === '' && newProjectModeId !== 'auto_scan') return;
     Modal.close();
     try {
         var res = await fetch(API_BASE + '/research/scan', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({mode: 'manual', target_industry: industry})
+            body: JSON.stringify({agent_id: newProjectAgentId, mode_id: newProjectModeId, target: target})
         });
         var d = await res.json();
         if (d.success) {
