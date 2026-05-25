@@ -53,6 +53,22 @@
         .btn-proj.success { border-color: var(--accent-green); color: var(--accent-green); }
         .btn-proj.success:hover { background: rgba(76,175,80,0.1); }
         .placeholder { color: var(--text-micro); text-align: center; padding: 40px; font-size: 12px; }
+        /* Tabs */
+        .detail-tab { background: none; border: none; color: var(--text-dim); cursor: pointer; padding: 6px 14px; font-size: 11px; border-bottom: 2px solid transparent; }
+        .detail-tab.active { color: #fff; border-bottom-color: var(--accent-blue); }
+        .detail-tab:hover { color: #fff; }
+        /* Report */
+        .report-area .md-content { font-size: 12px; line-height: 1.8; color: var(--text-dim); }
+        .report-area .md-content h1 { font-size: 16px; margin: 0 0 12px; color: #fff; }
+        .report-area .md-content h2 { font-size: 14px; margin: 16px 0 8px; border-bottom: 1px solid var(--border-thin); padding-bottom: 4px; color: #fff; }
+        .report-area .md-content h3 { font-size: 13px; margin: 12px 0 6px; color: #fff; }
+        .report-area .md-content table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 11px; }
+        .report-area .md-content th { color: var(--text-micro); padding: 4px 6px; text-align: left; border-bottom: 1px solid var(--border-color); }
+        .report-area .md-content td { padding: 3px 6px; border-bottom: 1px solid var(--border-thin); }
+        .extract-panel .stock-item { padding: 6px 8px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-thin); border-radius: 4px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+        .extract-panel .stock-item:hover { background: rgba(255,255,255,0.05); }
+        .badge { font-size: 9px; padding: 1px 5px; border-radius: 3px; }
+        .badge-info { background: rgba(64,158,255,0.12); color: var(--accent-blue); }
     </style>
 </head>
 <body data-page-id="research">
@@ -89,9 +105,29 @@
                     <button class="btn-proj" onclick="refreshProject()"><i class="fas fa-sync-alt"></i> 刷新</button>
                 </div>
             </div>
-            <!-- Step Cards -->
+            <!-- Tab bar -->
+            <div class="detail-tabs" id="detail-tabs" style="display:flex;gap:0;border-bottom:1px solid var(--border-color);margin-bottom:6px;">
+                <button class="detail-tab active" onclick="switchDetailTab('nodes')" data-tab="nodes">节点详情</button>
+                <button class="detail-tab" onclick="switchDetailTab('report')" data-tab="report">投研报告</button>
+            </div>
+            <!-- Nodes Tab -->
+            <div id="tab-nodes">
             <div class="step-cards" id="step-cards"></div>
             <!-- Output Panel -->
+            <div class="output-panel" id="output-panel" style="display:none;">
+                <div class="header">
+                    <span class="title" id="output-title"></span>
+                    <div style="display:flex;gap:4px;">
+                        <button class="btn-proj" id="btn-edit" onclick="toggleEdit()"><i class="fas fa-edit"></i> 编辑</button>
+                        <button class="btn-proj success" id="btn-save" onclick="saveEdit()" style="display:none;"><i class="fas fa-check"></i> 保存</button>
+                        <button class="btn-proj" id="btn-cancel" onclick="toggleEdit()" style="display:none;"><i class="fas fa-times"></i> 取消</button>
+                        <button class="btn-proj" onclick="loadTrace(currentStep)"><i class="fas fa-search"></i> 溯源</button>
+                        <button class="btn-proj" onclick="closeOutput()"><i class="fas fa-times"></i></button>
+                    </div>
+                </div>
+                <div id="output-content"></div>
+            </div>
+            <!-- Trace Panel -->
             <div class="output-panel" id="output-panel" style="display:none;">
                 <div class="header">
                     <span class="title" id="output-title"></span>
@@ -113,6 +149,26 @@
                 </div>
                 <div class="trace-list" id="trace-list"></div>
             </div>
+            </div><!-- /tab-nodes -->
+
+            <!-- Report Tab -->
+            <div id="tab-report" style="display:none;">
+                <div class="content-area" style="display:flex;gap:12px;flex:1;min-height:300px;">
+                    <div class="report-area" id="report-area" style="flex:1;overflow-y:auto;background:rgba(255,255,255,0.01);border:1px solid var(--border-thin);border-radius:6px;padding:16px;">
+                        <div style="color:var(--text-micro);text-align:center;padding:40px;" id="report-placeholder">
+                            加载报告内容中...
+                        </div>
+                        <div class="md-content" id="report-content" style="display:none;"></div>
+                    </div>
+                    <div class="extract-panel" id="extract-panel" style="width:260px;min-width:200px;display:flex;flex-direction:column;gap:6px;">
+                        <div style="color:var(--accent-blue);font-size:10px;padding:4px 0;"><i class="fas fa-code"></i> 提取标的</div>
+                        <div id="extract-list" style="flex:1;overflow-y:auto;">
+                            <div style="color:var(--text-micro);font-size:10px;text-align:center;padding:10px;">报告加载后自动提取</div>
+                        </div>
+                    </div>
+                </div>
+            </div><!-- /tab-report -->
+
         </div>
     </div>
 
@@ -368,6 +424,136 @@ async function submitNewProject() {
 }
 
 function escHtml(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+// ═══ Tab Switching ═══════════════════════════════
+
+function switchDetailTab(tab) {
+    document.querySelectorAll('.detail-tab').forEach(function(b) { b.classList.toggle('active', b.dataset.tab === tab); });
+    document.getElementById('tab-nodes').style.display = tab === 'nodes' ? '' : 'none';
+    document.getElementById('tab-report').style.display = tab === 'report' ? '' : 'none';
+    if (tab === 'report') loadReport();
+}
+
+// ═══ Report Viewer ═══════════════════════════════
+
+async function loadReport() {
+    if (!currentRunId) return;
+    var placeholder = document.getElementById('report-placeholder');
+    var content = document.getElementById('report-content');
+    placeholder.style.display = ''; placeholder.textContent = '加载报告内容中...';
+    content.style.display = 'none';
+    try {
+        // 获取当前项目的 industry 信息
+        var runRes = await fetch(API_BASE + '/research/pipeline/' + currentRunId);
+        var runData = await runRes.json();
+        var manifest = (runData.data || {}).manifest || {};
+        var industry = manifest.industry || '';
+        // 从报告列表找匹配的最新报告
+        var listRes = await fetch(API_BASE + '/research/reports?limit=100');
+        var listData = await listRes.json();
+        var reports = (listData.data || []).filter(function(r) {
+            return r.industry === industry || r.title === industry;
+        });
+        if (!reports.length) {
+            placeholder.textContent = '未找到 ' + (industry || '该项目') + ' 的投研报告';
+            return;
+        }
+        // 加载最新一份
+        var reportRes = await fetch(API_BASE + '/research/reports/' + reports[0].report_id);
+        var reportData = await reportRes.json();
+        var report = reportData.data || {};
+        var cio = report.data ? report.data.cio_report : (report.cio_report || '');
+        if (!cio) {
+            // 尝试从 data 直接渲染
+            cio = '## ' + (report.title || industry || '报告') + '\n\n' + JSON.stringify(report.data || report, null, 2);
+        }
+        placeholder.style.display = 'none';
+        content.style.display = '';
+        content.innerHTML = typeof MD !== 'undefined' ? MD.render(cio) : '<pre>' + escHtml(cio) + '</pre>';
+        // 提取标的
+        var stockMap = {};
+        var sc = (report.data && report.data.core_stocks) || [];
+        sc.forEach(function(s) { if (s.code && s.name) stockMap[s.code] = s.name; });
+        extractStocks(cio, stockMap);
+    } catch(e) {
+        placeholder.textContent = '加载报告失败: ' + e.message;
+    }
+}
+
+// ═══ Stock Extraction ═══════════════════════════
+
+async function extractStocks(markdown, stockMap) {
+    stockMap = stockMap || {};
+    var codes = markdown.match(/\b(\d{6})\b/g) || [];
+    var unique = [];
+    codes.forEach(function(c) { if (unique.indexOf(c) < 0) unique.push(c); });
+    var el = document.getElementById('extract-list');
+    if (!unique.length) { el.innerHTML = '<div style="color:var(--text-micro);font-size:10px;text-align:center;padding:10px;">未提取到标的</div>'; return; }
+    var infoMap = {};
+    try {
+        var infoRes = await fetch(API_BASE + '/research/stocks/batch-info', {
+            method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(unique)
+        });
+        var infoData = await infoRes.json();
+        (infoData.data || []).forEach(function(s) { infoMap[s.code] = s; });
+    } catch(e) {}
+    unique.forEach(function(c) { if (stockMap[c] && !infoMap[c]) infoMap[c] = {name: stockMap[c]}; });
+    el.innerHTML = unique.map(function(c) {
+        var info = infoMap[c] || {};
+        var name = info.name || c;
+        var ind = info.industry ? '<span style="color:var(--text-micro);font-size:9px;">' + escHtml(info.industry) + '</span>' : '';
+        var pe = info.pe_ttm ? ' · PE' + (info.pe_ttm || '').toFixed(0) : '';
+        var mcap = info.mcap_yi ? ' · ' + (info.mcap_yi || '').toFixed(0) + '亿' : '';
+        return '<div class="stock-item">' +
+            '<div onclick="viewStock(\'' + c + '\')" title="点击查看指标数据" style="flex:1;cursor:pointer;">' +
+            '<span style="color:var(--accent-blue);font-family:var(--font-mono);">' + c + '</span> ' +
+            '<span style="color:#fff;font-size:11px;">' + escHtml(name) + '</span>' +
+            '<div>' + ind + '<span style="color:var(--text-dim);font-size:10px;">' + pe + mcap + '</span></div></div>' +
+            '<button class="btn-proj" onclick="event.stopPropagation();openAddToWatchlist(\'' + c + '\',\'' + escHtml(name) + '\')" title="添加自选">' +
+            '<i class="fas fa-plus"></i> 自选</button></div>';
+    }).join('');
+}
+
+// ═══ Add to Watchlist ═══════════════════════════
+
+function openAddToWatchlist(code, name) {
+    var groups = ['默认', '持仓股', '核心观察', '待研究', '高风险'];
+    var groupOpts = groups.map(function(g) { return '<option value="' + g + '">' + g + '</option>'; }).join('');
+    var html = '<div style="display:flex;flex-direction:column;gap:8px;min-width:360px;">' +
+        '<div style="color:#fff;font-size:13px;"><span style="font-family:var(--font-mono);color:var(--accent-blue);">' + code + '</span> ' + escHtml(name) + '</div>' +
+        '<label style="color:var(--text-dim);font-size:11px;">分组 <select id="addwl-group" style="background:#000;border:1px solid var(--border-color);color:#fff;padding:4px 8px;border-radius:3px;font-size:11px;width:100%;">' + groupOpts + '<option value="__new__">+ 新建分组...</option></select></label>' +
+        '<label style="color:var(--text-dim);font-size:11px;">备注 <input id="addwl-notes" placeholder="如: 瓶颈环节龙头、铬盐唯一标的" style="width:100%;background:#000;border:1px solid var(--border-color);color:#fff;padding:4px 8px;border-radius:3px;font-size:11px;"></label>' +
+        '<div style="display:flex;gap:8px;">' +
+        '<label style="color:var(--text-dim);font-size:11px;flex:1;">目标价下限 <input id="addwl-low" type="number" step="0.01" placeholder="如 300" style="width:100%;background:#000;border:1px solid var(--border-color);color:#fff;padding:4px 8px;border-radius:3px;font-size:11px;"></label>' +
+        '<label style="color:var(--text-dim);font-size:11px;flex:1;">目标价上限 <input id="addwl-high" type="number" step="0.01" placeholder="如 500" style="width:100%;background:#000;border:1px solid var(--border-color);color:#fff;padding:4px 8px;border-radius:3px;font-size:11px;"></label></div>' +
+        '<div style="display:flex;gap:6px;justify-content:flex-end;">' +
+        '<button class="btn-proj" onclick="Modal.close()" style="padding:6px 14px;">取消</button>' +
+        '<button class="btn-proj primary" onclick="submitAddToWatchlist(\'' + code + '\',\'' + escHtml(name) + '\')" style="font-size:11px;">确认添加</button></div></div>';
+    Modal.custom({title: '添加自选股', content: html});
+}
+
+async function submitAddToWatchlist(code, name) {
+    var group = document.getElementById('addwl-group').value;
+    if (group === '__new__') {
+        group = prompt('输入新分组名称:');
+        if (!group) return;
+    }
+    var notes = document.getElementById('addwl-notes').value;
+    var low = document.getElementById('addwl-low').value;
+    var high = document.getElementById('addwl-high').value;
+    var params = 'stock_code=' + code + '&stock_name=' + encodeURIComponent(name) + '&group_tag=' + encodeURIComponent(group);
+    if (notes) params += '&notes=' + encodeURIComponent(notes);
+    if (low) params += '&target_price_low=' + low;
+    if (high) params += '&target_price_high=' + high;
+    try {
+        var res = await fetch(API_BASE + '/data/watchlist/add?' + params, {method: 'POST'});
+        var d = await res.json();
+        if (d.success) { Modal.close(); Modal.alert('成功', '已添加 ' + name + ' 到自选股分组 [' + group + ']'); }
+        else Modal.alert('失败', d.message || '添加失败');
+    } catch(e) { Modal.alert('错误', e.message); }
+}
+
+function viewStock(code) { window.open('indicators.html?stock=' + code, '_blank'); }
 
 document.addEventListener('DOMContentLoaded', function() { loadProjects(); });
 window.refreshPageData = function() { loadProjects(); if (currentRunId) loadProjectDetail(); };
