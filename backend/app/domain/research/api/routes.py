@@ -44,6 +44,9 @@ AGENT_REGISTRY = [
             {"id": "stock_audit",        "name": "公司财务审计",
              "desc": "输入股票代码，仅运行财务质量审计(Step7)",
              "input_type": "stock_code", "placeholder": "输入6位代码, 如: 688012"},
+            {"id": "capital_flow",       "name": "全球资本流向扫描",
+             "desc": "扫描全球CAPEX流向，识别资本正在挤压的产业系统",
+             "input_type": "none", "placeholder": ""},
         ],
     },
     # 未来扩展:
@@ -323,18 +326,39 @@ async def _do_scan(req: ScanRequest):
     scanner = MarketScanner(provider=DeepSeekProvider())
 
     if mode_id == "auto_scan":
-        import os as _os
-        macro_path = _os.path.join(_os.path.dirname(__file__), "..", "..", "..", "..", "data", "macro_report.json")
-        macro_path = _os.path.abspath(macro_path)
+        import os as _os, json as _json
         hypothesis = []
-        target = "高景气赛道扫描"
-        if _os.path.exists(macro_path):
-            import json as _json
-            with open(macro_path, "r", encoding="utf-8") as f:
-                macro = _json.load(f)
-            themes = macro.get("data", {}).get("executive_summary", {}).get("top_3_themes", [])
-            hypothesis = [{"sector": t.get("theme", t.get("name", "")), "name": t.get("theme", "")} for t in themes[:4] if t.get("theme")]
-            if hypothesis: target = "全局扫描-" + datetime.now().strftime("%Y%m%d-%H%M")
+        target = "全局扫描-" + datetime.now().strftime("%Y%m%d-%H%M")
+        # 优先用 Step 1b 资本流向分析, 降级到 Step 1a 宏观主题
+        import glob as _glob
+        base_data = _os.path.abspath(_os.path.join(_os.path.dirname(__file__), "..", "..", "..", "..", "data"))
+        cf_pattern = _os.path.join(base_data, "pipeline_checkpoints", "*资本流向*", "step1b_capital_flow*.json")
+        cf_runs = sorted(_glob.glob(cf_pattern), reverse=True)
+        if cf_runs:
+            try:
+                with open(cf_runs[0], "r", encoding="utf-8") as f:
+                    cf = _json.load(f)
+                vectors = cf.get("output", {}).get("capex_vectors", [])
+                # 只取 industrial_capex 和 commodity_cycle 类型
+                for v in vectors:
+                    tt = v.get("theme_type", "")
+                    if tt in ("industrial_capex", "commodity_cycle"):
+                        for beneficiary in v.get("china_beneficiary", [])[:2]:
+                            hypothesis.append({"sector": beneficiary, "name": beneficiary,
+                                "capex_initiator": v.get("initiator", ""), "target": v.get("target", "")})
+                if hypothesis:
+                    logger.info(f"[MarketScanner] Using capital_flow vectors: {len(hypothesis)} candidates")
+            except Exception:
+                pass
+        # 降级: 用 Step 1a 宏观主题
+        if not hypothesis:
+            macro_path = _os.path.join(_os.path.dirname(__file__), "..", "..", "..", "..", "data", "macro_report.json")
+            macro_path = _os.path.abspath(macro_path)
+            if _os.path.exists(macro_path):
+                with open(macro_path, "r", encoding="utf-8") as f:
+                    macro = _json.load(f)
+                themes = macro.get("data", {}).get("executive_summary", {}).get("top_3_themes", [])
+                hypothesis = [{"sector": t.get("theme", t.get("name", "")), "name": t.get("theme", "")} for t in themes[:4] if t.get("theme")]
         ctx = {"mode": "auto", "hypothesis_sectors": hypothesis}
         if not hypothesis: ctx = {"mode": "auto"}
     else:
@@ -470,6 +494,56 @@ async def supply_chain_hacker(req: SupplyChainRequest = SupplyChainRequest(),
         raise
     except Exception as e:
         logger.error(f"[SupplyChainHacker] Failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/capital-flow")
+async def capital_flow_scan(async_mode: bool = Query(default=False)):
+    """Step 1b: 全球资本流向扫描 — ?async_mode=true 后台执行"""
+    if async_mode:
+        from app.framework.tasks.engine import TaskEngine
+        exec_id = await TaskEngine.run_task("research_analyze", {
+            "agent_id": "supply_chain", "mode_id": "capital_flow",
+            "target": "capital_flow",
+        })
+        return {"success": True, "data": {"exec_id": exec_id, "status": "PENDING"}}
+    try:
+        from app.framework.ai.providers.deepseek import DeepSeekProvider
+        from app.domain.research.agents.capital_flow_scanner import CapitalFlowScanner
+        from app.framework.pipeline.checkpoint import generate_run_id, hash_input, load_checkpoint, save_checkpoint, save_manifest
+        from app.framework.pipeline.trace import TraceContext
+
+        scanner = CapitalFlowScanner(provider=DeepSeekProvider())
+        run_id = generate_run_id("资本流向")
+        step = "step1b_capital_flow"
+        t0 = __import__("time").time()
+
+        input_hash = hash_input({
+            "step": "capital_flow",
+            "date": __import__("datetime").datetime.now().strftime("%Y%m%d"),
+        })
+        cached = load_checkpoint(step, run_id, input_hash)
+        if cached:
+            return {"success": True, "data": cached, "from_cache": True, "run_id": run_id}
+
+        trace = TraceContext(run_id)
+        result = await scanner.analyze(ctx={}, trace=trace)
+
+        elapsed = round(__import__("time").time() - t0, 1)
+        try:
+            save_checkpoint(step, run_id, input_hash, result, {"elapsed": elapsed})
+            trace.write(step)
+            save_manifest(run_id, {"run_id": run_id, "industry": "资本流向", "status": "completed",
+                "started_at": trace.to_dict()["started_at"],
+                "completed_at": __import__("datetime").datetime.now().isoformat(),
+                "elapsed_seconds": elapsed, "step": step})
+        except Exception as e:
+            logger.warning(f"[CapitalFlow] Checkpoint save failed (non-fatal): {e}")
+
+        save_report("CapitalFlowScanner", "资本流向", result)
+        return {"success": True, "data": result, "run_id": run_id}
+    except Exception as e:
+        logger.error(f"[CapitalFlow] Failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
