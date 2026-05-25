@@ -200,13 +200,21 @@ async function loadProjects() {
             el.innerHTML = '<div class="placeholder">暂无项目，点击「新建」开始投研</div>';
             return;
         }
+        // 星标置顶
+        runs.sort(function(a, b) { return (b.starred ? 1 : 0) - (a.starred ? 1 : 0); });
         el.innerHTML = runs.map(function(r) {
             var active = r.run_id === currentRunId ? ' active' : '';
             var dot = r.status === 'completed' ? 'ok' : (r.status === 'failed' ? 'fail' : 'running');
-            return '<div class="proj-item' + active + '" onclick="selectProject(\'' + r.run_id + '\')">' +
+            var starIcon = r.starred ? '<i class="fas fa-star" style="color:var(--accent-yellow);"></i>' : '<i class="far fa-star" style="color:var(--text-micro);"></i>';
+            return '<div class="proj-item' + active + '">' +
+                '<div onclick="selectProject(\'' + r.run_id + '\')" style="flex:1;cursor:pointer;">' +
                 '<div class="name">' + escHtml(r.display_name || r.run_id) + '</div>' +
                 '<div class="meta"><span class="status-dot ' + dot + '"></span>' +
-                escHtml(r.status || '?') + ' · ' + (r.elapsed_seconds || 0) + 's</div></div>';
+                escHtml(r.status || '?') + ' · ' + (r.elapsed_seconds || 0) + 's</div></div>' +
+                '<div style="display:flex;gap:6px;align-items:center;" onclick="event.stopPropagation()">' +
+                '<span style="cursor:pointer;font-size:12px;" onclick="toggleStar(\'' + r.run_id + '\')" title="收藏">' + starIcon + '</span>' +
+                '<span style="cursor:pointer;color:var(--text-micro);font-size:10px;" onclick="deleteProject(\'' + r.run_id + '\',\'' + escHtml(r.display_name || r.run_id) + '\')" title="删除"><i class="fas fa-trash"></i></span>' +
+                '</div></div>';
         }).join('');
     } catch(e) {
         el.innerHTML = '<div class="placeholder" style="color:var(--accent-red);">加载失败<br><button class="btn-proj" onclick="loadProjects()">重试</button></div>';
@@ -646,6 +654,31 @@ async function submitAddToWatchlist(code, name) {
 }
 
 function viewStock(code) { window.open('indicators.html?stock=' + code, '_blank'); }
+
+// ═══ Star + Delete ═══════════════════════════
+
+async function toggleStar(runId) {
+    try {
+        var res = await fetch(API_BASE + '/research/pipeline/' + runId + '/star', {method: 'PUT'});
+        var d = await res.json();
+        if (d.success) loadProjects();
+    } catch(e) { /* silent */ }
+}
+
+async function deleteProject(runId, name) {
+    var ok = await Modal.confirm('删除项目', '确定删除「' + name + '」？所有检查点文件和溯源日志将被永久删除。');
+    if (!ok) return;
+    try {
+        var res = await fetch(API_BASE + '/research/pipeline/' + runId, {method: 'DELETE'});
+        var d = await res.json();
+        if (d.success) {
+            if (currentRunId === runId) { currentRunId = null; document.getElementById('detail-content').style.display = 'none'; document.getElementById('detail-empty').style.display = ''; }
+            loadProjects();
+        } else {
+            Modal.alert('删除失败', d.message || '未知错误');
+        }
+    } catch(e) { Modal.alert('错误', e.message); }
+}
 
 document.addEventListener('DOMContentLoaded', function() { loadProjects(); });
 window.refreshPageData = function() { loadProjects(); if (currentRunId) loadProjectDetail(); };

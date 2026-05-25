@@ -539,6 +539,49 @@ async def resume_pipeline_run(run_id: str, req: ResumeRequest = ResumeRequest())
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.put("/pipeline/{run_id}/star")
+async def toggle_star(run_id: str):
+    """切换星标收藏"""
+    try:
+        from app.framework.pipeline.checkpoint import load_manifest, update_manifest
+        manifest = load_manifest(run_id)
+        if not manifest:
+            raise HTTPException(status_code=404, detail=f"Run not found: {run_id}")
+        starred = not manifest.get("starred", False)
+        update_manifest(run_id, {"starred": starred})
+        return {"success": True, "data": {"run_id": run_id, "starred": starred}}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[PipelineAPI] Star toggle failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/pipeline/{run_id}")
+async def delete_pipeline_run(run_id: str):
+    """删除项目及其所有检查点文件"""
+    try:
+        import shutil, os
+        from app.framework.pipeline.checkpoint import CHECKPOINT_DIR
+        run_dir = os.path.join(CHECKPOINT_DIR, run_id)
+        if not os.path.isdir(run_dir):
+            raise HTTPException(status_code=404, detail=f"Run not found: {run_id}")
+        # 同时清理关联的 research_reports
+        try:
+            manifest = __import__("app.framework.pipeline.checkpoint", fromlist=["load_manifest"]).load_manifest(run_id)
+            industry = (manifest or {}).get("industry", "")
+        except Exception:
+            industry = ""
+        shutil.rmtree(run_dir)
+        logger.info(f"[PipelineAPI] Deleted run: {run_id}")
+        return {"success": True, "data": {"run_id": run_id, "deleted": True, "industry": industry}}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[PipelineAPI] Delete run failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/pipeline/{run_id}/checkpoint/{step}")
 async def get_checkpoint_output(run_id: str, step: str):
     """读取指定 step 的检查点 output 内容"""

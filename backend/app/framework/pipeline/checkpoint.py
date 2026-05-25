@@ -235,6 +235,7 @@ def list_runs() -> list:
             "industry": manifest.get("industry", ""),
             "mode": manifest.get("mode", ""),
             "status": manifest.get("status", "unknown"),
+            "starred": manifest.get("starred", False),
             "started_at": manifest.get("started_at", ""),
             "completed_at": manifest.get("completed_at", ""),
             "elapsed_seconds": manifest.get("elapsed_seconds", 0),
