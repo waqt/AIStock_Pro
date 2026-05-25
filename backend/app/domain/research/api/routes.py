@@ -416,6 +416,75 @@ async def market_scan(req: ScanRequest = ScanRequest()):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+class SupplyChainRequest(BaseModel):
+    industry: str = ""
+    step2_output: dict = None  # Step 2 的完整输出 (含 _step3_guidance)
+
+
+@router.post("/supply-chain-hacker")
+async def supply_chain_hacker(req: SupplyChainRequest = SupplyChainRequest()):
+    """Step 3: 产业链系统拆解"""
+    try:
+        from app.framework.ai.providers.deepseek import DeepSeekProvider
+        from app.framework.pipeline.checkpoint import (
+            generate_run_id, hash_input, load_checkpoint,
+            save_checkpoint, save_manifest,
+        )
+        from app.framework.pipeline.trace import TraceContext
+
+        industry = req.industry.strip()
+        if not industry:
+            raise HTTPException(status_code=400, detail="industry is required")
+
+        hacker_instance = SupplyChainHacker(provider=DeepSeekProvider())
+        step = "step3_sc_hacker"
+        # 复用已有 run_id (如果来自同一个 industry), 否则新建
+        run_id = generate_run_id(industry)
+        t0 = __import__("time").time()
+
+        # 提取 Step 2 指引
+        step2 = (req.step2_output or {}).get("_step3_guidance", {}) if req.step2_output else {}
+        ctx = {"industry": industry, "step2_guidance": step2}
+
+        # 缓存
+        input_hash = hash_input({
+            "industry": industry,
+            "step2_phase": step2.get("cycle_phase", ""),
+            "date": __import__("datetime").datetime.now().strftime("%Y%m%d"),
+            "agent_version": "supply_chain_hacker_v5.8",
+        })
+        cached = load_checkpoint(step, run_id, input_hash)
+        if cached:
+            logger.info(f"[SupplyChainHacker] CACHE HIT: {run_id}/{step}")
+            return {"success": True, "data": cached, "from_cache": True, "run_id": run_id}
+
+        trace = TraceContext(run_id)
+        result = await hacker_instance.analyze(ctx, trace=trace)
+
+        elapsed = round(__import__("time").time() - t0, 1)
+        try:
+            save_checkpoint(step, run_id, input_hash, result, {"elapsed": elapsed})
+            trace.write(step)
+            # 更新已有 manifest (追加 step3 信息)
+            from app.framework.pipeline.checkpoint import load_manifest
+            manifest = load_manifest(run_id) or {}
+            manifest["step"] = step
+            manifest["elapsed_seconds"] = (manifest.get("elapsed_seconds", 0) or 0) + elapsed
+            save_manifest(run_id, manifest)
+            logger.info(f"[SupplyChainHacker] Checkpoint saved: {run_id}/{step} ({elapsed}s)")
+        except Exception as e:
+            logger.warning(f"[SupplyChainHacker] Checkpoint save failed (non-fatal): {e}")
+
+        save_report("SupplyChainHacker", industry, result)
+        return {"success": True, "data": result, "run_id": run_id,
+                "freshness": ResearchAgent.freshness_stamp()}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[SupplyChainHacker] Failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/stocks/batch-info")
 async def batch_stock_info(codes: List[str]):
     """批量获取股票基本信息 (供投研标的提取面板使用)"""
