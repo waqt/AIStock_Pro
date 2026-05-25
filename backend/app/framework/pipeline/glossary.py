@@ -79,6 +79,89 @@ GLOSSARY: Dict[str, Dict[str, str]] = {
         "供给扩张>需求": "产能增速超过需求增速, 供需缺口正在收敛而非扩大",
         "传导链<3层Alpha空间有限": "产业链太短, 轮动空间小, 不值得深度推演",
     },
+
+    # ── 供给刚性严重程度 (Step 3 → Step 4/6/8) ──
+    "supply_rigidity_severity": {
+        "extreme": "供给完全刚性 — 独家供应, 零替代, 扩产>18个月",
+        "high": "供给严重受限 — CR2垄断, 替代方案不成熟, 扩产>12个月",
+        "moderate": "供给偏紧 — CR3-5竞争, 扩产6-12个月, 有替代但成本高",
+        "low": "供给充裕 — 充分竞争, 扩产<6个月, 多替代方案",
+        "oversupply": "供给过剩 — 产能严重过剩, 价格战风险",
+    },
+
+    # ── 供给刚性根因 (Step 3 → Step 4/6) ──
+    "rigidity_root_cause": {
+        "equipment_constraint": "设备交期约束 — EUV光刻机/CoWoS封装设备等关键设备供应受限",
+        "natural_resource": "自然资源稀缺 — 高纯石英砂/稀土/锂矿等不可再生或地理集中资源",
+        "certification_barrier": "客户认证壁垒 — 车规(3-5年)/航空/医疗等长周期认证",
+        "policy_restriction": "政策/出口管制 — 美国设备禁令/日本材料限制/国产化政策要求",
+        "capital_scale": "资本规模门槛 — 晶圆厂($10B+)/面板厂等高CAPEX壁垒",
+    },
+
+    # ── 扩产周期 (Step 3 → Step 4/9) ──
+    "expand_cycle": {
+        "under_6_months": "6个月内可扩产",
+        "6_12_months": "6-12个月可扩产",
+        "12_18_months": "12-18个月可扩产",
+        "18_24_months": "18-24个月可扩产",
+        "over_24_months": "超过24个月才能实质性扩产",
+    },
+
+    # ── 替代性 (Step 3 → Step 4) ──
+    "substitutability_level": {
+        "none_short_term": "短期(2年内)无任何替代方案",
+        "partial_high_cost": "有替代方案但成本/性能显著劣势, 无法大规模切换",
+        "partial_emerging": "替代方案正在验证中, 2-3年内可能成熟",
+        "multiple_options": "存在多个成熟替代方案, 切换成本低",
+    },
+
+    # ── 供应商集中度 (Step 3 → Step 6) ──
+    "supplier_concentration": {
+        "monopoly_single_supplier": "独家供应 — 单一供应商>90%份额",
+        "duopoly": "双寡头 — CR2>80%",
+        "oligopoly": "寡头竞争 — CR3-5>60%",
+        "fragmented": "分散竞争 — CR5<40%",
+    },
+
+    # ── 利润池份额 (Step 3 → Step 6/8) ──
+    "profit_pool_share": {
+        "dominant_30_50pct": "占据行业30-50%利润, 是产业链最大利润池",
+        "significant_15_30pct": "占据行业15-30%利润",
+        "moderate_5_15pct": "占据行业5-15%利润",
+        "marginal_below_5pct": "不足行业5%利润, 对整体利润影响有限",
+    },
+
+    # ── 毛利率水平 (Step 3 → Step 8) ──
+    "margin_level": {
+        "very_high_above_40pct": "毛利率>40%, 典型轻资产/高技术壁垒特征",
+        "high_25_40pct": "毛利率25-40%",
+        "moderate_15_25pct": "毛利率15-25%",
+        "low_below_15pct": "毛利率<15%, 低附加值/重资产特征",
+    },
+
+    # ── 关注度质量 (Step 3 → Step 9) ──
+    "attention_quality": {
+        "profit_real": "热度高且利润确实集中 — 稀缺溢价合理, 非泡沫",
+        "profit_diverted": "热度高但利润被上游抽走 — 警惕炒作, 利润不在关注焦点上",
+        "under_the_radar": "关注度低但利润捕获好 — 预期差最大, Alpha来源",
+        "deservedly_low": "关注度低且确实不赚钱 — 合理回避",
+    },
+
+    # ── 国产化率 (Step 3 → Step 6) ──
+    "china_substitution_rate": {
+        "below_5pct": "国产化率<5% — 几乎完全依赖进口, 国产替代空间极大但难度最高",
+        "5_20pct": "国产化率5-20% — 开始替代但技术差距显著",
+        "20_50pct": "国产化率20-50% — 快速追赶中, 部分环节已具备竞争力",
+        "above_50pct": "国产化率>50% — 已具备全球竞争力, 国产替代空间有限",
+    },
+
+    # ── 未来2-3年展望 (Step 3 → Step 4/9) ──
+    "future_outlook": {
+        "bottleneck_persists": "瓶颈持续 — 2-3年内供给侧无实质性缓解, 景气窗口清晰",
+        "bottleneck_easing": "瓶颈缓解 — 新增产能/替代方案正在落地, 超额利润窗口收窄",
+        "bottleneck_resolved": "瓶颈解除 — 供给将追上甚至超过需求, 警惕周期反转",
+        "new_bottleneck_emerging": "新瓶颈形成 — 当前宽松但2-3年内可能收紧, 前瞻布局机会",
+    },
 }
 
 
@@ -121,6 +204,10 @@ def step3_glossary() -> str:
     """Step 3 (SupplyChain) 需要的术语"""
     return inject_glossary("", [
         "cycle_phase", "prosperity_type",
+        "supply_rigidity_severity", "rigidity_root_cause", "expand_cycle",
+        "substitutability_level", "supplier_concentration",
+        "profit_pool_share", "margin_level",
+        "attention_quality", "china_substitution_rate", "future_outlook",
     ])
 
 

@@ -26,7 +26,7 @@ class MarketScanner(ResearchAgent):
         super().__init__(provider=provider, data_loader=data_loader)
         self.name = "MarketScanner"
 
-    async def analyze(self, context: Dict[str, Any]) -> Dict[str, Any]:
+    async def analyze(self, context: Dict[str, Any], trace=None) -> Dict[str, Any]:
         ctx = await self.load_context(context)
         mode = ctx.get("mode", "auto")
         if not self.provider:
@@ -37,7 +37,7 @@ class MarketScanner(ResearchAgent):
             target = ctx.get("target_industry") or ctx.get("question", "")
             if not target:
                 return {"error": "manual mode requires target_industry"}
-            result = await self._deep_dive_manual(target)
+            result = await self._deep_dive_manual(target, trace=trace)
             result["agent"] = self.name
             result["mode"] = "manual"
             return result
@@ -45,7 +45,7 @@ class MarketScanner(ResearchAgent):
         # auto 模式 (默认, 向后兼容)
         hypothesis = ctx.get("hypothesis_sectors", [])
         if hypothesis:
-            result = await self._scan_auto(hypothesis)
+            result = await self._scan_auto(hypothesis, trace=trace)
             result["agent"] = self.name
             result["mode"] = "auto"
             return result
@@ -61,7 +61,7 @@ class MarketScanner(ResearchAgent):
 
     # ═══ auto 模式: 从 Step1 候选清单验证 ═══════════
 
-    async def _scan_auto(self, hypothesis_sectors: List[Dict]) -> Dict:
+    async def _scan_auto(self, hypothesis_sectors: List[Dict], trace=None) -> Dict:
         """对 Step1 的 benefited_sectors 做验证+排序+补漏"""
         results = []
         for h in hypothesis_sectors[:5]:
@@ -75,10 +75,12 @@ class MarketScanner(ResearchAgent):
                 items = []
                 for r in await self.data_loader.search_web(q, num=3):
                     items.append({"title": r.get("title",""), "snippet": r.get("snippet","")[:250]})
+                if trace:
+                    trace.record_search(q, items)
                 search_data.append({"query": q, "results": items})
 
             # LLM 评估
-            evaluation = await self._evaluate_industry(sector, search_data, h)
+            evaluation = await self._evaluate_industry(sector, search_data, h, trace=trace)
             if evaluation:
                 results.append(evaluation)
 
@@ -90,7 +92,7 @@ class MarketScanner(ResearchAgent):
 
     # ═══ manual 模式: 单行业深挖 ═══════════
 
-    async def _deep_dive_manual(self, industry: str) -> Dict:
+    async def _deep_dive_manual(self, industry: str, trace=None) -> Dict:
         """对用户指定的行业做 4 轮深度分析"""
         logger.info(f"[{self.name}] Deep dive: {industry}")
         search_data = []
@@ -104,17 +106,23 @@ class MarketScanner(ResearchAgent):
             items = []
             for r in await self.data_loader.search_web(q, num=4):
                 items.append({"title": r.get("title",""), "snippet": r.get("snippet","")[:250]})
+            if trace:
+                trace.record_search(q, items)
             search_data.append({"query": q, "results": items})
 
-        evaluation = await self._evaluate_industry(industry, search_data, {})
+        evaluation = await self._evaluate_industry(industry, search_data, {}, trace=trace)
         if evaluation:
             evaluation["mode"] = "manual"
+            if trace:
+                trace.record_note("verdict", f"enter_step3={evaluation.get('verdict',{}).get('enter_step3')}, "
+                                    f"priority={evaluation.get('verdict',{}).get('priority')}, "
+                                    f"kill_reasons={evaluation.get('kill_reasons',[])}")
         return evaluation or {"error": "LLM evaluation failed", "industry": industry}
 
     # ═══ LLM 评估 (auto + manual 共用) ═══════════
 
     async def _evaluate_industry(self, industry: str, search_data: List,
-                                  hypothesis: Dict = None) -> Dict:
+                                  hypothesis: Dict = None, trace=None) -> Dict:
         """LLM 按 6 块定性结构评估一个行业"""
         h_info = _j(hypothesis)[:500] if hypothesis else "无预判信息"
 
@@ -209,6 +217,8 @@ class MarketScanner(ResearchAgent):
         try:
             text = await asyncio.wait_for(
                 self.provider.chat_flash(prompt, max_tokens=3072), timeout=45)
+            if trace:
+                trace.record_llm(prompt, text, model=getattr(self.provider, 'model', 'unknown'))
             result = self.parse_json(text)
             if isinstance(result, dict):
                 logger.info(f"[{self.name}] {industry}: priority={result.get('verdict',{}).get('priority','?')}, "

@@ -30,6 +30,13 @@ class ResearchRequest(BaseModel):
     analysis_type: Optional[str] = None  # supply_chain | macro_cycle | founder_audit | valuation_scan
 
 
+class ScanRequest(BaseModel):
+    """Step 2 看门人请求"""
+    mode: str = "auto"            # auto (验证Step1假设) | manual (用户指定行业深度分析)
+    target_industry: str = ""     # manual 模式: 目标行业名
+    question: str = ""            # 兼容旧参数, 等同于 target_industry
+
+
 # ── 初始化协调器 ───────────────────
 
 def _get_coordinator():
@@ -267,16 +274,67 @@ async def global_capex_scan(req: ResearchRequest):
 
 
 @router.post("/scan")
-async def market_scan():
-    """市场主动扫描 — 自动识别热门赛道 + 标的 + 每日简报 (无需参数)"""
+async def market_scan(req: ScanRequest = ScanRequest()):
+    """Step 2 看门人 — auto (验证Step1假设) | manual (指定行业深度分析)"""
     try:
         from app.framework.ai.providers.deepseek import DeepSeekProvider
+        from app.framework.pipeline.checkpoint import (
+            generate_run_id, hash_input, load_checkpoint,
+            save_checkpoint, save_manifest,
+        )
+        from app.framework.pipeline.trace import TraceContext
+
         scanner = MarketScanner(provider=DeepSeekProvider())
-        result = await scanner.analyze({})
-        save_report("MarketScanner", "每日扫描", result)
-        return {"success": True, "data": result, "freshness": ResearchAgent.freshness_stamp()}
+        target = req.target_industry or req.question
+        ctx = {"mode": req.mode}
+        if target:
+            ctx["target_industry"] = target
+        if req.mode == "manual" and not target:
+            raise HTTPException(status_code=400, detail="manual mode requires target_industry")
+
+        report_label = target if target else "每日扫描"
+        step = "step2_gatekeeper"
+        run_id = generate_run_id(report_label)
+        t0 = __import__("time").time()
+
+        # 检查点缓存
+        input_hash = hash_input({"mode": req.mode, "target": target})
+        cached = load_checkpoint(step, run_id, input_hash)
+        if cached:
+            logger.info(f"[MarketScanner] CACHE HIT: {run_id}/{step} ({input_hash})")
+            return {"success": True, "data": cached,
+                    "from_cache": True, "run_id": run_id,
+                    "freshness": ResearchAgent.freshness_stamp()}
+
+        # 执行
+        trace = TraceContext(run_id)
+        result = await scanner.analyze(ctx, trace=trace)
+
+        # 落盘: 检查点 + trace + manifest
+        elapsed = round(__import__("time").time() - t0, 1)
+        try:
+            save_checkpoint(step, run_id, input_hash, result,
+                            {"elapsed": elapsed, "input_summary": f"mode={req.mode}, target={target}"})
+            trace.write(step)
+            save_manifest(run_id, {
+                "run_id": run_id, "industry": report_label, "mode": req.mode,
+                "status": "completed", "started_at": trace.to_dict()["started_at"],
+                "completed_at": __import__("datetime").datetime.now().isoformat(),
+                "elapsed_seconds": elapsed,
+                "step": step, "input_hash": input_hash,
+            })
+            logger.info(f"[MarketScanner] Checkpoint saved: {run_id}/{step} ({elapsed}s, {trace.to_dict()['event_count']} trace events)")
+        except Exception as e:
+            logger.warning(f"[MarketScanner] Checkpoint/trace save failed (non-fatal): {e}")
+
+        # 保存报告 (保持原有)
+        save_report("MarketScanner", report_label, result)
+        return {"success": True, "data": result, "run_id": run_id,
+                "freshness": ResearchAgent.freshness_stamp()}
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"[❌] Market scan failed: {e}")
+        logger.error(f"[MarketScanner] Scan failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
