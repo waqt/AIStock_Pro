@@ -21,6 +21,19 @@ from app.framework.logger import logger
 
 router = APIRouter(prefix="/api/research", tags=["投研分析"])
 
+# Step 名称映射
+STEP_LABELS = {
+    "step1_macro": "宏观分析",
+    "step1b_capital_flow": "资本流向扫描",
+    "step2_gatekeeper": "行业看门人",
+    "step3_sc_hacker": "产业链拆解",
+    "step4_system_dynamics": "系统动力学推演",
+    "step7_financial_audit": "财务质量审计",
+    "step8_valuation": "估值定价",
+    "step9_expectation_gap": "市场预期差",
+    "step11_report": "综合报告",
+}
+
 
 # ═══ 分析智能体注册表 ═══════════════════════
 # 新增智能体只需在此加一条, 前端自动加载
@@ -34,19 +47,24 @@ AGENT_REGISTRY = [
         "modes": [
             {"id": "auto_scan",          "name": "全局扫描",
              "desc": "自动扫描当前高景气赛道，选择后进行完整分析",
-             "input_type": "none", "placeholder": ""},
+             "input_type": "none", "placeholder": "",
+             "pipeline": ["step1_macro", "step1b_capital_flow", "step2_gatekeeper"]},
             {"id": "manual_industry",    "name": "定性产业分析",
              "desc": "手动输入产业名称，展开全产业链穿透分析",
-             "input_type": "industry", "placeholder": "输入行业关键词, 如: SOFC固体氧化物燃料电池"},
+             "input_type": "industry", "placeholder": "输入行业关键词, 如: SOFC固体氧化物燃料电池",
+             "pipeline": ["step1_macro", "step2_gatekeeper", "step3_sc_hacker"]},
             {"id": "stock_deep",         "name": "公司深度分析",
              "desc": "输入股票代码或公司名，进行行业+公司双轨深度分析",
-             "input_type": "stock_code", "placeholder": "输入6位代码或公司名, 如: 688012中微公司"},
+             "input_type": "stock_code", "placeholder": "输入6位代码或公司名, 如: 688012中微公司",
+             "pipeline": ["step1_macro", "step2_gatekeeper", "step3_sc_hacker", "step7_financial_audit", "step8_valuation", "step9_expectation_gap"]},
             {"id": "stock_audit",        "name": "公司财务审计",
              "desc": "输入股票代码，仅运行财务质量审计(Step7)",
-             "input_type": "stock_code", "placeholder": "输入6位代码, 如: 688012"},
+             "input_type": "stock_code", "placeholder": "输入6位代码, 如: 688012",
+             "pipeline": ["step1_macro", "step7_financial_audit"]},
             {"id": "capital_flow",       "name": "全球资本流向扫描",
              "desc": "扫描全球CAPEX流向，识别资本正在挤压的产业系统",
-             "input_type": "none", "placeholder": ""},
+             "input_type": "none", "placeholder": "",
+             "pipeline": ["step1b_capital_flow"]},
         ],
     },
     # 未来扩展:
@@ -388,7 +406,9 @@ async def _do_scan(req: ScanRequest):
     try:
         save_checkpoint(step, run_id, input_hash, result, {"elapsed": elapsed, "input_summary": f"mode={req.mode}, target={target}"})
         trace.write(step)
-        save_manifest(run_id, {"run_id": run_id, "industry": report_label, "mode": req.mode,
+        save_manifest(run_id, {"run_id": run_id, "industry": report_label,
+            "mode": "auto" if mode_id == "auto_scan" else "manual",
+            "mode_id": mode_id, "agent_id": agent_id,
             "status": "completed", "started_at": trace.to_dict()["started_at"],
             "completed_at": __import__("datetime").datetime.now().isoformat(),
             "elapsed_seconds": elapsed, "step": step, "input_hash": input_hash})
@@ -629,16 +649,51 @@ async def get_pipeline_run(run_id: str):
                 "elapsed_seconds": 0,
                 "file": macro_path,
                 "has_trace": False,
-                "is_shared": True,  # 标记为全局共享步骤
+                "is_shared": True,
             }
-            # 按 step 名排序, step1 在最前
             steps = dict(sorted(steps.items()))
+
+        # 根据 manifest 中的 mode_id 查找预期 pipeline
+        mode_id = (manifest or {}).get("mode_id", "")
+        mode = (manifest or {}).get("mode", "manual")
+        pipeline_def = []
+        # 从 AGENT_REGISTRY 精确匹配
+        for agent in AGENT_REGISTRY:
+            for m in agent.get("modes", []):
+                if m["id"] == mode_id:
+                    pipeline_def = m.get("pipeline", [])
+                    break
+            if pipeline_def: break
+        # 降级: 根据 mode 推断
+        if not pipeline_def:
+            if mode == "auto":
+                pipeline_def = ["step1_macro", "step1b_capital_flow", "step2_gatekeeper"]
+            else:
+                pipeline_def = ["step1_macro", "step2_gatekeeper", "step3_sc_hacker"]
+
+        # 合并 pipeline 定义 + 实际完成状态
+        full_steps = {}
+        status = (manifest or {}).get("status", "pending")
+        for s in pipeline_def:
+            label = STEP_LABELS.get(s, s)
+            if s in steps:
+                full_steps[s] = {**steps[s], "label": label, "status": "completed"}
+            elif s == pipeline_def[0] and status == "completed":
+                full_steps[s] = {"step": s, "label": label, "status": "completed", "elapsed_seconds": 0}
+            else:
+                full_steps[s] = {"step": s, "label": label, "status": "pending", "elapsed_seconds": 0}
+        # 也包含额外存在的步骤
+        for s, info in steps.items():
+            if s not in full_steps:
+                full_steps[s] = {**info, "label": STEP_LABELS.get(s, s), "status": "completed"}
+        full_steps = dict(sorted(full_steps.items()))
 
         return {"success": True, "data": {
             "run_id": run_id,
             "display_name": make_display_name(run_id, manifest.get("industry", "") if manifest else ""),
             "manifest": manifest,
-            "steps": steps,
+            "steps": full_steps,
+            "pipeline": pipeline_def,
         }}
     except Exception as e:
         logger.error(f"[PipelineAPI] Get run failed: {e}")

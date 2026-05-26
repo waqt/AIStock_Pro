@@ -257,20 +257,26 @@ async function loadProjectDetail() {
             return;
         }
         stepNames.sort();
+        var statusIcons = {completed: '✅', pending: '⏳', running: '🔄', failed: '❌'};
         var cardsHtml = '';
         stepNames.forEach(function(s) {
             var info = steps[s];
-            var icon = '✅'; // fallback
+            var status = info.status || 'pending';
+            var icon = statusIcons[status] || '⏳';
+            var label = info.label || s;
+            var isDone = status === 'completed';
             cardsHtml += '<div class="step-card">' +
-                '<div class="step-card-header" onclick="toggleStep(\'' + s + '\')">' +
+                '<div class="step-card-header">' +
                 '<span class="step-icon">' + icon + '</span>' +
-                '<span class="step-name">' + escHtml(s) + '</span>' +
-                '<span class="step-meta">' + (info.elapsed_seconds || 0) + 's' +
-                (info.has_trace ? ' · trace ✓' : '') + '</span></div>' +
-                '<div class="step-actions">' +
+                '<span class="step-name" style="' + (status === 'pending' ? 'color:var(--text-micro);' : '') + '">' + escHtml(label) + '</span>' +
+                '<span class="step-meta">' + (info.elapsed_seconds ? info.elapsed_seconds + 's' : '') +
+                (info.is_shared ? ' · 共享' : '') +
+                (info.has_trace ? ' · trace✓' : '') + '</span></div>' +
+                (isDone ? '<div class="step-actions">' +
                 '<button class="btn-proj" onclick="event.stopPropagation();loadOutput(\'' + s + '\')"><i class="fas fa-file-code"></i> 查看输出</button>' +
                 (info.has_trace ? '<button class="btn-proj" onclick="event.stopPropagation();loadTrace(\'' + s + '\')"><i class="fas fa-search"></i> 查看溯源</button>' : '') +
-                '</div></div>';
+                '</div>' : '') +
+                '</div>';
         });
         document.getElementById('step-cards').innerHTML = cardsHtml;
     } catch(e) {
