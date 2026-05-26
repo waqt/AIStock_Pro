@@ -454,6 +454,10 @@ async def _do_scan(req: ScanRequest, pre_run_id: str = None):
                 logger.info(f"[MarketScanner] Capital flow done: {len(hypothesis)} candidates, cached to {cf_run_id}")
             except Exception as e:
                 logger.warning(f"[MarketScanner] Capital flow auto-run failed: {e}")
+                try:
+                    ih = hash_input({"step": "capital_flow", "date": today})
+                    save_checkpoint("step1b_capital_flow", cf_run_id, ih, {"agent": "CapitalFlowScanner", "error": str(e)[:200], "pressure_vectors": []}, {"elapsed": 0})
+                except Exception: pass
 
         if not hypothesis:
             # Step 1b 失败 → 不退化到 legacy, 而是用搜索结果直接提取候选
