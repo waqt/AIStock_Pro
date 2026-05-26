@@ -399,11 +399,13 @@ async def _do_scan(req: ScanRequest):
                     cf = _json.load(f)
                 cf_date = (cf.get("saved_at", "") or "")[:10].replace("-", "")
                 if cf_date == today:  # 当天有效
-                    vectors = cf.get("output", {}).get("capex_vectors", [])
+                    vectors = cf.get("output", {}).get("pressure_vectors", [])
+                    # 系统节点 → 候选产业映射 (Step 1b → Step 2 桥接)
+                    pressure_map = {"power_infrastructure":["变压器","电网设备","铜"],"thermal_management":["液冷散热","服务器电源"],"memory_bandwidth":["HBM高带宽内存","先进封装"],"compute_chip":["AI芯片","GPU"],"optical_communication":["光模块","光芯片"],"energy_storage":["储能","锂电池"]}
                     for v in vectors:
-                        tt = v.get("theme_type", "")
-                        if tt in ("industrial_capex", "commodity_cycle"):
-                            for beneficiary in v.get("china_beneficiary", [])[:2]:
+                        node = v.get("system_node", "")
+                        industries = pressure_map.get(node, [])
+                        for ind in industries[:2]:
                                 hypothesis.append({"sector": beneficiary, "name": beneficiary,
                                     "capex_initiator": v.get("initiator", ""), "target": v.get("target", "")})
                     if hypothesis:
@@ -428,8 +430,8 @@ async def _do_scan(req: ScanRequest):
                     tt = v.get("theme_type", "")
                     if tt in ("industrial_capex", "commodity_cycle"):
                         for beneficiary in v.get("china_beneficiary", [])[:2]:
-                            hypothesis.append({"sector": beneficiary, "name": beneficiary,
-                                "capex_initiator": v.get("initiator", ""), "target": v.get("target", "")})
+                            hypothesis.append({"sector": ind, "name": ind,
+                                "pressure_node": node, "pressure_signals": v.get("pressure_signals", [])[:2]})
                 # 保存 Step 1b checkpoint 到同一个 run_id
                 ih = hash_input({"step": "capital_flow", "date": today})
                 save_checkpoint("step1b_capital_flow", run_id, ih, cf_result, {"elapsed": 0})

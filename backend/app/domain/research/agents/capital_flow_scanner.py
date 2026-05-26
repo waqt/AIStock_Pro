@@ -77,8 +77,9 @@ class CapitalFlowScanner(ResearchAgent):
         # LLM 结构化输出
         prompt = f"""你是全球资本流向分析师。你的任务不是写宏观报告, 而是识别**全球资本正在挤压哪些产业系统**。
 
-核心问题: 谁在花钱(全球+中国)? 花在哪? 规模多大? 约束在哪? 中国谁受益?
-注意: 必须同时覆盖全球巨头(MAG7等)和中国国内资本开支主体(国家电网/中芯国际/三大运营商等), 不要遗漏国内 initiator。
+核心问题: 谁在花钱(全球+中国)? 花在哪? 规模多大? 哪个系统节点先承压?
+注意: 必须同时覆盖全球巨头和中国国内资本开支主体, 不要遗漏国内 initiator。
+输出只描述系统节点承压 (电力/散热/存储带宽), 不要出现产业名称或股票代码。
 
 ## 搜索结果
 """
@@ -95,18 +96,18 @@ class CapitalFlowScanner(ResearchAgent):
 {
   "capital_flow_summary": "一句话: 全球资本正集中流向..., ...已成瓶颈",
 
-  "capex_vectors": [
+  "capital_flow_summary": "一句话: 全球资本正集中流向..., ...系统正在承压",
+
+  "pressure_vectors": [
     {
-      "initiator": "花钱的主体 (MAG7/国家电网/三大运营商/中芯国际/专项债...)",
-      "initiator_region": "global/domestic/both",
-      "target": "资金流向的目标产业 (AI数据中心/电网升级/先进封装...)",
-      "capex_scale": "CAPEX规模估算",
-      "growth": "high",
+      "capital_source": "资本来源 (MAG7/国家电网/三大运营商/专项债...)",
+      "source_region": "global/domestic/both",
+      "system_node": "承压的系统节点 (power_infrastructure/thermal_management/memory_bandwidth...)",
+      "pressure_type": "infrastructure_bottleneck",
+      "pressure_signals": ["具体压力信号1", "信号2", "信号3"],
+      "intensity": "high",
       "duration": "3_5_years",
-      "constraints": ["物理约束1", "物理约束2"],
-      "china_exposure": "high",
-      "china_beneficiary": ["受益产业1", "受益产业2"],
-      "theme_type": "industrial_capex",
+      "transmission_direction": "upstream",
       "evidence": [
         {"fact": "具体事实", "from": "search[X.Y]·来源",
          "quality": {"level": "high", "source_type": "company_filing"}}
@@ -116,46 +117,39 @@ class CapitalFlowScanner(ResearchAgent):
 
   "constraint_vectors": [
     {
-      "node": "约束节点 (变压器/液冷/先进封装...)",
+      "node": "约束节点",
       "constraint_type": "equipment_lead_time",
       "severity": "extreme",
       "lead_time": "18_24_months",
-      "upstream_trigger": "什么需求触发了这个约束",
-      "downstream_impact": ["影响1", "影响2"],
+      "trigger": "什么需求触发了这个约束",
       "evidence": [...]
     }
-  ],
-
-  "theme_type_distribution": {
-    "industrial_capex": 0,
-    "commodity_cycle": 0,
-    "macro_asset": 0,
-    "policy_theme": 0
-  }
+  ]
 }
 
 ## 枚举约束 (★ 强制)
-- growth: high / moderate / low
+- source_region: global / domestic / both
+- intensity: high / moderate / low
 - duration: under_1_year / 1_3_years / 3_5_years / over_5_years
-- china_exposure: high / medium / low / none
-- theme_type:
-  industrial_capex (实体产业资本开支, Step2可消费) |
-  commodity_cycle (商品周期, 部分可消费) |
-  policy_theme (政策主题, 需拆分为具体产业) |
-  macro_asset (宏观交易资产, 不进Step2)
+- pressure_type:
+  infrastructure_bottleneck (基础设施瓶颈) | equipment_lead_time (设备交期) |
+  natural_resource (自然资源稀缺) | certification_barrier (认证壁垒) |
+  policy_restriction (政策管制)
+- transmission_direction: upstream / downstream / bidirectional
 - constraint_type:
-  equipment_lead_time (设备交期) | natural_resource (资源稀缺) |
-  certification_barrier (认证壁垒) | policy_restriction (政策管制) |
-  infrastructure_bottleneck (基础设施瓶颈)
+  equipment_lead_time | natural_resource | certification_barrier |
+  policy_restriction | infrastructure_bottleneck
 - severity: extreme / high / moderate
 - lead_time: under_6_months / 6_12_months / 12_18_months / 18_24_months / over_24_months
 
-## 规则
-- capex_vectors 至少 3 条, 最多 5 条
-- 优先 industrial_capex 类型
+## 规则 (★ 重要)
+- pressure_vectors 至少 2 条, 最多 5 条
+- system_node 只能描述系统级别的承压点 (如 power_infrastructure/thermal_management/memory_bandwidth)
+- 禁止出现产业名称 (如"变压器""液冷""HBM") — 这些留给 Step 2 判断
+- 禁止出现股票代码或公司名
 - 每条 evidence 必须带 quality (level: high/medium/low, source_type 枚举)
-- "新质生产力""国产替代"等宏观口号不算 capex_vector — 必须拆分为具体产业
-- 不做宏观叙事 (不要"滞胀""风险偏好下降"等套话)"""
+- 不做宏观叙事 (不要"滞胀""风险偏好下降"等套话)
+- 不做受益分析 (不要"XX产业受益")"""
 
         try:
             text = await asyncio.wait_for(
