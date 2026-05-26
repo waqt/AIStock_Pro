@@ -5,7 +5,7 @@
 AIStock Pro 是一套 AI 驱动的量化分析与投资研究系统，面向 A 股 + 港股。系统采用 DDD 领域驱动 + 多智能体（MAS）架构，由 Python 3.8+ 异步引擎驱动。
 
 - **架构风格**: DDD + MAS 多智能体 + 图结构 (DAG) 编排
-- **版本**: V5.6
+- **版本**: V5.10
 - **数据存储**: MySQL (事务数据: 持仓/日线/财务) + **SQLite 宽表** (量化指标, 每字段一列)
 - **conda 环境**: `aiteacher` (`D:\develop_env\python_related\anaconda\Anaconda3\envs\aiteacher`)
 - **启动**: 双击 `run_backend.bat` → `http://127.0.0.1:8000`
@@ -33,28 +33,36 @@ AIStock Pro 是一套 AI 驱动的量化分析与投资研究系统，面向 A �
 backend/app/
 ├── framework/                     # 基础设施
 │   ├── ai/providers/              # DeepSeek(主)/Doubao/Gemini
-│   ├── tasks/                     # TaskEngine + APScheduler
+│   ├── tasks/                     # TaskEngine V5.1 (按类别信号量+去重)
+│   ├── pipeline/                  # ★ Pipeline 基础设施
+│   │   ├── checkpoint.py         #   检查点+缓存+跨版本查找+过期
+│   │   ├── trace.py              #   TraceContext: 搜索/LLM/DB 全链路记录
+│   │   └── glossary.py           #   16类跨Step枚举, prompt注入
+│   ├── finance/                   # ★ 基础金融工具包
+│   │   ├── valuation.py          #   PE/PB/PS/EV_EBITDA/PEG/FCF 纯函数
+│   │   └── model_map.py          #   资产类型→估值模型映射
 │   └── ...
 ├── domain/
 │   ├── market_data/               # 行情同步 + 健康检查 + 估值同步 + 宏观数据
 │   │   ├── sources/               # Sina/AkShare/Tencent/Push2
 │   │   ├── services/              # valuation.py (PE/PB/市值), stock_list.py
 │   │   └── api/                   # (路由在 app/api/data.py)
-│   ├── research/                  # ★ AI 投研 V4.0 DAG管道 + V3.0遗留
+│   ├── research/                  # ★ AI 投研 V5.10 Pipeline
 │   │   ├── agents/
 │   │   │   ├── base.py            #   ResearchAgent + parse_json()
-│   │   │   ├── market_scanner.py  #   每日市场扫描 (Web实时数据)
-│   │   │   ├── global_capex_scanner.py # MAG7 CapEx 前瞻扫描
-│   │   │   ├── supply_chain_hacker.py  # L1-L4 供应链降维穿透
-│   │   │   ├── financial_auditor.py    # 8Q 剪刀差 + Beneish M-Score
-│   │   │   ├── human_capital_detective.py # 创始人/CTO/专利审计
-│   │   │   ├── valuation_pricer.py     # PEG/PS 护城河时间窗定价
-│   │   │   ├── dag_orchestrator.py     # DAG 并行编排器
-│   │   │   └── coordinator.py          # V3.0 遗留编排器
+│   │   │   ├── global_capex_scanner.py  # Step 1a: 宏观周期分析
+│   │   │   ├── capital_flow_scanner.py  # Step 1b: 全球资本流向扫描
+│   │   │   ├── market_scanner.py        # Step 2: 行业看门人 (V5.10)
+│   │   │   ├── supply_chain_hacker.py   # Step 3: 产业链拆解 (V5.9)
+│   │   │   ├── financial_auditor.py     # Step 7: 8Q剪刀差 + Beneish M-Score
+│   │   │   ├── human_capital_detective.py # Step 8: 创始人/CTO/专利审计
+│   │   │   ├── valuation_pricer.py      # Step 8: 估值定价 (未接入pipeline)
+│   │   │   ├── dag_orchestrator.py      # 遗留: DAG 并行编排器
+│   │   │   └── coordinator.py           # V3.0 遗留编排器
 │   │   ├── services/
-│   │   │   ├── data_loader.py     #   数据加载 + Web搜索 + 8Q财报
+│   │   │   ├── data_loader.py     #   数据加载 + Web搜索(双源:Brave∥Tavily) + 8Q财报
 │   │   │   └── report_store.py    #   研报 JSON 文件持久化
-│   │   └── api/routes.py          #   /api/research/*
+│   │   └── api/routes.py          #   /api/research/* + /api/research/pipeline/*
 │   └── quant/                     # ★ 量化模块 V5.6
 │       ├── indicators/            #   16个算子 (每文件一算子, @register 自注册)
 │       │   ├── base.py            #   BaseIndicator + @register
@@ -96,30 +104,60 @@ backend/app/
 └── data/indicators.db             # ★ SQLite 指标库 (单文件可备份)
 ```
 
-## V4.0 投研 MAS 架构
+## V5.10 投研 Pipeline 架构
 
-### Agent 矩阵
+### 12 步分析链路
 
 ```
-V4.0 DAG 管道 (6个):
-  MarketScanner (侦察) → 独立运行, 发现赛道
-  GlobalCapexScanner ──┐
-                        ├──→ [FinancialAuditor || HumanCapitalDetective] ──→ ValuationPricer ──→ Report
-  SupplyChainHacker ───┘        (并行交叉验证)                         (综合定价)        (CIO报告)
+Step 1a 宏观周期分析 (GlobalCapexScanner)
+  → 独立运行, 输出 macro_report.json, 在数据中心宏观Tab查看
+  → 不串联到 pipeline, 用户参考结论后手动选择分析类型
 
-V3.0 遗留 (3个, 向后兼容):
-  SupplyChainAnalyst, IndustryAnalyst, ResearchCoordinator
+Step 1b 资本流向扫描 (CapitalFlowScanner)
+  → 谁在花钱? 花在哪? 约束在哪?
+  → 输出 capex_vectors + constraint_vectors
+
+Step 2  行业看门人 (MarketScanner V5.10)
+  → 定性筛选: 6-block 输出 + 结构化证据 + 粒度过滤 + 错配分析
+
+Step 3  产业链拆解 (SupplyChainHacker V5.9)
+  → L1-L4 瓶颈图谱 + 供给刚性 + 利润池 + 价值捕获 + 竞争格局
+
+Step 4  系统动力学推演 (📋 计划中)
+Step 6  核心资产筛选 (📋 计划中)
+Step 7  财务质量审计 (FinancialAuditor, 已有)
+Step 8  人力资本审计 (HumanCapitalDetective, 可选, 📋 计划中)
+Step 8  估值定价 (ValuationPricer, 已有, 📋 计划中)
+Step 9  市场预期差 (📋 计划中)
+Step 10 风险分析 (📋 计划中)
+Step 11 综合报告 (📋 计划中)
 ```
 
-| Agent | 职责 | API |
-|-------|------|-----|
-| MarketScanner | Web实时扫描 → 热门赛道 + 每日简报 | POST /research/scan |
-| GlobalCapexScanner | MAG7 CapEx → 全球景气方向 | POST /research/capex-scan |
-| SupplyChainHacker | L1-L4 供应链瓶颈 + 全量资产发现 | POST /research/supply-chain-hacker |
-| FinancialAuditor | 8Q剪刀差 + Beneish M-Score | POST /research/audit/financial/{code} |
-| HumanCapitalDetective | 创始人/CTO/专利/股权激励 | POST /research/audit/human-capital |
-| ValuationPricer | PEG/PS + 护城河时间窗 | (via DAG) |
-| **DAGOrchestrator** | 5专家并行编排 → CIO综合报告 | **POST /research/analyze-v4** |
+### Agent 清单
+
+| Agent | 文件 | 版本 | Step | 状态 |
+|-------|------|------|------|------|
+| GlobalCapexScanner | global_capex_scanner.py | V5.7 | 1a | ✅ 完成 |
+| CapitalFlowScanner | capital_flow_scanner.py | V1.0 | 1b | ✅ 完成 |
+| MarketScanner | market_scanner.py | V5.10 | 2 | ✅ 完成 (证据层+粒度过滤+错配分析) |
+| SupplyChainHacker | supply_chain_hacker.py | V5.9 | 3 | ✅ 完成 (定性schema+证据层+自适应搜索) |
+| FinancialAuditor | financial_auditor.py | - | 7 | ⚠️ 已有, 待接入 pipeline |
+| HumanCapitalDetective | human_capital_detective.py | - | 8 | ⚠️ 已有, 可选步骤 |
+| ValuationPricer | valuation_pricer.py | V5.7 | 8 | ⚠️ 已有, 未使用 framework/finance |
+| DAGOrchestrator | dag_orchestrator.py | - | 6+10+11 | ⚠️ 遗留, 未接入新 pipeline |
+
+V3.0 遗留 (向后兼容): SupplyChainAnalyst, IndustryAnalyst, ResearchCoordinator
+
+### Pipeline 基础设施
+
+| 模块 | 文件 | 用途 |
+|------|------|------|
+| Checkpoint | framework/pipeline/checkpoint.py | 检查点落盘+缓存+跨版本查找+过期 |
+| Trace | framework/pipeline/trace.py | TraceContext: 搜索/LLM/DB 全链路记录 |
+| Glossary | framework/pipeline/glossary.py | 16类跨Step枚举定义, prompt注入 |
+| Valuation | framework/finance/valuation.py | PE/PB/PS/EV_EBITDA/PEG/FCF纯函数 |
+| Model Map | framework/finance/model_map.py | 资产类型→估值模型映射 |
+| Task Engine | framework/tasks/engine.py V5.1 | 按类别信号量+去重+异步执行 |
 
 ### 量化模块架构
 
@@ -221,6 +259,34 @@ from app.models.models import WatchlistItem
 # 宏观数据
 # GET /data/macro/latest → 全部宏观指标
 # GET /data/macro/history?code=US10YT → 历史序列
+
+# Pipeline 基础设施
+from app.framework.pipeline.checkpoint import (
+    generate_run_id, hash_input, load_checkpoint, save_checkpoint,
+    save_manifest, load_manifest, list_runs, save_trace, make_display_name
+)
+from app.framework.pipeline.trace import TraceContext
+trace = TraceContext(run_id)
+trace.record_search(query, results)
+trace.record_llm(prompt, response, model="deepseek-v4-pro")
+
+# 金融工具包
+from app.framework.finance import (
+    pe_valuation, pb_valuation, ps_valuation,
+    ev_ebitda_valuation, peg_valuation, fcf_yield_valuation,
+    scenario_weighted, apply_pricing_power_premium,
+    apply_quality_adjustment, apply_financial_risk_discount,
+    match_asset_type, get_valuation_method
+)
+
+# Pipeline API
+# 项目列表: GET /api/research/pipeline/runs
+# 项目详情: GET /api/research/pipeline/{run_id}
+# 节点输出: GET /api/research/pipeline/{run_id}/checkpoint/{step}
+# 编辑保存: PUT /api/research/pipeline/{run_id}/checkpoint/{step}
+# 溯源日志: GET /api/research/pipeline/{run_id}/trace/{step}
+# 星标收藏: PUT /api/research/pipeline/{run_id}/star
+# 删除项目: DELETE /api/research/pipeline/{run_id}
 
 # AI 模型路由
 from app.framework.ai.providers.deepseek import DeepSeekProvider
