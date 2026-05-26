@@ -411,8 +411,8 @@ async def _do_scan(req: ScanRequest, pre_run_id: str = None):
                         node = v.get("system_node", "")
                         industries = pressure_map.get(node, [])
                         for ind in industries[:2]:
-                                hypothesis.append({"sector": beneficiary, "name": beneficiary,
-                                    "capex_initiator": v.get("initiator", ""), "target": v.get("target", "")})
+                            hypothesis.append({"sector": ind, "name": ind,
+                                "pressure_node": node, "pressure_signals": v.get("pressure_signals", [])[:2]})
                     if hypothesis:
                         cf_loaded = True
                         cf_cached_output = output  # 稍后复制到 run_id
