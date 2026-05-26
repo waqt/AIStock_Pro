@@ -110,7 +110,8 @@ async def calculate_indicators_task(
 @task_manager.register(code="research_analyze", name="投研深度分析", description="产业链穿透+审计+定价+综合报告 (支持多模式)")
 async def research_analyze_task(exec_id: str = None, industry: str = "", question: str = "",
                                   analysis_type: str = "supply_chain", codes_str: str = "",
-                                  agent_id: str = "", mode_id: str = "", target: str = ""):
+                                  agent_id: str = "", mode_id: str = "", target: str = "",
+                                  pre_run_id: str = ""):
     """V5.8 投研异步任务 — 兼容旧 Pipeline + 新 agent/mode 系统"""
     import json as _json, os, time as _time
 
@@ -122,7 +123,7 @@ async def research_analyze_task(exec_id: str = None, industry: str = "", questio
 
         try:
             from app.domain.research.api.routes import ScanRequest, _do_scan
-            result = await _do_scan(ScanRequest(agent_id=agent_id, mode_id=mode_id, target=target))
+            result = await _do_scan(ScanRequest(agent_id=agent_id, mode_id=mode_id, target=target), pre_run_id=pre_run_id)
             step2_data = result.get("data", {})
             enter_step3 = step2_data.get("verdict", {}).get("enter_step3", False)
             run_id = result.get("run_id", "")
