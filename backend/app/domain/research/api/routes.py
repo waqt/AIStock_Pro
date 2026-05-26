@@ -464,7 +464,7 @@ async def _do_scan(req: ScanRequest):
     input_hash = hash_input({
         "mode": req.mode, "target": target,
         "date": __import__("datetime").datetime.now().strftime("%Y%m%d"),
-        "agent_version": "market_scanner_v5.10",
+        "agent_version": "market_scanner_v5.11",
     })
     cached = load_checkpoint(step, run_id, input_hash)
     if cached:

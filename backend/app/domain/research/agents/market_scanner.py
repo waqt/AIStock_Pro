@@ -1,5 +1,5 @@
 """
-MarketScanner V5.10 — granularity fix: subsector≠macro_theme, max_tokens 6144
+MarketScanner V5.11 — per-industry _step3_guidance + kill_reasons/catalysts
 双模式: auto(扫描验证) / manual(单行业深挖)
 输出: 6块定性判断 + 结构化证据 + Step3指引
 V5.8: 证据层结构化 + 自适应搜索降级 + PDF过滤 + Step3决策摘要
