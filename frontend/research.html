@@ -329,7 +329,7 @@ async function loadIndustryList() {
                 '<span style="color:#fff;flex:1;">' + escHtml(ind.industry || '?') + '</span>' +
                 '<span style="color:' + (enter ? 'var(--accent-green)' : 'var(--text-micro)') + ';font-size:10px;">' +
                 'enter=' + enter + ' · ' + priority + '</span>' +
-                '<button class="btn-proj primary" style="font-size:10px;" onclick="event.stopPropagation();drilldownIndustry(\'' + escHtml(ind.industry || '') + '\')">深入分析</button>' +
+                '<button class="btn-proj primary" style="font-size:10px;" onclick="event.stopPropagation();drilldownIndustry(\'' + escHtml(ind.industry || '') + '\', this)">深入分析</button>' +
                 '</div>';
         });
         listHtml += '</div>';
@@ -337,8 +337,7 @@ async function loadIndustryList() {
     } catch(e) { /* 静默 */ }
 }
 
-async function drilldownIndustry(name) {
-    var btn = event.target;
+async function drilldownIndustry(name, btn) {
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
     try {
