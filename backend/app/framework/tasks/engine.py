@@ -1,23 +1,38 @@
-import asyncio
-import uuid
-import os
-import inspect
+import asyncio, json, uuid, os, inspect
 from datetime import datetime
 from typing import Dict, Any, Callable, Optional
-from sqlalchemy import update, select, delete
+from sqlalchemy import update, select, delete, and_
 from app.framework.database.session import async_session
 from app.models.models import TaskDefinition, TaskExecution
 from app.framework.logger import logger
 
+# 按任务类别的并发控制
+TASK_CATEGORIES = {
+    "sync_market":      "data_sync",
+    "calc_indicators":  "calc",
+    "ai_recognize":     "ai",
+    "research_analyze": "research",
+}
+CATEGORY_SEMAPHORES = {
+    "data_sync": asyncio.Semaphore(3),   # DB 写入, 可并行
+    "calc":      asyncio.Semaphore(1),   # CPU 密集 (numba)
+    "research":  asyncio.Semaphore(1),   # LLM+搜索, 串行避免 API 打架
+    "ai":        asyncio.Semaphore(1),   # 轻量 LLM
+    "default":   asyncio.Semaphore(2),
+}
+
 class TaskEngine:
     """
-    AIStock Pro 任务调度引擎 V5.0 (工业级内核)
-    支持：注册装饰器、并发管控(Semaphore)、强杀信号、结果持久化
+    AIStock Pro 任务调度引擎 V5.1 — 按类别并发 + 同任务去重
     """
 
     _registry: Dict[str, Callable] = {}
     _running_handles: Dict[str, asyncio.Task] = {}
-    _semaphore = asyncio.Semaphore(3)
+
+    @classmethod
+    def _get_semaphore(cls, task_code: str) -> asyncio.Semaphore:
+        cat = TASK_CATEGORIES.get(task_code, "default")
+        return CATEGORY_SEMAPHORES.get(cat, CATEGORY_SEMAPHORES["default"])
 
     @classmethod
     def register(cls, code: str, name: str, description: str = ""):
@@ -57,20 +72,39 @@ class TaskEngine:
         if task_code not in cls._registry:
             raise ValueError(f"Task code '{task_code}' not found in registry.")
 
+        params = params or {}
+
+        # 去重: 同任务+同核心参数已在运行 / 排队中 → 拒绝
+        dedup_key = json.dumps(params, sort_keys=True, ensure_ascii=False, default=str)
+        async with async_session() as db:
+            existing = await db.execute(
+                select(TaskExecution).where(
+                    and_(
+                        TaskExecution.task_code == task_code,
+                        TaskExecution.status.in_(["PENDING", "RUNNING"]),
+                    )
+                )
+            )
+            for row in existing.scalars():
+                row_key = json.dumps(row.params or {}, sort_keys=True, ensure_ascii=False, default=str)
+                if row_key == dedup_key:
+                    logger.warning(f"[TaskEngine] Duplicate {task_code} skipped, existing: {row.id[:12]}")
+                    return row.id  # 返回已有任务 ID
+
         exec_id = str(uuid.uuid4())
 
         async with async_session() as db:
             new_exec = TaskExecution(
                 id=exec_id,
                 task_code=task_code,
-                params=params or {},
+                params=params,
                 status="PENDING",
                 result_msg="在队列中等待资源..."
             )
             db.add(new_exec)
             await db.commit()
 
-        coro = cls._execution_wrapper(exec_id, task_code, params or {})
+        coro = cls._execution_wrapper(exec_id, task_code, params)
         task = asyncio.create_task(coro)
         cls._running_handles[exec_id] = task
 
@@ -78,7 +112,8 @@ class TaskEngine:
 
     @classmethod
     async def _execution_wrapper(cls, exec_id: str, task_code: str, params: Dict[str, Any]):
-        async with cls._semaphore:
+        sem = cls._get_semaphore(task_code)
+        async with sem:
             start_time = datetime.now()
             func = cls._registry[task_code]
 
