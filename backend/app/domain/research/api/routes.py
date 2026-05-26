@@ -429,20 +429,29 @@ async def _do_scan(req: ScanRequest):
                 from app.domain.research.agents.capital_flow_scanner import CapitalFlowScanner
                 from app.framework.pipeline.trace import TraceContext
                 cf_scanner = CapitalFlowScanner(provider=DeepSeekProvider())
-                cf_trace = TraceContext(generate_run_id("资本流向"))
+                cf_run_id = generate_run_id("资本流向")
+                cf_trace = TraceContext(cf_run_id)
                 cf_result = await cf_scanner.analyze(ctx={}, trace=cf_trace)
-                vectors = cf_result.get("capex_vectors", [])
+                output = cf_result
+                vectors = output.get("pressure_vectors", [])
+                if not vectors:
+                    vectors = output.get("capex_vectors", [])
                 for v in vectors:
-                    tt = v.get("theme_type", "")
-                    if tt in ("industrial_capex", "commodity_cycle"):
-                        for beneficiary in v.get("china_beneficiary", [])[:2]:
-                            hypothesis.append({"sector": ind, "name": ind,
-                                "pressure_node": node, "pressure_signals": v.get("pressure_signals", [])[:2]})
-                # 保存 Step 1b checkpoint 到同一个 run_id
+                    node = v.get("system_node", v.get("target", ""))
+                    industries = pressure_map.get(node, [])
+                    for ind in industries[:2]:
+                        hypothesis.append({"sector": ind, "name": ind,
+                            "pressure_node": node, "pressure_signals": v.get("pressure_signals", [])[:2]})
+                # 保存到独立缓存目录 (供后续项目复用)
                 ih = hash_input({"step": "capital_flow", "date": today})
-                save_checkpoint("step1b_capital_flow", run_id, ih, cf_result, {"elapsed": 0})
+                save_checkpoint("step1b_capital_flow", cf_run_id, ih, cf_result, {"elapsed": 0})
+                save_manifest(cf_run_id, {"run_id": cf_run_id, "industry": "资本流向", "status": "completed",
+                    "started_at": cf_trace.to_dict()["started_at"], "completed_at": datetime.now().isoformat(),
+                    "step": "step1b_capital_flow"})
                 cf_trace.write("step1b_capital_flow")
-                logger.info(f"[MarketScanner] Capital flow done, saved to {run_id}: {len(hypothesis)} candidates")
+                cf_loaded = True
+                cf_cached_output = cf_result
+                logger.info(f"[MarketScanner] Capital flow done: {len(hypothesis)} candidates, cached to {cf_run_id}")
             except Exception as e:
                 logger.warning(f"[MarketScanner] Capital flow auto-run failed: {e}")
 
