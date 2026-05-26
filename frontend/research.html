@@ -515,7 +515,9 @@ async function submitNewProject() {
     var inp = document.getElementById('new-target');
     if (inp && inp.offsetParent !== null) target = inp.value.trim();
 
-    if (target === '' && newProjectModeId !== 'auto_scan') return;
+    // auto_scan/capital_flow/macro_only 不需要输入
+    var noInputModes = ['auto_scan', 'capital_flow', 'macro_only'];
+    if (target === '' && noInputModes.indexOf(newProjectModeId) < 0) return;
     Modal.close();
     try {
         // 异步提交: 立即返回 exec_id, 后台执行
