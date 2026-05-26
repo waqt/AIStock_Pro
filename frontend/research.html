@@ -597,22 +597,16 @@ async function submitNewProject() {
         var d = await res.json();
         if (d.success && d.data && d.data.exec_id) {
             var execId = d.data.exec_id;
-            var runId = d.data.run_id;
-            // 立即刷新列表, 项目立即可见
-            await loadProjects();
-            if (runId) {
-                selectProject(runId);
-                document.getElementById('detail-meta').textContent += ' · 后台运行中...';
-            }
-            // 轮询等待完成后刷新
+            Modal.alert('任务已提交', '任务已在后台启动，完成后自动出现在项目列表。');
+            var pollCount = 0;
             var pollTimer = setInterval(async function() {
                 try {
+                    pollCount++;
                     var pollRes = await fetch(API_BASE + '/system/tasks/executions/' + execId);
                     var exec = await pollRes.json();
-                    if (exec.status === 'SUCCESS' || exec.status === 'FAILED') {
+                    if (exec.status === 'SUCCESS' || exec.status === 'FAILED' || pollCount > 60) {
                         clearInterval(pollTimer);
                         await loadProjects();
-                        if (runId) selectProject(runId);
                     }
                 } catch(e) {}
             }, 3000);
