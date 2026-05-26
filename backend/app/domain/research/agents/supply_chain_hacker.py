@@ -1,7 +1,7 @@
 """
-SupplyChainHacker V5.8 — 供应链降维穿透 + 第二层思维
-V5.8: 结构化证据 + 定性新schema + 自适应搜索 + Step2消费 + trace
-输出: supply_chain_map + core_stocks + second_order_effects
+SupplyChainHacker V5.9 — 供应链降维穿透 (纯静态拆链)
+V5.9: 移除 Phase 1.8 (→ Step 4), 专注 L1-L4 瓶颈图谱 + 证据层
+输出: supply_chain_map + core_stocks + sales/expansion chain
 """
 import asyncio, re
 from decimal import Decimal
@@ -69,9 +69,6 @@ class SupplyChainHacker(ResearchAgent):
         # Phase 1.5: 提取股票代码
         core_stocks = await self._extract_stocks_simple(industry, research_data)
 
-        # Phase 1.8: 第二层思维
-        second_order = await self._second_level_analysis(industry, research_data, trace=trace)
-
         # Phase 2: 结构化输出 (新schema)
         result = await self._structure_output(industry, research_data, step2, trace=trace)
 
@@ -83,7 +80,6 @@ class SupplyChainHacker(ResearchAgent):
         result["agent"] = self.name
         result["industry"] = industry
         result["search_rounds"] = research_data.get("search_rounds", 0)
-        result["second_order_effects"] = second_order
         if trace:
             trace.record_note("summary", f"layers={len(result.get('supply_chain_map',[]))}, stocks={len(result.get('core_stocks',[]))}")
         return result
@@ -199,69 +195,8 @@ class SupplyChainHacker(ResearchAgent):
             logger.warning(f"[{self.name}] Stock extract failed: {e}")
         return []
 
-    # ═══ Phase 1.8: 第二层思维 ═════════════════════
-
-    async def _second_level_analysis(self, industry: str, research: Dict, trace=None) -> Dict:
-        findings = research.get("findings", [])
-        if not findings: return {}
-
-        logger.info(f"[{self.name}] Second-level thinking for {industry}")
-
-        chains = [
-            [f"{industry} 产能扩张 挤占 原材料 供应紧张 溢出效应",
-             f"{industry} 产能扩张 上游 原材料 供需 2026"],
-            [f"{industry} 供应链 上游 原料 副产品 关联产业 影响",
-             f"{industry} 产业链 上游 关联 受益 2026"],
-        ]
-        search_data = await self._search_adaptive(chains, num=3, trace=trace)
-
-        search_summary = "; ".join(
-            r.get("title","")+": "+r.get("snippet","")[:100]
-            for sd in search_data for r in sd["results"]
-        )[:3000]
-
-        findings_summary = "\n".join(
-            f"- {f.get('key','?')}: {f.get('detail','')[:150]}"
-            for f in findings[:6] if isinstance(f, dict)
-        )[:2000]
-
-        prompt = f"""你是产业经济学和供应链专家。运用"第二层思维", 分析 {industry} 产业扩张的深层影响。
-
-## 产业瓶颈发现
-{findings_summary}
-
-## 最新搜索
-{search_summary}
-
-## 三个维度分析
-### 1. 产能挤出效应 — 扩张挤占谁的资源? 谁意外受益?
-### 2. 投入产出关联 — 上下游联动? 哪个供应商议价能力最强?
-### 3. 副产品效应 — 主产品变化对副产品供给/价格的影响?
-
-## 输出纯 JSON
-{{
-  "crowding_out": [{{"victim_sector": "被挤占行业", "resource": "被挤占资源", "beneficiary": "意外受益方", "reasoning": "逻辑", "a_stock_codes": ["代码"]}}],
-  "io_linkages": [{{"upstream": "上游", "downstream": "下游", "bottleneck_level": "HIGH/MEDIUM/LOW", "reasoning": "逻辑", "a_stock_codes": ["代码"]}}],
-  "byproduct_effects": [{{"main_product": "主产品", "byproduct": "副产品", "impact_on": "影响行业", "a_stock_codes": ["代码"]}}],
-  "synthesis": "第二层思维综合 (2-3句)"
-}}
-每个维度至少1条, 最多3条。聚焦非共识、反直觉洞察。"""
-
-        try:
-            text = await asyncio.wait_for(self.provider.chat_pro(prompt, max_tokens=4096), timeout=90)
-            if trace: trace.record_llm(prompt, text, model="deepseek-v4-pro")
-            result = self.parse_json(text)
-            if isinstance(result, dict):
-                for dim in ["crowding_out", "io_linkages", "byproduct_effects"]:
-                    logger.info(f"[{self.name}] {dim}: {len(result.get(dim, []))} items")
-                return result
-        except asyncio.TimeoutError:
-            logger.warning(f"[{self.name}] Second-level timeout")
-        except Exception as e:
-            logger.warning(f"[{self.name}] Second-level failed: {e}")
-        return {"crowding_out": [], "io_linkages": [], "byproduct_effects": [], "synthesis": "暂不可用"}
-
     # ═══ Phase 2: 结构化输出 (V5.8 新schema) ═══════
+    # (Phase 1.8 second_order_effects 已移至 Step 4 SystemDynamicsAgent)
 
     async def _structure_output(self, industry: str, research: Dict, step2: dict = None, trace=None) -> Dict:
         """将研究发现转化为 L1-L4 瓶颈图谱 (定性版 schema + 结构化证据)"""
