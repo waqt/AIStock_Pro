@@ -310,14 +310,16 @@ class SupplyChainHacker(ResearchAgent):
         "substitutability": "none_short_term",
         "concentration": "monopoly_single_supplier",
         "alpha_narrative": "供给刚性→定价权→景气窗口的分析",
-        "evidence": [{{"fact": "支撑供给刚性判断的具体事实", "from": "search[1.3]·来源"}}]
+        "evidence": [{{"fact": "支撑供给刚性判断的具体事实", "from": "search[1.3]·来源",
+          "quality": {{"level": "high", "source_type": "industry_data"}}}}]
       }},
 
       "profit_pool": {{
         "share_of_industry_profit": "dominant_30_50pct",
         "margin_level": "very_high_above_40pct",
         "pricing_power_narrative": "定价权描述",
-        "evidence": [{{"fact": "支撑利润池判断的事实", "from": "search[X.Y]·来源"}}]
+        "evidence": [{{"fact": "支撑利润池判断的事实", "from": "search[1.2]·来源",
+          "quality": {{"level": "medium", "source_type": "sell_side_report"}}}}]
       }},
 
       "value_capture": {{
@@ -325,7 +327,8 @@ class SupplyChainHacker(ResearchAgent):
         "attention_quality": "profit_real",
         "gap_narrative": "关注度 vs 利润捕获的分析",
         "who_captures_value": ["受益方1", "受益方2"],
-        "evidence": [{{"fact": "支撑价值捕获判断的事实", "from": "search[X.Y]·来源"}}]
+        "evidence": [{{"fact": "支撑价值捕获判断的事实", "from": "search[1.2]·来源",
+          "quality": {{"level": "medium", "source_type": "sell_side_report"}}}}]
       }},
 
       "competitive_landscape": {{
@@ -333,20 +336,24 @@ class SupplyChainHacker(ResearchAgent):
         "global_leaders": ["龙头1", "龙头2"],
         "china_substitution_rate": "below_5pct",
         "china_players": {{"tier1": [], "tier2": ["追赶者"], "tier3": ["新进入者"]}},
-        "evidence": [{{"fact": "支撑竞争格局判断的事实", "from": "search[X.Y]·来源"}}]
+        "evidence": [{{"fact": "支撑竞争格局判断的事实", "from": "search[1.3]·来源",
+          "quality": {{"level": "medium", "source_type": "sell_side_report"}}}}]
       }},
 
       "future_outlook": {{
         "next_2_3_years": "bottleneck_persists",
         "potential_relief": "缓解路径",
         "emerging_bottleneck": "可能出现的新瓶颈",
-        "evidence": [{{"fact": "支撑未来展望的事实", "from": "search[X.Y]·来源"}}]
+        "evidence": [{{"fact": "支撑未来展望的事实", "from": "search[3.1]·来源",
+          "quality": {{"level": "medium", "source_type": "sell_side_report"}}}}]
       }},
 
       "assets": [
         {{"code": "688012", "name": "公司名", "role": "角色", "market_position": "tier2_challenger",
-          "evidence": [{{"fact": "该公司在该环节的事实依据", "from": "search[X.Y]·来源"}}]}}
-      ]
+          "evidence": [{{"fact": "该公司在该环节的事实依据", "from": "search[1.3]·来源",
+            "quality": {{"level": "high", "source_type": "company_filing"}}}}]}}
+      ],
+      "assets_note": "该环节在A股暂无直接标的时填写说明, 如'中国暂无MLCC叠层机供应商'"
     }}
   ],
 
@@ -385,16 +392,31 @@ class SupplyChainHacker(ResearchAgent):
 - competitive_landscape.china_substitution_rate: below_5pct | 5_20pct | 20_50pct | above_50pct
 - future_outlook.next_2_3_years: bottleneck_persists | bottleneck_easing | bottleneck_resolved | new_bottleneck_emerging
 
-## 证据格式要求
-- evidence 数组至少1条, from 格式: "search[轮次.序号]·来源简称"
-- 搜索结果编号: 研究发现用 search[1]~search[N], 补充搜索用 search_fresh[1]~
-- fact 必须是搜索文字中的具体事实, 不得编造
+## 证据质量标注 (★ 强制, 每条 evidence 必须带 quality)
+- quality.level: high | medium | low
+- quality.source_type 枚举:
+  company_filing (公司财报/公告) | industry_data (海关/行业协会/产能统计) |
+  official_policy (政府文件/产业规划) | sell_side_report (券商研报) |
+  news_media (财经媒体) | self_media (自媒体/知乎/公众号) | ai_summary (AI摘要)
 
-## 要求
+## 证据格式要求 (★ 强制)
+- evidence 数组至少1条
+- from 格式: "search[轮次.序号]·来源简称", 如 "search[1.3]·天风电新"
+- 搜索结果编号统一用 search[1]~search[N] (Phase1发现) 或 search_supp[1]~search_supp[N] (Phase2补充搜索)
+- 禁止自创编号前缀 (如 search_fresh), 否则下游无法溯源
+- fact 必须是搜索文字中明确出现的具体事实, 不得编造
+- 如果某项判断无搜索结果支撑, evidence 标注: {{"fact": "该维度搜索结果为空", "from": "search[X]·无结果", "quality": {{"level": "low", "source_type": "ai_summary"}}}}
+
+## 输出要求
 - core_stocks 至少 5 只, 代码必须是真实 6 位数字, 不确定写"待确认"
 - sales_chain + expansion_chain 至少各 2 条
 - supply_chain_map 至少 L1-L3 三个层级
-- scarcity_ranking 按供给刚性从高到低排"""
+- assets 空时用 assets_note 说明原因, 不要留空数组
+- scarcity_ranking 按供给刚性从高到低排
+- 同一公司不要出现在 china_players 的多个 tier 中
+- value_capture.market_attention: very_high | high | moderate | low (新增)"""
+
+# ═══ 工具 ═════════════════════════════════════
 
         try:
             text = await asyncio.wait_for(self.provider.chat_pro(prompt, max_tokens=8192), timeout=180)
