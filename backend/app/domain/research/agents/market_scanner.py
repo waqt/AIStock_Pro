@@ -112,6 +112,7 @@ class MarketScanner(ResearchAgent):
                 search_data.append(sd)
             evaluation = await self._evaluate_industry(sector, search_data, h, trace=trace)
             if evaluation:
+                evaluation["_step3_guidance"] = self._build_step3_guidance(evaluation)
                 results.append(evaluation)
 
         priority_order = {"高": 0, "中": 1, "低": 2, "跳过": 3}
