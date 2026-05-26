@@ -30,6 +30,8 @@ Phase 1                Phase 2                Phase 3              Phase 4
 
 ---
 
+> **⚠️ 实施状态更新 (2026-05-26)**：Phase 1 部分完成（Step 2/3 已实现并优化至 V5.10/V5.9），Phase 2 Pipeline 基础设施 (checkpoint/trace/API) 已完成，CapitalFlowScanner (Step 1b) 已交付。宏观分析 (Step 1a) 已从 pipeline 中独立。SystemDynamicsAgent 和 ExpectationGapAgent 尚未实现。新架构为 12 步序列化 FULL_PIPELINE，取代原 DAG 设计。
+
 ## 6.2 Phase 1: 基础补全 (1-2 周)
 
 ### 6.2.1 任务清单

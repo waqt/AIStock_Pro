@@ -1,5 +1,7 @@
 # Pipeline 运营设计 — 多场景 / 失败恢复 / 溯源
 
+> **⚠️ 实现状态 (2026-05-26)**: 检查点(cache+跨版本+过期)、Trace日志(搜索/LLM/DB全链路)、Run Manifest、Pipeline API(6端点)和手动编辑 checkpoint 已实现。PipelineRunner (temp_lab/run_pipeline.py)、断点续跑(resume API)、pipeline.html 尚未实现。
+
 ## 场景矩阵
 
 | # | 场景 | 频率 | 核心问题 |

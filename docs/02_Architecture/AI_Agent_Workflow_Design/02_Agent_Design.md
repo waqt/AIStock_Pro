@@ -1,6 +1,8 @@
 # 二、智能体设计
 
-> 本文档详细定义 8 个 Agent 的 I/O 契约、内部逻辑、推演方法论和协作数据流。
+> 本文档详细定义 Agent 的 I/O 契约、内部逻辑、推演方法论和协作数据流。
+> 
+> **⚠️ 实现状态说明 (2026-05-26)**：Step 1a/1b/2/3 已实现，Step 4-11 为计划态。Pipeline 已从 DAG 并行改为 12 步序列化。宏观分析(Step 1a)已从 pipeline 中独立，不做路由。SystemDynamicsAgent 和 ExpectationGapAgent 尚未实现。详见 CLAUDE.md。
 
 ---
 
@@ -13,15 +15,16 @@ BaseAgent (framework/agents/base.py)
     └── ResearchAgent (domain/research/agents/base.py)
           注入 data_loader, 标准化 load_context → build_prompt → LLM → parse_result
             │
-            ├── GlobalCapexScanner      Step 1: 宏观与全球资本周期
-            ├── MarketScanner           Step 2: 行业景气度看门人
-            ├── SupplyChainHacker       Step 3: 产业链系统拆解
-            ├── SystemDynamicsAgent     Step 4+5: 系统动力学 + 非线性推演 ★ 独立新建
-            ├── FinancialAuditor        Step 7: 财务质量审计
-            ├── HumanCapitalDetective   人力资本审计
-            ├── ValuationPricer         Step 8: 估值体系
-            ├── ExpectationGapAgent     Step 9: 市场预期差 ★ 新建
-            └── DAGOrchestrator         Step 6+10+11: 编排 + 资产筛选 + 风险 + 报告
+            ├── GlobalCapexScanner      Step 1a: 宏观周期分析 ✅
+            ├── CapitalFlowScanner      Step 1b: 全球资本流向扫描 ✅ V1.0
+            ├── MarketScanner           Step 2: 行业景气度看门人 ✅ V5.10
+            ├── SupplyChainHacker       Step 3: 产业链系统拆解 ✅ V5.9
+            ├── SystemDynamicsAgent     Step 4+5: 系统动力学推演 📋 未实现
+            ├── FinancialAuditor        Step 7: 财务质量审计 ⚠️ 已有, 未接入pipeline
+            ├── HumanCapitalDetective   Step 8: 人力资本审计 ⚠️ 已有, 可选步骤
+            ├── ValuationPricer         Step 8: 估值定价 ⚠️ 已有, 未使用framework/finance
+            ├── ExpectationGapAgent     Step 9: 市场预期差 📋 未实现
+            └── DAGOrchestrator         Step 6+10+11: 编排 (遗留, 未接入新pipeline)
 ```
 
 ---
@@ -221,7 +224,7 @@ if macro is None or _is_expired(macro):
 
 ---
 
-### Agent 3: SupplyChainHacker (产业链系统拆解)
+### Agent 3: SupplyChainHacker (产业链系统拆解) ✅ 已实现 V5.9
 
 **文件**: `domain/research/agents/supply_chain_hacker.py`
 

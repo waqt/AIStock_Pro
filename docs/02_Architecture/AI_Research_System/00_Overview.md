@@ -25,16 +25,17 @@
 
 | Step | 名称 | 设计 | 实现 | 备注 |
 |------|------|------|------|------|
-| 1 | 宏观与全球资本周期 | ✅ 完成 | ⚠️ 80% | 12/16 指标入库，macro_report 合成+缓存已交付；缺 4 个 akshare 指标 + server biz_date 修复未加载 |
-| 2 | Pipeline 看门人 | ✅ 完成 | ✅ 完成 | analyze() 支持 auto/manual 双模式, 6块定性输出, 已通过 manual 模式测试 |
-| 3 | 产业链系统拆解 | ⚠️ 草稿 | ❌ 0% | 待按 Step 2 格式重写设计文档 |
-| 4+5 | 系统动力学 + 非线性推演 | ⚠️ 草稿 | ❌ 0% | 待详细设计 |
-| 6 | 核心资产筛选 | ✅ 完成 | ✅ 已完成 | ROE/股息/增速质量加权已加入 |
-| 7 | 财务质量 | ⚠️ 草稿 | ❌ 0% | 待详细设计 |
-| 8 | 估值体系 | ✅ 完成 | ✅ 已完成 | VALUATION_MODEL_MAP + 三情景 + 全球对标 |
-| 9 | 市场预期差 | ⚠️ 草稿 | ❌ 0% | 待新建 ExpectationGapAgent |
-| 10 | 风险分析 | ⚠️ 草稿 | ❌ 0% | 待 prompt 增强 |
-| 11 | 最终投资结论 | ✅ 完成 | ✅ 已完成 | 报告模板已补全 |
+| 1a | 宏观周期分析 | ✅ 完成 | ✅ 完成 | 独立运行, macro_report.json + 数据中心宏观卡片; 不串联到 pipeline |
+| 1b | 资本流向扫描 | ✅ 完成 | ✅ 完成 | CapitalFlowScanner V1.0, capex_vectors + constraint_vectors |
+| 2 | Pipeline 看门人 | ✅ 完成 | ✅ 完成 | V5.10: 证据层 + 粒度过滤 + 错配分析 + 自适应搜索 |
+| 3 | 产业链系统拆解 | ✅ 完成 | ✅ 完成 | V5.9: 定性schema + 证据层 + 自适应搜索 (Phase 1.8 → Step 4) |
+| 4+5 | 系统动力学 + 非线性推演 | ⚠️ 草稿 | ❌ 0% | 待实现 SystemDynamicsAgent |
+| 6 | 核心资产筛选 | ✅ 完成 | ⚠️ 已有 | 未接入新 pipeline |
+| 7 | 财务质量 | ✅ 完成 | ⚠️ 已有 | FinancialAuditor 已有, 未接入 pipeline |
+| 8 | 估值体系 | ✅ 完成 | ⚠️ 已有 | ValuationPricer 已有, 未使用 framework/finance |
+| 9 | 市场预期差 | ⚠️ 草稿 | ❌ 0% | 待实现 ExpectationGapAgent |
+| 10 | 风险分析 | ⚠️ 草稿 | ❌ 0% | 待实现 |
+| 11 | 最终投资结论 | ✅ 完成 | ⚠️ 遗留 | DAGOrchestrator 已有, 未接入新 pipeline |
 
 ### Step 1 详细状态
 
