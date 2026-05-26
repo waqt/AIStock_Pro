@@ -48,7 +48,7 @@ AGENT_REGISTRY = [
             {"id": "auto_scan",          "name": "全局扫描",
              "desc": "自动扫描当前高景气赛道，选择后进行完整分析",
              "input_type": "none", "placeholder": "",
-             "pipeline": ["step1_macro", "step1b_capital_flow", "step2_gatekeeper"]},
+             "pipeline": ["step1_macro", "step2_gatekeeper"]},
             {"id": "manual_industry",    "name": "定性产业分析",
              "desc": "手动输入产业名称，展开全产业链穿透分析",
              "input_type": "industry", "placeholder": "输入行业关键词, 如: SOFC固体氧化物燃料电池",
