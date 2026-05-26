@@ -6,6 +6,48 @@
 
 ## 待优化
 
+### IDEA-018: Monitor/Tracker 框架 — Pipeline 输出 → 量化追踪
+- **来源**: Gemini 报告 + 架构讨论
+- **描述**: 投研 Pipeline 负责"发现机会"（低频），Monitor 模块负责"盯盘追踪"（高频）。新建 `domain/monitor/` 目录，BaseTracker 抽象框架（订阅/轮询/阈值检查/告警），三个具体 Tracker：
+  - KillConditionTracker: 消费 Step 2 的 kill_triggers，每日查数据源，突破阈值即告警
+  - BottleneckTracker: 消费 Step 3 的 bottleneck_nodes，监控交期/产能利用率/价格变动
+  - StockTracker: 消费 Step 3 的 core_stocks，监控毛利率/PE分位/换手率/浮盈比例
+- **架构**:
+  ```
+  domain/monitor/
+    base.py              BaseTracker + Alert/RiskAlert/CatalystAlert
+    kill_tracker.py      证伪条件监控 (风险侧)
+    catalyst_tracker.py  催化信号监控 (机会侧)
+    bottleneck_tracker.py 瓶颈节点监控
+    stock_tracker.py     标的多维监控 (财务+交易+催化)
+    api/routes.py        GET /monitor/alerts, POST /monitor/subscribe
+  ```
+- **Tracker 双信号体系**:
+  - 风险侧: kill_triggers → 证伪/衰退/泡沫信号 (KillConditionTracker)
+  - 机会侧: catalysts → 业绩/产品/政策/产能/订单催化 (CatalystTracker)
+  - 瓶颈侧: bottleneck_nodes → 交期/产能/替代进展 (BottleneckTracker)
+  - 标的多维: core_stocks → 毛利率/PE/换手率/浮盈 (StockTracker)
+- **优先级**: 中
+- **状态**: 架构已设计, BaseTracker 待实现
+
+### IDEA-017: kill_reasons 结构化输出 (Tracker 的前置依赖)
+- **来源**: Gemini 投研框架评估报告
+- **描述**: Step 2 的 kill_reasons 从纯文本改为 `{reason, monitor_signal, data_source_hint}` 结构，使 KillConditionTracker 可程序化消费
+- **优先级**: 高
+- **状态**: 待开始
+
+### IDEA-016: 宏观数据多源降级
+- **来源**: Gemini 投研框架评估报告
+- **描述**: 4 个缺失 akshare 指标（US_CPI/CN_CPI/US_ISM_PMI/DXY）修复，并引入备用数据源。主数据源解析失败（如 biz_date NaN）时自动触发降级策略，调用备用宏观数据库
+- **优先级**: 中
+- **状态**: 待开始 (合并 IDEA-003/004/005)
+
+### IDEA-015: 程序化利润池追踪
+- **来源**: Gemini 投研框架评估报告
+- **描述**: Step 3 输出的 profit_pool 目前是 LLM 定性判断。应程序化追踪各环节毛利率变动，自动锁定利润蓄水池。当某环节毛利率连续 2 季扩张且超过行业均值 1.5σ 时，自动标记为"利润汇聚节点"
+- **优先级**: 中
+- **状态**: 待开始
+
 ### IDEA-012: 全市场股票基础信息库
 - **来源**: 日常讨论
 - **描述**: 从 akshare 获取全市场 A 股+港股 代码/名称/行业/上市日期/PE/PB/市值 等基础信息，批量写入 `stock_info` 表。一次同步后增量更新。解决当前只有持仓+自选股有 stock_info，投研提取标的时经常查不到名称的问题
