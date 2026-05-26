@@ -285,20 +285,23 @@ class GlobalCapexScanner(ResearchAgent):
   }},
 
   "routing": {{
-    "regime": "industrial_capex_expansion",
-    "confidence": "high",
-    "reasoning": "为什么判定为该regime (引用CAPEX/PMI/信用数据, 2-3句)",
-    "recommended_agents": ["supply_chain"],
-    "secondary_agents": []
+    "active_agents": {{
+      "supply_chain": {{"confidence": "high", "reason": "CAPEX扩张+PMI>50, 产业资本开支活跃"}},
+      "consumer": {{"confidence": "low", "reason": "消费信贷温和, 未到扩张阈值"}}
+    }},
+    "macro_regime_summary": "当前宏观周期的简要定性 (2-3句)"
   }}
 }}
 
-## routing.regime 枚举 (★ 强制选择最匹配的一个)
-- industrial_capex_expansion: 企业CAPEX加速, 制造业PMI扩张, 产业资本开支主导周期
-- policy_driven: 财政主导, 产业政策密集, 政府投资拉动
-- consumer_expansion: 居民信贷扩张, 消费增速>GDP, 消费品景气 (未来扩展)
-- liquidity_driven: 流动性泛滥, 风险偏好极高, 金融资产主导 (未来扩展)
-- risk_off: 防御模式, 全球紧缩/地缘危机, 不推荐重仓分析
+## routing.active_agents 判定标准 (★ 每个 agent 独立判断)
+- supply_chain (产业链分析): 企业CAPEX加速 / 制造业PMI>50扩张 / 专项债投向产业 → confidence=high/medium/low
+- consumer (消费分析, 未来): 居民信贷扩张 / 消费增速>GDP / 社零增速上行 → confidence=high/medium/low
+- macro_trading (宏观交易, 未来): 流动性泛滥 / 风险偏好极高 / 商品周期 → confidence=high/medium/low
+- 每个 agent 独立评估, 不要互斥。多个 agent 可以同时 high
+- confidence=high: 有明确数据支撑 → 激活
+- confidence=medium: 有间接信号 → 激活
+- confidence=low: 条件不成熟 → 不激活
+- 如果所有 agent 都是 low, 标注 risk_off 防御模式
 
 ## 规则
 - 所有数字必须来自结构化数据 (DB), 不得编造

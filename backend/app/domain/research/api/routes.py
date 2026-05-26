@@ -89,10 +89,14 @@ AGENT_REGISTRY = [
              "desc": "输入股票代码，仅运行财务质量审计(Step7)",
              "input_type": "stock_code", "placeholder": "输入6位代码, 如: 688012",
              "pipeline": ["step1_macro", "step7_financial_audit"]},
-            {"id": "capital_flow",       "name": "全球资本流向扫描",
-             "desc": "独立运行宏观分析+资本流向扫描",
+            {"id": "macro_only",        "name": "宏观周期分析",
+             "desc": "独立运行宏观分析，生成宏观周期报告和路由决策",
              "input_type": "none", "placeholder": "",
-             "pipeline": ["step1_macro", "step1b_capital_flow"]},
+             "pipeline": ["step1_macro"]},
+            {"id": "capital_flow",       "name": "资本流向扫描",
+             "desc": "从全球资本流向出发，识别产业机会并完成全链路分析",
+             "input_type": "none", "placeholder": "",
+             "pipeline": FULL_PIPELINE},  # 跳过 Step 1a, 从 Step 1b 跑全链
         ],
     },
     # 未来扩展:
@@ -371,7 +375,19 @@ async def _do_scan(req: ScanRequest):
 
     scanner = MarketScanner(provider=DeepSeekProvider())
 
-    if mode_id == "auto_scan":
+    if mode_id == "macro_only":
+        target = "宏观周期分析-" + datetime.now().strftime("%Y%m%d-%H%M")
+        report_label = target
+        step = "step1_macro"
+        run_id = generate_run_id(report_label)
+        # 刷新 Step 1a 宏观报告
+        from app.domain.research.agents.global_capex_scanner import GlobalCapexScanner
+        gcs = GlobalCapexScanner(provider=DeepSeekProvider())
+        macro_result = await gcs.synthesize_macro_report()
+        return {"success": True, "data": macro_result, "run_id": run_id,
+                "freshness": ResearchAgent.freshness_stamp()}
+
+    if mode_id in ("auto_scan", "capital_flow"):
         import os as _os, json as _json, glob as _glob
         hypothesis = []
         target = "全局扫描-" + datetime.now().strftime("%Y%m%d-%H%M")
@@ -380,22 +396,24 @@ async def _do_scan(req: ScanRequest):
         # Step 1a: 检查宏观路由 (过期自动刷新)
         macro_path = _os.path.join(_os.path.dirname(__file__), "..", "..", "..", "..", "data", "macro_report.json")
         macro_path = _os.path.abspath(macro_path)
-        routing_regime = "industrial_capex_expansion"  # 默认
+        active_agents = {"supply_chain": {"confidence": "medium"}}  # 默认激活 supply_chain
         if _os.path.exists(macro_path):
             with open(macro_path, "r", encoding="utf-8") as f:
                 macro = _json.load(f)
             macro_date = (macro.get("generated_at", "") or "")[:10]
             if macro_date == today:
-                routing_regime = macro.get("data", {}).get("routing", {}).get("regime", routing_regime)
-                logger.info(f"[MarketScanner] Step 1a routing: {routing_regime}")
+                agents = macro.get("data", {}).get("routing", {}).get("active_agents", {})
+                active_agents = agents if agents else active_agents
+                logger.info(f"[MarketScanner] Step 1a routing: {list(active_agents.keys())}")
             else:
-                logger.info(f"[MarketScanner] Macro report expired ({macro_date} < {today}), proceeding with default routing")
+                logger.info(f"[MarketScanner] Macro report expired ({macro_date} < {today}), using default routing")
 
-        # routing 检查: risk_off → 不推荐分析
-        if routing_regime == "risk_off":
+        # 检查是否有可激活的 agent (confidence >= medium)
+        activated = [aid for aid, info in active_agents.items() if info.get("confidence", "low") in ("high", "medium")]
+        if not activated:
             return {"success": True, "data": {
-                "warning": "当前宏观环境处于防御模式 (risk_off)，不推荐产业链分析。请稍后重试或手动选择行业。",
-                "routing": {"regime": routing_regime, "recommended_agents": []}
+                "warning": "当前宏观环境无活跃分析智能体 (所有 agent confidence=low/risk_off)。请稍后重试。",
+                "routing": active_agents
             }, "run_id": run_id, "freshness": ResearchAgent.freshness_stamp()}
 
         # Step 1b: 资本流向缓存或自动运行
