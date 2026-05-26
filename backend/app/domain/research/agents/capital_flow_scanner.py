@@ -67,6 +67,9 @@ class CapitalFlowScanner(ResearchAgent):
             [f"AI芯片 光模块 液冷 先进封装 国产替代 受益 A股 2026",
              f"算力产业链 国产化 受益标的 A股",
              f"china AI supply chain beneficiary stocks"],
+            [f"国家电网 中芯国际 三大运营商 中国国企 CAPEX 资本开支 2026",
+             f"中国 央企 国企 资本开支 投资 算力 电网 半导体 2026",
+             f"china state grid SMIC telecom capex investment 2026"],
         ]
 
         search_data = await self._search_adaptive(search_chains, num=4, trace=trace)
@@ -74,7 +77,8 @@ class CapitalFlowScanner(ResearchAgent):
         # LLM 结构化输出
         prompt = f"""你是全球资本流向分析师。你的任务不是写宏观报告, 而是识别**全球资本正在挤压哪些产业系统**。
 
-核心问题: 谁在花钱? 花在哪? 规模多大? 约束在哪? 中国谁受益?
+核心问题: 谁在花钱(全球+中国)? 花在哪? 规模多大? 约束在哪? 中国谁受益?
+注意: 必须同时覆盖全球巨头(MAG7等)和中国国内资本开支主体(国家电网/中芯国际/三大运营商等), 不要遗漏国内 initiator。
 
 ## 搜索结果
 """
@@ -93,7 +97,8 @@ class CapitalFlowScanner(ResearchAgent):
 
   "capex_vectors": [
     {
-      "initiator": "花钱的主体 (MAG7/国家电网/三大运营商/TSMC/专项债...)",
+      "initiator": "花钱的主体 (MAG7/国家电网/三大运营商/中芯国际/专项债...)",
+      "initiator_region": "global/domestic/both",
       "target": "资金流向的目标产业 (AI数据中心/电网升级/先进封装...)",
       "capex_scale": "CAPEX规模估算",
       "growth": "high",

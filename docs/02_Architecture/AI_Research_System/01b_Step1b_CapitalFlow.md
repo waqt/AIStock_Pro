@@ -39,6 +39,7 @@ Step 1a 独立运行，提供宏观周期参考。Step 1b 是 pipeline 的实际
   "capex_vectors": [
     {
       "initiator": "MAG7",
+      "initiator_region": "global",
       "target": "AI数据中心",
       "capex_scale": "3200亿美元+ (2025财年)",
       "growth": "high",
@@ -79,14 +80,17 @@ Step 1a 独立运行，提供宏观周期参考。Step 1b 是 pipeline 的实际
 
 ## 搜索策略
 
-4 轮自适应搜索，每轮带 3 级降级 chain（精准→简化→英文）：
+5 轮自适应搜索，每轮带 3 级降级 chain（精准→简化→英文）：
 
 | 轮次 | 维度 | 降级 chain |
 |------|------|-----------|
 | 1 | 全球 CAPEX 流向 | `MAG7 科技巨头 CAPEX 2025 2026` → `大型科技企业 资本开支 AI 2026` → `global tech capex spending AI` |
 | 2 | 产业约束 | `AI数据中心 电力 变压器 液冷 交期 瓶颈 2026` → `数据中心 电力瓶颈 变压器短缺` → `data center power constraint transformer` |
-| 3 | 财政/政策方向 | `中国 专项债 财政支出 投向 算力 电网 2026` → `专项债 基建 新质生产力 半导体` → `china fiscal spending infrastructure` |
+| 3 | 中国财政方向 | `中国 专项债 财政支出 投向 算力 电网 2026` → `专项债 基建 新质生产力 半导体` → `china fiscal spending infrastructure` |
 | 4 | 国产受益方 | `AI芯片 光模块 液冷 先进封装 国产替代 受益 A股 2026` → `算力产业链 国产化 受益标的` → `china AI supply chain beneficiary` |
+| 5 | **中国国内 CAPEX** | `国家电网 中芯国际 三大运营商 国企 CAPEX 资本开支 2026` → `央企 国企 资本开支 投资 算力 电网 半导体` → `china state grid SMIC telecom capex` |
+
+> 注：第 5 条链确保覆盖国内资本开支主体（国家电网/中芯国际/运营商等），不遗漏中国内部的产业投资驱动力。
 
 ---
 
