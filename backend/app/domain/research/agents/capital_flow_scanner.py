@@ -153,8 +153,8 @@ class CapitalFlowScanner(ResearchAgent):
 
         try:
             text = await asyncio.wait_for(
-                self.provider.chat_pro(prompt, max_tokens=4096), timeout=120)
-            if trace: trace.record_llm(prompt, text, model="deepseek-v4-pro")
+                self.provider.chat_flash(prompt, max_tokens=4096), timeout=60)
+            if trace: trace.record_llm(prompt, text, model="deepseek-v4-flash")
             result = self.parse_json(text)
             if isinstance(result, dict):
                 n_capex = len(result.get("capex_vectors", []))
