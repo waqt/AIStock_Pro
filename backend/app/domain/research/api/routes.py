@@ -415,6 +415,7 @@ async def _do_scan(req: ScanRequest):
                                     "capex_initiator": v.get("initiator", ""), "target": v.get("target", "")})
                     if hypothesis:
                         cf_loaded = True
+                        cf_cached_output = output  # 稍后复制到 run_id
                         logger.info(f"[MarketScanner] Using capital_flow cache: {len(hypothesis)} candidates")
                 else:
                     logger.info(f"[MarketScanner] Capital flow cache expired ({cf_date} < {today})")
@@ -459,6 +460,12 @@ async def _do_scan(req: ScanRequest):
     report_label = target if target else "每日扫描"
     step = "step2_gatekeeper"
     run_id = generate_run_id(report_label)
+    # 如果从缓存加载了 Step 1b, 复制到当前 run_id
+    if cf_loaded:
+        try:
+            ih = hash_input({"step": "capital_flow", "date": today})
+            save_checkpoint("step1b_capital_flow", run_id, ih, cf_cached_output, {"elapsed": 0})
+        except Exception: pass
     t0 = __import__("time").time()
 
     input_hash = hash_input({
