@@ -597,6 +597,50 @@ async def supply_chain_hacker(req: SupplyChainRequest = SupplyChainRequest(),
         raise HTTPException(status_code=500, detail=str(e))
 
 
+class IndustryDrilldownRequest(BaseModel):
+    parent_run_id: str = ""
+    industry_name: str = ""
+
+
+@router.post("/scan/industry-drilldown")
+async def industry_drilldown(req: IndustryDrilldownRequest):
+    """全局扫描结果 → 选定行业 → 触发 Step 3"""
+    try:
+        from app.framework.pipeline.checkpoint import find_checkpoint_file, save_checkpoint
+        from app.framework.pipeline.trace import TraceContext
+        from app.framework.ai.providers.deepseek import DeepSeekProvider
+        import json as _json
+
+        # 从父 run 的 step2 检查点找该行业的输出
+        cp_file = find_checkpoint_file(req.parent_run_id, "step2_gatekeeper")
+        if not cp_file:
+            raise HTTPException(status_code=404, detail=f"Parent run not found: {req.parent_run_id}")
+        with open(cp_file, "r", encoding="utf-8") as f:
+            step2 = _json.load(f)
+        industries = step2.get("output", {}).get("industries", [])
+        target = next((i for i in industries if i.get("industry") == req.industry_name), None)
+        if not target:
+            raise HTTPException(status_code=404, detail=f"Industry '{req.industry_name}' not found in run {req.parent_run_id}")
+
+        # 调 Step 3
+        hacker = SupplyChainHacker(provider=DeepSeekProvider())
+        step2_guidance = target.get("_step3_guidance", {})
+        ctx = {"industry": req.industry_name, "step2_guidance": step2_guidance}
+        run_id = req.parent_run_id  # 保存到同一目录
+        trace = TraceContext(run_id)
+        result = await hacker.analyze(ctx, trace=trace)
+
+        save_checkpoint("step3_sc_hacker", run_id, "drilldown", result, {"elapsed": 0})
+        trace.write("step3_sc_hacker")
+        logger.info(f"[Drilldown] Step3 done: {req.industry_name} → {len(result.get('supply_chain_map',[]))} layers")
+        return {"success": True, "data": result, "run_id": run_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[Drilldown] Failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/capital-flow")
 async def capital_flow_scan(async_mode: bool = Query(default=False)):
     """Step 1b: 全球资本流向扫描 — ?async_mode=true 后台执行"""

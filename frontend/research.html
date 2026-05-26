@@ -286,9 +286,78 @@ async function loadProjectDetail() {
                 '</div>';
         });
         document.getElementById('step-cards').innerHTML = cardsHtml;
+        // 全局扫描: 显示候选行业列表
+        loadIndustryList();
     } catch(e) {
         document.getElementById('step-cards').innerHTML = '<div class="placeholder" style="color:var(--accent-red);">加载失败: ' + e.message + '</div>';
     }
+}
+
+async function loadIndustryList() {
+    if (!currentRunId) return;
+    try {
+        var res = await fetch(API_BASE + '/research/pipeline/' + currentRunId + '/checkpoint/step2_gatekeeper');
+        var d = await res.json();
+        var out = (d.data || {}).output || {};
+        // auto_scan 输出 industries 数组; 加载节点输出时也加载完整数据
+        if (!out.industries || !out.industries.length) {
+            // 可能是 manual 模式的单行业, 不需要列表
+            try {
+                // 从原始 checkpoint 文件中读取 (checkpoint API 只返回 output)
+                var rawRes = await fetch(API_BASE + '/research/pipeline/' + currentRunId);
+                var rawData = await rawRes.json();
+                var steps = (rawData.data || {}).steps || {};
+                var cpFile = (steps.step2_gatekeeper || {}).file;
+                if (cpFile) {
+                    var cpRes = await fetch(API_BASE + '/research/pipeline/' + currentRunId + '/checkpoint/step2_gatekeeper');
+                    var cpData = await cpRes.json();
+                    out = (cpData.data || {}).output || {};
+                }
+            } catch(e2) {}
+        }
+        var industries = out.industries;
+        if (!industries || !industries.length) return;
+        var listHtml = '<div style="margin-top:8px;padding:8px;background:rgba(255,255,255,0.01);border:1px solid var(--border-thin);border-radius:6px;">' +
+            '<div style="color:#fff;font-size:11px;margin-bottom:6px;">📋 候选行业 (' + industries.length + '个)</div>';
+        industries.forEach(function(ind) {
+            var v = ind.verdict || {};
+            var enter = v.enter_step3;
+            var priority = v.priority || '低';
+            var icon = enter ? '🥇' : (priority === '低' ? '🥉' : '🥈');
+            listHtml += '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border-thin);font-size:11px;">' +
+                '<span>' + icon + '</span>' +
+                '<span style="color:#fff;flex:1;">' + escHtml(ind.industry || '?') + '</span>' +
+                '<span style="color:' + (enter ? 'var(--accent-green)' : 'var(--text-micro)') + ';font-size:10px;">' +
+                'enter=' + enter + ' · ' + priority + '</span>' +
+                '<button class="btn-proj primary" style="font-size:10px;" onclick="event.stopPropagation();drilldownIndustry(\'' + escHtml(ind.industry || '') + '\')">深入分析</button>' +
+                '</div>';
+        });
+        listHtml += '</div>';
+        document.getElementById('step-cards').insertAdjacentHTML('afterend', '<div id="industry-list">' + listHtml + '</div>');
+    } catch(e) { /* 静默 */ }
+}
+
+async function drilldownIndustry(name) {
+    var btn = event.target;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    try {
+        var res = await fetch(API_BASE + '/research/scan/industry-drilldown', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({parent_run_id: currentRunId, industry_name: name})
+        });
+        var d = await res.json();
+        if (d.success) {
+            await loadProjectDetail();
+            var el = document.getElementById('industry-list');
+            if (el) el.style.display = 'none';
+        } else {
+            Modal.alert('分析失败', d.message || '未知错误');
+        }
+    } catch(e) { Modal.alert('错误', e.message); }
+    btn.disabled = false;
+    btn.innerHTML = '深入分析';
 }
 
 // ═══ Output Viewer + JSON Editor ═════════════════
