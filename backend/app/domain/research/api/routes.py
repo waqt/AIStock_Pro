@@ -399,7 +399,12 @@ async def _do_scan(req: ScanRequest):
                     cf = _json.load(f)
                 cf_date = (cf.get("saved_at", "") or "")[:10].replace("-", "")
                 if cf_date == today:  # 当天有效
-                    vectors = cf.get("output", {}).get("pressure_vectors", [])
+                    output = cf.get("output", {})
+                    vectors = output.get("pressure_vectors", [])
+                    # 降级: 旧格式 capex_vectors (无 pressure_vectors 时回退)
+                    if not vectors:
+                        vectors = output.get("capex_vectors", [])
+                        logger.info(f"[MarketScanner] Using legacy capex_vectors format")
                     # 系统节点 → 候选产业映射 (Step 1b → Step 2 桥接)
                     pressure_map = {"power_infrastructure":["变压器","电网设备","铜"],"thermal_management":["液冷散热","服务器电源"],"memory_bandwidth":["HBM高带宽内存","先进封装"],"compute_chip":["AI芯片","GPU"],"optical_communication":["光模块","光芯片"],"energy_storage":["储能","锂电池"]}
                     for v in vectors:
@@ -493,10 +498,17 @@ async def market_scan(req: ScanRequest = ScanRequest(), async_mode: bool = Query
     """投研分析入口 — ?async=true 后台执行, 立即返回 exec_id"""
     if async_mode:
         from app.framework.tasks.engine import TaskEngine
+        from app.framework.pipeline.checkpoint import generate_run_id, save_manifest
+        target = req.target or req.target_industry or req.question or ("全局扫描" if req.mode_id == "auto_scan" else "资本流向" if req.mode_id == "capital_flow" else "宏观分析" if req.mode_id == "macro_only" else "分析")
+        run_id = generate_run_id(target)
+        # 立即创建空白项目, 前端可见
+        save_manifest(run_id, {"run_id": run_id, "industry": target, "mode": "auto" if req.mode_id in ("auto_scan","capital_flow") else "manual",
+            "mode_id": req.mode_id, "agent_id": req.agent_id, "status": "pending",
+            "started_at": datetime.now().isoformat()})
         exec_id = await TaskEngine.run_task("research_analyze", {
-            "agent_id": req.agent_id, "mode_id": req.mode_id, "target": req.target or req.target_industry or req.question,
+            "agent_id": req.agent_id, "mode_id": req.mode_id, "target": target,
         })
-        return {"success": True, "data": {"exec_id": exec_id, "status": "PENDING"},
+        return {"success": True, "data": {"exec_id": exec_id, "status": "PENDING", "run_id": run_id},
                 "message": "任务已提交, 轮询 GET /system/tasks/executions/" + exec_id}
     try:
         return await _do_scan(req)

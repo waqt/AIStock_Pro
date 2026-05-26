@@ -529,8 +529,14 @@ async function submitNewProject() {
         var d = await res.json();
         if (d.success && d.data && d.data.exec_id) {
             var execId = d.data.exec_id;
-            Modal.alert('任务已提交', '分析任务已在后台启动 (ID: ' + execId.substring(0,8) + '...)。\n\n完成后会自动出现在项目列表中，你可以关闭页面稍后查看。');
-            // 轮询等待完成后刷新列表
+            var runId = d.data.run_id;
+            // 立即刷新列表, 项目立即可见
+            await loadProjects();
+            if (runId) {
+                selectProject(runId);
+                document.getElementById('detail-meta').textContent += ' · 后台运行中...';
+            }
+            // 轮询等待完成后刷新
             var pollTimer = setInterval(async function() {
                 try {
                     var pollRes = await fetch(API_BASE + '/system/tasks/executions/' + execId);
@@ -538,15 +544,10 @@ async function submitNewProject() {
                     if (exec.status === 'SUCCESS' || exec.status === 'FAILED') {
                         clearInterval(pollTimer);
                         await loadProjects();
-                        // 找到新项目并选中
-                        if (exec.status === 'SUCCESS') {
-                            // 延迟一点等 checkpoint 落盘
-                            setTimeout(async function() { await loadProjects(); }, 2000);
-                        }
+                        if (runId) selectProject(runId);
                     }
                 } catch(e) {}
             }, 3000);
-            await loadProjects();
         } else if (d.success && d.run_id) {
             // 同步模式 fallback (缓存命中)
             await loadProjects();
