@@ -315,7 +315,7 @@ class MarketScanner(ResearchAgent):
 
         try:
             text = await asyncio.wait_for(
-                self.provider.chat_flash(prompt, max_tokens=4096), timeout=60)
+                self.provider.chat_flash(prompt, max_tokens=6144), timeout=60)
             if trace:
                 trace.record_llm(prompt, text, model=getattr(self.provider, 'model', 'deepseek-v4-flash'))
             result = self.parse_json(text)
