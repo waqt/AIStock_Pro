@@ -120,7 +120,9 @@ def save_trace(run_id: str, step: str, trace_data: dict) -> str:
 def save_manifest(run_id: str, manifest: dict) -> str:
     """写 run manifest — 运行元信息"""
     _ensure_dir()
-    path = os.path.join(CHECKPOINT_DIR, run_id, "_run_manifest.json")
+    run_dir = os.path.join(CHECKPOINT_DIR, run_id)
+    os.makedirs(run_dir, exist_ok=True)
+    path = os.path.join(run_dir, "_run_manifest.json")
     with open(path, "w", encoding="utf-8") as f:
         json.dump(manifest, f, ensure_ascii=False, indent=2, default=str)
     return path
