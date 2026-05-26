@@ -28,11 +28,38 @@ STEP_LABELS = {
     "step2_gatekeeper": "行业看门人",
     "step3_sc_hacker": "产业链拆解",
     "step4_system_dynamics": "系统动力学推演",
+    "step6_core_screening": "核心资产筛选",
     "step7_financial_audit": "财务质量审计",
+    "step8_human_capital": "人力资本审计",
     "step8_valuation": "估值定价",
     "step9_expectation_gap": "市场预期差",
+    "step10_risk_analysis": "风险分析",
     "step11_report": "综合报告",
 }
+
+# 统一完整 Pipeline（所有产业分析模式共享）
+FULL_PIPELINE = [
+    "step1_macro",
+    "step1b_capital_flow",
+    "step2_gatekeeper",
+    "step3_sc_hacker",
+    "step4_system_dynamics",
+    "step6_core_screening",
+    "step7_financial_audit",
+    "step8_human_capital",
+    "step8_valuation",
+    "step9_expectation_gap",
+    "step10_risk_analysis",
+    "step11_report",
+]
+
+# 已实现的步骤
+IMPLEMENTED_STEPS = {
+    "step1_macro", "step1b_capital_flow", "step2_gatekeeper", "step3_sc_hacker"
+}
+
+# 可选步骤（不阻塞 pipeline）
+OPTIONAL_STEPS = {"step8_human_capital"}
 
 
 # ═══ 分析智能体注册表 ═══════════════════════
@@ -46,25 +73,25 @@ AGENT_REGISTRY = [
         "icon": "sitemap",
         "modes": [
             {"id": "auto_scan",          "name": "全局扫描",
-             "desc": "自动扫描当前高景气赛道，选择后进行完整分析",
+             "desc": "全自动从宏观到报告，一站式产业链深度分析",
              "input_type": "none", "placeholder": "",
-             "pipeline": ["step1_macro", "step2_gatekeeper"]},
+             "pipeline": FULL_PIPELINE},
             {"id": "manual_industry",    "name": "定性产业分析",
              "desc": "手动输入产业名称，展开全产业链穿透分析",
              "input_type": "industry", "placeholder": "输入行业关键词, 如: SOFC固体氧化物燃料电池",
-             "pipeline": ["step1_macro", "step2_gatekeeper", "step3_sc_hacker"]},
+             "pipeline": FULL_PIPELINE},
             {"id": "stock_deep",         "name": "公司深度分析",
              "desc": "输入股票代码或公司名，进行行业+公司双轨深度分析",
              "input_type": "stock_code", "placeholder": "输入6位代码或公司名, 如: 688012中微公司",
-             "pipeline": ["step1_macro", "step2_gatekeeper", "step3_sc_hacker", "step7_financial_audit", "step8_valuation", "step9_expectation_gap"]},
+             "pipeline": FULL_PIPELINE},
             {"id": "stock_audit",        "name": "公司财务审计",
              "desc": "输入股票代码，仅运行财务质量审计(Step7)",
              "input_type": "stock_code", "placeholder": "输入6位代码, 如: 688012",
              "pipeline": ["step1_macro", "step7_financial_audit"]},
             {"id": "capital_flow",       "name": "全球资本流向扫描",
-             "desc": "扫描全球CAPEX流向，识别资本正在挤压的产业系统",
+             "desc": "独立运行宏观分析+资本流向扫描",
              "input_type": "none", "placeholder": "",
-             "pipeline": ["step1b_capital_flow"]},
+             "pipeline": ["step1_macro", "step1b_capital_flow"]},
         ],
     },
     # 未来扩展:
@@ -671,21 +698,26 @@ async def get_pipeline_run(run_id: str):
             else:
                 pipeline_def = ["step1_macro", "step2_gatekeeper", "step3_sc_hacker"]
 
-        # 合并 pipeline 定义 + 实际完成状态
+        # 合并 pipeline 定义 + 实际完成状态 (三态: completed / pending / planned)
         full_steps = {}
-        status = (manifest or {}).get("status", "pending")
+        run_status = (manifest or {}).get("status", "pending")
         for s in pipeline_def:
             label = STEP_LABELS.get(s, s)
+            implemented = s in IMPLEMENTED_STEPS
+            optional = s in OPTIONAL_STEPS
             if s in steps:
-                full_steps[s] = {**steps[s], "label": label, "status": "completed"}
-            elif s == pipeline_def[0] and status == "completed":
-                full_steps[s] = {"step": s, "label": label, "status": "completed", "elapsed_seconds": 0}
+                full_steps[s] = {**steps[s], "label": label, "status": "completed",
+                                 "implemented": True, "optional": optional}
+            elif not implemented:
+                full_steps[s] = {"step": s, "label": label, "status": "planned",
+                                 "elapsed_seconds": 0, "implemented": False, "optional": optional}
             else:
-                full_steps[s] = {"step": s, "label": label, "status": "pending", "elapsed_seconds": 0}
-        # 也包含额外存在的步骤
+                full_steps[s] = {"step": s, "label": label, "status": "pending",
+                                 "elapsed_seconds": 0, "implemented": True, "optional": optional}
         for s, info in steps.items():
             if s not in full_steps:
-                full_steps[s] = {**info, "label": STEP_LABELS.get(s, s), "status": "completed"}
+                full_steps[s] = {**info, "label": STEP_LABELS.get(s, s), "status": "completed",
+                                 "implemented": True, "optional": s in OPTIONAL_STEPS}
         full_steps = dict(sorted(full_steps.items()))
 
         return {"success": True, "data": {
