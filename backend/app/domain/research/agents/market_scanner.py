@@ -278,7 +278,14 @@ class MarketScanner(ResearchAgent):
     ]
   }},
 
-  "kill_reasons": []
+  "kill_reasons": [
+    {{"reason": "标准枚举值", "monitor_signal": "什么指标变化会触发证伪", "data_source_hint": "可从哪获取这个指标"}}
+  ],
+
+  "catalysts": [
+    {{"type": "earnings/product/policy/capacity/order",
+      "catalyst": "催化事件描述", "expected_date": "预计发生时间", "watch_signal": "什么数据确认催化兑现", "status": "pending"}}
+  ]
 }}
 
 ## industry_granularity 粒度判定 (★ 在分析之前先判定)
@@ -296,6 +303,11 @@ class MarketScanner(ResearchAgent):
   company_filing(公司财报/公告) | industry_data(海关/行业协会/产能统计) | official_policy(政府文件/产业规划) |
   sell_side_report(券商研报) | news_media(财经媒体) | self_media(自媒体/知乎/公众号) | ai_summary(AI摘要)
 
+## 证据降权规则 (★ 强制)
+- 裁决时优先采信 quality.level=high 且 source_type=company_filing/industry_data/official_policy 的证据
+- source_type=self_media/ai_summary 的证据仅作参考, 不得单独支撑 enter_step3 或 priority 判断
+- 如果某结论的高质量证据全部缺失, 必须在 rationale 中标注"证据质量不足"
+
 ## 证据格式要求
 - 每个结论块的 evidence 数组至少包含 1 条证据
 - from 格式: "search[轮次.序号]·来源简称", 如 "search[1.2]·慧博出品"
@@ -309,8 +321,9 @@ class MarketScanner(ResearchAgent):
 
 ## 规则
 - 不要在 rationale 中使用"五错配全部满足/不满足"等笼统表述 — 必须引用 mismatch_analysis 的具体结果
-- 如果 enter_step3=false, kill_reasons 必须使用标准枚举值(需求来自渠道补库存/已进入资本狂热后期/估值透支3年增长/政策抢装非真实需求/供给扩张>需求/传导链<3层Alpha空间有限), 选最接近的
-- 所有数值引用必须来自搜索结果, 不得编造"""
+- 如果 enter_step3=false, kill_reasons 必须使用标准枚举值(需求来自渠道补库存/已进入资本狂热后期/估值透支3年增长/政策抢装非真实需求/供给扩张>需求/传导链<3层Alpha空间有限), 选最接近的。每个 kill_reason 附带 monitor_signal 和 data_source_hint
+- 所有数值引用必须来自搜索结果, 不得编造
+- catalysts 从 phase_switch_trigger 和 key_uncertainties 中提取, 标注预计时间和可观测信号"""
         # 注入权威术语表 (放在规则后面, 距离核心指令近)
         from app.framework.pipeline.glossary import step2_glossary
         prompt += step2_glossary()

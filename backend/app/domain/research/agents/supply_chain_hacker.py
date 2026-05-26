@@ -312,6 +312,11 @@ class SupplyChainHacker(ResearchAgent):
 
   "scarcity_ranking": [
     {{"rank": 1, "segment": "最稀缺环节", "rigidity_narrative": "刚性描述", "beneficiary_stocks": ["688012"]}}
+  ],
+
+  "catalysts": [
+    {{"type": "capacity/product/policy/order", "catalyst": "催化事件描述",
+      "expected_date": "预计时间", "watch_signal": "确认催化的指标", "affected_segment": "影响的产业链环节"}}
   ]
 }}
 
@@ -349,7 +354,9 @@ class SupplyChainHacker(ResearchAgent):
 - assets 空时用 assets_note 说明原因, 不要留空数组
 - scarcity_ranking 按供给刚性从高到低排
 - 同一公司不要出现在 china_players 的多个 tier 中
-- value_capture.market_attention: very_high | high | moderate | low (新增)"""
+- value_capture.market_attention: very_high | high | moderate | low
+- 每个环节预埋催化信号: "catalysts": [{{"type":"earnings/product/policy/capacity/order","catalyst":"...","expected_date":"...","watch_signal":"...","status":"pending"}}]
+- 裁决时优先采信 quality.level=high 且 source_type=company_filing/industry_data 的证据。self_media/ai_summary 仅参考, 不得单独支撑关键判断"""
 
 # ═══ 工具 ═════════════════════════════════════
 
