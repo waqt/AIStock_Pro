@@ -56,6 +56,19 @@
   ❌ biz_date 已通过直接 DB 更新绕过
 ```
 
+### Step 1b 详细状态
+
+```
+CapitalFlowScanner V1.0:
+  ✅ 设计文档: 01b_Step1b_CapitalFlow.md
+  ✅ 实现: capital_flow_scanner.py (150行)
+  ✅ API: POST /api/research/capital-flow
+  ✅ 4轮自适应搜索 + LLM 结构化输出
+  ✅ theme_type 分类: industrial_capex/commodity_cycle/policy_theme/macro_asset
+  ✅ constraint_vectors: equipment_lead_time/natural_resource/...
+  ⚠️ LLM timeout 偶尔超时 (120s chat_pro), 已加 fallback
+```
+
 ### Step 2 详细状态
 
 ```
@@ -82,7 +95,8 @@
 
 | 文件 | 内容 |
 |------|------|
-| [01_Step1_Macro](01_Step1_Macro.md) | 宏观与全球资本周期 (含实施状态) |
+| [01_Step1_Macro](01_Step1_Macro.md) | 宏观与全球资本周期 (Step 1a, 独立运行) |
+| [01b_Step1b_CapitalFlow](01b_Step1b_CapitalFlow.md) | 全球资本流向扫描 (Step 1b, pipeline 起点) |
 | [02_Step2_Gatekeeper](02_Step2_Gatekeeper.md) | Pipeline 看门人 — 产业 Alpha 排序器 |
 | [03_Step3_SupplyChain](03_Step3_SupplyChain.md) | 产业链系统拆解 |
 | [04_Step4_SystemDynamics](04_Step4_SystemDynamics.md) | 系统动力学 + 非线性推演 + 核心资产筛选 |
