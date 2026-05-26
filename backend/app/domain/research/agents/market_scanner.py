@@ -1,5 +1,5 @@
 """
-MarketScanner V5.9 — Pipeline Gatekeeper (granularity + mismatch + evidence_quality)
+MarketScanner V5.10 — granularity fix: subsector≠macro_theme, max_tokens 6144
 双模式: auto(扫描验证) / manual(单行业深挖)
 输出: 6块定性判断 + 结构化证据 + Step3指引
 V5.8: 证据层结构化 + 自适应搜索降级 + PDF过滤 + Step3决策摘要
@@ -282,10 +282,12 @@ class MarketScanner(ResearchAgent):
 }}
 
 ## industry_granularity 粒度判定 (★ 在分析之前先判定)
-- specific_industry (CoWoS/HBM/SOFC/CPU等具体产业) → action=allow
-- subsector (半导体设备/创新药等子板块) → action=allow
-- macro_theme (新质生产力/AI新基建/国产替代等宏观主题) → action=split_or_skip, 强制 enter_step3=false, kill_reasons填"传导链<3层Alpha空间有限"
-- asset_class (黄金ETF/REITs等) → action=skip, enter_step3=false
+判定标准: 能否画出这个主题的物理供应链? (GPU→HBM→CoWoS→封装→测试 这种)
+- specific_industry (CoWoS/HBM/SOFC/CPU/液冷散热 等具体产业节点) → action=allow
+- subsector (AI算力/半导体设备/创新药/新能源车 等产业板块, 范围宽但有真实供需链) → action=allow
+- macro_theme (新质生产力/国产替代/碳中和/AI新基建 等纯政策概念, 无统一供给链) → action=split_or_skip, 强制 enter_step3=false
+- asset_class (黄金ETF/REITs等金融产品) → action=skip, enter_step3=false
+- 注意: "AI算力"不是macro_theme — 它有GPU→服务器→数据中心→电力等真实供应链, 应归为subsector
 - 如果判定为 macro_theme 或 asset_class, 后续 6 块仍需填写但 verdict 必须拒绝
 
 ## evidence_quality 证据质量 (★ 每条 evidence 必须标注)
