@@ -154,7 +154,7 @@ class CapitalFlowScanner(ResearchAgent):
 
         try:
             text = await asyncio.wait_for(
-                self.provider.chat_pro(prompt, max_tokens=4096), timeout=60)
+                self.provider.chat_pro(prompt, max_tokens=4096), timeout=120)
             if trace: trace.record_llm(prompt, text, model="deepseek-v4-pro")
             result = self.parse_json(text)
             if isinstance(result, dict):

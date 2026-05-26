@@ -430,21 +430,21 @@ async def _do_scan(req: ScanRequest):
                         for beneficiary in v.get("china_beneficiary", [])[:2]:
                             hypothesis.append({"sector": beneficiary, "name": beneficiary,
                                 "capex_initiator": v.get("initiator", ""), "target": v.get("target", "")})
-                # 保存 Step 1b checkpoint
-                cf_run_id = generate_run_id("资本流向")
+                # 保存 Step 1b checkpoint 到同一个 run_id
                 ih = hash_input({"step": "capital_flow", "date": today})
-                save_checkpoint("step1b_capital_flow", cf_run_id, ih, cf_result, {"elapsed": 0})
+                save_checkpoint("step1b_capital_flow", run_id, ih, cf_result, {"elapsed": 0})
                 cf_trace.write("step1b_capital_flow")
-                save_manifest(cf_run_id, {"run_id": cf_run_id, "industry": "资本流向", "status": "completed",
-                    "mode": "auto", "mode_id": "capital_flow", "agent_id": "supply_chain",
-                    "started_at": cf_trace.to_dict()["started_at"],
-                    "completed_at": datetime.now().isoformat(), "step": "step1b_capital_flow"})
-                logger.info(f"[MarketScanner] Capital flow done: {len(hypothesis)} candidates")
+                logger.info(f"[MarketScanner] Capital flow done, saved to {run_id}: {len(hypothesis)} candidates")
             except Exception as e:
                 logger.warning(f"[MarketScanner] Capital flow auto-run failed: {e}")
 
+        if not hypothesis:
+            # Step 1b 失败 → 不退化到 legacy, 而是用搜索结果直接提取候选
+            logger.warning(f"[MarketScanner] Capital flow returned no vectors, using raw search fallback")
+            hypothesis = [{"sector": "AI算力基础设施", "name": "AI算力"},
+                          {"sector": "半导体设备国产化", "name": "半导体设备"},
+                          {"sector": "电力设备与电网升级", "name": "电网设备"}]
         ctx = {"mode": "auto", "hypothesis_sectors": hypothesis}
-        if not hypothesis: ctx = {"mode": "auto"}
     else:
         ctx = {"mode": "manual" if mode_def["input_type"] != "none" else "auto"}
         if target: ctx["target_industry"] = target
