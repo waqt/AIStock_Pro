@@ -1,5 +1,5 @@
 /**
- * 数据中心 — 宏观 Tab (V5.9 扩展: 16 个宏观指标)
+ * 数据中心 — 宏观 Tab (V5.10: 路由层 + 宏观报告卡片)
  * 依赖: api.js (API_BASE), common.js (escHtml), core.js (DataTabs.Core.addLog), ECharts
  */
 window.DataTabs = window.DataTabs || {};
@@ -34,8 +34,19 @@ DataTabs.Macro = {
     } catch (e) { DataTabs.Core.addLog('宏观同步失败: ' + e.message, 'error'); }
   },
 
+  async refreshReport() {
+    DataTabs.Core.addLog('刷新宏观报告...', 'info');
+    try {
+      await fetch(API_BASE + '/data/macro/report/refresh', { method: 'POST' });
+      DataTabs.Core.addLog('宏观报告刷新完成', 'success');
+      this.load();
+    } catch(e) { DataTabs.Core.addLog('刷新失败: ' + e.message, 'error'); }
+  },
+
   async load() {
     var el = document.getElementById('macro-cards');
+    // 宏观报告摘要卡片
+    this._loadReportCard(el);
     try {
       var res = await fetch(API_BASE + '/data/macro/latest');
       var data = await res.json();
@@ -66,13 +77,49 @@ DataTabs.Macro = {
           '<div class="change" style="color:' + pctColor + '">' + (pctStr || '—') + '</div>' +
           '<div style="font-size:8px;color:var(--text-micro);margin-top:2px;">' + bizInfo + '</div></div>';
       }).join('');
-      // Missing indicators
       var gotCodes = items.map(function(x){return x.code;});
       var missing = Object.keys(this.INFO).filter(function(c){return gotCodes.indexOf(c) < 0;});
       if (missing.length) {
         el.innerHTML += '<div style="width:100%;font-size:9px;color:var(--text-micro);margin-top:4px;">待接入: ' + missing.join('/') + '</div>';
       }
     } catch (e) { el.innerHTML = '<div style="color:var(--accent-red);">加载失败</div>'; }
+  },
+
+  async _loadReportCard(el) {
+    try {
+      var res = await fetch(API_BASE + '/data/macro/report');
+      if (!res.ok) return;
+      var mr = await res.json();
+      var d = mr.data || mr;
+      if (!d) return;
+      var es = d.executive_summary;
+      if (!es) return;
+      var routing = d.routing || {};
+      var regimeLabels = {
+        industrial_capex_expansion: '产业CAPEX扩张',
+        policy_driven: '政策驱动',
+        consumer_expansion: '消费扩张',
+        liquidity_driven: '流动性驱动',
+        risk_off: '防御模式'
+      };
+      var regime = regimeLabels[routing.regime] || routing.regime || '未判定';
+      var genTime = (d.generated_at || '').substring(0, 16).replace('T', ' ');
+      var validTime = (d.valid_until || '').substring(0, 10);
+      var card = '<div class="macro-report-card" style="grid-column:1/-1;background:rgba(255,255,255,0.03);border:1px solid var(--accent-blue);border-radius:6px;padding:10px 14px;margin-bottom:4px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">' +
+        '<span style="color:#fff;font-size:13px;"><i class="fas fa-globe"></i> 宏观周期报告</span>' +
+        '<span style="color:var(--text-micro);font-size:9px;">' + genTime + ' · 有效期至 ' + validTime + '</span>' +
+        '<div style="display:flex;align-items:center;gap:6px;">' +
+        '<span style="font-size:10px;background:rgba(255,255,255,0.06);padding:2px 8px;border-radius:3px;">' + regime + '</span>' +
+        '<button onclick="DataTabs.Macro.refreshReport()" style="background:none;border:1px solid var(--border-thin);color:var(--text-dim);padding:2px 6px;border-radius:3px;cursor:pointer;font-size:10px;" title="刷新宏观报告"><i class="fas fa-sync-alt"></i></button>' +
+        '</div></div>' +
+        '<div style="color:var(--text-dim);font-size:11px;margin-top:6px;line-height:1.6;">' +
+        '<div><strong>定调：</strong>' + (es.one_liner || '未生成') + '</div>' +
+        '<div><strong>流动性：</strong>' + (es.liquidity_direction || '—') + '</div>' +
+        (routing.reasoning ? '<div style="margin-top:3px;color:var(--accent-blue);font-size:10px;"><strong>路由决策：</strong>' + routing.reasoning + '</div>' : '') +
+        '</div></div>';
+      el.insertAdjacentHTML('afterbegin', card);
+    } catch(e) { /* 可选, 失败静默 */ }
   },
 
   async showHistory(code, name) {
@@ -84,26 +131,20 @@ DataTabs.Macro = {
       var dates = data.map(function(r){return r.date;});
       var values = data.map(function(r){return r.value;});
       var id = 'macro-chart-' + Date.now();
-      var html = '<div style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:1000;display:flex;justify-content:center;align-items:center;backdrop-filter:blur(4px);" onclick="this.remove()">' +
-        '<div style="background:var(--bg-card);width:80%;max-width:800px;border-radius:8px;border:1px solid var(--border-color);overflow:hidden;" onclick="event.stopPropagation()">' +
-        '<div style="padding:10px 14px;border-bottom:1px solid var(--border-color);display:flex;justify-content:space-between;">' +
-        '<span style="font-weight:700;">' + escHtml(name) + ' 历史趋势 (' + data.length + '天)</span>' +
-        '<button onclick="this.closest(\'div[style*=fixed]\').remove()" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:16px;">&times;</button></div>' +
-        '<div id="' + id + '" style="width:100%;height:400px;"></div></div></div>';
-      document.body.insertAdjacentHTML('beforeend', html);
+      var html = '<div id="' + id + '" style="width:100%;height:350px;"></div>';
+      Modal.custom({title: name + ' 历史趋势', content: html});
       setTimeout(function() {
-        var c = document.getElementById(id);
-        if (!c || !window.echarts) return;
-        var chart = echarts.init(c);
+        var chart = echarts.init(document.getElementById(id));
         chart.setOption({
-          tooltip: { trigger: 'axis' },
-          xAxis: { type: 'category', data: dates, axisLabel: { fontSize: 9, rotate: 30 } },
-          yAxis: { type: 'value', scale: true, splitLine: { lineStyle: { color: '#1a1a1a' } } },
-          series: [{ type: 'line', data: values, smooth: true, symbol: 'none',
-            lineStyle: { color: '#60a5fa', width: 1.5 },
-            areaStyle: { color: 'rgba(96,165,250,0.08)' } }]
+          tooltip: {trigger:'axis'}, grid: {left:60,right:30,top:20,bottom:30},
+          xAxis: {type:'category',data:dates,axisLabel:{fontSize:9,color:'#888'}},
+          yAxis: {type:'value',axisLabel:{fontSize:9,color:'#888'}},
+          series: [{data:values,type:'line',smooth:true,
+            lineStyle:{color:'#4e9eff'},itemStyle:{color:'#4e9eff'},
+            areaStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,
+              colorStops:[{offset:0,color:'rgba(78,158,255,0.3)'},{offset:1,color:'rgba(78,158,255,0.02)'}]}}}]
         });
-      }, 200);
-    } catch (e) { DataTabs.Core.addLog('历史加载失败: ' + e.message, 'error'); }
+      }, 300);
+    } catch(e) { DataTabs.Core.addLog('趋势加载失败: ' + e.message, 'error'); }
   }
 };

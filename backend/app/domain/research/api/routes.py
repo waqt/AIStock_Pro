@@ -377,7 +377,28 @@ async def _do_scan(req: ScanRequest):
         target = "全局扫描-" + datetime.now().strftime("%Y%m%d-%H%M")
         today = datetime.now().strftime("%Y%m%d")
 
-        # 查找当天 Step 1b 缓存 (过期自动失效)
+        # Step 1a: 检查宏观路由 (过期自动刷新)
+        macro_path = _os.path.join(_os.path.dirname(__file__), "..", "..", "..", "..", "data", "macro_report.json")
+        macro_path = _os.path.abspath(macro_path)
+        routing_regime = "industrial_capex_expansion"  # 默认
+        if _os.path.exists(macro_path):
+            with open(macro_path, "r", encoding="utf-8") as f:
+                macro = _json.load(f)
+            macro_date = (macro.get("generated_at", "") or "")[:10]
+            if macro_date == today:
+                routing_regime = macro.get("data", {}).get("routing", {}).get("regime", routing_regime)
+                logger.info(f"[MarketScanner] Step 1a routing: {routing_regime}")
+            else:
+                logger.info(f"[MarketScanner] Macro report expired ({macro_date} < {today}), proceeding with default routing")
+
+        # routing 检查: risk_off → 不推荐分析
+        if routing_regime == "risk_off":
+            return {"success": True, "data": {
+                "warning": "当前宏观环境处于防御模式 (risk_off)，不推荐产业链分析。请稍后重试或手动选择行业。",
+                "routing": {"regime": routing_regime, "recommended_agents": []}
+            }, "run_id": run_id, "freshness": ResearchAgent.freshness_stamp()}
+
+        # Step 1b: 资本流向缓存或自动运行
         base_data = _os.path.abspath(_os.path.join(_os.path.dirname(__file__), "..", "..", "..", "..", "data"))
         cf_pattern = _os.path.join(base_data, "pipeline_checkpoints", "*资本流向*", "step1b_capital_flow*.json")
         cf_runs = sorted(_glob.glob(cf_pattern), reverse=True)
