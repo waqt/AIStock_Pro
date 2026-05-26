@@ -372,7 +372,7 @@ class ResearchDataLoader:
                     "Accept-Encoding": "gzip",
                     "X-Subscription-Token": settings.BRAVE_API_KEY,
                 }
-                params = {"q": query, "count": min(num, 10), "search_lang": "zh"}
+                params = {"q": query, "count": min(num, 10)}
                 async with httpx.AsyncClient(proxy=CLASH_PROXY, timeout=15.0) as client:
                     resp = await client.get(url, headers=headers, params=params)
                     if resp.status_code == 200:
