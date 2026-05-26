@@ -31,13 +31,36 @@ def checkpoint_path(step: str, run_id: str, input_hash: str = "") -> str:
     return os.path.join(run_dir, f"{step}.json")
 
 
-def load_checkpoint(step: str, run_id: str, input_hash: str) -> dict | None:
-    """读取缓存 — 如果输入未变, 直接返回上次结果.
+def is_checkpoint_expired(step: str, run_id: str, input_hash: str, max_age_days: int = 1) -> bool:
+    """检查缓存是否过期 (默认1天)"""
+    path = checkpoint_path(step, run_id, input_hash)
+    if not os.path.exists(path):
+        return True
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        saved = data.get("saved_at", "")
+        if not saved: return True
+        saved_date = saved[:10]
+        today = datetime.now().strftime("%Y-%m-%d")
+        if max_age_days == 1:
+            return saved_date != today
+        from datetime import datetime as dt, timedelta
+        saved_dt = dt.fromisoformat(saved)
+        return (dt.now() - saved_dt) > timedelta(days=max_age_days)
+    except Exception:
+        return True
+
+
+def load_checkpoint(step: str, run_id: str, input_hash: str, max_age_days: int = 1) -> dict | None:
+    """读取缓存 — 如果输入未变且未过期, 直接返回上次结果.
     跨版本搜索: run_id 的版本号可能变化, 所以搜索所有匹配前缀的目录.
     """
     # 先精确查当前 run_id
     path = checkpoint_path(step, run_id, input_hash)
     if os.path.exists(path):
+        if is_checkpoint_expired(step, run_id, input_hash, max_age_days):
+            return None
         with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
         return data.get("output")
@@ -55,6 +78,8 @@ def load_checkpoint(step: str, run_id: str, input_hash: str) -> dict | None:
                 continue
             cp = os.path.join(rp, f"{step}_{input_hash}.json")
             if os.path.exists(cp):
+                if is_checkpoint_expired(step, name, input_hash, max_age_days):
+                    continue
                 with open(cp, "r", encoding="utf-8") as f:
                     data = json.load(f)
                 return data.get("output")

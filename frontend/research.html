@@ -206,11 +206,13 @@ async function loadProjects() {
             var active = r.run_id === currentRunId ? ' active' : '';
             var dot = r.status === 'completed' ? 'ok' : (r.status === 'failed' ? 'fail' : 'running');
             var starIcon = r.starred ? '<i class="fas fa-star" style="color:var(--accent-yellow);"></i>' : '<i class="far fa-star" style="color:var(--text-micro);"></i>';
+            var started = (r.started_at || '').substring(5, 16).replace('T', ' ');
             return '<div class="proj-item' + active + '">' +
                 '<div onclick="selectProject(\'' + r.run_id + '\')" style="flex:1;cursor:pointer;">' +
                 '<div class="name">' + escHtml(r.display_name || r.run_id) + '</div>' +
                 '<div class="meta"><span class="status-dot ' + dot + '"></span>' +
-                escHtml(r.status || '?') + ' · ' + (r.elapsed_seconds || 0) + 's</div></div>' +
+                escHtml(r.status || '?') + ' · ' + (r.elapsed_seconds || 0) + 's' +
+                (started ? ' · ' + started : '') + '</div></div>' +
                 '<div style="display:flex;gap:6px;align-items:center;" onclick="event.stopPropagation()">' +
                 '<span style="cursor:pointer;font-size:12px;" onclick="toggleStar(\'' + r.run_id + '\')" title="收藏">' + starIcon + '</span>' +
                 '<span style="cursor:pointer;color:var(--text-micro);font-size:10px;" onclick="deleteProject(\'' + r.run_id + '\',\'' + escHtml(r.display_name || r.run_id) + '\')" title="删除"><i class="fas fa-trash"></i></span>' +

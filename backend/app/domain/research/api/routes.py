@@ -371,39 +371,66 @@ async def _do_scan(req: ScanRequest):
     scanner = MarketScanner(provider=DeepSeekProvider())
 
     if mode_id == "auto_scan":
-        import os as _os, json as _json
+        import os as _os, json as _json, glob as _glob
         hypothesis = []
         target = "全局扫描-" + datetime.now().strftime("%Y%m%d-%H%M")
-        # 优先用 Step 1b 资本流向分析, 降级到 Step 1a 宏观主题
-        import glob as _glob
+        today = datetime.now().strftime("%Y%m%d")
+
+        # 查找当天 Step 1b 缓存 (过期自动失效)
         base_data = _os.path.abspath(_os.path.join(_os.path.dirname(__file__), "..", "..", "..", "..", "data"))
         cf_pattern = _os.path.join(base_data, "pipeline_checkpoints", "*资本流向*", "step1b_capital_flow*.json")
         cf_runs = sorted(_glob.glob(cf_pattern), reverse=True)
+        cf_loaded = False
         if cf_runs:
             try:
                 with open(cf_runs[0], "r", encoding="utf-8") as f:
                     cf = _json.load(f)
-                vectors = cf.get("output", {}).get("capex_vectors", [])
-                # 只取 industrial_capex 和 commodity_cycle 类型
+                cf_date = (cf.get("saved_at", "") or "")[:10].replace("-", "")
+                if cf_date == today:  # 当天有效
+                    vectors = cf.get("output", {}).get("capex_vectors", [])
+                    for v in vectors:
+                        tt = v.get("theme_type", "")
+                        if tt in ("industrial_capex", "commodity_cycle"):
+                            for beneficiary in v.get("china_beneficiary", [])[:2]:
+                                hypothesis.append({"sector": beneficiary, "name": beneficiary,
+                                    "capex_initiator": v.get("initiator", ""), "target": v.get("target", "")})
+                    if hypothesis:
+                        cf_loaded = True
+                        logger.info(f"[MarketScanner] Using capital_flow cache: {len(hypothesis)} candidates")
+                else:
+                    logger.info(f"[MarketScanner] Capital flow cache expired ({cf_date} < {today})")
+            except Exception:
+                pass
+
+        # 无当天缓存 → 自动跑 Step 1b
+        if not cf_loaded:
+            logger.info(f"[MarketScanner] Auto-running capital flow scan...")
+            try:
+                from app.domain.research.agents.capital_flow_scanner import CapitalFlowScanner
+                from app.framework.pipeline.trace import TraceContext
+                cf_scanner = CapitalFlowScanner(provider=DeepSeekProvider())
+                cf_trace = TraceContext(generate_run_id("资本流向"))
+                cf_result = await cf_scanner.analyze(ctx={}, trace=cf_trace)
+                vectors = cf_result.get("capex_vectors", [])
                 for v in vectors:
                     tt = v.get("theme_type", "")
                     if tt in ("industrial_capex", "commodity_cycle"):
                         for beneficiary in v.get("china_beneficiary", [])[:2]:
                             hypothesis.append({"sector": beneficiary, "name": beneficiary,
                                 "capex_initiator": v.get("initiator", ""), "target": v.get("target", "")})
-                if hypothesis:
-                    logger.info(f"[MarketScanner] Using capital_flow vectors: {len(hypothesis)} candidates")
-            except Exception:
-                pass
-        # 降级: 用 Step 1a 宏观主题
-        if not hypothesis:
-            macro_path = _os.path.join(_os.path.dirname(__file__), "..", "..", "..", "..", "data", "macro_report.json")
-            macro_path = _os.path.abspath(macro_path)
-            if _os.path.exists(macro_path):
-                with open(macro_path, "r", encoding="utf-8") as f:
-                    macro = _json.load(f)
-                themes = macro.get("data", {}).get("executive_summary", {}).get("top_3_themes", [])
-                hypothesis = [{"sector": t.get("theme", t.get("name", "")), "name": t.get("theme", "")} for t in themes[:4] if t.get("theme")]
+                # 保存 Step 1b checkpoint
+                cf_run_id = generate_run_id("资本流向")
+                ih = hash_input({"step": "capital_flow", "date": today})
+                save_checkpoint("step1b_capital_flow", cf_run_id, ih, cf_result, {"elapsed": 0})
+                cf_trace.write("step1b_capital_flow")
+                save_manifest(cf_run_id, {"run_id": cf_run_id, "industry": "资本流向", "status": "completed",
+                    "mode": "auto", "mode_id": "capital_flow", "agent_id": "supply_chain",
+                    "started_at": cf_trace.to_dict()["started_at"],
+                    "completed_at": datetime.now().isoformat(), "step": "step1b_capital_flow"})
+                logger.info(f"[MarketScanner] Capital flow done: {len(hypothesis)} candidates")
+            except Exception as e:
+                logger.warning(f"[MarketScanner] Capital flow auto-run failed: {e}")
+
         ctx = {"mode": "auto", "hypothesis_sectors": hypothesis}
         if not hypothesis: ctx = {"mode": "auto"}
     else:
