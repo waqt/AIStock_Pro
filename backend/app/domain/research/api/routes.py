@@ -71,7 +71,6 @@ AGENT_REGISTRY = [
         "name": "产业链分析智能体",
         "desc": "产业链穿透 + 系统动力学 + CIO报告",
         "icon": "sitemap",
-        "regimes": ["industrial_capex_expansion", "policy_driven"],  # 支持的宏观 regime
         "modes": [
             {"id": "auto_scan",          "name": "全局扫描",
              "desc": "全自动从宏观到报告，一站式产业链深度分析",
@@ -377,44 +376,17 @@ async def _do_scan(req: ScanRequest):
 
     if mode_id == "macro_only":
         target = "宏观周期分析-" + datetime.now().strftime("%Y%m%d-%H%M")
-        report_label = target
-        step = "step1_macro"
-        run_id = generate_run_id(report_label)
-        # 刷新 Step 1a 宏观报告
         from app.domain.research.agents.global_capex_scanner import GlobalCapexScanner
         gcs = GlobalCapexScanner(provider=DeepSeekProvider())
         macro_result = await gcs.synthesize_macro_report()
-        return {"success": True, "data": macro_result, "run_id": run_id,
+        return {"success": True, "data": macro_result, "run_id": generate_run_id(target),
                 "freshness": ResearchAgent.freshness_stamp()}
 
     if mode_id in ("auto_scan", "capital_flow"):
         import os as _os, json as _json, glob as _glob
         hypothesis = []
-        target = "全局扫描-" + datetime.now().strftime("%Y%m%d-%H%M")
+        target = (mode_id == "auto_scan" and "全局扫描-" or "资本流向-") + datetime.now().strftime("%Y%m%d-%H%M")
         today = datetime.now().strftime("%Y%m%d")
-
-        # Step 1a: 检查宏观路由 (过期自动刷新)
-        macro_path = _os.path.join(_os.path.dirname(__file__), "..", "..", "..", "..", "data", "macro_report.json")
-        macro_path = _os.path.abspath(macro_path)
-        active_agents = {"supply_chain": {"confidence": "medium"}}  # 默认激活 supply_chain
-        if _os.path.exists(macro_path):
-            with open(macro_path, "r", encoding="utf-8") as f:
-                macro = _json.load(f)
-            macro_date = (macro.get("generated_at", "") or "")[:10]
-            if macro_date == today:
-                agents = macro.get("data", {}).get("routing", {}).get("active_agents", {})
-                active_agents = agents if agents else active_agents
-                logger.info(f"[MarketScanner] Step 1a routing: {list(active_agents.keys())}")
-            else:
-                logger.info(f"[MarketScanner] Macro report expired ({macro_date} < {today}), using default routing")
-
-        # 检查是否有可激活的 agent (confidence >= medium)
-        activated = [aid for aid, info in active_agents.items() if info.get("confidence", "low") in ("high", "medium")]
-        if not activated:
-            return {"success": True, "data": {
-                "warning": "当前宏观环境无活跃分析智能体 (所有 agent confidence=low/risk_off)。请稍后重试。",
-                "routing": active_agents
-            }, "run_id": run_id, "freshness": ResearchAgent.freshness_stamp()}
 
         # Step 1b: 资本流向缓存或自动运行
         base_data = _os.path.abspath(_os.path.join(_os.path.dirname(__file__), "..", "..", "..", "..", "data"))

@@ -94,15 +94,8 @@ DataTabs.Macro = {
       if (!d) return;
       var es = d.executive_summary;
       if (!es) return;
-      var routing = d.routing || {};
-      var regimeLabels = {
-        industrial_capex_expansion: '产业CAPEX扩张',
-        policy_driven: '政策驱动',
-        consumer_expansion: '消费扩张',
-        liquidity_driven: '流动性驱动',
-        risk_off: '防御模式'
-      };
-      var regime = regimeLabels[routing.regime] || routing.regime || '未判定';
+      var mr = d.macro_regime || {};
+      var regime = mr.cycle_position || mr.capital_flow_direction || '—';
       var genTime = (d.generated_at || '').substring(0, 16).replace('T', ' ');
       var validTime = (d.valid_until || '').substring(0, 10);
       var card = '<div class="macro-report-card" style="grid-column:1/-1;background:rgba(255,255,255,0.03);border:1px solid var(--accent-blue);border-radius:6px;padding:10px 14px;margin-bottom:4px;">' +
@@ -116,7 +109,7 @@ DataTabs.Macro = {
         '<div style="color:var(--text-dim);font-size:11px;margin-top:6px;line-height:1.6;">' +
         '<div><strong>定调：</strong>' + (es.one_liner || '未生成') + '</div>' +
         '<div><strong>流动性：</strong>' + (es.liquidity_direction || '—') + '</div>' +
-        (routing.reasoning ? '<div style="margin-top:3px;color:var(--accent-blue);font-size:10px;"><strong>路由决策：</strong>' + routing.reasoning + '</div>' : '') +
+        (mr.implication ? '<div style="margin-top:3px;color:var(--accent-blue);font-size:10px;">' + mr.implication + '</div>' : '') +
         '</div></div>';
       el.insertAdjacentHTML('afterbegin', card);
     } catch(e) { /* 可选, 失败静默 */ }

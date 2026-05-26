@@ -284,31 +284,20 @@ class GlobalCapexScanner(ResearchAgent):
     "liquidity": {{ "source": "web_search+LLM", "as_of": "今天" }}
   }},
 
-  "routing": {{
-    "active_agents": {{
-      "supply_chain": {{"confidence": "high", "reason": "CAPEX扩张+PMI>50, 产业资本开支活跃"}},
-      "consumer": {{"confidence": "low", "reason": "消费信贷温和, 未到扩张阈值"}}
-    }},
-    "macro_regime_summary": "当前宏观周期的简要定性 (2-3句)"
+  "macro_regime": {{
+    "cycle_position": "当前经济周期位置 (复苏/扩张/滞胀/衰退)",
+    "capital_flow_direction": "资本流向判断: 产业CAPEX主导 / 消费驱动 / 金融资产 / 防御",
+    "key_data_points": ["支撑判断的关键数据点1", "数据点2", "数据点3"],
+    "implication": "对投资的含义 (2-3句, 纯事实描述, 不做推荐)"
   }}
 }}
-
-## routing.active_agents 判定标准 (★ 每个 agent 独立判断)
-- supply_chain (产业链分析): 企业CAPEX加速 / 制造业PMI>50扩张 / 专项债投向产业 → confidence=high/medium/low
-- consumer (消费分析, 未来): 居民信贷扩张 / 消费增速>GDP / 社零增速上行 → confidence=high/medium/low
-- macro_trading (宏观交易, 未来): 流动性泛滥 / 风险偏好极高 / 商品周期 → confidence=high/medium/low
-- 每个 agent 独立评估, 不要互斥。多个 agent 可以同时 high
-- confidence=high: 有明确数据支撑 → 激活
-- confidence=medium: 有间接信号 → 激活
-- confidence=low: 条件不成熟 → 不激活
-- 如果所有 agent 都是 low, 标注 risk_off 防御模式
 
 ## 规则
 - 所有数字必须来自结构化数据 (DB), 不得编造
 - 如果 DB 中某字段缺失, 标注 "数据未覆盖" 并用搜索补充
 - benefited_sectors 必须包含 A 股映射代码 (6位)
 - 结论必须简洁, 每个字段 1-3 句
-- routing 影响下游智能体选择, 必须基于真实数据判断, 不要随便选 risk_off"""
+- macro_regime 是客观定性, 不是投资建议"""
         try:
             t0 = _time.time()
             text = await asyncio.wait_for(
