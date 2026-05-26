@@ -282,14 +282,30 @@ class GlobalCapexScanner(ResearchAgent):
     "fed_rate": {{ "value": "从DB", "as_of": "日期", "source": "akshare" }},
     "us10y": {{ "value": "从DB", "as_of": "日期", "source": "akshare" }},
     "liquidity": {{ "source": "web_search+LLM", "as_of": "今天" }}
+  }},
+
+  "routing": {{
+    "regime": "industrial_capex_expansion",
+    "confidence": "high",
+    "reasoning": "为什么判定为该regime (引用CAPEX/PMI/信用数据, 2-3句)",
+    "recommended_agents": ["supply_chain"],
+    "secondary_agents": []
   }}
 }}
 
-规则:
+## routing.regime 枚举 (★ 强制选择最匹配的一个)
+- industrial_capex_expansion: 企业CAPEX加速, 制造业PMI扩张, 产业资本开支主导周期
+- policy_driven: 财政主导, 产业政策密集, 政府投资拉动
+- consumer_expansion: 居民信贷扩张, 消费增速>GDP, 消费品景气 (未来扩展)
+- liquidity_driven: 流动性泛滥, 风险偏好极高, 金融资产主导 (未来扩展)
+- risk_off: 防御模式, 全球紧缩/地缘危机, 不推荐重仓分析
+
+## 规则
 - 所有数字必须来自结构化数据 (DB), 不得编造
 - 如果 DB 中某字段缺失, 标注 "数据未覆盖" 并用搜索补充
 - benefited_sectors 必须包含 A 股映射代码 (6位)
-- 结论必须简洁, 每个字段 1-3 句"""
+- 结论必须简洁, 每个字段 1-3 句
+- routing 影响下游智能体选择, 必须基于真实数据判断, 不要随便选 risk_off"""
         try:
             t0 = _time.time()
             text = await asyncio.wait_for(

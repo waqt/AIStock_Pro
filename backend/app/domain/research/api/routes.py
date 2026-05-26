@@ -71,6 +71,7 @@ AGENT_REGISTRY = [
         "name": "产业链分析智能体",
         "desc": "产业链穿透 + 系统动力学 + CIO报告",
         "icon": "sitemap",
+        "regimes": ["industrial_capex_expansion", "policy_driven"],  # 支持的宏观 regime
         "modes": [
             {"id": "auto_scan",          "name": "全局扫描",
              "desc": "全自动从宏观到报告，一站式产业链深度分析",
