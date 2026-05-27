@@ -95,7 +95,9 @@ const Modal = {
 	custom({title, content, wide}) {
 		this._ensureDOM();
 		var box = document.getElementById('dark-modal-box');
-		box.style.maxWidth = wide ? '1100px' : '560px';
+		box.style.maxWidth = wide ? '95vw' : '560px';
+		box.style.width = wide ? '95vw' : '';
+		box.style.minHeight = wide ? '80vh' : '';
 		document.getElementById('dark-modal-title').textContent = title;
 		document.getElementById('dark-modal-body').innerHTML = content;
 		document.getElementById('dark-modal-actions').innerHTML = '';
