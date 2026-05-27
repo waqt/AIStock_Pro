@@ -271,8 +271,8 @@ class SupplyChainHacker(ResearchAgent):
 
         try:
             text = await asyncio.wait_for(
-                self.provider.chat_flash(prompt, max_tokens=8192), timeout=120)
-            if trace: trace.record_llm(prompt, text, model="deepseek-v4-flash")
+                self.provider.chat_pro(prompt, max_tokens=8192), timeout=480)
+            if trace: trace.record_llm(prompt, text, model="deepseek-v4-pro")
             result = self.parse_json(text)
             if isinstance(result, dict) and result.get("parse_error"):
                 logger.warning(f"[{self.name}] Struct parse failed, retrying...")
