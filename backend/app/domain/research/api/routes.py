@@ -55,7 +55,7 @@ FULL_PIPELINE = [
 
 # 已实现的步骤
 IMPLEMENTED_STEPS = {
-    "step1_macro", "step1b_capital_flow", "step2_gatekeeper", "step3_sc_hacker"
+    "step1_macro", "step1b_capital_flow", "step2_gatekeeper", "step3_sc_hacker", "step4_system_dynamics"
 }
 
 # 可选步骤（不阻塞 pipeline）
@@ -657,6 +657,53 @@ async def industry_drilldown(req: IndustryDrilldownRequest):
         raise
     except Exception as e:
         logger.error(f"[Drilldown] Failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class SystemDynamicsRequest(BaseModel):
+    industry: str = ""
+    step3_output: dict = None
+
+
+@router.post("/system-dynamics")
+async def system_dynamics_analysis(req: SystemDynamicsRequest = SystemDynamicsRequest(),
+                                     async_mode: bool = Query(default=False)):
+    """Step 4: 系统动力学推演 — ?async_mode=true 后台执行"""
+    if async_mode:
+        from app.framework.tasks.engine import TaskEngine
+        exec_id = await TaskEngine.run_task("research_analyze", {
+            "agent_id": "supply_chain", "mode_id": "step4_standalone",
+            "target": req.industry, "step3_output": req.step3_output,
+        })
+        return {"success": True, "data": {"exec_id": exec_id, "status": "PENDING"}}
+    try:
+        from app.framework.ai.providers.deepseek import DeepSeekProvider
+        from app.domain.research.agents.system_dynamics_agent import SystemDynamicsAgent
+        from app.framework.pipeline.checkpoint import generate_run_id, hash_input, load_checkpoint, save_checkpoint
+        from app.framework.pipeline.trace import TraceContext
+
+        industry = req.industry.strip()
+        if not industry:
+            raise HTTPException(status_code=400, detail="industry is required")
+
+        agent = SystemDynamicsAgent(provider=DeepSeekProvider())
+        run_id = generate_run_id(industry)
+        step3 = req.step3_output or {}
+        ctx = {"industry": industry,
+               "supply_chain_map": step3.get("supply_chain_map", []),
+               "scarcity_ranking": step3.get("scarcity_ranking", []),
+               "core_stocks": step3.get("core_stocks", [])}
+        trace = TraceContext(run_id)
+        result = await agent.analyze(ctx, trace=trace)
+
+        input_hash = hash_input({"industry": industry, "date": __import__("datetime").datetime.now().strftime("%Y%m%d")})
+        save_checkpoint("step4_system_dynamics", run_id, input_hash, result, {"elapsed": 0})
+        trace.write("step4_system_dynamics")
+        return {"success": True, "data": result, "run_id": run_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[SystemDynamics] Failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

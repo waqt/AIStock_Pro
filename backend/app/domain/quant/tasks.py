@@ -154,6 +154,26 @@ async def research_analyze_task(exec_id: str = None, industry: str = "", questio
                     save_checkpoint("step3_sc_hacker", run_id, ih, step3_result, {"elapsed": 0})
                     trace.write("step3_sc_hacker")
 
+                    # Step 4: 系统动力学推演 (Step 3 有实质产出时触发)
+                    if len(step3_result.get("supply_chain_map", [])) >= 2:
+                        if exec_id: await task_manager.update_progress(exec_id, 52, "Step4: 系统动力学推演...")
+                        try:
+                            from app.domain.research.agents.system_dynamics_agent import SystemDynamicsAgent
+                            sd = SystemDynamicsAgent(provider=DeepSeekProvider())
+                            sd_ctx = {"industry": target or mode_id,
+                                      "supply_chain_map": step3_result.get("supply_chain_map", []),
+                                      "scarcity_ranking": step3_result.get("scarcity_ranking", []),
+                                      "core_stocks": step3_result.get("core_stocks", [])}
+                            sd_trace = TraceContext(run_id)
+                            step4_result = await sd.analyze(sd_ctx, trace=sd_trace)
+                            sd_ih = hash_input({"industry": target or mode_id,
+                                                "date": _time.strftime("%Y%m%d"), "agent_version": "system_dynamics_v1.0"})
+                            save_checkpoint("step4_system_dynamics", run_id, sd_ih, step4_result, {"elapsed": 0})
+                            sd_trace.write("step4_system_dynamics")
+                            if exec_id: await task_manager.update_progress(exec_id, 55, "Step4完成")
+                        except Exception as e:
+                            logger.warning(f"[ResearchTask] Step4 failed (non-fatal): {e}")
+
                     if exec_id: await task_manager.update_progress(exec_id, 98, "Step3完成, 落盘中...")
                     logger.info(f"[ResearchTask] Step3 DONE: {len(step3_result.get('supply_chain_map',[]))} layers")
                 except Exception as e:
