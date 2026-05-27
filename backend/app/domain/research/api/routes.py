@@ -61,6 +61,21 @@ IMPLEMENTED_STEPS = {
 # 可选步骤（不阻塞 pipeline）
 OPTIONAL_STEPS = {"step8_human_capital"}
 
+# Step 1b → Step 2 桥接: 系统压力节点映射到候选产业
+PRESSURE_INDUSTRY_MAP = {
+    "power_infrastructure": ["变压器", "电网设备", "铜"],
+    "thermal_management": ["液冷散热", "服务器电源"],
+    "memory_bandwidth": ["HBM高带宽内存", "先进封装"],
+    "compute_chip": ["AI芯片", "GPU"],
+    "optical_communication": ["光模块", "光芯片"],
+    "energy_storage": ["储能", "锂电池"],
+}
+FALLBACK_HYPOTHESIS = [
+    {"sector": "AI算力基础设施", "name": "AI算力"},
+    {"sector": "半导体设备国产化", "name": "半导体设备"},
+    {"sector": "电力设备与电网升级", "name": "电网设备"},
+]
+
 
 # ═══ 分析智能体注册表 ═══════════════════════
 # 新增智能体只需在此加一条, 前端自动加载
@@ -407,10 +422,9 @@ async def _do_scan(req: ScanRequest, pre_run_id: str = None):
                         vectors = output.get("capex_vectors", [])
                         logger.info(f"[MarketScanner] Using legacy capex_vectors format")
                     # 系统节点 → 候选产业映射 (Step 1b → Step 2 桥接)
-                    pressure_map = {"power_infrastructure":["变压器","电网设备","铜"],"thermal_management":["液冷散热","服务器电源"],"memory_bandwidth":["HBM高带宽内存","先进封装"],"compute_chip":["AI芯片","GPU"],"optical_communication":["光模块","光芯片"],"energy_storage":["储能","锂电池"]}
                     for v in vectors:
                         node = v.get("system_node", "")
-                        industries = pressure_map.get(node, [])
+                        industries = PRESSURE_INDUSTRY_MAP.get(node, [])
                         for ind in industries[:2]:
                             hypothesis.append({"sector": ind, "name": ind,
                                 "pressure_node": node, "pressure_signals": v.get("pressure_signals", [])[:2]})
@@ -420,8 +434,8 @@ async def _do_scan(req: ScanRequest, pre_run_id: str = None):
                         logger.info(f"[MarketScanner] Using capital_flow cache: {len(hypothesis)} candidates")
                 else:
                     logger.info(f"[MarketScanner] Capital flow cache expired ({cf_date} < {today})")
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"[MarketScanner] Capital flow cache read failed: {e}")
 
         # 无当天缓存 → 自动跑 Step 1b
         if not cf_loaded:
@@ -439,7 +453,7 @@ async def _do_scan(req: ScanRequest, pre_run_id: str = None):
                     vectors = output.get("capex_vectors", [])
                 for v in vectors:
                     node = v.get("system_node", v.get("target", ""))
-                    industries = pressure_map.get(node, [])
+                    industries = PRESSURE_INDUSTRY_MAP.get(node, [])
                     for ind in industries[:2]:
                         hypothesis.append({"sector": ind, "name": ind,
                             "pressure_node": node, "pressure_signals": v.get("pressure_signals", [])[:2]})
@@ -461,11 +475,8 @@ async def _do_scan(req: ScanRequest, pre_run_id: str = None):
                 except Exception: pass
 
         if not hypothesis:
-            # Step 1b 失败 → 不退化到 legacy, 而是用搜索结果直接提取候选
-            logger.warning(f"[MarketScanner] Capital flow returned no vectors, using raw search fallback")
-            hypothesis = [{"sector": "AI算力基础设施", "name": "AI算力"},
-                          {"sector": "半导体设备国产化", "name": "半导体设备"},
-                          {"sector": "电力设备与电网升级", "name": "电网设备"}]
+            logger.warning(f"[MarketScanner] Capital flow returned no vectors, using fallback")
+            hypothesis = FALLBACK_HYPOTHESIS
         ctx = {"mode": "auto", "hypothesis_sectors": hypothesis}
     else:
         ctx = {"mode": "manual" if mode_def["input_type"] != "none" else "auto"}
