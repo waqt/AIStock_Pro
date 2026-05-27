@@ -335,6 +335,8 @@ async function loadIndustryList() {
                 '</div>';
         });
         listHtml += '</div>';
+        var old = document.getElementById('industry-list');
+        if (old) old.remove();
         document.getElementById('step-cards').insertAdjacentHTML('afterend', '<div id="industry-list">' + listHtml + '</div>');
     } catch(e) { /* 静默 */ }
 }
@@ -366,73 +368,61 @@ async function drilldownIndustry(name, btn) {
 async function loadOutput(step) {
     currentStep = step;
     editMode = false;
-    document.getElementById('btn-edit').style.display = '';
-    document.getElementById('btn-save').style.display = 'none';
-    document.getElementById('btn-cancel').style.display = 'none';
-    document.getElementById('output-panel').style.display = '';
-    document.getElementById('output-title').textContent = '节点输出: ' + step;
-    var container = document.getElementById('output-content');
-    container.innerHTML = '<div style="color:var(--text-micro);text-align:center;padding:20px;"><i class="fas fa-spinner fa-spin"></i> 加载中...</div>';
     try {
         var res = await fetch(API_BASE + '/research/pipeline/' + currentRunId + '/checkpoint/' + step);
         var d = await res.json();
         var output = (d.data || {}).output || {};
         currentOutput = {step: step, output: output};
         var jsonStr = JSON.stringify(output, null, 2);
-        container.innerHTML = '<textarea class="output-editor" id="output-editor" readonly>' + escHtml(jsonStr) + '</textarea>';
+        var modalId = 'output-modal-' + Date.now();
+        var html = '<div style="min-width:700px;max-height:70vh;">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">' +
+            '<span style="color:var(--accent-blue);font-size:12px;">' + escHtml(step) + '</span>' +
+            '<div style="display:flex;gap:4px;">' +
+            '<button class="btn-proj" id="output-btn-edit" onclick="outputToggleEdit()"><i class="fas fa-edit"></i> 编辑</button>' +
+            '<button class="btn-proj success" id="output-btn-save" onclick="outputSaveEdit()" style="display:none;"><i class="fas fa-check"></i> 保存</button>' +
+            '<button class="btn-proj" id="output-btn-cancel" onclick="outputToggleEdit()" style="display:none;"><i class="fas fa-times"></i> 取消</button>' +
+            '</div></div>' +
+            '<textarea id="output-editor" readonly style="width:100%;min-height:400px;background:#000;color:var(--accent-green);border:1px solid var(--border-color);padding:10px;font-family:var(--font-mono);font-size:11px;resize:vertical;">' + escHtml(jsonStr) + '</textarea></div>';
+        Modal.custom({title: '节点输出: ' + step, content: html});
     } catch(e) {
-        container.innerHTML = '<div class="placeholder" style="color:var(--accent-red);">加载失败: ' + e.message + '</div>';
+        Modal.alert('错误', '加载失败: ' + e.message);
     }
 }
 
-function toggleEdit() {
+function outputToggleEdit() {
     editMode = !editMode;
     var ta = document.getElementById('output-editor');
-    document.getElementById('btn-edit').style.display = editMode ? 'none' : '';
-    document.getElementById('btn-save').style.display = editMode ? '' : 'none';
-    document.getElementById('btn-cancel').style.display = editMode ? '' : 'none';
+    document.getElementById('output-btn-edit').style.display = editMode ? 'none' : '';
+    document.getElementById('output-btn-save').style.display = editMode ? '' : 'none';
+    document.getElementById('output-btn-cancel').style.display = editMode ? '' : 'none';
     if (ta) ta.readOnly = !editMode;
-    if (!editMode) {
-        // Cancel — reload original
-        if (ta && currentOutput) {
-            ta.value = currentOutput._original || ta.value;
-        }
-    } else {
-        // Enter edit — save original
-        if (ta) currentOutput._original = ta.value;
+    if (!editMode && ta && currentOutput) {
+        ta.value = JSON.stringify(currentOutput.output, null, 2);
     }
 }
 
-async function saveEdit() {
+async function outputSaveEdit() {
     var ta = document.getElementById('output-editor');
     if (!ta || !currentStep) return;
     var newOutput;
-    try {
-        newOutput = JSON.parse(ta.value);
-    } catch(e) {
-        Modal.alert('JSON 格式错误', '请检查 JSON 语法: ' + e.message);
-        return;
-    }
+    try { newOutput = JSON.parse(ta.value); }
+    catch(e) { Modal.alert('JSON 格式错误', e.message); return; }
     try {
         var res = await fetch(API_BASE + '/research/pipeline/' + currentRunId + '/checkpoint/' + currentStep, {
-            method: 'PUT',
-            headers: {'Content-Type': 'application/json'},
+            method: 'PUT', headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({output: newOutput})
         });
         var d = await res.json();
         if (d.success) {
             editMode = false;
-            document.getElementById('btn-edit').style.display = '';
-            document.getElementById('btn-save').style.display = 'none';
-            document.getElementById('btn-cancel').style.display = 'none';
+            document.getElementById('output-btn-edit').style.display = '';
+            document.getElementById('output-btn-save').style.display = 'none';
+            document.getElementById('output-btn-cancel').style.display = 'none';
             if (ta) ta.readOnly = true;
-            Modal.alert('保存成功', '检查点已更新: ' + d.data.saved);
-        } else {
-            Modal.alert('保存失败', d.message || '未知错误');
+            Modal.alert('保存成功', '检查点已更新');
         }
-    } catch(e) {
-        Modal.alert('保存失败', e.message);
-    }
+    } catch(e) { Modal.alert('保存失败', e.message); }
 }
 
 function closeOutput() {
