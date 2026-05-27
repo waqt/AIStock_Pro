@@ -443,33 +443,32 @@ function closeOutput() {
 // ═══ Trace Viewer ═══════════════════════════════
 
 async function loadTrace(step) {
-    var panel = document.getElementById('trace-panel');
-    var list = document.getElementById('trace-list');
-    panel.style.display = '';
-    document.getElementById('trace-title').textContent = '溯源日志: ' + step;
-    list.innerHTML = '<div style="color:var(--text-micro);text-align:center;padding:10px;"><i class="fas fa-spinner fa-spin"></i> 加载中...</div>';
     try {
         var res = await fetch(API_BASE + '/research/pipeline/' + currentRunId + '/trace/' + step);
         var d = await res.json();
         var events = (d.data || {}).events || [];
+        var html = '';
         if (!events.length) {
-            list.innerHTML = '<div class="placeholder" style="font-size:11px;">暂无溯源记录</div>';
-            return;
+            html = '<div class="placeholder" style="font-size:11px;padding:20px;">暂无溯源记录</div>';
+        } else {
+            html = events.map(function(e, i) {
+                var typeIcon = e.type === 'search' ? '🔍' : (e.type === 'llm' ? '🤖' : (e.type === 'note' ? '📝' : '📎'));
+                var detail = '';
+                if (e.type === 'search') {
+                    detail = 'q=' + escHtml((e.query || '').substring(0, 80)) + ' · r=' + (e.result_count || 0);
+                } else if (e.type === 'llm') {
+                    detail = 'prompt=' + (e.prompt||'').length + ' chars · response=' + (e.response||'').length + ' chars';
+                } else if (e.type === 'note') {
+                    detail = escHtml((e.value || '').substring(0, 150));
+                }
+                return '<div class="trace-event" style="padding:4px 8px;border-bottom:1px solid var(--border-thin);font-size:11px;">' +
+                    '<span class="type" style="color:var(--accent-blue);">' + typeIcon + ' ' + e.type + '</span>' +
+                    '<span class="detail" style="color:var(--text-dim);margin-left:8px;">' + detail + '</span></div>';
+            }).join('');
         }
-        list.innerHTML = events.map(function(e, i) {
-            var typeIcon = e.type === 'search' ? '🔍' : (e.type === 'llm' ? '🤖' : (e.type === 'note' ? '📝' : '📎'));
-            var detail = '';
-            if (e.type === 'search') {
-                detail = 'q=' + escHtml((e.query || '').substring(0, 60)) + ' · r=' + (e.result_count || 0);
-            } else if (e.type === 'llm') {
-                detail = 'prompt=' + (e.prompt||'').length + ' chars · response=' + (e.response||'').length + ' chars';
-            } else if (e.type === 'note') {
-                detail = escHtml((e.value || '').substring(0, 120));
-            }
-            return '<div class="trace-event"><span class="type">' + typeIcon + ' ' + e.type + '</span><span class="detail">' + detail + '</span></div>';
-        }).join('');
+        Modal.custom({title: '溯源日志: ' + step, content: '<div style="max-height:65vh;overflow-y:auto;">' + html + '</div>', wide: true});
     } catch(e) {
-        list.innerHTML = '<div class="placeholder" style="color:var(--accent-red);">加载失败: ' + e.message + '</div>';
+        Modal.alert('错误', '加载失败: ' + e.message);
     }
 }
 
