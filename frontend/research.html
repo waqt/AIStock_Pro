@@ -375,18 +375,23 @@ async function loadOutput(step) {
         currentOutput = {step: step, output: output};
         var jsonStr = JSON.stringify(output, null, 2);
         var modalId = 'output-modal-' + Date.now();
-        var html = '<div style="width:85vw;max-width:1100px;">' +
-            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">' +
-            '<span style="color:var(--accent-blue);font-size:12px;">' + escHtml(step) + '</span>' +
-            '<div style="display:flex;gap:4px;">' +
-            '<button class="btn-proj" id="output-btn-edit" onclick="outputToggleEdit()"><i class="fas fa-edit"></i> 编辑</button>' +
-            '<button class="btn-proj success" id="output-btn-save" onclick="outputSaveEdit()" style="display:none;"><i class="fas fa-check"></i> 保存</button>' +
-            '<button class="btn-proj" id="output-btn-cancel" onclick="outputToggleEdit()" style="display:none;"><i class="fas fa-times"></i> 取消</button>' +
-            '<button class="btn-proj" onclick="loadTrace(\'' + step + '\')"><i class="fas fa-search"></i> 溯源</button>' +
-            '<button class="btn-proj" onclick="Modal.close()"><i class="fas fa-times"></i> 关闭</button>' +
-            '</div></div>' +
-            '<textarea id="output-editor" readonly style="width:100%;min-height:70vh;background:#000;color:var(--accent-green);border:1px solid var(--border-color);padding:10px;font-family:var(--font-mono);font-size:11px;resize:vertical;">' + escHtml(jsonStr) + '</textarea></div>';
-        Modal.custom({title: '节点输出: ' + step, content: html});
+        var modalId = 'output-' + Date.now();
+        var html = '<textarea id="output-editor" readonly style="width:100%;min-height:65vh;background:#000;color:var(--accent-green);border:1px solid var(--border-color);padding:10px;font-family:var(--font-mono);font-size:11px;resize:vertical;">' + escHtml(jsonStr) + '</textarea>';
+        Modal.custom({title: '节点输出: ' + step, content: html, wide: true});
+        // 按钮放在 title bar 右侧
+        var titleEl = document.getElementById('dark-modal-title');
+        if (titleEl) {
+            titleEl.style.display = 'flex';
+            titleEl.style.justifyContent = 'space-between';
+            titleEl.style.alignItems = 'center';
+            titleEl.innerHTML = '<span>节点输出: ' + escHtml(step) + '</span>' +
+                '<div style="display:flex;gap:4px;">' +
+                '<button class="btn-proj" style="font-size:10px;" id="output-btn-edit" onclick="outputToggleEdit()"><i class="fas fa-edit"></i> 编辑</button>' +
+                '<button class="btn-proj success" style="font-size:10px;" id="output-btn-save" onclick="outputSaveEdit()" style="display:none;"><i class="fas fa-check"></i> 保存</button>' +
+                '<button class="btn-proj" style="font-size:10px;" id="output-btn-cancel" onclick="outputToggleEdit()" style="display:none;"><i class="fas fa-times"></i> 取消</button>' +
+                '<button class="btn-proj" style="font-size:10px;" onclick="loadTrace(\'' + step + '\')"><i class="fas fa-search"></i> 溯源</button>' +
+                '<button class="btn-proj" style="font-size:10px;" onclick="Modal.close()"><i class="fas fa-times"></i> 关闭</button></div>';
+        }
     } catch(e) {
         Modal.alert('错误', '加载失败: ' + e.message);
     }
