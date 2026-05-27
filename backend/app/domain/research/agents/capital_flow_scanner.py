@@ -1,7 +1,8 @@
 """
-CapitalFlowScanner V1.0 — Step 1b: 全球资本流向扫描
-定位: 寻找全球资本正在挤压产业系统的位置
-输出: capex_vectors + constraint_vectors
+CapitalFlowScanner V1.1 — Step 1b: 全球资本流向扫描
+定位: 寻找全球资本正在挤压产业系统的位置 — 行业无关, 不预设赛道
+V1.1: 搜索链由用户行业+宏观regime动态生成, 去除硬编码AI/电力偏向
+输出: pressure_vectors + constraint_vectors
 """
 import asyncio, re
 from decimal import Decimal
@@ -12,7 +13,7 @@ from app.framework.logger import logger
 
 
 class CapitalFlowScanner(ResearchAgent):
-    """资本流向扫描 — 谁在花钱? 花在哪? 约束在哪?"""
+    """资本流向扫描 V1.1 — 谁在花钱? 花在哪? 约束在哪? (行业无关)"""
 
     def __init__(self, provider=None):
         super().__init__(provider=provider, data_loader=data_loader)
@@ -46,40 +47,72 @@ class CapitalFlowScanner(ResearchAgent):
 
     # ═══ 主入口 ═══════════════════════════════
 
+    def _build_search_chains(self, industry: str = None) -> List[List[str]]:
+        """构建搜索链 — 由用户行业驱动, 不预设赛道"""
+        if industry and industry.strip():
+            ind = industry.strip()
+            return [
+                [f"{ind} 全球 资本开支 CAPEX 投资 龙头 2026",
+                 f"{ind} related global capex investment 2026",
+                 f"global {ind} capital expenditure spending"],
+                [f"{ind} 产业链 瓶颈 产能 供给约束 短缺 2026",
+                 f"{ind} 供应链 制约 产能缺口 2026",
+                 f"{ind} supply chain bottleneck constraint 2026"],
+                [f"中国 {ind} 专项债 财政 投资 扩产 2026",
+                 f"{ind} 中国 政策 支持 产能扩张 2026",
+                 f"china {ind} fiscal investment expansion 2026"],
+                [f"{ind} 受益方 供应商 产业链 上游 设备 材料 2026",
+                 f"{ind} 供应链 国产替代 受益标的",
+                 f"{ind} supply chain beneficiary equipment material"],
+                [f"中国 央企 国企 {ind} 资本开支 布局 投资 2026",
+                 f"{ind} 中国 龙头企业 CAPEX 扩产 2026",
+                 f"china state enterprise {ind} capex investment"],
+            ]
+        # 无行业指定 → 宽泛扫描全球+中国资本流向
+        return [
+            [f"2026 全球 资本开支 CAPEX 投资 趋势 行业",
+             f"global capex investment trend sector 2026",
+             f"global capital expenditure spending 2026"],
+            [f"2026 全球 供应链 瓶颈 产能 短缺 制约",
+             f"global supply chain bottleneck shortage constraint 2026",
+             f"global industrial capacity shortage bottleneck"],
+            [f"中国 专项债 财政支出 产业投资 投向 2026",
+             f"中国 财政 产业政策 投资 方向 2026",
+             f"china fiscal spending industrial investment 2026"],
+            [f"全球 资本流向 产业 受益方 供应商 2026",
+             f"global capital flow beneficiary sector 2026",
+             f"capex beneficiary supplier equipment 2026"],
+            [f"中国 央企 国企 资本开支 扩产 投资 方向 2026",
+             f"中国 国家电网 中芯国际 三大运营商 资本开支 2026",
+             f"china state enterprise capex investment 2026"],
+        ]
+
     async def analyze(self, ctx: Dict[str, Any] = None, trace=None) -> Dict[str, Any]:
         ctx = await self.load_context(ctx or {})
         if not self.provider:
             return {"agent": self.name, "error": "No AI provider"}
 
-        logger.info(f"[{self.name}] Scanning global capital flows...")
+        # 从 ctx 获取行业 (用户指定的, 或 Step 1a macro_regime 推断的)
+        industry = ctx.get("industry", ctx.get("target_industry", ""))
+        macro_regime = ctx.get("macro", {}).get("regime", "")
 
-        # 4 轮自适应搜索
-        search_chains = [
-            [f"MAG7 科技巨头 CAPEX 资本开支 2025 2026 数据中心 芯片",
-             f"大型科技企业 资本开支 AI 2026",
-             f"global tech capex spending AI 2026"],
-            [f"AI数据中心 电力 变压器 液冷 交期 瓶颈 2026",
-             f"数据中心 电力瓶颈 变压器短缺 2026",
-             f"data center power constraint transformer shortage"],
-            [f"中国 专项债 财政支出 投向 算力 电网 2026",
-             f"专项债 基建 新质生产力 半导体 2026",
-             f"china fiscal spending infrastructure 2026"],
-            [f"AI芯片 光模块 液冷 先进封装 国产替代 受益 A股 2026",
-             f"算力产业链 国产化 受益标的 A股",
-             f"china AI supply chain beneficiary stocks"],
-            [f"国家电网 中芯国际 三大运营商 中国国企 CAPEX 资本开支 2026",
-             f"中国 央企 国企 资本开支 投资 算力 电网 半导体 2026",
-             f"china state grid SMIC telecom capex investment 2026"],
-        ]
+        logger.info(f"[{self.name}] Scanning: industry='{industry or '(broad)'}', regime='{macro_regime}'")
 
+        search_chains = self._build_search_chains(industry if industry else None)
         search_data = await self._search_adaptive(search_chains, num=4, trace=trace)
+
+        # 行业提示
+        industry_hint = ""
+        if industry:
+            industry_hint = f"用户关注行业: {industry}。请聚焦该行业相关的资本流向和供给约束, 但不要将视野局限于该行业本身——关注上下游相关的系统节点。"
 
         # LLM 结构化输出
         prompt = f"""你是全球资本流向分析师。你的任务不是写宏观报告, 而是识别**全球资本正在挤压哪些产业系统**。
 
 核心问题: 谁在花钱(全球+中国)? 花在哪? 规模多大? 哪个系统节点先承压?
+{industry_hint}
 注意: 必须同时覆盖全球巨头和中国国内资本开支主体, 不要遗漏国内 initiator。
-输出只描述系统节点承压 (电力/散热/存储带宽), 不要出现产业名称或股票代码。
+输出只描述系统级别的承压节点 (如基础设施/设备交期/自然资源/认证壁垒/政策管制), 不要出现具体产业名称或股票代码。
 
 ## 搜索结果
 """
@@ -157,16 +190,16 @@ class CapitalFlowScanner(ResearchAgent):
             if trace: trace.record_llm(prompt, text, model="deepseek-v4-flash")
             result = self.parse_json(text)
             if isinstance(result, dict):
-                n_capex = len(result.get("capex_vectors", []))
+                n_pressure = len(result.get("pressure_vectors", []))
                 n_constraint = len(result.get("constraint_vectors", []))
-                logger.info(f"[{self.name}] Done: {n_capex} capex vectors, {n_constraint} constraints")
-                if trace: trace.record_note("summary", f"capex={n_capex}, constraints={n_constraint}")
+                logger.info(f"[{self.name}] Done: {n_pressure} pressure vectors, {n_constraint} constraints")
+                if trace: trace.record_note("summary", f"pressure={n_pressure}, constraints={n_constraint}")
                 return result
         except (asyncio.TimeoutError, Exception) as e:
             logger.warning(f"[{self.name}] Failed: {e}")
 
         return {"agent": self.name, "error": "Analysis failed",
-                "capex_vectors": [], "constraint_vectors": []}
+                "pressure_vectors": [], "constraint_vectors": []}
 
     # ═══ 基类 ═══════════════════════════════
 
