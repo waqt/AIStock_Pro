@@ -361,7 +361,7 @@ class SupplyChainHacker(ResearchAgent):
 # ═══ 工具 ═════════════════════════════════════
 
         try:
-            text = await asyncio.wait_for(self.provider.chat_pro(prompt, max_tokens=8192), timeout=180)
+            text = await asyncio.wait_for(self.provider.chat_pro(prompt, max_tokens=8192), timeout=300)
             if trace: trace.record_llm(prompt, text, model="deepseek-v4-pro")
             result = self.parse_json(text)
             if isinstance(result, dict) and result.get("parse_error"):
