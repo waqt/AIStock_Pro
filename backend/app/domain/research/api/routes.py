@@ -761,7 +761,43 @@ async def continue_pipeline_step(run_id: str, step: str):
         from app.framework.pipeline.trace import TraceContext
         from app.framework.ai.providers.deepseek import DeepSeekProvider
 
-        if step == "step4_system_dynamics":
+        if step == "step3_sc_hacker":
+            s2_file = find_checkpoint_file(run_id, "step2_gatekeeper")
+            if not s2_file:
+                raise HTTPException(status_code=404, detail="Step 2 checkpoint not found")
+            import json as _json
+            with open(s2_file, "r", encoding="utf-8") as f:
+                s2 = _json.load(f)
+            s2_out = s2.get("output", {})
+            # manual_industry 模式: 读完整的 step2 输出
+            step2_guidance = s2_out.get("_step3_guidance", {})
+            industry = s2_out.get("industry", "")
+
+            hacker_instance = SupplyChainHacker(provider=DeepSeekProvider())
+            ctx = {"industry": industry, "step2_guidance": step2_guidance}
+            trace = TraceContext(run_id)
+            result = await hacker_instance.analyze(ctx, trace=trace)
+            save_checkpoint("step3_sc_hacker", run_id, "continue", result, {"elapsed": 0})
+            trace.write("step3_sc_hacker")
+            # 链 Step 4
+            scm = result.get("supply_chain_map", [])
+            if len(scm) >= 2:
+                try:
+                    from app.domain.research.agents.system_dynamics_agent import SystemDynamicsAgent
+                    sd = SystemDynamicsAgent(provider=DeepSeekProvider())
+                    sd_ctx = {"industry": industry,
+                              "supply_chain_map": scm,
+                              "scarcity_ranking": result.get("scarcity_ranking", []),
+                              "core_stocks": result.get("core_stocks", [])}
+                    sd_trace = TraceContext(run_id)
+                    step4_result = await sd.analyze(sd_ctx, trace=sd_trace)
+                    save_checkpoint("step4_system_dynamics", run_id, "continue", step4_result, {"elapsed": 0})
+                    sd_trace.write("step4_system_dynamics")
+                except Exception as e:
+                    logger.warning(f"[ContinueStep] Step4 chain failed: {e}")
+            return {"success": True, "data": result, "run_id": run_id}
+
+        elif step == "step4_system_dynamics":
             # 找 Step 3 checkpoint
             s3_file = find_checkpoint_file(run_id, "step3_sc_hacker")
             if not s3_file:

@@ -283,6 +283,7 @@ async function loadProjectDetail() {
                 (isDone ? '<div class="step-actions">' +
                 '<button class="btn-proj" onclick="event.stopPropagation();loadOutput(\'' + s + '\')"><i class="fas fa-file-code"></i> 查看输出</button>' +
                 (info.has_trace ? '<button class="btn-proj" onclick="event.stopPropagation();loadTrace(\'' + s + '\')"><i class="fas fa-search"></i> 查看溯源</button>' : '') +
+                (s === 'step2_gatekeeper' ? '<button class="btn-proj success" onclick="event.stopPropagation();continueStep(\'' + s + '\')"><i class="fas fa-play"></i> 继续推演</button>' : '') +
                 (s === 'step3_sc_hacker' ? '<button class="btn-proj success" onclick="event.stopPropagation();continueStep(\'' + s + '\')"><i class="fas fa-play"></i> 继续推演</button>' : '') +
                 '</div>' : '') +
                 '</div>';
@@ -786,7 +787,9 @@ async function deleteProject(runId, name) {
 
 async function continueStep(step) {
     if (!currentRunId) return;
-    var nextStep = step === 'step3_sc_hacker' ? 'step4_system_dynamics' : null;
+    var stepMap = {'step2_gatekeeper': 'step3_sc_hacker', 'step3_sc_hacker': 'step4_system_dynamics'};
+    var nextStep = stepMap[step];
+    if (!nextStep) return;
     if (!nextStep) return;
     var btn = event.target;
     btn.disabled = true;
