@@ -1,8 +1,8 @@
 """
-CapitalFlowScanner V1.1 — Step 1b: 全球资本流向扫描
-定位: 寻找全球资本正在挤压产业系统的位置 — 行业无关, 不预设赛道
-V1.1: 搜索链由用户行业+宏观regime动态生成, 去除硬编码AI/电力偏向
-输出: pressure_vectors + constraint_vectors
+CapitalFlowScanner V1.2 — Step 1b: 资本+能源双维流向扫描
+定位: 资本流向(谁在花钱?) + 能源流向(谁在开足马力生产?)
+V1.2: +能源流向扫描维度, 用电量增速=产业活跃度硬信号, 无法造假
+输出: pressure_vectors + constraint_vectors + energy_flow_signals
 """
 import asyncio, re
 from decimal import Decimal
@@ -13,7 +13,7 @@ from app.framework.logger import logger
 
 
 class CapitalFlowScanner(ResearchAgent):
-    """资本流向扫描 V1.1 — 谁在花钱? 花在哪? 约束在哪? (行业无关)"""
+    """资本+能源双维流向扫描 V1.2 — 钱去了哪? 电耗在了哪?"""
 
     def __init__(self, provider=None):
         super().__init__(provider=provider, data_loader=data_loader)
@@ -45,10 +45,10 @@ class CapitalFlowScanner(ResearchAgent):
             all_data.append({"query": chain[0] if not items else q, "results": items})
         return all_data
 
-    # ═══ 主入口 ═══════════════════════════════
+    # ═══ 搜索链构建 ═══════════════════════════════
 
     def _build_search_chains(self, industry: str = None) -> List[List[str]]:
-        """构建搜索链 — 由用户行业驱动, 不预设赛道"""
+        """资本流向搜索链 — 由用户行业驱动, 不预设赛道"""
         if industry and industry.strip():
             ind = industry.strip()
             return [
@@ -68,7 +68,7 @@ class CapitalFlowScanner(ResearchAgent):
                  f"{ind} 中国 龙头企业 CAPEX 扩产 2026",
                  f"china state enterprise {ind} capex investment"],
             ]
-        # 无行业指定 → 宽泛扫描全球+中国资本流向
+        # 无行业指定 → 宽泛扫描
         return [
             [f"2026 全球 资本开支 CAPEX 投资 趋势 行业",
              f"global capex investment trend sector 2026",
@@ -82,42 +82,83 @@ class CapitalFlowScanner(ResearchAgent):
             [f"全球 资本流向 产业 受益方 供应商 2026",
              f"global capital flow beneficiary sector 2026",
              f"capex beneficiary supplier equipment 2026"],
-            [f"中国 央企 国企 资本开支 扩产 投资 方向 2026",
-             f"中国 国家电网 中芯国际 三大运营商 资本开支 2026",
-             f"china state enterprise capex investment 2026"],
+            [f"中国 央企 国企 龙头 资本开支 扩产 投资 2026",
+             f"中国 大型企业 资本开支 CAPEX 产业投资 2026",
+             f"china state enterprise capex industrial investment 2026"],
         ]
+
+    def _build_energy_chains(self, industry: str = None) -> List[List[str]]:
+        """能源流向搜索链 — 用电量增速 = 产业活跃度硬信号 (无法造假)"""
+        if industry and industry.strip():
+            ind = industry.strip()
+            return [
+                [f"{ind} 用电量 电力消费 增速 产能利用率 2026",
+                 f"{ind} 电力需求 耗电 增长 2026",
+                 f"{ind} electricity consumption growth 2026"],
+                [f"{ind} 能源消耗 开工率 产量 产能 扩张 2026",
+                 f"{ind} 产能利用率 高负荷 满产 2026",
+                 f"{ind} capacity utilization production surge 2026"],
+            ]
+        return [
+            [f"中国 行业 用电量 增速 排名 电力消费 2026",
+             f"各地 用电量 增长 最快 行业 2026",
+             f"china industry electricity consumption growth 2026"],
+            [f"中国 高耗能 行业 产能利用率 开工率 2026",
+             f"工业 用电量 产能 扩张 高景气 2026",
+             f"china industrial capacity utilization 2026"],
+        ]
+
+    # ═══ 主入口 ═══════════════════════════════
 
     async def analyze(self, ctx: Dict[str, Any] = None, trace=None) -> Dict[str, Any]:
         ctx = await self.load_context(ctx or {})
         if not self.provider:
             return {"agent": self.name, "error": "No AI provider"}
 
-        # 从 ctx 获取行业 (用户指定的, 或 Step 1a macro_regime 推断的)
         industry = ctx.get("industry", ctx.get("target_industry", ""))
         macro_regime = ctx.get("macro", {}).get("regime", "")
 
-        logger.info(f"[{self.name}] Scanning: industry='{industry or '(broad)'}', regime='{macro_regime}'")
+        logger.info(f"[{self.name}] V1.2 dual-scan: industry='{industry or '(broad)'}', regime='{macro_regime}'")
 
-        search_chains = self._build_search_chains(industry if industry else None)
-        search_data = await self._search_adaptive(search_chains, num=4, trace=trace)
+        # 并行: 资本流向 + 能源流向
+        capital_chains = self._build_search_chains(industry if industry else None)
+        energy_chains = self._build_energy_chains(industry if industry else None)
 
-        # 行业提示
+        capital_data, energy_data = await asyncio.gather(
+            self._search_adaptive(capital_chains, num=4, trace=trace),
+            self._search_adaptive(energy_chains, num=4, trace=trace),
+        )
+
         industry_hint = ""
         if industry:
-            industry_hint = f"用户关注行业: {industry}。请聚焦该行业相关的资本流向和供给约束, 但不要将视野局限于该行业本身——关注上下游相关的系统节点。"
+            industry_hint = f"用户关注行业: {industry}。请聚焦该行业相关的资本/能源流向和供给约束。"
 
-        # LLM 结构化输出
-        prompt = f"""你是全球资本流向分析师。你的任务不是写宏观报告, 而是识别**全球资本正在挤压哪些产业系统**。
+        # 构建 prompt
+        prompt = f"""你是全球资本与能源流向分析师。从两个维度扫描产业系统的承压点。
 
-核心问题: 谁在花钱(全球+中国)? 花在哪? 规模多大? 哪个系统节点先承压?
+## 维度一: 资本流向 — 谁在花钱? 花在哪?
+核心问题: 全球+中国的大型资本开支主体, 把钱投向哪些产业环节? 哪些系统节点正在承压?
+
+## 维度二: 能源流向 — 谁在开足马力生产?
+核心问题: 哪些行业的用电量/能源消耗在快速增长? 用电量增速=产业活跃度硬信号, 无法财务造假。
+电力消费激增的行业 → 真实产能扩张 → 高景气确认。
+电力消费骤降的行业 → 产能收缩 → 景气下行预警。
+
 {industry_hint}
-注意: 必须同时覆盖全球巨头和中国国内资本开支主体, 不要遗漏国内 initiator。
-输出只描述系统级别的承压节点 (如基础设施/设备交期/自然资源/认证壁垒/政策管制), 不要出现具体产业名称或股票代码。
+注意: 输出只描述系统级别的承压节点, 不要出现具体产业名称或股票代码。
 
-## 搜索结果
+## 资本流向搜索结果
 """
-        for i, sd in enumerate(search_data):
-            prompt += f"\n### search[{i+1}]: {sd['query']}\n"
+        for i, sd in enumerate(capital_data):
+            prompt += f"\n### capital[{i+1}]: {sd['query']}\n"
+            if not sd["results"]:
+                prompt += "  (无结果)\n"
+            for j, r in enumerate(sd["results"][:3]):
+                prompt += f"  [{i+1}.{j+1}] {r['title']}: {r['snippet'][:200]}\n"
+
+        prompt += "\n## 能源流向搜索结果\n"
+        for i, sd in enumerate(energy_data):
+            prompt += f"\n### energy[{i+1}]: {sd['query']}\n"
             if not sd["results"]:
                 prompt += "  (无结果)\n"
             for j, r in enumerate(sd["results"][:3]):
@@ -127,22 +168,21 @@ class CapitalFlowScanner(ResearchAgent):
 ## 输出纯 JSON
 
 {
-  "capital_flow_summary": "一句话: 全球资本正集中流向..., ...已成瓶颈",
-
-  "capital_flow_summary": "一句话: 全球资本正集中流向..., ...系统正在承压",
+  "capital_flow_summary": "资本流向一句话",
+  "energy_flow_summary": "能源流向一句话: 哪些行业用电量增速最快/最慢, 说明了什么",
 
   "pressure_vectors": [
     {
-      "capital_source": "资本来源 (MAG7/国家电网/三大运营商/专项债...)",
+      "capital_source": "资本来源",
       "source_region": "global/domestic/both",
-      "system_node": "承压的系统节点 (power_infrastructure/thermal_management/memory_bandwidth...)",
+      "system_node": "承压的系统节点",
       "pressure_type": "infrastructure_bottleneck",
-      "pressure_signals": ["具体压力信号1", "信号2", "信号3"],
+      "pressure_signals": ["具体压力信号"],
       "intensity": "high",
       "duration": "3_5_years",
       "transmission_direction": "upstream",
       "evidence": [
-        {"fact": "具体事实", "from": "search[X.Y]·来源",
+        {"fact": "事实", "from": "capital[X.Y]·来源",
          "quality": {"level": "high", "source_type": "company_filing"}}
       ]
     }
@@ -154,8 +194,22 @@ class CapitalFlowScanner(ResearchAgent):
       "constraint_type": "equipment_lead_time",
       "severity": "extreme",
       "lead_time": "over_24m",
-      "trigger": "什么需求触发了这个约束",
+      "trigger": "触发条件",
       "evidence": [...]
+    }
+  ],
+
+  "energy_flow_signals": [
+    {
+      "sector_hint": "用电量快速增长的行业方向 (非具体产业名, 如 '先进制造' '算力基础设施')",
+      "energy_type": "electricity/gas/water/coal",
+      "growth_direction": "surging/growing/stable/declining",
+      "growth_narrative": "用电量增速约XX%, 反映真实产能扩张正在发生",
+      "signal_strength": "strong/moderate/weak — 能源信号的可信度",
+      "evidence": [
+        {"fact": "事实", "from": "energy[X.Y]·来源",
+         "quality": {"level": "medium", "source_type": "industry_data"}}
+      ]
     }
   ]
 }
@@ -164,25 +218,23 @@ class CapitalFlowScanner(ResearchAgent):
 - source_region: global / domestic / both
 - intensity: high / moderate / low
 - duration: under_1_year / 1_3_years / 3_5_years / over_5_years
-- pressure_type:
-  infrastructure_bottleneck (基础设施瓶颈) | equipment_lead_time (设备交期) |
-  natural_resource (自然资源稀缺) | certification_barrier (认证壁垒) |
-  policy_restriction (政策管制)
+- pressure_type: infrastructure_bottleneck | equipment_lead_time | natural_resource | certification_barrier | policy_restriction
 - transmission_direction: upstream / downstream / bidirectional
-- constraint_type:
-  equipment_lead_time | natural_resource | certification_barrier |
-  policy_restriction | infrastructure_bottleneck
+- constraint_type: equipment_lead_time | natural_resource | certification_barrier | policy_restriction | infrastructure_bottleneck
 - severity: extreme / high / moderate
 - lead_time: under_12m / 12_24m / over_24m
+- growth_direction: surging / growing / stable / declining
+- signal_strength: strong / moderate / weak
 
 ## 规则 (★ 重要)
 - pressure_vectors 至少 2 条, 最多 5 条
+- energy_flow_signals 至少 1 条, 最多 3 条 — 从能源流向中提炼最显著的信号
 - system_node 只能描述系统级别的承压点 (如 power_infrastructure/thermal_management/memory_bandwidth)
-- 禁止出现产业名称 (如"变压器""液冷""HBM") — 这些留给 Step 2 判断
+- sector_hint 不要用具体产业名 (如 "变压器" "液冷"), 用方向性描述 (如 "先进制造" "算力基础设施")
 - 禁止出现股票代码或公司名
-- 每条 evidence 必须带 quality (level: high/medium/low, source_type 枚举)
-- 不做宏观叙事 (不要"滞胀""风险偏好下降"等套话)
-- 不做受益分析 (不要"XX产业受益")"""
+- 每条 evidence 必须带 quality 和来源标注 (capital[X] / energy[X])
+- 不做宏观叙事, 不做受益分析
+- 能源信号必须与资本信号交叉印证: 资本密集流入 + 用电量激增 = 最强景气确认"""
 
         try:
             text = await asyncio.wait_for(
@@ -192,14 +244,16 @@ class CapitalFlowScanner(ResearchAgent):
             if isinstance(result, dict):
                 n_pressure = len(result.get("pressure_vectors", []))
                 n_constraint = len(result.get("constraint_vectors", []))
-                logger.info(f"[{self.name}] Done: {n_pressure} pressure vectors, {n_constraint} constraints")
-                if trace: trace.record_note("summary", f"pressure={n_pressure}, constraints={n_constraint}")
+                n_energy = len(result.get("energy_flow_signals", []))
+                logger.info(f"[{self.name}] Done: {n_pressure} pressure, {n_constraint} constraints, {n_energy} energy signals")
+                if trace:
+                    trace.record_note("summary", f"pressure={n_pressure}, constraints={n_constraint}, energy={n_energy}")
                 return result
         except (asyncio.TimeoutError, Exception) as e:
             logger.warning(f"[{self.name}] Failed: {e}")
 
         return {"agent": self.name, "error": "Analysis failed",
-                "pressure_vectors": [], "constraint_vectors": []}
+                "pressure_vectors": [], "constraint_vectors": [], "energy_flow_signals": []}
 
     # ═══ 基类 ═══════════════════════════════
 
@@ -209,7 +263,7 @@ class CapitalFlowScanner(ResearchAgent):
         return ctx
 
     @staticmethod
-    def build_prompt(ctx): return "CapitalFlowScanner V1.0"
+    def build_prompt(ctx): return "CapitalFlowScanner V1.2"
 
     @staticmethod
     async def stream(ctx): yield "streaming not implemented"

@@ -60,8 +60,9 @@ class SystemDynamicsAgent(ResearchAgent):
 
         logger.info(f"[{self.name}] Deduction: {industry} ({len(chain_map)} chain nodes)")
 
-        # 2 轮搜索: 瓶颈迁移 + 隐藏受益者
+        # 2+1 轮搜索: 瓶颈迁移 + 隐藏受益者 + 兜底(不依赖 top_node)
         top_node = (scarcity[0].get("segment", industry) if scarcity else industry)
+        top_node_conf = (scarcity[0].get("confidence", "?") if scarcity else "?") if isinstance(scarcity, list) and scarcity and isinstance(scarcity[0], dict) else "?"
         search_chains = [
             [f"{industry} {top_node} 扩产 瓶颈迁移 新瓶颈 制约 2026",
              f"{industry} 产能扩张 瓶颈转移 新约束",
@@ -69,6 +70,10 @@ class SystemDynamicsAgent(ResearchAgent):
             [f"{industry} 供应链 意外受益 被忽视 隐性 受益方 受损",
              f"{industry} 产业链 隐藏 受益 挤占 受损 2026",
              f"{industry} hidden beneficiary crowding out supply chain"],
+            # 兜底: 不依赖 Step 3 的 top_node, 从整个产业链视角搜索
+            [f"{industry} 产业链 结构变形 利润迁移 赢家 输家 2026",
+             f"{industry} 产能 释放 CAPEX 受益者 受损者 2026",
+             f"{industry} supply chain winners losers structural shift 2026"],
         ]
         search_data = await self._search_adaptive(search_chains, num=4, trace=trace)
 
