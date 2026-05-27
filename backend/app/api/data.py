@@ -314,12 +314,6 @@ async def get_stock_detail_health(stock_code: str):
         )
         latest = latest_res.scalars().first()
 
-        # 指标快照
-        ind_res = await db.execute(
-            select(MarketData).where(MarketData.stock_code == stock_code)
-            .order_by(MarketData.trade_date.desc()).limit(1))
-        latest = md_latest.scalars().first()
-
         from app.domain.quant.engine import indicator_store
         indicator = indicator_store.get_latest(stock_code) or {}
 
@@ -367,7 +361,7 @@ async def get_stock_indicators(stock_code: str):
         "analysis_date": row.get("trade_date"),
         "indicator_type": "DAILY",
         "snapshot": row,
-            "findings": row.logic_chain
+            "findings": row.get("logic_chain", "")
         }
 
 

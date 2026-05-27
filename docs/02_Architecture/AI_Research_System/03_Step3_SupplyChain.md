@@ -14,22 +14,26 @@
 | `prosperity_type` | 决定分析框架: supply_shock→找供给约束源头, demand_explosion→找产能扩张瓶颈 |
 | `propagation_depth` | 决定分析深度: 深→走满 L4, 浅→L2 即可 |
 | `payoff_asymmetry` | 传递给 Step 6 资产筛选 |
-| `verdict.enter_step3` | 若 false 则跳过本 Step |
+| `verdict.enter_step3` | 若 false 则**降权标记** (不硬跳过, 用户可超驰) |
 
 ### 输出
 
 ```json
 {
+  "confidence": "high",
+  "confidence_note": "搜索覆盖充分: 3轮15条有效结果, 瓶颈环节数据完整。以下 margin_level/share_of_profit 为LLM基于搜索片段估计, 待Step 6财务验证后回写修正。",
+
   "supply_chain_map": [
     {
       "level": 1,
       "name": "先进封装 CoWoS",
       "bottleneck_narrative": "台积电独家供应, 扩产需18个月, 无替代方案可量产",
+      "confidence": "high",
 
       "supply_rigidity": {
         "severity": "extreme",
         "root_cause": "equipment_constraint",
-        "expand_cycle": "18_24_months",
+        "expand_cycle": "over_12m",
         "substitutability": "none_short_term",
         "concentration": "monopoly_single_supplier",
         "alpha_narrative": "独家供给刚性=定价权极高, 景气窗口精确可算"
@@ -38,6 +42,8 @@
       "profit_pool": {
         "share_of_industry_profit": "dominant_30_50pct",
         "margin_level": "very_high_above_40pct",
+        "margin_estimated": true,
+        "margin_data_source": "LLM估计, 基于搜索片段中的研报引用",
         "pricing_power_narrative": "卖方市场, 价格持续上涨中, 下游无议价能力"
       },
 
@@ -63,6 +69,10 @@
 
       "assets": [
         {"code": "688012", "name": "中微公司", "role": "刻蚀设备", "market_position": "tier2_challenger"}
+      ],
+
+      "evidence": [
+        {"fact": "关键事实", "from": "search[1.3]·来源", "quality": {"level": "high", "source_type": "industry_data"}}
       ]
     }
   ],
@@ -91,6 +101,24 @@
 }
 ```
 
+### 关键字段说明 (V5.10 新增)
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `confidence` | enum | 整体分析置信度: `high`(搜索覆盖充分) / `medium`(部分数据缺失) / `low`(数据严重不足, 以下结论可能偏差较大) |
+| `confidence_note` | string | 置信度说明, 明确指出数据缺口在哪 |
+| `supply_chain_map[].confidence` | enum | 单节点置信度, 同上 |
+| `profit_pool.margin_estimated` | bool | ★ 标记为 LLM 估计值 (`true`=LLM估计, `false`=Step6回写后修正) |
+| `profit_pool.margin_data_source` | string | 数据来源说明 ("LLM估计, 基于搜索片段" / "Step6财务验证: 2025Q4毛利率=42.3%") |
+
+### 过滤规则 (V5.10 修正)
+
+| 规则 | 旧行为 | 新行为 |
+|------|--------|--------|
+| `verdict.enter_step3=false` | 硬跳过, 不可恢复 | **降权标记**, 用户可超驰继续 |
+| `severity=low/oversupply` | 不被 Step 4/5 重点推演 | **仍纳入推演**, 但标记 `severity_low` 供下游知悉 |
+| 搜索 3 轮无有效结果 | 硬输出, 无质量标记 | 输出 `confidence=low` + `confidence_note` 说明数据缺口 |
+
 ---
 
 ## 枚举定义 (注入 glossary)
@@ -117,15 +145,13 @@
 | `policy_restriction` | 政策/出口管制 | 美国设备禁令, 日本材料限制 |
 | `capital_scale` | 资本规模门槛 | 晶圆厂($10B+), 面板厂 |
 
-### supply_rigidity.expand_cycle
+### supply_rigidity.expand_cycle (V5.10 改为三档, 与 Step 4/5 对齐)
 
 | 值 | 含义 |
 |----|------|
-| `under_6_months` | 6个月内可扩产 |
-| `6_12_months` | 6-12个月 |
-| `12_18_months` | 12-18个月 |
-| `18_24_months` | 18-24个月 |
-| `over_24_months` | 超过24个月 |
+| `under_12m` | 12个月内可扩产 |
+| `12_24m` | 12-24个月 |
+| `over_24m` | 超过24个月 |
 
 ### supply_rigidity.substitutability
 
@@ -163,6 +189,8 @@
 | `moderate_15_25pct` | 毛利率15-25% |
 | `low_below_15pct` | 毛利率<15% |
 
+**注意**: `share_of_industry_profit` 和 `margin_level` 均为 LLM 基于搜索估计值, 字段 `margin_estimated=true` 标记。Step 6 财务审计后回写真实数据, 将 `margin_estimated` 改为 `false` 并更新 `margin_data_source`。
+
 ### value_capture.attention_quality
 
 | 值 | 含义 |
@@ -171,6 +199,8 @@
 | `profit_diverted` | 热度高但利润被上游抽走 — 警惕炒作 |
 | `under_the_radar` | 关注度低但利润捕获好 — 预期差最大 |
 | `deservedly_low` | 关注度低且确实不赚钱 — 合理回避 |
+
+**注意**: `attention_quality` 是关键分叉标签。`profit_diverted` 会让下游降权, `profit_real` 会让下游侧重。LLM 必须基于搜索证据判断, 不可空判。证据不足时标记 `confidence=low` 并附说明。
 
 ### competitive_landscape.china_substitution_rate
 
@@ -189,6 +219,15 @@
 | `bottleneck_easing` | 瓶颈缓解 — 新增产能/替代方案正在落地 |
 | `bottleneck_resolved` | 瓶颈解除 — 供给将追上需求 |
 | `new_bottleneck_emerging` | 新瓶颈形成 — 当前宽松但2-3年内收紧 |
+
+### confidence 枚举
+
+| 值 | 含义 | 下游动作 |
+|----|------|---------|
+| `high` | 搜索覆盖充分, 关键数据有多个独立来源交叉验证 | 正常推演 |
+| `medium` | 部分数据缺失或依赖单一来源 | 推演时标注不确定性 |
+| `low` | 数据严重不足, LLM 基于有限信息推断 | 降低该结论在 Step 11 综合报告中的权重 |
+| `insufficient_data` | 几乎无可用数据 (新兴/极冷门行业) | 标记, 不丢弃, 等待数据补全后重跑 |
 
 ---
 
@@ -225,6 +264,8 @@ Round 3 (条件触发): 深度数据补搜
 
 每轮搜索 5 条结果, 最大 3 轮, 条件终止 (need_more_search=false 且 round>1)。
 
+搜索 3 轮仍无有效结果时: 不丢弃, 输出 `confidence=insufficient_data` + 说明, 等数据补全后可重跑。
+
 ---
 
 ## Prompt 注入
@@ -256,9 +297,10 @@ Step 3 prompt 末尾调用 `step3_glossary()` 注入 `cycle_phase` + `prosperity
 |------|------|---------|
 | ← 消费 | Step 2 | cycle_position, prosperity_type, propagation_depth → 驱动搜索策略 |
 | → 提供 | Step 4+5 | supply_chain_map (瓶颈结构) → SystemDynamicsAgent 推演基础 |
-| → 提供 | Step 6 | core_stocks + scarcity_ranking → 核心资产筛选 |
+| → 提供 | Step 6 | core_stocks + scarcity_ranking → 核心资产筛选; Step 6 回写 margin_level 真实数据 |
+| ← 回写 | Step 6 | margin_estimated → false, margin_data_source → "财务验证: 2025Q4毛利率=XX%" |
 | → 提供 | Step 8 | profit_pool + competitive_landscape → 估值模型选择 |
-| → 提供 | Step 11 | 全量 supply_chain_map → 报告"产业链图谱"章节 |
+| → 提供 | Step 11 | 全量 supply_chain_map + confidence → 报告"产业链图谱"章节 |
 
 ---
 
@@ -280,21 +322,20 @@ Step 3 prompt 末尾调用 `step3_glossary()` 注入 `cycle_phase` + `prosperity
 **文件**: `backend/app/domain/research/agents/supply_chain_hacker.py`
 
 **改动内容**:
-- `_hack_supply_chain()` prompt: 替换旧 schema → 新定性标签 schema
-- `_structure_output()` prompt: 替换旧 schema → 新定性标签 schema + 注入 Step 2 标签
-- 搜索策略: 在 `_hack_supply_chain()` 开头加 Step 2 标签驱动的 query 选择逻辑
-- Prompt 末尾注入 `step3_glossary()` + Step 2 标签
-- 不改: `analyze_level()`, `_extract_stocks_simple()`, `_second_level_analysis()`
+- `_structure_output()` prompt: 新增 `confidence` + `margin_estimated` + `margin_data_source` 字段
+- Prompt 末尾: 注入"数据不足时输出 confidence=insufficient_data"规则
+- 不改: `analyze_level()`, `_extract_stocks_simple()`, `_second_level_analysis()`, `_hack_supply_chain()`
 
-**改动量**: ~80 行 prompt 替换, ~15 行搜索策略调整, 零新增文件。
+**改动量**: ~30 行 prompt 调整, 零新增文件。
 
 ---
 
 ## 验证标准
 
 1. `curl POST /api/research/supply-chain-hacker -d '{"industry":"SOFC"}'` 返回新 schema
-2. supply_chain_map 每个环节的 supply_rigidity.severity 是 `extreme/high/moderate/low/oversupply` (不是数字)
-3. value_capture.attention_quality 是 `profit_real/profit_diverted/under_the_radar/deservedly_low` 之一
-4. 枚举值全部在 glossary 定义范围内 (不出现 `"medium"`, `"type_a"` 等自创值)
-5. 传入不同 cycle_position, 搜索 query 不同 (验证 Step 2 标签驱动)
-6. sales_chain + expansion_chain 双链仍正常输出
+2. 输出含 `confidence` 字段 (high/medium/low/insufficient_data)
+3. `margin_estimated` 为 `true` (LLM 估计标记)
+4. supply_chain_map 每个环节的 supply_rigidity.severity 是枚举值 (不是数字)
+5. `expand_cycle` 为 under_12m / 12_24m / over_24m (三档对齐)
+6. value_capture.attention_quality 是有效枚举值之一
+7. 搜索 3 轮无结果时 confidence 为 `low` 或 `insufficient_data` (不丢数据)

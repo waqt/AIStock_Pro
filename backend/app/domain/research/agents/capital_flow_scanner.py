@@ -120,7 +120,7 @@ class CapitalFlowScanner(ResearchAgent):
       "node": "约束节点",
       "constraint_type": "equipment_lead_time",
       "severity": "extreme",
-      "lead_time": "18_24_months",
+      "lead_time": "over_24m",
       "trigger": "什么需求触发了这个约束",
       "evidence": [...]
     }
@@ -140,7 +140,7 @@ class CapitalFlowScanner(ResearchAgent):
   equipment_lead_time | natural_resource | certification_barrier |
   policy_restriction | infrastructure_bottleneck
 - severity: extreme / high / moderate
-- lead_time: under_6_months / 6_12_months / 12_18_months / 18_24_months / over_24_months
+- lead_time: under_12m / 12_24m / over_24m
 
 ## 规则 (★ 重要)
 - pressure_vectors 至少 2 条, 最多 5 条

@@ -98,13 +98,11 @@ GLOSSARY: Dict[str, Dict[str, str]] = {
         "capital_scale": "资本规模门槛 — 晶圆厂($10B+)/面板厂等高CAPEX壁垒",
     },
 
-    # ── 扩产周期 (Step 3 → Step 4/9) ──
+    # ── 扩产周期 (Step 3 → Step 4/9, V1.1 三档对齐) ──
     "expand_cycle": {
-        "under_6_months": "6个月内可扩产",
-        "6_12_months": "6-12个月可扩产",
-        "12_18_months": "12-18个月可扩产",
-        "18_24_months": "18-24个月可扩产",
-        "over_24_months": "超过24个月才能实质性扩产",
+        "under_12m": "12个月内可扩产",
+        "12_24m": "12-24个月可扩产",
+        "over_24m": "超过24个月才能实质性扩产",
     },
 
     # ── 替代性 (Step 3 → Step 4) ──

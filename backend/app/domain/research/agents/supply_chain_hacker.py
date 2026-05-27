@@ -207,23 +207,29 @@ class SupplyChainHacker(ResearchAgent):
 ## 补充搜索
 {_j(fresh_data)}
 
-## 输出纯 JSON (精简版 — 每节点一个 evidence 数组, 子字段不重复带)
+## 输出纯 JSON (精简版 — 每节点一个 evidence 数组)
 {{
+  "confidence": "high/medium/low/insufficient_data",
+  "confidence_note": "搜索覆盖情况说明: 数据缺口在哪, 哪些结论依赖单一来源",
+
   "supply_chain_map": [
     {{
       "level": 1,
       "name": "瓶颈环节名",
       "bottleneck_narrative": "瓶颈简述 (1-2句)",
+      "confidence": "high/medium/low",
 
       "supply_rigidity": {{
         "severity": "extreme", "root_cause": "equipment_constraint",
-        "expand_cycle": "18_24_months", "substitutability": "none_short_term",
+        "expand_cycle": "over_24m", "substitutability": "none_short_term",
         "concentration": "monopoly_single_supplier",
         "alpha_narrative": "供给刚性→定价权→景气窗口"
       }},
       "profit_pool": {{
         "share_of_industry_profit": "dominant_30_50pct",
         "margin_level": "very_high_above_40pct",
+        "margin_estimated": true,
+        "margin_data_source": "LLM估计, 基于搜索片段中的研报引用 | 待Step 6财务验证回写",
         "pricing_power_narrative": "定价权描述"
       }},
       "value_capture": {{
@@ -267,7 +273,10 @@ class SupplyChainHacker(ResearchAgent):
 - from 格式: "search[轮次.序号]·来源简称", 禁止自创前缀
 - core_stocks >= 5 只, supply_chain_map >= L1-L3, sales/expansion chain >= 各 2 条
 - assets 空时用 assets_note 说明; 同公司不出现在多个 tier
-- self_media/ai_summary 仅参考, 不得单独支撑关键判断"""
+- self_media/ai_summary 仅参考, 不得单独支撑关键判断
+- ★ margin_estimated=true 表示 margin_level/share_of_profit 为 LLM 基于搜索片段估计 (非硬财务数据)
+- ★ 3轮搜索仍无有效结果时: 不丢弃数据, 输出 confidence=insufficient_data + confidence_note 说明缺口
+- ★ expand_cycle 三档: under_12m / 12_24m / over_24m (与 Step 4/5 时间枚举对齐)"""
 
         try:
             text = await asyncio.wait_for(
