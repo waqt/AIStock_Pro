@@ -63,12 +63,24 @@ OPTIONAL_STEPS = {"step8_human_capital"}
 
 # Step 1b → Step 2 桥接: 系统压力节点映射到候选产业
 PRESSURE_INDUSTRY_MAP = {
-    "power_infrastructure": ["变压器", "电网设备", "铜"],
-    "thermal_management": ["液冷散热", "服务器电源"],
-    "memory_bandwidth": ["HBM高带宽内存", "先进封装"],
-    "compute_chip": ["AI芯片", "GPU"],
-    "optical_communication": ["光模块", "光芯片"],
-    "energy_storage": ["储能", "锂电池"],
+    "power_infrastructure": [
+        "变压器", "电网设备", "铜", "取向硅钢", "高压开关", "电力电缆"
+    ],
+    "thermal_management": [
+        "液冷散热", "服务器电源", "空调制冷", "散热材料"
+    ],
+    "memory_bandwidth": [
+        "HBM高带宽内存", "先进封装", "ABF基板", "存储芯片"
+    ],
+    "compute_chip": [
+        "AI芯片", "GPU", "ASIC定制芯片", "芯片代工"
+    ],
+    "optical_communication": [
+        "光模块", "光芯片", "光纤光缆", "光器件"
+    ],
+    "energy_storage": [
+        "储能", "锂电池", "钠电池", "逆变器"
+    ],
 }
 FALLBACK_HYPOTHESIS = [
     {"sector": "AI算力基础设施", "name": "AI算力"},
@@ -425,9 +437,10 @@ async def _do_scan(req: ScanRequest, pre_run_id: str = None):
                     for v in vectors:
                         node = v.get("system_node", "")
                         industries = PRESSURE_INDUSTRY_MAP.get(node, [])
-                        for ind in industries[:2]:
+                        for ind in industries[:3]:
                             hypothesis.append({"sector": ind, "name": ind,
-                                "pressure_node": node, "pressure_signals": v.get("pressure_signals", [])[:2]})
+                                "pressure_node": node, "pressure_signals": v.get("pressure_signals", [])[:2],
+                                "source": "capital_flow_pressure"})  # 标记来源: Step 1b 验证过的系统压力
                     if hypothesis:
                         cf_loaded = True
                         cf_cached_output = output  # 稍后复制到 run_id
@@ -454,9 +467,10 @@ async def _do_scan(req: ScanRequest, pre_run_id: str = None):
                 for v in vectors:
                     node = v.get("system_node", v.get("target", ""))
                     industries = PRESSURE_INDUSTRY_MAP.get(node, [])
-                    for ind in industries[:2]:
+                    for ind in industries[:3]:
                         hypothesis.append({"sector": ind, "name": ind,
-                            "pressure_node": node, "pressure_signals": v.get("pressure_signals", [])[:2]})
+                            "pressure_node": node, "pressure_signals": v.get("pressure_signals", [])[:2],
+                            "source": "capital_flow_pressure"})
                 # 保存到独立缓存目录 (供后续项目复用)
                 ih = hash_input({"step": "capital_flow", "date": today})
                 save_checkpoint("step1b_capital_flow", cf_run_id, ih, cf_result, {"elapsed": 0})
