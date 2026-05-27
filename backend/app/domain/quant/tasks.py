@@ -181,6 +181,16 @@ async def research_analyze_task(exec_id: str = None, industry: str = "", questio
                     if exec_id: await task_manager.update_progress(exec_id, 50, f"Step3失败(不阻塞): {e}")
 
             total_elapsed = _time.time() - t0
+            # 更新 placeholder manifest 状态
+            try:
+                from app.framework.pipeline.checkpoint import load_manifest, save_manifest
+                mf = load_manifest(run_id)
+                if mf and mf.get("status") == "pending":
+                    mf["status"] = "completed"
+                    mf["completed_at"] = datetime.now().isoformat()
+                    mf["elapsed_seconds"] = int(total_elapsed)
+                    save_manifest(run_id, mf)
+            except Exception: pass
             summary = f"完成: {target or mode_id}"
             if enter_step3 and mode_id in ("manual_industry", "stock_deep"):
                 summary += " (Step2+Step3串联)"
@@ -189,6 +199,16 @@ async def research_analyze_task(exec_id: str = None, industry: str = "", questio
         except Exception as e:
             logger.error(f"[ResearchTask] Failed: {e}")
             if exec_id: await task_manager.update_progress(exec_id, 100, f"失败: {e}")
+            # 更新 manifest 为失败状态
+            try:
+                if pre_run_id:
+                    from app.framework.pipeline.checkpoint import load_manifest, save_manifest
+                    mf = load_manifest(pre_run_id)
+                    if mf and mf.get("status") == "pending":
+                        mf["status"] = "failed"
+                        mf["error"] = str(e)[:200]
+                        save_manifest(pre_run_id, mf)
+            except Exception: pass
             raise
         return
 
