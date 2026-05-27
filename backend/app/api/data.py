@@ -71,7 +71,7 @@ async def trigger_single_sync(stock_code: str, mode: str = "daily"):
     """单股同步 — mode=daily(当日最新-含盘中实时价) | historical(2年补齐缺失)"""
     from app.domain.quant.engine.engine import QuantEngine
     from app.domain.market_data.services.valuation import sync_valuation
-    from app.models.models import WatchlistItem
+    from app.models.models import WatchlistItem, MarketData
     import pandas as pd
     from datetime import date as dt_date
 
@@ -88,7 +88,6 @@ async def trigger_single_sync(stock_code: str, mode: str = "daily"):
                 if q.get('price') and q['price'] > 0:
                     today_str = dt_date.today().strftime('%Y-%m-%d')
                     # Upsert: 写入或更新今日行
-                    from app.models.models import MarketData
                     from sqlalchemy import select as sa_select
                     existing = await db.execute(
                         sa_select(MarketData).where(
