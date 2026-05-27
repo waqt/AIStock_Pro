@@ -295,7 +295,10 @@ class MarketScanner(ResearchAgent):
 - subsector (AI算力/半导体设备/创新药/新能源车 等产业板块, 范围宽但有真实供需链) → action=allow
 - macro_theme (新质生产力/国产替代/碳中和/AI新基建 等纯政策概念, 无统一供给链) → action=split_or_skip, 强制 enter_step3=false
 - asset_class (黄金ETF/REITs等金融产品) → action=skip, enter_step3=false
-- 注意: "AI算力"不是macro_theme — 它有GPU→服务器→数据中心→电力等真实供应链, 应归为subsector
+- 注意: "AI算力/英伟达产业链/半导体"等不是macro_theme — 它们有真实供应链, 应归为subsector
+- subsector 级别分析的核心原则: 不要评估"整个篮子", 而要识别篮子中**具体哪个子环节存在五错配**。
+  例如"英伟达产业链"整体预期差弱, 但其中的CoWoS封装/HBM/液冷散热可能存在强预期差。
+  输出 mismatch_analysis 时, 以最具错配特征的子环节为准, 而非整体平均
 - 如果判定为 macro_theme 或 asset_class, 后续 6 块仍需填写但 verdict 必须拒绝
 
 ## evidence_quality 证据质量 (★ 每条 evidence 必须标注)
