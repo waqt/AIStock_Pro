@@ -466,6 +466,7 @@ async function loadTrace(step) {
                     '<span class="detail" style="color:var(--text-dim);margin-left:8px;">' + detail + '</span></div>';
             }).join('');
         }
+        html += '<div style="text-align:right;margin-top:10px;padding-top:8px;border-top:1px solid var(--border-thin);"><button class="btn-proj" onclick="Modal.close()"><i class="fas fa-times"></i> 关闭</button></div>';
         Modal.custom({title: '溯源日志: ' + step, content: '<div style="max-height:65vh;overflow-y:auto;">' + html + '</div>', wide: true});
     } catch(e) {
         Modal.alert('错误', '加载失败: ' + e.message);
