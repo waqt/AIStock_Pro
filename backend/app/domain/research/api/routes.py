@@ -751,6 +751,47 @@ async def system_dynamics_analysis(req: SystemDynamicsRequest = SystemDynamicsRe
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/pipeline/{run_id}/continue/{step}")
+async def continue_pipeline_step(run_id: str, step: str):
+    """断点续跑: 从 run_id 的最新 checkpoint 启动指定 step"""
+    try:
+        from app.framework.pipeline.checkpoint import find_checkpoint_file, load_checkpoint, save_checkpoint, list_checkpoints
+        from app.framework.pipeline.trace import TraceContext
+        from app.framework.ai.providers.deepseek import DeepSeekProvider
+
+        if step == "step4_system_dynamics":
+            # 找 Step 3 checkpoint
+            s3_file = find_checkpoint_file(run_id, "step3_sc_hacker")
+            if not s3_file:
+                raise HTTPException(status_code=404, detail="Step 3 checkpoint not found. Run Step 3 first.")
+            import json as _json
+            with open(s3_file, "r", encoding="utf-8") as f:
+                s3 = _json.load(f)
+            s3_out = s3.get("output", {})
+            scm = s3_out.get("supply_chain_map", [])
+            if len(scm) < 2:
+                return {"success": True, "data": {"message": "Step 3 has <2 layers, Step 4 skipped", "layers": len(scm)}}
+
+            from app.domain.research.agents.system_dynamics_agent import SystemDynamicsAgent
+            sd = SystemDynamicsAgent(provider=DeepSeekProvider())
+            sd_ctx = {"industry": s3_out.get("industry", ""),
+                      "supply_chain_map": scm,
+                      "scarcity_ranking": s3_out.get("scarcity_ranking", []),
+                      "core_stocks": s3_out.get("core_stocks", [])}
+            trace = TraceContext(run_id)
+            result = await sd.analyze(sd_ctx, trace=trace)
+            save_checkpoint("step4_system_dynamics", run_id, "continue", result, {"elapsed": 0})
+            trace.write("step4_system_dynamics")
+            return {"success": True, "data": result, "run_id": run_id}
+        else:
+            raise HTTPException(status_code=400, detail=f"Unknown or unsupported step: {step}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[ContinueStep] {run_id}/{step} failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/capital-flow")
 async def capital_flow_scan(async_mode: bool = Query(default=False)):
     """Step 1b: 全球资本流向扫描 — ?async_mode=true 后台执行"""
