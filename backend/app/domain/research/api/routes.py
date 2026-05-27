@@ -373,6 +373,7 @@ async def _do_scan(req: ScanRequest, pre_run_id: str = None):
         raise HTTPException(status_code=400, detail=f"Mode '{mode_id}' requires input: {mode_def['input_type']}")
 
     scanner = MarketScanner(provider=DeepSeekProvider())
+    cf_loaded = False  # 初始化, manual_industry 模式也会用到
 
     if mode_id == "macro_only":
         target = "宏观周期分析-" + datetime.now().strftime("%Y%m%d-%H%M")
