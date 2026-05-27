@@ -14,6 +14,8 @@ from app.domain.research.agents.human_capital_detective import HumanCapitalDetec
 from app.domain.research.agents.global_capex_scanner import GlobalCapexScanner
 from app.domain.research.agents.dag_orchestrator import DAGOrchestrator
 from app.domain.research.agents.market_scanner import MarketScanner
+from app.domain.research.agents.system_dynamics_agent import SystemDynamicsAgent
+from app.domain.research.agents.cross_industry_linkage_agent import CrossIndustryLinkageAgent
 from app.domain.research.pipelines import PIPELINES
 from app.domain.research.services.data_loader import data_loader
 from app.domain.research.services.report_store import save_report, list_reports, get_report, delete_report
@@ -57,7 +59,8 @@ FULL_PIPELINE = [
 
 # 已实现的步骤
 IMPLEMENTED_STEPS = {
-    "step1_macro", "step1b_capital_flow", "step2_gatekeeper", "step3_sc_hacker", "step4_system_dynamics"
+    "step1_macro", "step1b_capital_flow", "step2_gatekeeper", "step3_sc_hacker", "step4_system_dynamics",
+    "step5_cross_industry"
 }
 
 # 可选步骤（不阻塞 pipeline）
@@ -821,12 +824,74 @@ async def continue_pipeline_step(run_id: str, step: str):
             save_checkpoint("step4_system_dynamics", run_id, "continue", result, {"elapsed": 0})
             trace.write("step4_system_dynamics")
             return {"success": True, "data": result, "run_id": run_id}
+
+        elif step == "step5_cross_industry":
+            # 找 Step 3 + Step 4 checkpoint
+            s3_file = find_checkpoint_file(run_id, "step3_sc_hacker")
+            s4_file = find_checkpoint_file(run_id, "step4_system_dynamics")
+            if not s3_file:
+                raise HTTPException(status_code=404, detail="Step 3 checkpoint not found. Run Step 3 first.")
+            if not s4_file:
+                raise HTTPException(status_code=404, detail="Step 4 checkpoint not found. Run Step 4 first.")
+            import json as _json
+            with open(s3_file, "r", encoding="utf-8") as f:
+                s3 = _json.load(f)
+            with open(s4_file, "r", encoding="utf-8") as f:
+                s4 = _json.load(f)
+            s3_out = s3.get("output", {})
+            s4_out = s4.get("output", {}).get("system_dynamics", {})
+
+            cross = CrossIndustryLinkageAgent(provider=DeepSeekProvider())
+            cross_ctx = {
+                "industry": s3_out.get("industry", ""),
+                "supply_chain_map": s3_out.get("supply_chain_map", []),
+                "resource_crowding": s4_out.get("resource_crowding", []),
+                "bottleneck_migration": s4_out.get("bottleneck_migration", {}),
+            }
+            trace = TraceContext(run_id)
+            result = await cross.analyze(cross_ctx, trace=trace)
+            save_checkpoint("step5_cross_industry", run_id, "continue", result, {"elapsed": 0})
+            trace.write("step5_cross_industry")
+            return {"success": True, "data": result, "run_id": run_id}
         else:
             raise HTTPException(status_code=400, detail=f"Unknown or unsupported step: {step}")
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"[ContinueStep] {run_id}/{step} failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/cross-industry")
+async def cross_industry_analysis():
+    """Step 5: 跨产业关联分析 — 消费 Step 3+4 输出, 搜索相邻产业波及"""
+    try:
+        from app.framework.ai.providers.deepseek import DeepSeekProvider
+        from app.framework.pipeline.checkpoint import generate_run_id, hash_input, save_checkpoint
+        from app.framework.pipeline.trace import TraceContext
+
+        provider = DeepSeekProvider()
+        agent = CrossIndustryLinkageAgent(provider=provider)
+        run_id = generate_run_id("跨产业关联")
+        t0 = __import__("time").time()
+
+        ctx = {
+            "industry": "",
+            "supply_chain_map": [],
+            "resource_crowding": [],
+            "bottleneck_migration": {},
+        }
+        trace = TraceContext(run_id)
+        result = await agent.analyze(ctx, trace=trace)
+
+        input_hash = hash_input({"step": "cross_industry", "date": __import__("datetime").datetime.now().strftime("%Y%m%d")})
+        elapsed = round(__import__("time").time() - t0, 1)
+        save_checkpoint("step5_cross_industry", run_id, input_hash, result, {"elapsed": elapsed})
+        trace.write("step5_cross_industry")
+
+        return {"success": True, "data": result, "run_id": run_id, "elapsed": elapsed}
+    except Exception as e:
+        logger.error(f"[CrossIndustry] Failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
