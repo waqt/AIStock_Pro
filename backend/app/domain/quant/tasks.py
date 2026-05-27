@@ -119,6 +119,15 @@ async def research_analyze_task(exec_id: str = None, industry: str = "", questio
     if agent_id and mode_id:
         logger.info(f"[ResearchTask] Starting: agent={agent_id}, mode={mode_id}, target={target}")
         t0 = _time.time()
+        # 更新 manifest: pending → running
+        if pre_run_id:
+            try:
+                from app.framework.pipeline.checkpoint import load_manifest, save_manifest
+                mf = load_manifest(pre_run_id)
+                if mf and mf.get("status") == "pending":
+                    mf["status"] = "running"
+                    save_manifest(pre_run_id, mf)
+            except Exception: pass
         if exec_id: await task_manager.update_progress(exec_id, 5, f"Step2: 正在搜索分析 {target or mode_id}")
 
         try:
