@@ -68,16 +68,51 @@ async def trigger_auto_sync(request: SyncRequest):
 
 @router.post("/sync/daily/{stock_code}")
 async def trigger_single_sync(stock_code: str, mode: str = "daily"):
-    """单股同步 — mode=daily(当日最新) | historical(2年补齐缺失)"""
+    """单股同步 — mode=daily(当日最新-含盘中实时价) | historical(2年补齐缺失)"""
     from app.domain.quant.engine.engine import QuantEngine
     from app.domain.market_data.services.valuation import sync_valuation
     from app.models.models import WatchlistItem
     import pandas as pd
+    from datetime import date as dt_date
 
     async with async_session() as db:
         engine = QuantEngine(db)
         sync_mode = "AUTO" if mode == "daily" else "FULL"
         rows = await engine.sync_market_data(stock_code, mode=sync_mode)
+        # 盘中实时价: K线不含今日数据, 通过实时行情补漏
+        if mode == "daily":
+            try:
+                from app.domain.market_data.sources.router import data_router
+                quotes = await data_router.get_realtime_quotes([stock_code])
+                q = quotes.get(stock_code, {})
+                if q.get('price') and q['price'] > 0:
+                    today_str = dt_date.today().strftime('%Y-%m-%d')
+                    # Upsert: 写入或更新今日行
+                    from app.models.models import MarketData
+                    from sqlalchemy import select as sa_select
+                    existing = await db.execute(
+                        sa_select(MarketData).where(
+                            MarketData.stock_code == stock_code,
+                            MarketData.trade_date == today_str
+                        )
+                    )
+                    row = existing.scalars().first()
+                    if row:
+                        row.close = float(q['price'])
+                        if q.get('volume'): row.volume = int(float(q['volume']))
+                    else:
+                        db.add(MarketData(
+                            stock_code=stock_code, trade_date=today_str,
+                            open=float(q.get('open', q['price'])),
+                            close=float(q['price']),
+                            high=float(q.get('high', q['price'])),
+                            low=float(q.get('low', q['price'])),
+                            volume=int(float(q.get('volume', 0)))
+                        ))
+                    await db.commit()
+                    rows += 1
+            except Exception as e:
+                logger.warning(f"[Sync] Realtime price fail for {stock_code}: {e}")
         await sync_valuation(target_codes=[stock_code])
         # 同步基本信息 (行业/总股本/上市时间/名称)
         from app.domain.market_data.services.valuation import sync_stock_info as sync_info
