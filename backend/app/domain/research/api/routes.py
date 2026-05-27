@@ -678,6 +678,24 @@ async def industry_drilldown(req: IndustryDrilldownRequest):
         save_checkpoint("step3_sc_hacker", run_id, "drilldown", result, {"elapsed": 0})
         trace.write("step3_sc_hacker")
         logger.info(f"[Drilldown] Step3 done: {req.industry_name} → {len(result.get('supply_chain_map',[]))} layers")
+
+        # Step 4: 系统动力学推演 (supply_chain_map >= 2 层时触发)
+        if len(result.get("supply_chain_map", [])) >= 2:
+            try:
+                from app.domain.research.agents.system_dynamics_agent import SystemDynamicsAgent
+                sd = SystemDynamicsAgent(provider=DeepSeekProvider())
+                sd_ctx = {"industry": req.industry_name,
+                          "supply_chain_map": result.get("supply_chain_map", []),
+                          "scarcity_ranking": result.get("scarcity_ranking", []),
+                          "core_stocks": result.get("core_stocks", [])}
+                sd_trace = TraceContext(run_id)
+                step4_result = await sd.analyze(sd_ctx, trace=sd_trace)
+                save_checkpoint("step4_system_dynamics", run_id, "drilldown", step4_result, {"elapsed": 0})
+                sd_trace.write("step4_system_dynamics")
+                logger.info(f"[Drilldown] Step4 done: {req.industry_name}")
+            except Exception as e:
+                logger.warning(f"[Drilldown] Step4 failed (non-fatal): {e}")
+
         return {"success": True, "data": result, "run_id": run_id}
     except HTTPException:
         raise
