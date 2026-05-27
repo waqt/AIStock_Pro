@@ -68,7 +68,7 @@ class DeepSeekProvider(AIProviderProtocol):
 
         headers = {"Authorization": f"Bearer {settings.DEEPSEEK_API_KEY}",
                     "Content-Type": "application/json"}
-        timeout = 120 if do_thinking else 90
+        timeout = 300 if do_thinking else 90
 
         try:
             async with httpx.AsyncClient(proxy=None, timeout=timeout) as client:
