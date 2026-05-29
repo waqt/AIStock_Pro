@@ -32,7 +32,8 @@
 <div class="top-bar"></div>
 <div class="workspace">
     <!-- Top system toggle -->
-    <div style="position:absolute;top:10px;right:20px;display:flex;gap:2px;z-index:10;">
+    <div style="position:absolute;top:10px;right:20px;display:flex;gap:6px;z-index:10;align-items:center;">
+        <button id="btn-fin-compute" onclick="computeFinancial()" style="font-size:10px;background:transparent;border:1px solid var(--accent-green);color:var(--accent-green);cursor:pointer;padding:3px 8px;border-radius:3px;display:none;" title="批量计算持仓+自选股的ROIC/ROIIC"><i class="fas fa-calculator"></i> 计算财务指标</button>
         <button class="tab-btn active" onclick="switchSystem('technical')" id="btn-tech">技术指标</button>
         <button class="tab-btn" onclick="switchSystem('financial')" id="btn-fin">财务指标</button>
     </div>
@@ -142,6 +143,7 @@ function switchSystem(sys) {
     currentSystem = sys;
     document.getElementById('btn-tech').classList.toggle('active', sys === 'technical');
     document.getElementById('btn-fin').classList.toggle('active', sys === 'financial');
+    document.getElementById('btn-fin-compute').style.display = sys === 'financial' ? '' : 'none';
     fetch(apiPrefix() + '/registry').then(function(r) { return r.json(); }).then(function(d) {
         indicatorRegistry = d.data || [];
         var fs = document.getElementById('field-select');
@@ -150,6 +152,12 @@ function switchSystem(sys) {
     });
     if (currentMode === 'stock' && currentStock) selectStock();
     if (currentMode === 'field' && currentField) selectField();
+}
+function computeFinancial() {
+    API.post('/quant/financial-indicators/compute', {}).then(function(d) {
+        var m = d.data.computed + '/' + d.data.total + ' 只完成';
+        alert(m + '\n' + d.data.results.filter(function(r) { return r.status === 'ok'; }).map(function(r) { return r.code + ' ROIC=' + r.roic_pct + '% ROIIC=' + r.roiic_pct + '%'; }).join('\n'));
+    }).catch(function(e) { alert('计算失败: ' + e.message); });
 }
 
 // ═══ Stock Mode ═══

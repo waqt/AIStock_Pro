@@ -1,7 +1,9 @@
 """指标API — 查询/计算指标"""
 from fastapi import APIRouter, Query
 from typing import Optional, List
+from pydantic import BaseModel
 from app.domain.quant.indicators import INDICATOR_REGISTRY
+from app.framework.logger import logger
 
 router = APIRouter(prefix="/api/quant/indicators", tags=["Quant-Indicators"])
 
@@ -365,3 +367,64 @@ async def get_financial_field_ranking(field_name: str):
     from app.domain.quant.engine import indicator_store
     rows = indicator_store.get_financial_field_latest(field_name)
     return {"success": True, "data": rows, "field": field_name}
+
+
+class FinancialComputeRequest(BaseModel):
+    target_codes: Optional[List[str]] = None  # None=全部持仓+自选股
+
+@financial_router.post("/compute")
+async def compute_financial_indicators(req: FinancialComputeRequest = FinancialComputeRequest()):
+    """批量计算财务指标 (ROIC/ROIIC) — 从 FinancialStatement 加载数据 → 计算 → 落库"""
+    from app.models.models import Position, WatchlistItem
+    from app.framework.database.session import async_session
+    from app.framework.finance.roiic import compute_roic, compute_roiic
+    from app.domain.quant.engine.indicator_store import store_financial_indicator
+    from app.domain.research.services.data_loader import data_loader
+    from sqlalchemy import select
+
+    # 确定目标股票
+    if req.target_codes:
+        codes = req.target_codes
+    else:
+        async with async_session() as db:
+            pos = await db.execute(select(Position.stock_code))
+            wl = await db.execute(select(WatchlistItem.stock_code))
+            codes = list(set([r[0] for r in pos.all()] + [r[0] for r in wl.all()]))
+
+    if not codes:
+        return {"success": True, "data": {"message": "无目标股票", "computed": 0}}
+
+    logger.info(f"[FinCompute] Computing ROIC/ROIIC for {len(codes)} stocks")
+
+    results = []
+    for code in codes:
+        try:
+            fin = await data_loader.load_financial_statements(code, periods=8)
+            quarters = fin.get("quarters", [])
+            if len(quarters) < 4:
+                results.append({"code": code, "status": "skipped", "reason": f"仅{len(quarters)}Q数据"})
+                continue
+
+            roic_data = compute_roic(quarters)
+            roiic_data = compute_roiic(quarters) if len(quarters) >= 8 else {}
+            report_date = quarters[0].get("report_date", "")[:10]
+
+            stored = store_financial_indicator(code, report_date, {
+                "roic": roic_data.get("roic"),
+                "roic_pct": roic_data.get("roic_pct"),
+                "roiic": roiic_data.get("roiic"),
+                "roiic_pct": roiic_data.get("roiic_pct"),
+            })
+            results.append({
+                "code": code, "status": "ok" if stored else "store_failed",
+                "report_date": report_date,
+                "roic_pct": roic_data.get("roic_pct"),
+                "roiic_pct": roiic_data.get("roiic_pct"),
+            })
+        except Exception as e:
+            results.append({"code": code, "status": "error", "reason": str(e)[:100]})
+            logger.warning(f"[FinCompute] {code} failed: {e}")
+
+    ok_count = sum(1 for r in results if r["status"] == "ok")
+    logger.info(f"[FinCompute] Done: {ok_count}/{len(codes)}")
+    return {"success": True, "data": {"computed": ok_count, "total": len(codes), "results": results}}
