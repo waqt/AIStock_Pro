@@ -32,8 +32,20 @@ def _nopat_4q(quarters: List[Dict]) -> float:
 
 
 def _invested_capital(q: Dict) -> float:
-    """InvestedCapital ≈ total_assets - 30% * current_assets (近似无息流动负债)"""
+    """InvestedCapital = total_assets - cash - NIBCL
+    NIBCL (无息流动负债) ≈ current_liabilities - short_loan - noncurrent_liab_1year
+    如果有新字段则精确计算, 否则回退到 30% 近似"""
     ta = float(q.get("total_assets", 0) or 0)
+    cash = float(q.get("cash", 0) or 0)
+    cl = float(q.get("current_liabilities", 0) or 0)
+    sl = float(q.get("short_loan", 0) or 0)
+    ncl1y = float(q.get("noncurrent_liab_1year", 0) or 0)
+
+    if cl > 0:
+        # 精确公式: IC = TA - cash - (CL - short_loan - 1year_LTD)
+        nibcl = max(cl - sl - ncl1y, 0)  # 无息流动负债
+        return ta - cash - nibcl
+    # 回退: 近似公式 (旧数据无新字段)
     ca = float(q.get("current_assets", 0) or 0)
     return ta - ca * 0.3
 

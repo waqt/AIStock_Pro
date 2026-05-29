@@ -201,6 +201,9 @@ class ResearchDataLoader:
                     "total_equity": float(r.total_equity or 0),
                     "sale_expense": float(r.sale_expense or 0), "manage_expense": float(r.manage_expense or 0),
                     "rd_expense": float(r.rd_expense or 0),
+                    "cash": float(r.cash or 0), "current_liabilities": float(r.current_liabilities or 0),
+                    "short_loan": float(r.short_loan or 0), "long_loan": float(r.long_loan or 0),
+                    "accounts_payable": float(r.accounts_payable or 0), "noncurrent_liab_1year": float(r.noncurrent_liab_1year or 0),
                 } for r in reversed(rows)]
                 return {"code": code, "quarters": quarters, "source": "DB"}
 
@@ -248,6 +251,12 @@ class ResearchDataLoader:
                     "total_liabilities": float(row.get("total_liabilities", 0) or 0),
                     "total_equity": float(row.get("total_equity", 0) or 0),
                     "rd_expense": float(row.get("rd_expense", 0) or 0),
+                    "cash": float(row.get("cash", 0) or 0),
+                    "current_liabilities": float(row.get("current_liabilities", 0) or 0),
+                    "short_loan": float(row.get("short_loan", 0) or 0),
+                    "long_loan": float(row.get("long_loan", 0) or 0),
+                    "accounts_payable": float(row.get("accounts_payable", 0) or 0),
+                    "noncurrent_liab_1year": float(row.get("noncurrent_liab_1year", 0) or 0),
                 }
                 quarters.append(q)
 
@@ -304,7 +313,7 @@ class ResearchDataLoader:
 
     @staticmethod
     def _fetch_balance_sheet(prefix: str):
-        """获取资产负债表(按报告期) → 存货/合同负债/应收/总资产/流动资产/固定资产/总负债"""
+        """获取资产负债表(按报告期) → 资产/负债/权益核心字段"""
         import akshare as ak
         import pandas as pd
         df = ak.stock_balance_sheet_by_report_em(symbol=prefix)
@@ -313,14 +322,25 @@ class ResearchDataLoader:
             "CONTRACT_LIAB": "contract_liability",
             "ACCOUNTS_RECE": "accounts_receivable",
             "TOTAL_ASSETS": "total_assets",
-            "CURRENT_ASSET_BALANCE": "current_assets",
+            # V5.11 fix: TOTAL_CURRENT_ASSETS 而非 CURRENT_ASSET_BALANCE (后者为0/垃圾值)
+            "TOTAL_CURRENT_ASSETS": "current_assets",
             "FIXED_ASSET": "fixed_assets",
             "TOTAL_LIABILITIES": "total_liabilities",
+            "TOTAL_EQUITY": "total_equity",
+            # ★ V5.11 新增: ROIIC/ROIC 精确计算
+            "MONETARYFUNDS": "cash",
+            "TOTAL_CURRENT_LIAB": "current_liabilities",
+            "SHORT_LOAN": "short_loan",
+            "LONG_LOAN": "long_loan",
+            "ACCOUNTS_PAYABLE": "accounts_payable",
+            "NONCURRENT_LIAB_1YEAR": "noncurrent_liab_1year",
         })
         df["REPORT_DATE"] = pd.to_datetime(df["REPORT_DATE"])
         cols = ["REPORT_DATE", "inventory", "contract_liability",
                 "accounts_receivable", "total_assets", "current_assets",
-                "fixed_assets", "total_liabilities"]
+                "fixed_assets", "total_liabilities", "total_equity",
+                "cash", "current_liabilities", "short_loan",
+                "long_loan", "accounts_payable", "noncurrent_liab_1year"]
         return df[[c for c in cols if c in df.columns]]
 
     @staticmethod

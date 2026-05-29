@@ -135,27 +135,39 @@ class StockInfo(Base):
 
 
 class FinancialStatement(Base):
-    """季度财务报告 — 三大表核心字段"""
+    """季度财务报告 — 三大表核心字段 + ROIIC/ROIC 计算所需字段"""
     __tablename__ = "financial_statements"
     id = Column(Integer, primary_key=True, autoincrement=True)
     stock_code = Column(String(20), nullable=False, index=True)
     report_date = Column(Date, nullable=False)
     report_type = Column(String(5), default="Q")
+    # 利润表
     revenue = Column(Float, default=0.0)
     parent_profit = Column(Float, default=0.0)
     operate_cost = Column(Float, default=0.0)
     sale_expense = Column(Float, default=0.0)
     manage_expense = Column(Float, default=0.0)
     rd_expense = Column(Float, default=0.0)
+    # 现金流量表
     op_cashflow = Column(Float, default=0.0)
+    # 资产负债表 — 资产
     inventory = Column(Float, default=0.0)
     contract_liability = Column(Float, default=0.0)
     accounts_receivable = Column(Float, default=0.0)
     total_assets = Column(Float, default=0.0)
     current_assets = Column(Float, default=0.0)
     fixed_assets = Column(Float, default=0.0)
+    cash = Column(Float, default=0.0, comment="货币资金")          # ★ 新增
+    # 资产负债表 — 负债
     total_liabilities = Column(Float, default=0.0)
+    current_liabilities = Column(Float, default=0.0, comment="流动负债合计")  # ★ 新增
+    short_loan = Column(Float, default=0.0, comment="短期借款")              # ★ 新增
+    long_loan = Column(Float, default=0.0, comment="长期借款")               # ★ 新增
+    accounts_payable = Column(Float, default=0.0, comment="应付账款")        # ★ 新增
+    noncurrent_liab_1year = Column(Float, default=0.0, comment="一年内到期非流动负债")  # ★ 新增
+    # 资产负债表 — 权益
     total_equity = Column(Float, default=0.0)
+    # 元数据
     announce_date = Column(Date, nullable=True)
     created_at = Column(DateTime, default=datetime.now)
     __table_args__ = (UniqueConstraint('stock_code', 'report_date', name='uq_fin_stmt'),)

@@ -88,9 +88,17 @@ def _fetch_balance(prefix: str) -> pd.DataFrame:
         "CONTRACT_LIAB": "contract_liability",
         "ACCOUNTS_RECE": "accounts_receivable",
         "TOTAL_ASSETS": "total_assets",
-        "CURRENT_ASSET_BALANCE": "current_assets",
+        # V5.11 fix: TOTAL_CURRENT_ASSETS 而非 CURRENT_ASSET_BALANCE (后者为0/垃圾值)
+        "TOTAL_CURRENT_ASSETS": "current_assets",
         "FIXED_ASSET": "fixed_assets",
         "TOTAL_LIABILITIES": "total_liabilities",
+        # ★ V5.11 新增: ROIIC/ROIC 精确计算
+        "MONETARYFUNDS": "cash",
+        "TOTAL_CURRENT_LIAB": "current_liabilities",
+        "SHORT_LOAN": "short_loan",
+        "LONG_LOAN": "long_loan",
+        "ACCOUNTS_PAYABLE": "accounts_payable",
+        "NONCURRENT_LIAB_1YEAR": "noncurrent_liab_1year",
     })
     # total_equity field name varies
     for col in df.columns:
@@ -100,7 +108,9 @@ def _fetch_balance(prefix: str) -> pd.DataFrame:
     df["REPORT_DATE"] = pd.to_datetime(df["REPORT_DATE"])
     cols = ["REPORT_DATE", "inventory", "contract_liability", "accounts_receivable",
             "total_assets", "current_assets", "fixed_assets", "total_liabilities",
-            "total_equity"]
+            "total_equity",
+            "cash", "current_liabilities", "short_loan",
+            "long_loan", "accounts_payable", "noncurrent_liab_1year"]
     return df[[c for c in cols if c in df.columns]]
 
 
@@ -111,7 +121,9 @@ def _merge(income, cashflow, balance) -> pd.DataFrame:
             merged = merged.merge(df, on="REPORT_DATE", how="left")
     for col in ["op_cashflow", "inventory", "contract_liability",
                 "accounts_receivable", "total_assets", "current_assets",
-                "fixed_assets", "total_liabilities", "total_equity"]:
+                "fixed_assets", "total_liabilities", "total_equity",
+                "cash", "current_liabilities", "short_loan",
+                "long_loan", "accounts_payable", "noncurrent_liab_1year"]:
         if col not in merged.columns:
             merged[col] = 0.0
     return merged
@@ -144,7 +156,9 @@ async def _upsert(code: str, df: pd.DataFrame) -> int:
                         "manage_expense", "rd_expense", "op_cashflow", "inventory",
                         "contract_liability", "accounts_receivable", "total_assets",
                         "current_assets", "fixed_assets", "total_liabilities",
-                        "total_equity"]:
+                        "total_equity",
+                        "cash", "current_liabilities", "short_loan",
+                        "long_loan", "accounts_payable", "noncurrent_liab_1year"]:
                 if col in df.columns and pd.notna(row.get(col)):
                     setattr(existing, col, float(row[col]))
             stored += 1
