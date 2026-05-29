@@ -242,7 +242,7 @@ FINANCIAL_NUMERIC_COLS = [
     "rd_intensity", "gross_margin", "operating_leverage", "fcf_conversion",
     "roic_stability",
 ]
-FINANCIAL_TEXT_COLS = ["gross_margin_trend", "inventory_revenue_ratio"]
+FINANCIAL_TEXT_COLS = ["gross_margin_trend", "inventory_revenue_ratio", "source"]
 FINANCIAL_ALL_COLS = FINANCIAL_NUMERIC_COLS + FINANCIAL_TEXT_COLS
 
 def _fin_col_defs():

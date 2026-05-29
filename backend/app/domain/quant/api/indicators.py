@@ -399,12 +399,16 @@ async def compute_financial_indicators(req: FinancialComputeRequest = FinancialC
     if not a_codes:
         return {"success": True, "data": {"message": "无有效A股代码", "computed": 0}}
 
-    logger.info(f"[FinCompute] Computing ROIC/ROIIC for {len(a_codes)} stocks (using DB data, sync separately in Data Center)")
+    logger.info(f"[FinCompute] Computing indicators for {len(a_codes)} stocks (DB + Web dual-channel)")
+
+    from app.domain.research.services.financial_data_loader import load_financials
 
     results = []
+    db_count, web_count = 0, 0
     for code in a_codes:
         try:
-            fin = await data_loader.load_financial_statements(code, periods=20)
+            fin = await load_financials(code, periods=20, provider=None)
+            data_source = fin.get("source", "db")
             quarters = fin.get("quarters", [])
             if len(quarters) < 4:
                 results.append({"code": code, "status": "skipped", "reason": f"仅{len(quarters)}Q数据"})
@@ -456,14 +460,19 @@ async def compute_financial_indicators(req: FinancialComputeRequest = FinancialC
                     except Exception:
                         pass
 
+                record["source"] = data_source
                 stored = store_financial_indicator(code, rpt_date, record)
                 if stored:
                     stored_count += 1
+
+            if data_source == "db": db_count += 1
+            else: web_count += 1
 
             results.append({
                 "code": code, "status": "ok" if stored_count > 0 else "store_failed",
                 "periods": stored_count,
                 "latest_date": recent_first[0].get("report_date", "")[:10],
+                "data_source": data_source,
                 "roic_pct": compute_roic(recent_first[:4]).get("roic_pct"),
             })
         except Exception as e:
@@ -471,5 +480,5 @@ async def compute_financial_indicators(req: FinancialComputeRequest = FinancialC
             logger.warning(f"[FinCompute] {code} failed: {e}")
 
     ok_count = sum(1 for r in results if r["status"] == "ok")
-    logger.info(f"[FinCompute] Done: {ok_count}/{len(a_codes)}")
+    logger.info(f"[FinCompute] Done: {ok_count}/{len(a_codes)} (DB={db_count}, Web={web_count})")
     return {"success": True, "data": {"computed": ok_count, "total": len(a_codes), "results": results}}
