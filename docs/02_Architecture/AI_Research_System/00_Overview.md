@@ -31,7 +31,7 @@
 | 3 | 产业链系统拆解 | ✅ 完成 | ✅ 完成 | V5.9: 定性schema + 证据层 + 自适应搜索 (Phase 1.8 → Step 4) |
 | 4 | 系统动力学推演 | ✅ 完成 | ✅ 已完成 | V1.0, bottleneck_migration + resource_crowding + hidden_beneficiaries |
 | 5 | 跨产业关联分析 | ✅ 完成 | ✅ 已完成 | V1.0: 3轮×N节点搜索 + 5种推演方法 + Step3/4反向校验 |
-| 6 | 核心资产筛选 | ✅ 完成 | ⚠️ 已有 | 未接入新 pipeline |
+| 6 | 核心资产筛选 | ✅ 完成 | ✅ 已完成 | V1.0: 六维权力画像 + 生命周期分轨 + FinancialAuditor标注不排除 |
 | 7 | 财务质量 | ✅ 完成 | ⚠️ 已有 | FinancialAuditor 已有, 未接入 pipeline |
 | 8 | 估值体系 | ✅ 完成 | ⚠️ 已有 | ValuationPricer 已有, 未使用 framework/finance |
 | 9 | 市场预期差 | ⚠️ 草稿 | ❌ 0% | 待实现 ExpectationGapAgent |
