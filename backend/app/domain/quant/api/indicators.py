@@ -374,15 +374,15 @@ class FinancialComputeRequest(BaseModel):
 
 @financial_router.post("/compute")
 async def compute_financial_indicators(req: FinancialComputeRequest = FinancialComputeRequest()):
-    """批量计算财务指标 (ROIC/ROIIC) — 从 FinancialStatement 加载数据 → 计算 → 落库"""
-    from app.models.models import Position, WatchlistItem
+    """批量计算财务指标 (ROIC/ROIIC) — 从 FinancialStatement 加载数据 → 每季度计算 → 落库"""
+    from app.models.models import Position, WatchlistItem, FinancialStatement
     from app.framework.database.session import async_session
     from app.framework.finance.roiic import compute_roic, compute_roiic
     from app.domain.quant.engine.indicator_store import store_financial_indicator
     from app.domain.research.services.data_loader import data_loader
     from sqlalchemy import select
 
-    # 确定目标股票
+    # 确定目标股票 (过滤 ETF 和港股)
     if req.target_codes:
         codes = req.target_codes
     else:
@@ -390,39 +390,27 @@ async def compute_financial_indicators(req: FinancialComputeRequest = FinancialC
             pos = await db.execute(select(Position.stock_code))
             wl = await db.execute(select(WatchlistItem.stock_code))
             codes = list(set([r[0] for r in pos.all()] + [r[0] for r in wl.all()]))
+    # 过滤: 只保留 A 股 6 位代码, 排除 ETF (159/510/512/513/560/588 开头)
+    a_codes = [c for c in codes if len(str(c)) == 6 and not str(c).startswith(('159','510','512','513','560','588'))]
+    skipped_etf = len(codes) - len(a_codes)
+    if skipped_etf > 0:
+        logger.info(f"[FinCompute] Filtered {skipped_etf} ETF/HK codes, {len(a_codes)} A-share codes remain")
 
-    if not codes:
-        return {"success": True, "data": {"message": "无目标股票", "computed": 0}}
+    if not a_codes:
+        return {"success": True, "data": {"message": "无有效A股代码", "computed": 0}}
 
-    logger.info(f"[FinCompute] Computing ROIC/ROIIC for {len(codes)} stocks")
+    logger.info(f"[FinCompute] Computing ROIC/ROIIC for {len(a_codes)} stocks")
 
-    # 检查+同步: DB 最新数据超过6个月 → 先同步 akshare 再算
-    from datetime import date, timedelta
-    stale_threshold = date.today() - timedelta(days=180)
-    stale_codes = []
-    for code in codes:
-        try:
-            from app.models.models import FinancialStatement
-            async with async_session() as db:
-                latest = await db.execute(
-                    select(FinancialStatement.report_date)
-                    .where(FinancialStatement.stock_code == code)
-                    .order_by(FinancialStatement.report_date.desc()).limit(1))
-                latest_date = latest.scalars().first()
-            if not latest_date or latest_date < stale_threshold:
-                stale_codes.append(code)
-        except Exception:
-            pass
-    if stale_codes:
-        logger.info(f"[FinCompute] Syncing {len(stale_codes)}/{len(codes)} stale stocks")
-        try:
-            from app.domain.market_data.services.financial_sync import sync_financials_batch
-            await sync_financials_batch(stale_codes)
-        except Exception as e:
-            logger.warning(f"[FinCompute] Pre-sync failed: {e}")
+    # 强制同步: 全部先拉取最新 akshare 数据
+    try:
+        from app.domain.market_data.services.financial_sync import sync_financials_batch
+        await sync_financials_batch(a_codes)
+        logger.info(f"[FinCompute] Synced all {len(a_codes)} stocks")
+    except Exception as e:
+        logger.warning(f"[FinCompute] Sync failed: {e}")
 
     results = []
-    for code in codes:
+    for code in a_codes:
         try:
             fin = await data_loader.load_financial_statements(code, periods=8)
             quarters = fin.get("quarters", [])
@@ -430,26 +418,45 @@ async def compute_financial_indicators(req: FinancialComputeRequest = FinancialC
                 results.append({"code": code, "status": "skipped", "reason": f"仅{len(quarters)}Q数据"})
                 continue
 
-            roic_data = compute_roic(quarters)
-            roiic_data = compute_roiic(quarters) if len(quarters) >= 8 else {}
-            report_date = quarters[0].get("report_date", "")[:10]
+            # quarters 是 oldest-first, 倒序为 newest-first
+            recent_first = list(reversed(quarters))
+            stored_count = 0
 
-            stored = store_financial_indicator(code, report_date, {
-                "roic": roic_data.get("roic"),
-                "roic_pct": roic_data.get("roic_pct"),
-                "roiic": roiic_data.get("roiic"),
-                "roiic_pct": roiic_data.get("roiic_pct"),
-            })
+            # 为每个可用窗口计算并持久化 ROIC (4Q滚动) + ROIIC (8Q窗口)
+            # 遍历: 每季度作为计算截止点 (至少需要 4Q 数据)
+            for i in range(len(recent_first) - 3):
+                window = recent_first[i:i+4]  # 最近4Q
+                rpt_date = window[0].get("report_date", "")[:10]
+
+                roic_data = compute_roic(window)
+                roiic_data = {}
+                if i >= 4 and len(recent_first) >= 8:
+                    # ROIIC: 需要 8Q 窗口 (t-4 到 t)
+                    prior = recent_first[i:i+4]
+                    prev = recent_first[i+4:i+8] if i+8 <= len(recent_first) else recent_first[i+4:]
+                    if len(prev) >= 4:
+                        roiic_window = prior + prev
+                        roiic_data = compute_roiic(roiic_window)
+
+                stored = store_financial_indicator(code, rpt_date, {
+                    "roic": roic_data.get("roic"),
+                    "roic_pct": roic_data.get("roic_pct"),
+                    "roiic": roiic_data.get("roiic"),
+                    "roiic_pct": roiic_data.get("roiic_pct"),
+                })
+                if stored:
+                    stored_count += 1
+
             results.append({
-                "code": code, "status": "ok" if stored else "store_failed",
-                "report_date": report_date,
-                "roic_pct": roic_data.get("roic_pct"),
-                "roiic_pct": roiic_data.get("roiic_pct"),
+                "code": code, "status": "ok" if stored_count > 0 else "store_failed",
+                "periods": stored_count,
+                "latest_date": recent_first[0].get("report_date", "")[:10],
+                "roic_pct": compute_roic(recent_first[:4]).get("roic_pct"),
             })
         except Exception as e:
             results.append({"code": code, "status": "error", "reason": str(e)[:100]})
             logger.warning(f"[FinCompute] {code} failed: {e}")
 
     ok_count = sum(1 for r in results if r["status"] == "ok")
-    logger.info(f"[FinCompute] Done: {ok_count}/{len(codes)}")
-    return {"success": True, "data": {"computed": ok_count, "total": len(codes), "results": results}}
+    logger.info(f"[FinCompute] Done: {ok_count}/{len(a_codes)}")
+    return {"success": True, "data": {"computed": ok_count, "total": len(a_codes), "results": results}}

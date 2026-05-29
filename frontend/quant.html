@@ -370,11 +370,20 @@
 
         function loadFinStockList() {
             var ss = document.getElementById('fin-stock-select');
-            fetch(API_BASE + '/data/watchlist').then(function(r) { return r.json(); }).then(function(d) {
-                var items = d.data || [];
+            // 从 positions + watchlist 获取股票列表
+            Promise.all([
+                fetch(API_BASE + '/positions').then(function(r) { return r.json(); }),
+                fetch(API_BASE + '/data/watchlist').then(function(r) { return r.json(); })
+            ]).then(function(results) {
+                var posItems = (results[0].data || []).map(function(p) { return { stock_code: p.stock_code, stock_name: p.stock_name || '' }; });
+                var wlItems = (results[1].data || []).map(function(w) { return { stock_code: w.stock_code, stock_name: w.stock_name || '' }; });
+                // 去重 (按 code)
+                var map = {};
+                posItems.concat(wlItems).forEach(function(i) { map[i.stock_code] = i; });
+                var items = Object.values(map);
                 ss.innerHTML = '<option value="">— 选择股票 —</option>' +
                     items.map(function(i) { return '<option value="' + i.stock_code + '">' + i.stock_code + ' ' + (i.stock_name || '') + '</option>'; }).join('');
-            });
+            }).catch(function() { ss.innerHTML = '<option value="">加载失败</option>'; });
         }
 
         function loadFinFieldList() {
@@ -405,9 +414,9 @@
             fetch(API_BASE + '/quant/financial-indicators/history/' + code).then(function(r) { return r.json(); }).then(function(d) {
                 var rows = d.data || [];
                 if (!rows.length) { el.innerHTML = '<div style="color:var(--text-micro);padding:20px;text-align:center;">无财务指标数据 (请先点击"提交计算")</div>'; return; }
-                info.textContent = rows.length + ' 期数据';
+                info.textContent = rows.length + ' 期数据 (新→旧)';
                 var html = '<table class="health-table"><thead><tr><th>报告期</th><th style="text-align:right;">ROIC%</th><th style="text-align:right;">ROIIC%</th></tr></thead><tbody>';
-                rows.reverse().forEach(function(r) {
+                rows.forEach(function(r) {
                     html += '<tr><td>' + (r.report_date || '?') + '</td>' +
                         '<td style="text-align:right;font-family:var(--font-mono);">' + (r.roic_pct != null ? r.roic_pct.toFixed(1) + '%' : '—') + '</td>' +
                         '<td style="text-align:right;font-family:var(--font-mono);">' + (r.roiic_pct != null ? r.roiic_pct.toFixed(1) + '%' : '—') + '</td></tr>';

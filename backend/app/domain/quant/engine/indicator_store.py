@@ -303,7 +303,7 @@ def get_financial_history(code: str, fields: List[str] = None) -> List[dict]:
         c for c in (fields or FINANCIAL_NUMERIC_COLS) if c in cols.split(","))
     rows = conn.execute(
         f"SELECT stock_code, report_date, {cols} FROM financial_indicators "
-        f"WHERE stock_code=? ORDER BY report_date ASC",
+        f"WHERE stock_code=? ORDER BY report_date DESC",
         [code]).fetchall()
     return [dict(r) for r in rows]
 
