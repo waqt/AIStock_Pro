@@ -10,6 +10,8 @@ class RDIntensity(FinancialIndicator):
     name = "rd_intensity"
     label = "研发费用率(%)"
     category = "fundamental"
+    indicator_type = "moat"
+    applicable_stages = ["startup", "inflection"]
     params = {}
     output = ["rd_intensity"]
     requires = ["rd_expense", "revenue"]
@@ -30,6 +32,8 @@ class GrossMargin(FinancialIndicator):
     name = "gross_margin"
     label = "毛利率(%)"
     category = "fundamental"
+    indicator_type = "moat"
+    applicable_stages = ["inflection", "growth", "mature"]
     params = {}
     output = ["gross_margin"]
     requires = ["revenue", "operate_cost"]
@@ -50,6 +54,8 @@ class GrossMarginTrend(FinancialIndicator):
     name = "gross_margin_trend"
     label = "毛利率趋势"
     category = "fundamental"
+    indicator_type = "moat"
+    applicable_stages = ["inflection", "growth", "mature"]
     params = {}
     output = ["gross_margin_trend"]
     requires = ["revenue", "operate_cost"]
@@ -76,6 +82,8 @@ class OperatingLeverage(FinancialIndicator):
     name = "operating_leverage"
     label = "经营杠杆"
     category = "fundamental"
+    indicator_type = "prosperity"
+    applicable_stages = ["growth"]
     params = {}
     output = ["operating_leverage"]
     requires = ["revenue", "parent_profit"]
@@ -103,6 +111,8 @@ class FCFConversion(FinancialIndicator):
     name = "fcf_conversion"
     label = "现金流转化率"
     category = "fundamental"
+    indicator_type = "moat"
+    applicable_stages = ["growth", "mature"]
     params = {}
     output = ["fcf_conversion"]
     requires = ["op_cashflow", "parent_profit"]

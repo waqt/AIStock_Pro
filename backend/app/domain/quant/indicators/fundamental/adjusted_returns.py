@@ -10,6 +10,8 @@ class ROICAdjusted(FinancialIndicator):
     name = "roic_adjusted"
     label = "ROIC(研发调整后)"
     category = "fundamental"
+    indicator_type = "moat"
+    applicable_stages = ["growth", "mature"]
     params = {}
     output = ["roic_adjusted", "roic_pct_adjusted"]
     requires = []
@@ -25,6 +27,8 @@ class ROIICAdjusted(FinancialIndicator):
     name = "roiic_adjusted"
     label = "ROIIC(研发调整后)"
     category = "fundamental"
+    indicator_type = "prosperity"
+    applicable_stages = ["growth"]
     params = {}
     output = ["roiic_adjusted", "roiic_pct_adjusted"]
     requires = []

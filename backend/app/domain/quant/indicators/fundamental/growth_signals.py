@@ -10,6 +10,8 @@ class ContractLiabilityYoY(FinancialIndicator):
     name = "contract_liability_yoy"
     label = "合同负债同比增速(%)"
     category = "fundamental"
+    indicator_type = "prosperity"
+    applicable_stages = ["startup", "inflection", "growth"]
     params = {}
     output = ["contract_liability_yoy"]
     requires = ["contract_liability"]
@@ -30,6 +32,8 @@ class InventoryYoY(FinancialIndicator):
     name = "inventory_yoy"
     label = "存货同比增速(%)"
     category = "fundamental"
+    indicator_type = "prosperity"
+    applicable_stages = ["inflection", "growth"]
     params = {}
     output = ["inventory_yoy"]
     requires = ["inventory"]
@@ -50,6 +54,8 @@ class RevenueYoY(FinancialIndicator):
     name = "revenue_yoy"
     label = "营收同比增速(%)"
     category = "fundamental"
+    indicator_type = "prosperity"
+    applicable_stages = ["startup", "inflection", "growth", "mature", "decline"]
     params = {}
     output = ["revenue_yoy"]
     requires = ["revenue"]
@@ -70,6 +76,8 @@ class RDGrowth(FinancialIndicator):
     name = "rd_growth"
     label = "研发费用同比增速(%)"
     category = "fundamental"
+    indicator_type = "moat"
+    applicable_stages = ["startup", "inflection"]
     params = {}
     output = ["rd_growth"]
     requires = ["rd_expense"]

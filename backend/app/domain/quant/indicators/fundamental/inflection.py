@@ -10,6 +10,8 @@ class RDToRevenueTrend(FinancialIndicator):
     name = "rd_to_revenue_trend"
     label = "研发费率趋势(百分点)"
     category = "fundamental"
+    indicator_type = "moat"
+    applicable_stages = ["inflection"]
     params = {}
     output = ["rd_to_revenue_trend"]
     requires = ["rd_expense", "revenue"]
@@ -36,6 +38,8 @@ class RevenueAcceleration(FinancialIndicator):
     name = "revenue_acceleration"
     label = "营收加速度(百分点)"
     category = "fundamental"
+    indicator_type = "prosperity"
+    applicable_stages = ["inflection", "growth"]
     params = {}
     output = ["revenue_acceleration"]
     requires = ["revenue"]
@@ -59,6 +63,8 @@ class ProfitTurnaround(FinancialIndicator):
     name = "profit_turnaround"
     label = "扭亏信号"
     category = "fundamental"
+    indicator_type = "prosperity"
+    applicable_stages = ["inflection"]
     params = {}
     output = ["profit_turnaround"]
     requires = ["parent_profit"]
@@ -82,6 +88,8 @@ class RevenueQoQ(FinancialIndicator):
     name = "revenue_qoq"
     label = "营收环比增速(%)"
     category = "fundamental"
+    indicator_type = "prosperity"
+    applicable_stages = ["inflection", "growth"]
     params = {}
     output = ["revenue_qoq"]
     requires = ["revenue"]

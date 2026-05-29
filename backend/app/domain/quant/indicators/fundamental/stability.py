@@ -11,6 +11,8 @@ class ROICStability(FinancialIndicator):
     name = "roic_stability"
     label = "ROIC稳定性"
     category = "fundamental"
+    indicator_type = "moat"
+    applicable_stages = ["mature"]
     params = {}
     output = ["roic_stability"]
     requires = ["revenue", "operate_cost", "sale_expense", "manage_expense",
@@ -41,6 +43,8 @@ class InventoryRevenueTrend(FinancialIndicator):
     name = "inventory_revenue_ratio"
     label = "存货/营收比趋势"
     category = "fundamental"
+    indicator_type = "both"
+    applicable_stages = ["growth", "mature"]
     params = {}
     output = ["inventory_revenue_ratio"]
     requires = ["inventory", "revenue"]
@@ -67,6 +71,8 @@ class OperatingMarginStability(FinancialIndicator):
     name = "operating_margin_stability"
     label = "营业利润率稳定性"
     category = "fundamental"
+    indicator_type = "moat"
+    applicable_stages = ["mature"]
     params = {}
     output = ["operating_margin_stability"]
     requires = ["revenue", "operate_cost", "sale_expense", "manage_expense"]

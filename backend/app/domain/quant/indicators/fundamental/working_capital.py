@@ -10,6 +10,8 @@ class WorkingCapitalEfficiency(FinancialIndicator):
     name = "working_capital_efficiency"
     label = "营运资本效率(%)"
     category = "fundamental"
+    indicator_type = "moat"
+    applicable_stages = ["growth", "mature"]
     params = {}
     output = ["working_capital_efficiency"]
     requires = ["accounts_receivable", "inventory", "accounts_payable", "revenue"]
