@@ -20,3 +20,8 @@ from app.framework.finance.model_map import (
     match_asset_type,
     get_valuation_method,
 )
+from app.framework.finance.roiic import (
+    compute_roic,
+    compute_roiic,
+    compute_roe_from_financials,
+)

@@ -246,6 +246,8 @@ class ResearchDataLoader:
                     "current_assets": float(row.get("current_assets", 0) or 0),
                     "fixed_assets": float(row.get("fixed_assets", 0) or 0),
                     "total_liabilities": float(row.get("total_liabilities", 0) or 0),
+                    "total_equity": float(row.get("total_equity", 0) or 0),
+                    "rd_expense": float(row.get("rd_expense", 0) or 0),
                 }
                 quarters.append(q)
 
