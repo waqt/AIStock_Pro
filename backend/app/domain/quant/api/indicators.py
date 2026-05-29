@@ -407,7 +407,7 @@ async def compute_financial_indicators(req: FinancialComputeRequest = FinancialC
     db_count, web_count = 0, 0
     for code in a_codes:
         try:
-            fin = await load_financials(code, periods=20, provider=None)
+            fin = await load_financials(code, periods=20, mode="local")
             data_source = fin.get("source", "db")
             quarters = fin.get("quarters", [])
             if len(quarters) < 4:

@@ -122,13 +122,14 @@ class CoreScreeningAgent(ResearchAgent):
         cycle_position = (step3 if isinstance(step3, dict) else {}).get("cycle_position", "")
         gate_mode = get_gate_mode(cycle_position)
 
-        # 拉取本地DB数据
+        # 拉取财务数据 (投研模式: DB→akshare→web search 自动路由)
+        from app.domain.research.services.financial_data_loader import load_financials as _load_fin
         codes = [c["code"] for c in candidates[:20]]  # 最多20只
         stock_info_map = await data_loader.load_fundamentals(codes) if codes else {}
         fin_map = {}
         for code in codes[:10]:  # 财务数据拉取限制10只, 控制耗时
             try:
-                fin_data = await data_loader.load_financial_statements(code, periods=8)
+                fin_data = await _load_fin(code, periods=8, mode="auto")
                 if fin_data and fin_data.get("quarters"):
                     fin_map[code] = fin_data
             except Exception:

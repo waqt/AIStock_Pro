@@ -7,19 +7,36 @@ from typing import Dict, Any, List
 from app.framework.logger import logger
 
 
-async def load_financials(code: str, name: str = "", periods: int = 8, provider=None) -> dict:
+async def load_financials(code: str, name: str = "", periods: int = 8, mode: str = "auto", provider=None) -> dict:
     """
     统一入口: 加载股票财务数据
-    返回: {"quarters": [...], "source": "db"|"web_estimated", "confidence": "high"|"medium"|"low"}
+    mode:
+      "local" — 仅查本地DB (系统界面→指标计算)
+      "auto"  — DB → akshare接口 → web search (投研分析)
+    返回: {"quarters": [...], "source": "db"|"akshare_live"|"web_estimated", "confidence": ...}
     """
+    # 模式1: 本地DB
     result = await _load_from_db(code, periods)
     if result["quarters"] and len(result["quarters"]) >= 4:
         result["source"] = "db"
         result["confidence"] = "high"
         return result
 
-    # DB 不足 → web search 兜底
-    logger.info(f"[FinData] {code}: DB has <4Q, falling back to web search")
+    if mode == "local":
+        result["source"] = "db"
+        result["confidence"] = "low" if result["quarters"] else "insufficient_data"
+        return result
+
+    # 模式2 (auto): akshare 接口查数
+    logger.info(f"[FinData] {code}: DB has <4Q, trying akshare live...")
+    result = await _load_from_akshare(code, periods)
+    if result["quarters"] and len(result["quarters"]) >= 4:
+        result["source"] = "akshare_live"
+        result["confidence"] = "high"
+        return result
+
+    # 模式3 (auto): web search 兜底
+    logger.info(f"[FinData] {code}: akshare failed, falling back to web search")
     result = await _load_from_web(code, name, provider)
     result["source"] = "web_estimated"
     return result
@@ -34,6 +51,21 @@ async def _load_from_db(code: str, periods: int = 8) -> dict:
     except Exception as e:
         logger.warning(f"[FinData] DB load failed for {code}: {e}")
         return {"quarters": [], "source": "db"}
+
+
+async def _load_from_akshare(code: str, periods: int = 8) -> dict:
+    """akshare 接口查数 — 对于非自选股, 直接调 akshare API 获取季报"""
+    try:
+        from app.domain.market_data.services.financial_sync import sync_financials
+        result = await sync_financials(code)
+        if result.get("stored", 0) > 0:
+            from app.domain.research.services.data_loader import data_loader
+            fin = await data_loader.load_financial_statements(code, periods=periods)
+            return {"quarters": fin.get("quarters", []), "source": "akshare_live"}
+        return {"quarters": [], "source": "akshare_live"}
+    except Exception as e:
+        logger.warning(f"[FinData] akshare live sync failed for {code}: {e}")
+        return {"quarters": [], "source": "akshare_live"}
 
 
 async def _load_from_web(code: str, name: str = "", provider=None) -> dict:
