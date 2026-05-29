@@ -414,25 +414,49 @@ async def compute_financial_indicators(req: FinancialComputeRequest = FinancialC
             recent_first = list(reversed(quarters))
             stored_count = 0
 
-            # ROIC: 每4Q窗口滚动计算, ROIIC: 每8Q窗口滚动计算
+            # 加载所有已注册财务指标
+            from app.domain.quant.indicators.fundamental import FINANCIAL_REGISTRY
+            fin_indicators = [(name, cls) for name, cls in FINANCIAL_REGISTRY.items()
+                              if name not in ("roic", "roiic")]  # ROIC/ROIIC 单独处理
+
             for i in range(len(recent_first) - 3):
                 window_4q = recent_first[i:i+4]
                 rpt_date = window_4q[0].get("report_date", "")[:10]
 
+                # 基础 ROIC/ROIIC
                 roic_data = compute_roic(window_4q)
-                roiic_val, roiic_pct = None, None
-                # ROIIC: 取8Q窗口 (i..i+7), 前4Q vs 后4Q
+                record = {"roic": roic_data.get("roic"), "roic_pct": roic_data.get("roic_pct")}
+
                 if i + 8 <= len(recent_first):
                     window_8q = recent_first[i:i+8]
                     ri = compute_roiic(window_8q)
-                    roiic_val, roiic_pct = ri.get("roiic"), ri.get("roiic_pct")
+                    record.update({"roiic": ri.get("roiic"), "roiic_pct": ri.get("roiic_pct")})
+                    # 研发资本化调整后的 ROIIC/ROIC
+                    try:
+                        from app.framework.finance.rd_adjustment import adjust_rd_capitalization
+                        adj = adjust_rd_capitalization(window_8q)
+                        if adj.get("material"):
+                            # 用调整后的利润重算
+                            adj_profit_ratio = adj["adjusted_profit_yi"] / max(adj["reported_profit_yi"], 0.01)
+                            if roic_data.get("roic_pct") is not None and adj_profit_ratio > 1.01:
+                                record["roic_adjusted"] = (roic_data.get("roic") or 0) * adj_profit_ratio
+                                record["roic_pct_adjusted"] = round((roic_data.get("roic_pct") or 0) * adj_profit_ratio, 1)
+                            if ri.get("roiic_pct") is not None and adj_profit_ratio > 1.01:
+                                record["roiic_adjusted"] = (ri.get("roiic") or 0) * adj_profit_ratio
+                                record["roiic_pct_adjusted"] = round((ri.get("roiic_pct") or 0) * adj_profit_ratio, 1)
+                    except Exception:
+                        pass
 
-                stored = store_financial_indicator(code, rpt_date, {
-                    "roic": roic_data.get("roic"),
-                    "roic_pct": roic_data.get("roic_pct"),
-                    "roiic": roiic_val,
-                    "roiic_pct": roiic_pct,
-                })
+                # 遍历所有注册的财务指标并计算
+                for name, cls in fin_indicators:
+                    try:
+                        result = cls.compute(window_4q)
+                        for k, v in result.items():
+                            record[k] = v
+                    except Exception:
+                        pass
+
+                stored = store_financial_indicator(code, rpt_date, record)
                 if stored:
                     stored_count += 1
 

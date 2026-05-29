@@ -235,23 +235,46 @@ def get_counts() -> int:
 
 # ═══ 财务指标存储 (独立表, 不在 Indicators 宽表中) ═══════════════════
 
-FINANCIAL_NUMERIC_COLS = ["roic", "roic_pct", "roiic", "roiic_pct"]
-FINANCIAL_ALL_COLS = FINANCIAL_NUMERIC_COLS
+FINANCIAL_NUMERIC_COLS = [
+    "roic", "roic_pct", "roiic", "roiic_pct",
+    "roic_adjusted", "roic_pct_adjusted", "roiic_adjusted", "roiic_pct_adjusted",
+    "contract_liability_yoy", "inventory_yoy", "revenue_yoy", "rd_growth",
+    "rd_intensity", "gross_margin", "operating_leverage", "fcf_conversion",
+    "roic_stability",
+]
+FINANCIAL_TEXT_COLS = ["gross_margin_trend", "inventory_revenue_ratio"]
+FINANCIAL_ALL_COLS = FINANCIAL_NUMERIC_COLS + FINANCIAL_TEXT_COLS
 
-CREATE_FINANCIAL_TABLE_SQL = """
+def _fin_col_defs():
+    defs = []
+    for c in FINANCIAL_NUMERIC_COLS:
+        defs.append(f"{c} REAL DEFAULT NULL")
+    for c in FINANCIAL_TEXT_COLS:
+        defs.append(f"{c} TEXT DEFAULT NULL")
+    return ", ".join(defs)
+
+CREATE_FINANCIAL_TABLE_SQL = f"""
 CREATE TABLE IF NOT EXISTS financial_indicators (
     stock_code TEXT NOT NULL,
     report_date TEXT NOT NULL,
-    roic REAL DEFAULT NULL,
-    roic_pct REAL DEFAULT NULL,
-    roiic REAL DEFAULT NULL,
-    roiic_pct REAL DEFAULT NULL,
+    {_fin_col_defs()},
     PRIMARY KEY (stock_code, report_date)
 )
 """
 
 def _init_financial_table():
     conn = _get_conn()
+    # Check if existing table has expected schema
+    existing_cols = set()
+    try:
+        rows = conn.execute("PRAGMA table_info(financial_indicators)").fetchall()
+        existing_cols = {r[1] for r in rows}  # col name at index 1
+    except Exception:
+        pass
+    expected_cols = set(FINANCIAL_NUMERIC_COLS + FINANCIAL_TEXT_COLS + ["stock_code", "report_date"])
+    if existing_cols and not expected_cols.issubset(existing_cols):
+        conn.execute("DROP TABLE IF EXISTS financial_indicators")
+        conn.commit()
     conn.execute(CREATE_FINANCIAL_TABLE_SQL)
     conn.commit()
 
@@ -260,21 +283,22 @@ def store_financial_indicator(code: str, report_date: str, data: dict) -> bool:
     """存储单只股票的财务指标快照 (upsert by stock_code+report_date)"""
     conn = _get_conn()
     _init_financial_table()
+    all_cols = FINANCIAL_NUMERIC_COLS + FINANCIAL_TEXT_COLS
     try:
         existing = conn.execute(
             "SELECT 1 FROM financial_indicators WHERE stock_code=? AND report_date=?",
             [code, report_date]).fetchone()
         if existing:
-            sets = ", ".join(f"{c}=?" for c in FINANCIAL_NUMERIC_COLS if c in data)
-            vals = [data.get(c) for c in FINANCIAL_NUMERIC_COLS if c in data]
+            sets = ", ".join(f"{c}=?" for c in all_cols if c in data)
+            vals = [data.get(c) for c in all_cols if c in data]
             if sets:
                 conn.execute(
                     f"UPDATE financial_indicators SET {sets} WHERE stock_code=? AND report_date=?",
                     vals + [code, report_date])
         else:
-            cols = ["stock_code", "report_date"] + [c for c in FINANCIAL_NUMERIC_COLS if c in data]
+            cols = ["stock_code", "report_date"] + [c for c in all_cols if c in data]
             placeholders = ",".join("?" * len(cols))
-            vals = [code, report_date] + [data.get(c) for c in FINANCIAL_NUMERIC_COLS if c in data]
+            vals = [code, report_date] + [data.get(c) for c in all_cols if c in data]
             conn.execute(
                 f"INSERT INTO financial_indicators ({','.join(cols)}) VALUES ({placeholders})", vals)
         conn.commit()
