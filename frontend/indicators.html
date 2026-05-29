@@ -31,6 +31,11 @@
 <main class="main-content">
 <div class="top-bar"></div>
 <div class="workspace">
+    <!-- Top system toggle -->
+    <div style="position:absolute;top:10px;right:20px;display:flex;gap:2px;z-index:10;">
+        <button class="tab-btn active" onclick="switchSystem('technical')" id="btn-tech">技术指标</button>
+        <button class="tab-btn" onclick="switchSystem('financial')" id="btn-fin">财务指标</button>
+    </div>
     <!-- Left: Stock Selector + Indicator Cards -->
     <div class="left-panel">
         <div class="panel" style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
@@ -90,7 +95,9 @@
 var currentMode = 'stock';
 var currentStock = '';
 var currentField = '';
+var currentSystem = 'technical';
 var indicatorRegistry = [];
+function apiPrefix() { return currentSystem === 'financial' ? '/quant/financial-indicators' : '/quant/indicators'; }
 var catNames = { trend: '趋势', momentum: '动量', volatility: '波动', volume: '量能', crowding: '拥挤度', chip: '筹码' };
 
 function handleIndClick(el) {
@@ -113,11 +120,11 @@ document.addEventListener('DOMContentLoaded', function() {
         if (items.length > 0) { sel.value = items[0].stock_code; selectStock(); }
     });
     // Load indicator registry for field mode
-    fetch(API_BASE + '/quant/indicators/registry').then(function(r) { return r.json(); }).then(function(d) {
+    fetch(API_BASE + apiPrefix() + '/registry').then(function(r) { return r.json(); }).then(function(d) {
         indicatorRegistry = d.data || [];
         var fs = document.getElementById('field-select');
         fs.innerHTML = '<option value="">— 选择指标 —</option>' +
-            indicatorRegistry.map(function(i) { return '<option value="' + i.name + '">' + i.name + ' (' + (i.label || '') + ')</option>'; }).join('');
+            indicatorRegistry.map(function(i) { return '<option value="' + i.name + '">' + (i.label || i.name) + '</option>'; }).join('');
     });
 });
 
@@ -131,6 +138,19 @@ function switchMode(mode) {
     if (mode === 'stock' && currentStock) selectStock();
     if (mode === 'field' && currentField) selectField();
 }
+function switchSystem(sys) {
+    currentSystem = sys;
+    document.getElementById('btn-tech').classList.toggle('active', sys === 'technical');
+    document.getElementById('btn-fin').classList.toggle('active', sys === 'financial');
+    fetch(apiPrefix() + '/registry').then(function(r) { return r.json(); }).then(function(d) {
+        indicatorRegistry = d.data || [];
+        var fs = document.getElementById('field-select');
+        fs.innerHTML = '<option value="">— 选择指标 —</option>' +
+            indicatorRegistry.map(function(i) { return '<option value="' + i.name + '">' + (i.label || i.name) + '</option>'; }).join('');
+    });
+    if (currentMode === 'stock' && currentStock) selectStock();
+    if (currentMode === 'field' && currentField) selectField();
+}
 
 // ═══ Stock Mode ═══
 function selectStock() {
@@ -139,12 +159,14 @@ function selectStock() {
     currentStock = code;
     document.getElementById('indicator-cards').innerHTML = '<div style="color:var(--text-micro);padding:20px;">加载中...</div>';
     // Fetch latest indicators
-    fetch(API_BASE + '/quant/indicators/' + code).then(function(r) { return r.json(); }).then(function(d) {
-        var ind = (d.data && d.data.indicators) ? d.data.indicators : null;
-        if (!ind) { document.getElementById('indicator-cards').innerHTML = '<div style="color:var(--text-micro);padding:20px;">无指标数据</div>'; return; }
-        document.getElementById('stock-info-text').textContent = '最新: ' + (d.data.analysis_date || '?') + ' | 现价: ' + (ind.price ? ind.price.toFixed(2) : '?');
+    fetch(API_BASE + apiPrefix() + '/' + code).then(function(r) { return r.json(); }).then(function(d) {
+        var raw = d.data || {};
+        // 技术指标: {indicators: {...}, analysis_date} | 财务指标: {stock_code, report_date, roic, ...}
+        var ind = raw.indicators || raw;
+        var isFinancial = currentSystem === 'financial';
+        if (!ind || Object.keys(ind).length <= 2) { document.getElementById('indicator-cards').innerHTML = '<div style="color:var(--text-micro);padding:20px;">无指标数据</div>'; return; }
+        document.getElementById('stock-info-text').textContent = '最新: ' + (raw.analysis_date || raw.report_date || '?') + (isFinancial ? '' : (' | 现价: ' + (ind.price ? ind.price.toFixed(2) : '?')));
         renderCards(ind);
-        // Auto-select first numeric indicator
         var firstNum = indicatorRegistry.find(function(r) { return r.output.some(function(o) { return ind[o] != null; }); });
         if (firstNum) showChart(code, firstNum.output.filter(function(o) { return ind[o] != null; })[0], indicatorRegistry);
     }).catch(function(e) { document.getElementById('indicator-cards').innerHTML = '<div style="color:var(--accent-red);">加载失败</div>'; });
@@ -193,7 +215,7 @@ function selectField() {
     if (!field) return;
     currentField = field;
     document.getElementById('field-rank-table').innerHTML = '<div style="color:var(--text-micro);padding:10px;">加载中...</div>';
-    fetch(API_BASE + '/quant/indicators/field/' + field).then(function(r) { return r.json(); }).then(function(d) {
+    fetch(API_BASE + apiPrefix() + '/field/' + field).then(function(r) { return r.json(); }).then(function(d) {
         var items = d.data || [];
         document.getElementById('field-info-text').textContent = items.length + ' 只股票有数据';
         if (!items.length) { document.getElementById('field-rank-table').innerHTML = '<div style="color:var(--text-micro);padding:20px;">无数据</div>'; return; }
@@ -232,7 +254,8 @@ function showChart(code, fieldName) {
     var existing = echarts.getInstanceByDom(chartDom);
     if (existing) existing.dispose();
 
-    fetch(API_BASE + '/quant/indicators/history/' + code + '?fields=' + fieldName + '&days=365').then(function(r) { return r.json(); }).then(function(d) {
+    var histUrl = API_BASE + apiPrefix() + '/history/' + code + '?fields=' + fieldName;
+    fetch(histUrl).then(function(r) { return r.json(); }).then(function(d) {
         var data = d.data;
         if (!data || !data.dates || !data.dates.length) {
             document.getElementById('chart-info').textContent = '无历史数据';
