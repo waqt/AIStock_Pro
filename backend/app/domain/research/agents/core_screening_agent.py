@@ -273,8 +273,9 @@ class CoreScreeningAgent(ResearchAgent):
         return {
             "startup":    {"primary": ["burn_rate_months", "rd_intensity", "rd_to_opex", "contract_liability_yoy"],
                            "note": "研发期: 关注现金跑道和研发投入效率, 财务阈值大幅放宽"},
-            "inflection": {"primary": ["gross_margin", "gross_margin_trend", "revenue_yoy", "rd_to_revenue_trend", "contract_liability_yoy"],
-                           "note": "拐点期: '研发→收益'验证窗口, 关注毛利率趋势和合同负债增速"},
+            "inflection": {"primary": ["gross_margin", "gross_margin_trend", "revenue_yoy", "revenue_acceleration",
+                                        "rd_to_revenue_trend", "contract_liability_yoy", "profit_turnaround", "revenue_qoq"],
+                           "note": "拐点期: '研发→收益'验证窗口, 4个真拐点信号(毛利率上升+合同负债爆发+研发费率下降+营收加速)"},
             "growth":     {"primary": ["roiic", "roic", "gross_margin_trend", "operating_leverage", "revenue_yoy"],
                            "note": "成长期: 验证扩张质量, ROIIC应>当前ROIC"},
             "mature":     {"primary": ["roic_stability", "fcf_conversion", "gross_margin", "inventory_revenue_ratio"],
