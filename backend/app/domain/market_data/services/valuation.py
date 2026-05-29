@@ -8,6 +8,20 @@ from sqlalchemy import select
 import asyncio
 
 
+def _find_column(df_columns, keywords: list) -> object:
+    """在 DataFrame 列名中模糊查找, 返回第一个匹配的列名"""
+    for col in df_columns:
+        col_str = str(col)
+        if all(kw in col_str for kw in keywords):
+            return col
+    # 放宽: 只要包含任一关键词
+    for col in df_columns:
+        col_str = str(col)
+        if any(kw in col_str for kw in keywords):
+            return col
+    return None
+
+
 async def sync_stock_info(code: str) -> bool:
     """同步单只股票的基本信息 (行业/总股本/上市时间) 从 akshare 东财接口"""
     try:
@@ -132,7 +146,7 @@ async def sync_valuation(target_codes: list = None):
 
 async def sync_financial_factors(target_codes: list = None):
     """同步 ROE/股息率/近3年盈利增速到 stock_info 表。
-    数据来源: akshare 新浪财务指标 (ROE) + 财报表计算 (eps_growth_3y)。
+    数据来源: akshare 新浪财务指标 (ROE+股息率) + 财报表计算 (eps_growth_3y)。
     target_codes 为 None 时同步全部持仓+自选。
     """
     from app.models.models import WatchlistItem
@@ -165,23 +179,23 @@ async def sync_financial_factors(target_codes: list = None):
     async with async_session() as db:
         for code in a_codes:
             try:
-                # ── ROE: 从 akshare 新浪财务指标获取 ──
+                # ── ROE + 股息率: 从 akshare 新浪财务指标获取 ──
                 roe_val = None
+                div_val = None
                 try:
                     df = await asyncio.to_thread(
                         ak.stock_financial_analysis_indicator, symbol=code, start_year="2020")
                     if df is not None and not df.empty:
                         latest = df.iloc[-1]
-                        # 净资产收益率(%) 列 —— 取最新一期的加权ROE
-                        roe_col = None
-                        for c in df.columns:
-                            if '净资产收益率' in str(c) and '%' in str(c):
-                                roe_col = c
-                                break
+                        roe_col = _find_column(df, ['净资产收益率', '%'])
                         if roe_col is not None and str(latest[roe_col]) != 'nan':
                             roe_val = float(latest[roe_col])
+                        # 股息率: 列名可能是 "股息率(%)" 或 "股利支付率"
+                        div_col = _find_column(df, ['股息率', '股利支付率'])
+                        if div_col is not None and str(latest[div_col]) != 'nan':
+                            div_val = float(latest[div_col])
                 except Exception:
-                    pass  # ROE 获取失败不阻塞其他字段
+                    pass  # 获取失败不阻塞其他字段
 
                 # ── eps_growth_3y: 从财报表计算近12个季度利润复合增速 ──
                 eps_growth = None
@@ -214,15 +228,18 @@ async def sync_financial_factors(target_codes: list = None):
                     if eps_growth is not None:
                         existing.eps_growth_3y = eps_growth
                         dirty = True
+                    if div_val is not None:
+                        existing.dividend_yield = round(div_val, 2)
+                        dirty = True
                     if dirty:
                         existing.updated_at = dt.now()
                         updated += 1
                 elif roe_val is not None:
-                    # 若尚未在 stock_info (没跑过 sync_valuation), 建一条基础记录
                     db.add(StockInfo(
                         stock_code=code, stock_name=code,
                         roe=round(roe_val, 2),
                         eps_growth_3y=eps_growth,
+                        dividend_yield=round(div_val, 2) if div_val is not None else None,
                     ))
                     updated += 1
                 await asyncio.sleep(0)

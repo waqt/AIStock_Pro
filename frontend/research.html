@@ -286,6 +286,7 @@ async function loadProjectDetail() {
                 (s === 'step2_gatekeeper' ? '<button class="btn-proj success" onclick="event.stopPropagation();continueStep(\'' + s + '\')"><i class="fas fa-play"></i> 继续推演</button>' : '') +
                 (s === 'step3_sc_hacker' ? '<button class="btn-proj success" onclick="event.stopPropagation();continueStep(\'' + s + '\')"><i class="fas fa-play"></i> 继续推演</button>' : '') +
                 (s === 'step4_system_dynamics' ? '<button class="btn-proj success" onclick="event.stopPropagation();continueStep(\'' + s + '\')"><i class="fas fa-play"></i> 继续推演</button>' : '') +
+                (s === 'step5_cross_industry' ? '<button class="btn-proj success" onclick="event.stopPropagation();continueStep(\'' + s + '\')"><i class="fas fa-play"></i> 继续推演</button>' : '') +
                 '</div>' : '') +
                 '</div>';
         });
@@ -788,7 +789,7 @@ async function deleteProject(runId, name) {
 
 async function continueStep(step) {
     if (!currentRunId) return;
-    var stepMap = {'step2_gatekeeper': 'step3_sc_hacker', 'step3_sc_hacker': 'step4_system_dynamics', 'step4_system_dynamics': 'step5_cross_industry'};
+    var stepMap = {'step2_gatekeeper': 'step3_sc_hacker', 'step3_sc_hacker': 'step4_system_dynamics', 'step4_system_dynamics': 'step5_cross_industry', 'step5_cross_industry': 'step6_core_screening'};
     var nextStep = stepMap[step];
     if (!nextStep) return;
     if (!nextStep) return;

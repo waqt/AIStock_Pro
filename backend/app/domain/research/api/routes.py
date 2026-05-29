@@ -16,6 +16,7 @@ from app.domain.research.agents.dag_orchestrator import DAGOrchestrator
 from app.domain.research.agents.market_scanner import MarketScanner
 from app.domain.research.agents.system_dynamics_agent import SystemDynamicsAgent
 from app.domain.research.agents.cross_industry_linkage_agent import CrossIndustryLinkageAgent
+from app.domain.research.agents.core_screening_agent import CoreScreeningAgent
 from app.domain.research.pipelines import PIPELINES
 from app.domain.research.services.data_loader import data_loader
 from app.domain.research.services.report_store import save_report, list_reports, get_report, delete_report
@@ -60,7 +61,7 @@ FULL_PIPELINE = [
 # 已实现的步骤
 IMPLEMENTED_STEPS = {
     "step1_macro", "step1b_capital_flow", "step2_gatekeeper", "step3_sc_hacker", "step4_system_dynamics",
-    "step5_cross_industry"
+    "step5_cross_industry", "step6_core_screening"
 }
 
 # 可选步骤（不阻塞 pipeline）
@@ -852,6 +853,37 @@ async def continue_pipeline_step(run_id: str, step: str):
             result = await cross.analyze(cross_ctx, trace=trace)
             save_checkpoint("step5_cross_industry", run_id, "continue", result, {"elapsed": 0})
             trace.write("step5_cross_industry")
+            return {"success": True, "data": result, "run_id": run_id}
+
+        elif step == "step6_core_screening":
+            s3_file = find_checkpoint_file(run_id, "step3_sc_hacker")
+            s4_file = find_checkpoint_file(run_id, "step4_system_dynamics")
+            s5_file = find_checkpoint_file(run_id, "step5_cross_industry")
+            if not s3_file:
+                raise HTTPException(status_code=404, detail="Step 3 checkpoint not found")
+            import json as _json
+            with open(s3_file, "r", encoding="utf-8") as f:
+                s3 = _json.load(f)
+            s3_out = s3.get("output", {})
+            s4_out, s5_out = {}, {}
+            if s4_file:
+                with open(s4_file, "r", encoding="utf-8") as f:
+                    s4_out = _json.load(f).get("output", {})
+            if s5_file:
+                with open(s5_file, "r", encoding="utf-8") as f:
+                    s5_out = _json.load(f).get("output", {})
+
+            screener = CoreScreeningAgent(provider=DeepSeekProvider())
+            ctx = {
+                "industry": s3_out.get("industry", ""),
+                "step3_output": s3_out,
+                "step4_output": s4_out,
+                "step5_output": s5_out,
+            }
+            trace = TraceContext(run_id)
+            result = await screener.analyze(ctx, trace=trace)
+            save_checkpoint("step6_core_screening", run_id, "continue", result, {"elapsed": 0})
+            trace.write("step6_core_screening")
             return {"success": True, "data": result, "run_id": run_id}
         else:
             raise HTTPException(status_code=400, detail=f"Unknown or unsupported step: {step}")
