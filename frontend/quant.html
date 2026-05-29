@@ -350,6 +350,7 @@
 
         // ═══ Financial Indicators Tab ═══
         var finInited = false;
+        var stockNameMap = {};  // code → name cache
         function initFinancialTab() {
             if (finInited) return;
             finInited = true;
@@ -381,6 +382,7 @@
                 var map = {};
                 posItems.concat(wlItems).forEach(function(i) { map[i.stock_code] = i; });
                 var items = Object.values(map);
+                items.forEach(function(i) { stockNameMap[i.stock_code] = i.stock_name || ''; });
                 ss.innerHTML = '<option value="">— 选择股票 —</option>' +
                     items.map(function(i) { return '<option value="' + i.stock_code + '">' + i.stock_code + ' ' + (i.stock_name || '') + '</option>'; }).join('');
             }).catch(function() { ss.innerHTML = '<option value="">加载失败</option>'; });
@@ -436,9 +438,36 @@
                 var items = d.data || [];
                 if (!items.length) { el.innerHTML = '<div style="color:var(--text-micro);padding:20px;text-align:center;">无数据</div>'; return; }
                 info.textContent = items.length + ' 只股票';
-                el.innerHTML = '<table class="health-table"><thead><tr><th>代码</th><th style="text-align:right;">' + field + '</th><th>报告期</th></tr></thead><tbody>' +
-                    items.map(function(i) { return '<tr><td style="color:var(--accent-blue);">' + i.stock_code + '</td><td style="text-align:right;font-family:var(--font-mono);">' + (i[field] != null ? Number(i[field]).toFixed(2) : '—') + '</td><td>' + (i.report_date || '') + '</td></tr>'; }).join('') + '</tbody></table>';
+                el.innerHTML = '<table class="health-table"><thead><tr><th>代码</th><th>名称</th><th style="text-align:right;">' + field + '</th><th>报告期</th></tr></thead><tbody>' +
+                    items.map(function(i) {
+                        var valStr = i[field] != null ? Number(i[field]).toFixed(2) : '—';
+                        var nm = stockNameMap[i.stock_code] || '';
+                        return '<tr onclick="showFinHistory(\'' + i.stock_code + '\')" style="cursor:pointer;" title="点击查看历史">' +
+                            '<td style="color:var(--accent-blue);">' + i.stock_code + '</td>' +
+                            '<td>' + nm + '</td>' +
+                            '<td style="text-align:right;font-family:var(--font-mono);">' + valStr + '</td>' +
+                            '<td>' + (i.report_date || '') + '</td></tr>';
+                    }).join('') + '</tbody></table>';
             }).catch(function(e) { el.innerHTML = '<div style="color:var(--accent-red);">加载失败</div>'; });
+        }
+
+        function showFinHistory(code) {
+            document.getElementById('panel-empty').style.display = 'none';
+            document.getElementById('panel-detail').style.display = '';
+            document.getElementById('detail-title').textContent = '财务指标: ' + code;
+            document.getElementById('detail-content').innerHTML = '<div style="color:var(--text-micro);padding:10px;">加载中...</div>';
+            fetch(API_BASE + '/quant/financial-indicators/history/' + code).then(function(r) { return r.json(); }).then(function(d) {
+                var rows = d.data || [];
+                if (!rows.length) { document.getElementById('detail-content').innerHTML = '<div style="color:var(--text-micro);padding:20px;">无数据</div>'; return; }
+                var html = '<table class="health-table"><thead><tr><th>报告期</th><th style="text-align:right;">ROIC%</th><th style="text-align:right;">ROIIC%</th></tr></thead><tbody>';
+                rows.forEach(function(r) {
+                    html += '<tr><td>' + (r.report_date || '?') + '</td>' +
+                        '<td style="text-align:right;font-family:var(--font-mono);">' + (r.roic_pct != null ? r.roic_pct.toFixed(1) + '%' : '—') + '</td>' +
+                        '<td style="text-align:right;font-family:var(--font-mono);">' + (r.roiic_pct != null ? r.roiic_pct.toFixed(1) + '%' : '—') + '</td></tr>';
+                });
+                html += '</tbody></table>';
+                document.getElementById('detail-content').innerHTML = html;
+            }).catch(function(e) { document.getElementById('detail-content').innerHTML = '<div style="color:var(--accent-red);">加载失败</div>'; });
         }
 
         var FinCompute = {
