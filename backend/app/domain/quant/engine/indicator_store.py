@@ -244,6 +244,7 @@ FINANCIAL_NUMERIC_COLS = [
     "burn_rate_months", "rd_to_opex",
     "rd_to_revenue_trend", "revenue_acceleration", "profit_turnaround", "revenue_qoq",
     "working_capital_efficiency",
+    "operating_margin_stability",
 ]
 FINANCIAL_TEXT_COLS = ["gross_margin_trend", "inventory_revenue_ratio", "source"]
 FINANCIAL_ALL_COLS = FINANCIAL_NUMERIC_COLS + FINANCIAL_TEXT_COLS

@@ -60,3 +60,30 @@ class InventoryRevenueTrend(FinancialIndicator):
         if len(ratios) >= 3 and ratios[0] < ratios[1] < ratios[2]:
             return {"inventory_revenue_ratio": "declining_bullish"}
         return {"inventory_revenue_ratio": "stable"}
+
+
+@register_financial
+class OperatingMarginStability(FinancialIndicator):
+    name = "operating_margin_stability"
+    label = "营业利润率稳定性"
+    category = "fundamental"
+    params = {}
+    output = ["operating_margin_stability"]
+    requires = ["revenue", "operate_cost", "sale_expense", "manage_expense"]
+
+    @classmethod
+    def compute(cls, financials: list) -> dict:
+        """近8Q营业利润率的标准差 (百分点)。<1pp=护城河牢固; >3pp=盈利不稳"""
+        if len(financials) < 8:
+            return {"operating_margin_stability": None}
+        margins = []
+        for i in range(min(8, len(financials))):
+            rev = float(financials[i].get("revenue", 0) or 0)
+            cost = float(financials[i].get("operate_cost", 0) or 0)
+            sga = float(financials[i].get("sale_expense", 0) or 0) + float(financials[i].get("manage_expense", 0) or 0)
+            if rev:
+                margins.append((rev - cost - sga) / rev * 100)
+        if len(margins) < 4:
+            return {"operating_margin_stability": None}
+        import statistics
+        return {"operating_margin_stability": round(statistics.stdev(margins), 1)}
