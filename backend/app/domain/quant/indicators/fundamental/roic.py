@@ -11,6 +11,8 @@ class ROICIndicator(FinancialIndicator):
     name = "roic"
     label = "投资资本回报率(ROIC)"
     category = "fundamental"
+    indicator_type = "moat"
+    applicable_stages = ["growth", "mature"]
     params = {}
     output = ["roic", "roic_pct"]
     requires = ["revenue", "operate_cost", "sale_expense", "manage_expense",

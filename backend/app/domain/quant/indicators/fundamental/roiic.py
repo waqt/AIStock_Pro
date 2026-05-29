@@ -11,6 +11,8 @@ class ROIICIndicator(FinancialIndicator):
     name = "roiic"
     label = "增量资本回报率(ROIIC)"
     category = "fundamental"
+    indicator_type = "prosperity"
+    applicable_stages = ["growth"]
     params = {}
     output = ["roiic", "roiic_pct"]
     requires = ["revenue", "operate_cost", "sale_expense", "manage_expense",

@@ -326,16 +326,7 @@ financial_router = APIRouter(prefix="/api/quant/financial-indicators", tags=["Fi
 async def list_financial_indicators():
     """所有已注册的财务指标列表"""
     from app.domain.quant.indicators.fundamental import FINANCIAL_REGISTRY
-    result = []
-    for key, cls in FINANCIAL_REGISTRY.items():
-        result.append({
-            "name": cls.name,
-            "label": cls.label,
-            "category": cls.category,
-            "output": cls.output,
-            "requires": cls.requires,
-            "params": cls.params,
-        })
+    result = [cls.meta() for cls in FINANCIAL_REGISTRY.values()]
     return {"success": True, "data": result}
 
 

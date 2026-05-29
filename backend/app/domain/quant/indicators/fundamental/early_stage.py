@@ -10,6 +10,8 @@ class BurnRateMonths(FinancialIndicator):
     name = "burn_rate_months"
     label = "现金跑道(月)"
     category = "fundamental"
+    indicator_type = "prosperity"
+    applicable_stages = ["startup"]
     params = {}
     output = ["burn_rate_months"]
     requires = ["cash", "op_cashflow"]
@@ -34,6 +36,8 @@ class RDToOpex(FinancialIndicator):
     name = "rd_to_opex"
     label = "研发占运营支出比"
     category = "fundamental"
+    indicator_type = "moat"
+    applicable_stages = ["startup", "inflection"]
     params = {}
     output = ["rd_to_opex"]
     requires = ["rd_expense", "sale_expense", "manage_expense"]
