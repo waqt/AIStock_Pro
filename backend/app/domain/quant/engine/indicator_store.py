@@ -231,3 +231,97 @@ def get_coverage(codes: List[str]) -> List[dict]:
 def get_counts() -> int:
     conn = _get_conn()
     return conn.execute("SELECT COUNT(*) FROM indicators").fetchone()[0]
+
+
+# ═══ 财务指标存储 (独立表, 不在 Indicators 宽表中) ═══════════════════
+
+FINANCIAL_NUMERIC_COLS = ["roic", "roic_pct", "roiic", "roiic_pct"]
+FINANCIAL_ALL_COLS = FINANCIAL_NUMERIC_COLS
+
+CREATE_FINANCIAL_TABLE_SQL = """
+CREATE TABLE IF NOT EXISTS financial_indicators (
+    stock_code TEXT NOT NULL,
+    report_date TEXT NOT NULL,
+    roic REAL DEFAULT NULL,
+    roic_pct REAL DEFAULT NULL,
+    roiic REAL DEFAULT NULL,
+    roiic_pct REAL DEFAULT NULL,
+    PRIMARY KEY (stock_code, report_date)
+)
+"""
+
+def _init_financial_table():
+    conn = _get_conn()
+    conn.execute(CREATE_FINANCIAL_TABLE_SQL)
+    conn.commit()
+
+
+def store_financial_indicator(code: str, report_date: str, data: dict) -> bool:
+    """存储单只股票的财务指标快照 (upsert by stock_code+report_date)"""
+    conn = _get_conn()
+    _init_financial_table()
+    try:
+        existing = conn.execute(
+            "SELECT 1 FROM financial_indicators WHERE stock_code=? AND report_date=?",
+            [code, report_date]).fetchone()
+        if existing:
+            sets = ", ".join(f"{c}=?" for c in FINANCIAL_NUMERIC_COLS if c in data)
+            vals = [data.get(c) for c in FINANCIAL_NUMERIC_COLS if c in data]
+            if sets:
+                conn.execute(
+                    f"UPDATE financial_indicators SET {sets} WHERE stock_code=? AND report_date=?",
+                    vals + [code, report_date])
+        else:
+            cols = ["stock_code", "report_date"] + [c for c in FINANCIAL_NUMERIC_COLS if c in data]
+            placeholders = ",".join("?" * len(cols))
+            vals = [code, report_date] + [data.get(c) for c in FINANCIAL_NUMERIC_COLS if c in data]
+            conn.execute(
+                f"INSERT INTO financial_indicators ({','.join(cols)}) VALUES ({placeholders})", vals)
+        conn.commit()
+        return True
+    except Exception as e:
+        logger.warning(f"[FinStore] Upsert failed for {code}@{report_date}: {e}")
+        return False
+
+
+def get_financial_latest(code: str) -> Optional[dict]:
+    """获取单只股票最新财务指标"""
+    conn = _get_conn()
+    _init_financial_table()
+    row = conn.execute(
+        "SELECT * FROM financial_indicators WHERE stock_code=? ORDER BY report_date DESC LIMIT 1",
+        [code]).fetchone()
+    return dict(row) if row else None
+
+
+def get_financial_history(code: str, fields: List[str] = None) -> List[dict]:
+    """获取单只股票财务指标历史序列"""
+    conn = _get_conn()
+    _init_financial_table()
+    cols = ",".join(fields if fields else FINANCIAL_NUMERIC_COLS)
+    safe_cols = "stock_code,report_date," + ",".join(
+        c for c in (fields or FINANCIAL_NUMERIC_COLS) if c in cols.split(","))
+    rows = conn.execute(
+        f"SELECT stock_code, report_date, {cols} FROM financial_indicators "
+        f"WHERE stock_code=? ORDER BY report_date ASC",
+        [code]).fetchall()
+    return [dict(r) for r in rows]
+
+
+def get_financial_field_latest(field_name: str) -> List[dict]:
+    """获取全股票某财务指标字段的最新排名"""
+    if field_name not in FINANCIAL_NUMERIC_COLS:
+        return []
+    conn = _get_conn()
+    _init_financial_table()
+    sql = f"""
+        SELECT f.* FROM financial_indicators f
+        INNER JOIN (
+            SELECT stock_code, MAX(report_date) as max_date
+            FROM financial_indicators WHERE {field_name} IS NOT NULL
+            GROUP BY stock_code
+        ) latest ON f.stock_code=latest.stock_code AND f.report_date=latest.max_date
+        ORDER BY f.{field_name} DESC
+    """
+    rows = conn.execute(sql).fetchall()
+    return [dict(r) for r in rows]

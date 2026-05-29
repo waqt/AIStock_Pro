@@ -136,17 +136,35 @@ class CoreScreeningAgent(ResearchAgent):
 
         passed, filtered = gate_prescreen(candidates, gate_mode, stock_info_map, fin_map)
 
-        # 3. 调 FinancialAuditor 逐只标注 (不排除)
+        # 3. 调 FinancialAuditor 逐只标注 (不排除) + ROIC/ROIIC 计算落库
         from app.domain.research.agents.financial_auditor import FinancialAuditor
+        from app.framework.finance.roiic import compute_roic, compute_roiic
+        from app.domain.quant.engine.indicator_store import store_financial_indicator
         auditor = FinancialAuditor(provider=self.provider)
         audit_results = {}
         for c in passed[:10]:  # 最多审计10只
+            code = c["code"]
             try:
-                audit = await auditor.analyze({"stock_codes": [c["code"]], "industry": industry})
+                audit = await auditor.analyze({"stock_codes": [code], "industry": industry})
                 if audit and audit.get("verdict"):
-                    audit_results[c["code"]] = audit
+                    audit_results[code] = audit
             except Exception as e:
-                logger.warning(f"[{self.name}] Audit failed for {c['code']}: {e}")
+                logger.warning(f"[{self.name}] Audit failed for {code}: {e}")
+            # ROIC/ROIIC 计算+落库
+            fin = fin_map.get(code, {}).get("quarters", [])
+            if fin and len(fin) >= 4:
+                try:
+                    roic_data = compute_roic(fin)
+                    roiic_data = compute_roiic(fin) if len(fin) >= 8 else {}
+                    report_date = fin[0].get("report_date", "")[:10]
+                    store_financial_indicator(code, report_date, {
+                        "roic": roic_data.get("roic"),
+                        "roic_pct": roic_data.get("roic_pct"),
+                        "roiic": roiic_data.get("roiic"),
+                        "roiic_pct": roiic_data.get("roiic_pct"),
+                    })
+                except Exception as e:
+                    logger.warning(f"[{self.name}] ROIC/ROIIC store failed for {code}: {e}")
 
         # 4. 六维权力画像 (LLM)
         for c in passed:

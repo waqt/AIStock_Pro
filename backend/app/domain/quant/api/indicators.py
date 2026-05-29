@@ -313,3 +313,55 @@ async def get_stock_indicators(stock_code: str):
             "patterns": {},
         }
         }
+
+
+# ═══ 财务指标 API (独立于技术指标) ═══════════════════════════════
+
+financial_router = APIRouter(prefix="/api/quant/financial-indicators", tags=["Financial-Indicators"])
+
+
+@financial_router.get("/registry")
+async def list_financial_indicators():
+    """所有已注册的财务指标列表"""
+    from app.domain.quant.indicators.fundamental import FINANCIAL_REGISTRY
+    result = []
+    for key, cls in FINANCIAL_REGISTRY.items():
+        result.append({
+            "name": cls.name,
+            "label": cls.label,
+            "category": cls.category,
+            "output": cls.output,
+            "requires": cls.requires,
+            "params": cls.params,
+        })
+    return {"success": True, "data": result}
+
+
+@financial_router.get("/{stock_code}")
+async def get_financial_indicators(stock_code: str):
+    """单股最新财务指标快照"""
+    from app.domain.quant.engine import indicator_store
+    row = indicator_store.get_financial_latest(stock_code)
+    if not row:
+        return {"success": True, "data": None, "message": f"No financial indicators for {stock_code}"}
+    return {"success": True, "data": row}
+
+
+@financial_router.get("/history/{stock_code}")
+async def get_financial_history(
+    stock_code: str,
+    fields: Optional[str] = Query(None, description="逗号分隔字段, 空=全部"),
+):
+    """单股财务指标历史序列"""
+    from app.domain.quant.engine import indicator_store
+    field_list = [f.strip() for f in fields.split(",") if f.strip()] if fields else None
+    rows = indicator_store.get_financial_history(stock_code, field_list)
+    return {"success": True, "data": rows, "stock_code": stock_code}
+
+
+@financial_router.get("/field/{field_name}")
+async def get_financial_field_ranking(field_name: str):
+    """全股票某财务指标字段最新排名"""
+    from app.domain.quant.engine import indicator_store
+    rows = indicator_store.get_financial_field_latest(field_name)
+    return {"success": True, "data": rows, "field": field_name}

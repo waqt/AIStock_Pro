@@ -17,7 +17,7 @@ import app.domain.quant.tasks  # 显式导入以触发注册装饰器
 # 导入领域路由器
 from app.api import tasks, data, positions, import_api
 from app.domain.research.api.routes import router as research_router
-from app.domain.quant.api.indicators import router as quant_indicator_router
+from app.domain.quant.api.indicators import router as quant_indicator_router, financial_router as quant_financial_router
 from app.domain.quant.api.strategies import router as quant_strategy_router
 from app.domain.quant.api.decision import router as quant_decision_router
 
@@ -74,6 +74,7 @@ app.include_router(positions.router)
 app.include_router(import_api.router)
 app.include_router(research_router)
 app.include_router(quant_indicator_router)
+app.include_router(quant_financial_router)
 app.include_router(quant_strategy_router)
 app.include_router(quant_decision_router)
 
