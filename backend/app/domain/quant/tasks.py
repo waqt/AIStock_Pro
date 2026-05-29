@@ -107,6 +107,83 @@ async def calculate_indicators_task(
     logger.info(f"[CalcIndicators] DONE | {summary}")
 
 
+@task_manager.register(code="calc_financial_indicators", name="财务指标计算",
+                        description="计算全部财务量化指标 (ROIC/ROIIC/先行/质量/稳定性)")
+async def calculate_financial_indicators_task(
+    exec_id: str = None,
+    target_codes: list = None,
+    mode: str = "local",
+):
+    """财务指标批量计算任务 — 对标 calc_indicators
+    mode: local(仅DB) / auto(DB→akshare→web search)
+    target_codes=None → 全部持仓+自选股(仅A股)
+    """
+    from app.models.models import Position, WatchlistItem
+    from app.framework.finance.roiic import compute_roic, compute_roiic
+    from app.domain.quant.engine.indicator_store import store_financial_indicator
+    from app.domain.research.services.financial_data_loader import load_financials
+    from app.domain.quant.indicators.fundamental import FINANCIAL_REGISTRY
+    from sqlalchemy import select
+    import time as _time
+
+    if target_codes:
+        codes = target_codes
+    else:
+        async with async_session() as db:
+            pos = await db.execute(select(Position.stock_code))
+            wl = await db.execute(select(WatchlistItem.stock_code))
+            codes = list(set([r[0] for r in pos.all()] + [r[0] for r in wl.all()]))
+    # 过滤 ETF + 港股
+    codes = [c for c in codes if len(str(c)) == 6 and not str(c).startswith(('159','510','512','513','560','588'))]
+
+    if not codes:
+        if exec_id: await task_manager.update_progress(exec_id, 100, "无待计算股票")
+        return
+
+    t0 = _time.time()
+    logger.info(f"[CalcFinancial] START | stocks={len(codes)} mode={mode}")
+    fin_indicators = [(n, cls) for n, cls in FINANCIAL_REGISTRY.items() if n not in ("roic","roiic")]
+
+    ok, fail = 0, 0
+    for idx, code in enumerate(codes):
+        try:
+            fin = await load_financials(code, periods=20, mode=mode)
+            quarters = fin.get("quarters", [])
+            if len(quarters) < 4:
+                fail += 1; continue
+            recent_first = list(reversed(quarters))
+            stored = 0
+            for i in range(len(recent_first) - 3):
+                window_4q = recent_first[i:i+4]
+                rpt_date = window_4q[0].get("report_date", "")[:10]
+                record = {}
+                roic_d = compute_roic(window_4q)
+                record.update({"roic": roic_d.get("roic"), "roic_pct": roic_d.get("roic_pct")})
+                if i + 8 <= len(recent_first):
+                    ri = compute_roiic(recent_first[i:i+8])
+                    record.update({"roiic": ri.get("roiic"), "roiic_pct": ri.get("roiic_pct")})
+                for _, cls in fin_indicators:
+                    try:
+                        r = cls.compute(window_4q)
+                        record.update(r)
+                    except Exception:
+                        pass
+                record["source"] = fin.get("source", "db")
+                if store_financial_indicator(code, rpt_date, record):
+                    stored += 1
+            ok += 1
+        except Exception as e:
+            fail += 1
+            logger.warning(f"[CalcFinancial] {code} failed: {e}")
+        if exec_id:
+            await task_manager.update_progress(exec_id, int((idx+1)/len(codes)*100),
+                f"{idx+1}/{len(codes)} OK:{ok} FAIL:{fail}")
+
+    summary = f"完成 OK:{ok} FAIL:{fail}/{len(codes)} {_time.time()-t0:.0f}s"
+    if exec_id: await task_manager.update_progress(exec_id, 100, summary)
+    logger.info(f"[CalcFinancial] DONE | {summary}")
+
+
 @task_manager.register(code="research_analyze", name="投研深度分析", description="产业链穿透+审计+定价+综合报告 (支持多模式)")
 async def research_analyze_task(exec_id: str = None, industry: str = "", question: str = "",
                                   analysis_type: str = "supply_chain", codes_str: str = "",
