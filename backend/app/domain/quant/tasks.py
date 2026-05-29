@@ -162,9 +162,10 @@ async def calculate_financial_indicators_task(
                 if i + 8 <= len(recent_first):
                     ri = compute_roiic(recent_first[i:i+8])
                     record.update({"roiic": ri.get("roiic"), "roiic_pct": ri.get("roiic_pct")})
+                full_window = recent_first[i:]
                 for _, cls in fin_indicators:
                     try:
-                        r = cls.compute(window_4q)
+                        r = cls.compute(full_window)
                         record.update(r)
                     except Exception:
                         pass

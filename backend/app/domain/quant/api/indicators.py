@@ -442,10 +442,11 @@ async def compute_financial_indicators(req: FinancialComputeRequest = FinancialC
                     except Exception:
                         pass
 
-                # 遍历所有注册的财务指标并计算
+                # 遍历所有注册的财务指标并计算 (传完整窗口, 各指标内部自行取所需长度)
+                full_window = recent_first[i:]
                 for name, cls in fin_indicators:
                     try:
-                        result = cls.compute(window_4q)
+                        result = cls.compute(full_window)
                         for k, v in result.items():
                             record[k] = v
                     except Exception:
