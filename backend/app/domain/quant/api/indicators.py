@@ -396,6 +396,31 @@ async def compute_financial_indicators(req: FinancialComputeRequest = FinancialC
 
     logger.info(f"[FinCompute] Computing ROIC/ROIIC for {len(codes)} stocks")
 
+    # 检查+同步: DB 最新数据超过6个月 → 先同步 akshare 再算
+    from datetime import date, timedelta
+    stale_threshold = date.today() - timedelta(days=180)
+    stale_codes = []
+    for code in codes:
+        try:
+            from app.models.models import FinancialStatement
+            async with async_session() as db:
+                latest = await db.execute(
+                    select(FinancialStatement.report_date)
+                    .where(FinancialStatement.stock_code == code)
+                    .order_by(FinancialStatement.report_date.desc()).limit(1))
+                latest_date = latest.scalars().first()
+            if not latest_date or latest_date < stale_threshold:
+                stale_codes.append(code)
+        except Exception:
+            pass
+    if stale_codes:
+        logger.info(f"[FinCompute] Syncing {len(stale_codes)}/{len(codes)} stale stocks")
+        try:
+            from app.domain.market_data.services.financial_sync import sync_financials_batch
+            await sync_financials_batch(stale_codes)
+        except Exception as e:
+            logger.warning(f"[FinCompute] Pre-sync failed: {e}")
+
     results = []
     for code in codes:
         try:
