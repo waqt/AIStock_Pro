@@ -37,12 +37,13 @@
             <div class="top-bar"></div>
             <div class="workspace" style="grid-template-columns: 340px 1fr; gap: 14px; padding: 14px;">
 
-                <!-- Left: Tabs for Indicators / Strategies / Decision -->
+                <!-- Left: Tabs for Indicators / Strategies / Decision / Financial -->
                 <div style="display:flex;flex-direction:column;gap:10px;">
                     <div class="tab-nav">
                         <button class="tab-btn active" onclick="switchTab('indicators')">算子清单</button>
                         <button class="tab-btn" onclick="switchTab('strategies')">策略清单</button>
                         <button class="tab-btn" onclick="switchTab('decide')">决策中心</button>
+                        <button class="tab-btn" onclick="switchTab('financial')">财务指标</button>
                     </div>
 
                     <!-- Tab 1: Indicators -->
@@ -95,6 +96,31 @@
                         </div>
                         <div id="decision-result-area"></div>
                     </div>
+
+                    <!-- Tab 4: Financial Indicators -->
+                    <div class="tab-panel" id="tab-financial" style="display:none;flex-direction:column;gap:10px;max-height:70vh;overflow-y:auto;">
+                        <!-- Compute Panel -->
+                        <div class="panel">
+                            <div class="panel-header"><span class="panel-title"><i class="fas fa-calculator"></i> 财务指标计算</span></div>
+                            <div class="panel-body" id="fin-compute-panel" style="font-size:11px;"></div>
+                        </div>
+                        <!-- Data View -->
+                        <div class="panel">
+                            <div class="panel-header"><span class="panel-title"><i class="fas fa-table"></i> 数据查看</span></div>
+                            <div class="panel-body" style="display:flex;flex-direction:column;gap:8px;">
+                                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                                    <select id="fin-view-mode" onchange="switchFinView()" style="background:#000;border:1px solid var(--border-color);color:#fff;padding:5px 10px;border-radius:4px;font-size:11px;">
+                                        <option value="by_stock">按股票查看</option>
+                                        <option value="by_field">按指标排名</option>
+                                    </select>
+                                    <select id="fin-stock-select" onchange="loadFinStock()" style="background:#000;border:1px solid var(--border-color);color:#fff;padding:5px 10px;border-radius:4px;font-size:11px;min-width:150px;"><option value="">— 加载中 —</option></select>
+                                    <select id="fin-field-select" onchange="loadFinField()" style="display:none;background:#000;border:1px solid var(--border-color);color:#fff;padding:5px 10px;border-radius:4px;font-size:11px;min-width:150px;"><option value="">— 加载中 —</option></select>
+                                    <span id="fin-view-info" style="font-size:10px;color:var(--text-micro);"></span>
+                                </div>
+                                <div id="fin-data-content" style="max-height:40vh;overflow-y:auto;font-size:10px;"></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Right: Detail / Results -->
@@ -131,12 +157,17 @@
 
         function switchTab(tab) {
             currentTab = tab;
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-nav > .tab-btn').forEach(b => b.classList.remove('active'));
             document.querySelectorAll('.tab-panel').forEach(p => { p.style.display = 'none'; p.classList.remove('active'); });
-            document.querySelector(`.tab-panel#tab-${tab}`).classList.add('active');
-            document.querySelector(`.tab-panel#tab-${tab}`).style.display = 'flex';
-            document.querySelectorAll('.tab-btn').forEach(b => {
-                if (b.textContent.includes(tab === 'indicators' ? '算子' : tab === 'strategies' ? '策略' : '决策')) b.classList.add('active');
+            var panel = document.querySelector('#tab-' + tab);
+            if (panel) { panel.classList.add('active'); panel.style.display = 'flex'; }
+            var btns = document.querySelectorAll('.tab-nav > .tab-btn');
+            btns.forEach(function(b, i) {
+                var labels = ['算子清单','策略清单','决策中心','财务指标'];
+                if (i < labels.length && b.textContent.includes(labels[i])) {
+                    if ((tab==='indicators'&&i===0)||(tab==='strategies'&&i===1)||(tab==='decide'&&i===2)||(tab==='financial'&&i===3))
+                        b.classList.add('active');
+                }
             });
             if (tab === 'indicators') loadIndicators();
             if (tab === 'strategies') loadStrategies();
@@ -144,6 +175,7 @@
                 document.getElementById('panel-empty').style.display = '';
                 document.getElementById('panel-detail').style.display = 'none';
             }
+            if (tab === 'financial') initFinancialTab();
         }
 
         // ═══ Indicators Tab ═══
@@ -262,7 +294,6 @@
         }
 
         function initDataView() {
-            // 懒加载股票列表
             var ss = document.getElementById('data-stock-select');
             if (ss.options.length <= 1) {
                 fetch(API_BASE + '/data/watchlist').then(function(r) { return r.json(); }).then(function(d) {
@@ -271,7 +302,6 @@
                         items.map(function(i) { return '<option value="' + i.stock_code + '">' + i.stock_code + ' ' + (i.stock_name || '') + '</option>'; }).join('');
                 }).catch(function() { ss.innerHTML = '<option value="">加载失败</option>'; });
             }
-            // 懒加载指标列表 (按 field 查看)
             var fs = document.getElementById('data-field-select');
             if (fs.options.length <= 1) {
                 fetch(API_BASE + '/quant/indicators/registry').then(function(r) { return r.json(); }).then(function(d) {
@@ -286,39 +316,160 @@
             var code = document.getElementById('data-stock-select').value;
             var el = document.getElementById('data-view-content');
             var info = document.getElementById('data-view-info');
-            if (!code) { el.innerHTML = '<div style=\"color:var(--text-micro);padding:20px;text-align:center;\">请选择股票</div>'; return; }
-            el.innerHTML = '<div style=\"color:var(--text-micro);padding:10px;\">加载中...</div>';
+            if (!code) { el.innerHTML = '<div style="color:var(--text-micro);padding:20px;text-align:center;">请选择股票</div>'; return; }
+            el.innerHTML = '<div style="color:var(--text-micro);padding:10px;">加载中...</div>';
             fetch(API_BASE + '/quant/indicators/' + code).then(function(r) { return r.json(); }).then(function(d) {
                 var ind = (d.data && d.data.indicators) ? d.data.indicators : null;
-                if (!ind) { el.innerHTML = '<div style=\"color:var(--text-micro);padding:20px;text-align:center;\">无指标数据</div>'; return; }
+                if (!ind) { el.innerHTML = '<div style="color:var(--text-micro);padding:20px;text-align:center;">无指标数据</div>'; return; }
                 info.textContent = '最新: ' + (d.data.analysis_date || '?');
                 var rows = [];
                 for (var k in ind) {
                     if (k.startsWith('_') || k === 'stock_code' || k === 'trade_date') continue;
                     var v = ind[k];
                     var vs = v != null ? (typeof v === 'number' ? v.toFixed(4) : String(v).substring(0, 30)) : '—';
-                    rows.push('<tr><td style=\"color:var(--accent-blue);\">' + k + '</td><td style=\"text-align:right;font-family:var(--font-mono);\">' + vs + '</td></tr>');
+                    rows.push('<tr><td style="color:var(--accent-blue);">' + k + '</td><td style="text-align:right;font-family:var(--font-mono);">' + vs + '</td></tr>');
                 }
-                el.innerHTML = '<table class=\"health-table\"><thead><tr><th>指标字段</th><th style=\"text-align:right;\">最新值</th></tr></thead><tbody>' + rows.join('') + '</tbody></table>';
-            }).catch(function(e) { el.innerHTML = '<div style=\"color:var(--accent-red);\">加载失败: ' + e.message + '</div>'; });
+                el.innerHTML = '<table class="health-table"><thead><tr><th>指标字段</th><th style="text-align:right;">最新值</th></tr></thead><tbody>' + rows.join('') + '</tbody></table>';
+            }).catch(function(e) { el.innerHTML = '<div style="color:var(--accent-red);">加载失败: ' + e.message + '</div>'; });
         }
 
         function loadFieldData() {
             var field = document.getElementById('data-field-select').value;
             var el = document.getElementById('data-view-content');
             var info = document.getElementById('data-view-info');
-            if (!field) { el.innerHTML = '<div style=\"color:var(--text-micro);padding:20px;text-align:center;\">请选择指标</div>'; return; }
-            el.innerHTML = '<div style=\"color:var(--text-micro);padding:10px;\">加载中...</div>';
+            if (!field) { el.innerHTML = '<div style="color:var(--text-micro);padding:20px;text-align:center;">请选择指标</div>'; return; }
+            el.innerHTML = '<div style="color:var(--text-micro);padding:10px;">加载中...</div>';
             fetch(API_BASE + '/quant/indicators/field/' + field).then(function(r) { return r.json(); }).then(function(d) {
                 var items = d.data || [];
-                if (!items.length) { el.innerHTML = '<div style=\"color:var(--text-micro);padding:20px;text-align:center;\">无数据</div>'; return; }
+                if (!items.length) { el.innerHTML = '<div style="color:var(--text-micro);padding:20px;text-align:center;">无数据</div>'; return; }
                 info.textContent = items.length + ' 只股票';
-                el.innerHTML = '<table class=\"health-table\"><thead><tr><th>代码</th><th>名称</th><th style=\"text-align:right;\">' + field + '</th><th>日期</th></tr></thead><tbody>' +
-                    items.map(function(i) { return '<tr><td style=\"color:var(--accent-blue);\">' + i.code + '</td><td>' + (i.name || i.code) + '</td><td style=\"text-align:right;font-family:var(--font-mono);\">' + (i.value != null ? Number(i.value).toFixed(4) : '—') + '</td><td>' + (i.date || '') + '</td></tr>'; }).join('') + '</tbody></table>';
-            }).catch(function(e) { el.innerHTML = '<div style=\"color:var(--accent-red);\">加载失败: ' + e.message + '</div>'; });
+                el.innerHTML = '<table class="health-table"><thead><tr><th>代码</th><th>名称</th><th style="text-align:right;">' + field + '</th><th>日期</th></tr></thead><tbody>' +
+                    items.map(function(i) { return '<tr><td style="color:var(--accent-blue);">' + i.code + '</td><td>' + (i.name || i.code) + '</td><td style="text-align:right;font-family:var(--font-mono);">' + (i.value != null ? Number(i.value).toFixed(4) : '—') + '</td><td>' + (i.date || '') + '</td></tr>'; }).join('') + '</tbody></table>';
+            }).catch(function(e) { el.innerHTML = '<div style="color:var(--accent-red);">加载失败: ' + e.message + '</div>'; });
         }
 
-        // 指标计算面板由 IndicatorCompute 公共组件渲染
+        // ═══ Financial Indicators Tab ═══
+        var finInited = false;
+        function initFinancialTab() {
+            if (finInited) return;
+            finInited = true;
+            // Render compute panel
+            var el = document.getElementById('fin-compute-panel');
+            el.innerHTML =
+                '<div style="margin-bottom:6px;">' +
+                  '<label style="font-size:10px;color:var(--text-micro);display:flex;align-items:center;gap:3px;margin-bottom:3px;"><input type="radio" name="fin-scope" value="all" checked onchange="FinCompute._toggleCode()"> 全部持仓+自选股</label>' +
+                  '<label style="font-size:10px;color:var(--text-micro);display:flex;align-items:center;gap:3px;"><input type="radio" name="fin-scope" value="custom" onchange="FinCompute._toggleCode()"> 指定代码</label>' +
+                  '<input type="text" id="fin-codes" placeholder="如: 688012,002409" disabled style="width:100%;background:#000;border:1px solid var(--border-color);color:#fff;padding:4px 8px;border-radius:4px;font-size:10px;">' +
+                '</div>' +
+                '<button id="fin-btn-submit" onclick="FinCompute._onSubmit()" style="font-size:11px;width:100%;background:transparent;border:1px solid var(--accent-green);color:var(--accent-green);cursor:pointer;padding:6px 10px;border-radius:4px;justify-content:center;display:flex;align-items:center;gap:4px;"><i class="fas fa-paper-plane"></i> 提交计算 (ROIC + ROIIC)</button>' +
+                '<div id="fin-status" style="font-size:10px;color:var(--text-micro);margin-top:6px;text-align:center;"></div>';
+            // Init stock select + field select for data view
+            loadFinStockList();
+            loadFinFieldList();
+        }
+
+        function loadFinStockList() {
+            var ss = document.getElementById('fin-stock-select');
+            fetch(API_BASE + '/data/watchlist').then(function(r) { return r.json(); }).then(function(d) {
+                var items = d.data || [];
+                ss.innerHTML = '<option value="">— 选择股票 —</option>' +
+                    items.map(function(i) { return '<option value="' + i.stock_code + '">' + i.stock_code + ' ' + (i.stock_name || '') + '</option>'; }).join('');
+            });
+        }
+
+        function loadFinFieldList() {
+            var fs = document.getElementById('fin-field-select');
+            fetch(API_BASE + '/quant/financial-indicators/registry').then(function(r) { return r.json(); }).then(function(d) {
+                var list = d.data || [];
+                fs.innerHTML = '<option value="">— 选择指标 —</option>' +
+                    list.map(function(i) { return '<option value="' + i.name + '">' + (i.label || i.name) + '</option>'; }).join('');
+            });
+        }
+
+        function switchFinView() {
+            var mode = document.getElementById('fin-view-mode').value;
+            document.getElementById('fin-stock-select').style.display = mode === 'by_stock' ? '' : 'none';
+            document.getElementById('fin-field-select').style.display = mode === 'by_field' ? '' : 'none';
+            document.getElementById('fin-data-content').innerHTML = '';
+            document.getElementById('fin-view-info').textContent = '';
+            if (mode === 'by_stock') loadFinStock();
+            else loadFinField();
+        }
+
+        function loadFinStock() {
+            var code = document.getElementById('fin-stock-select').value;
+            var el = document.getElementById('fin-data-content');
+            var info = document.getElementById('fin-view-info');
+            if (!code) { el.innerHTML = '<div style="color:var(--text-micro);padding:20px;text-align:center;">请选择股票</div>'; return; }
+            el.innerHTML = '<div style="color:var(--text-micro);padding:10px;">加载中...</div>';
+            fetch(API_BASE + '/quant/financial-indicators/history/' + code).then(function(r) { return r.json(); }).then(function(d) {
+                var rows = d.data || [];
+                if (!rows.length) { el.innerHTML = '<div style="color:var(--text-micro);padding:20px;text-align:center;">无财务指标数据 (请先点击"提交计算")</div>'; return; }
+                info.textContent = rows.length + ' 期数据';
+                var html = '<table class="health-table"><thead><tr><th>报告期</th><th style="text-align:right;">ROIC%</th><th style="text-align:right;">ROIIC%</th></tr></thead><tbody>';
+                rows.reverse().forEach(function(r) {
+                    html += '<tr><td>' + (r.report_date || '?') + '</td>' +
+                        '<td style="text-align:right;font-family:var(--font-mono);">' + (r.roic_pct != null ? r.roic_pct.toFixed(1) + '%' : '—') + '</td>' +
+                        '<td style="text-align:right;font-family:var(--font-mono);">' + (r.roiic_pct != null ? r.roiic_pct.toFixed(1) + '%' : '—') + '</td></tr>';
+                });
+                html += '</tbody></table>';
+                el.innerHTML = html;
+            }).catch(function(e) { el.innerHTML = '<div style="color:var(--accent-red);">加载失败</div>'; });
+        }
+
+        function loadFinField() {
+            var field = document.getElementById('fin-field-select').value;
+            var el = document.getElementById('fin-data-content');
+            var info = document.getElementById('fin-view-info');
+            if (!field) { el.innerHTML = '<div style="color:var(--text-micro);padding:20px;text-align:center;">请选择指标</div>'; return; }
+            el.innerHTML = '<div style="color:var(--text-micro);padding:10px;">加载中...</div>';
+            fetch(API_BASE + '/quant/financial-indicators/field/' + field).then(function(r) { return r.json(); }).then(function(d) {
+                var items = d.data || [];
+                if (!items.length) { el.innerHTML = '<div style="color:var(--text-micro);padding:20px;text-align:center;">无数据</div>'; return; }
+                info.textContent = items.length + ' 只股票';
+                el.innerHTML = '<table class="health-table"><thead><tr><th>代码</th><th style="text-align:right;">' + field + '</th><th>报告期</th></tr></thead><tbody>' +
+                    items.map(function(i) { return '<tr><td style="color:var(--accent-blue);">' + i.stock_code + '</td><td style="text-align:right;font-family:var(--font-mono);">' + (i[field] != null ? Number(i[field]).toFixed(2) : '—') + '</td><td>' + (i.report_date || '') + '</td></tr>'; }).join('') + '</tbody></table>';
+            }).catch(function(e) { el.innerHTML = '<div style="color:var(--accent-red);">加载失败</div>'; });
+        }
+
+        var FinCompute = {
+            _toggleCode: function() {
+                var custom = document.querySelector('input[name="fin-scope"]:checked');
+                var el = document.getElementById('fin-codes');
+                if (el) el.disabled = !custom || custom.value !== 'custom';
+            },
+            _getCodes: function() {
+                var scope = document.querySelector('input[name="fin-scope"]:checked');
+                if (!scope || scope.value === 'all') return null;
+                var raw = document.getElementById('fin-codes');
+                return raw ? raw.value.split(',').map(function(s) { return s.trim(); }).filter(Boolean) : [];
+            },
+            _onSubmit: function() {
+                var btn = document.getElementById('fin-btn-submit');
+                var status = document.getElementById('fin-status');
+                var codes = this._getCodes();
+                var body = codes && codes.length ? { target_codes: codes } : {};
+                var orig = btn.innerHTML;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 计算中...';
+                btn.disabled = true;
+                if (status) status.textContent = '计算中...';
+                fetch(API_BASE + '/quant/financial-indicators/compute', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+                }).then(function(r) { return r.json(); }).then(function(d) {
+                    var m = d.data;
+                    if (status) status.textContent = '完成: ' + m.computed + '/' + m.total + ' 只';
+                    loadFinStockList();
+                    loadFinFieldList();
+                }).catch(function(e) {
+                    if (status) status.textContent = '失败: ' + e.message;
+                }).finally(function() {
+                    btn.innerHTML = orig;
+                    btn.disabled = false;
+                });
+            }
+        };
+
+        // ═══ Decision Center ═══
         IndicatorCompute.render('compute-panel');
 
         async function runPortfolio() {
