@@ -241,6 +241,7 @@ FINANCIAL_NUMERIC_COLS = [
     "contract_liability_yoy", "inventory_yoy", "revenue_yoy", "rd_growth",
     "rd_intensity", "gross_margin", "operating_leverage", "fcf_conversion",
     "roic_stability",
+    "burn_rate_months", "rd_to_opex",
 ]
 FINANCIAL_TEXT_COLS = ["gross_margin_trend", "inventory_revenue_ratio", "source"]
 FINANCIAL_ALL_COLS = FINANCIAL_NUMERIC_COLS + FINANCIAL_TEXT_COLS

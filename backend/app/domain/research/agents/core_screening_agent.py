@@ -134,6 +134,17 @@ class CoreScreeningAgent(ResearchAgent):
             except Exception:
                 pass
 
+        # 公司阶段判定 (基于自身财务, 独立于行业周期)
+        stage_map = {}
+        for c in candidates:
+            fin = fin_map.get(c["code"], {}).get("quarters", [])
+            stage_map[c["code"]] = _classify_company_stage(fin, stock_info_map.get(c["code"], {}))
+        # 统计
+        stage_counts = {}
+        for s in stage_map.values():
+            stage_counts[s] = stage_counts.get(s, 0) + 1
+        logger.info(f"[{self.name}] Company stages: {stage_counts}")
+
         passed, filtered = gate_prescreen(candidates, gate_mode, stock_info_map, fin_map)
 
         # 3. 调 FinancialAuditor 逐只标注 (不排除) + ROIC/ROIIC 计算落库
@@ -154,9 +165,10 @@ class CoreScreeningAgent(ResearchAgent):
             fin = fin_map.get(code, {}).get("quarters", [])
             if fin and len(fin) >= 4:
                 try:
-                    roic_data = compute_roic(fin)
-                    roiic_data = compute_roiic(fin) if len(fin) >= 8 else {}
-                    report_date = fin[0].get("report_date", "")[:10]
+                    recent_first = list(reversed(fin))  # data_loader 返回 oldest-first, 倒序
+                    roic_data = compute_roic(recent_first)
+                    roiic_data = compute_roiic(recent_first) if len(recent_first) >= 8 else {}
+                    report_date = recent_first[0].get("report_date", "")[:10]
                     store_financial_indicator(code, report_date, {
                         "roic": roic_data.get("roic"),
                         "roic_pct": roic_data.get("roic_pct"),
@@ -213,6 +225,9 @@ class CoreScreeningAgent(ResearchAgent):
         # 5. 分级输出: current_strong / future_strong
         current_strong, future_strong = [], []
         for c in passed:
+            code = c["code"]
+            c["company_stage"] = stage_map.get(code, "startup")
+            c["stage_indicators"] = self._get_stage_indicators(c["company_stage"])
             mp = c.get("moat_profile", {})
             strong_count = sum(1 for v in mp.values() if isinstance(v, str) and v == "strong")
             has_emerging = any(v == "emerging" for v in mp.values() if isinstance(v, str))
@@ -249,6 +264,24 @@ class CoreScreeningAgent(ResearchAgent):
             "step3_backfill": backfill,
             "filter_log": filtered,
         }
+
+    # ═══ 公司阶段判定 ═══════════════════════════════
+
+    @staticmethod
+    def _get_stage_indicators(stage: str) -> dict:
+        """返回该阶段应重点关注的指标列表"""
+        return {
+            "startup":    {"primary": ["burn_rate_months", "rd_intensity", "rd_to_opex", "contract_liability_yoy"],
+                           "note": "研发期: 关注现金跑道和研发投入效率, 财务阈值大幅放宽"},
+            "inflection": {"primary": ["gross_margin", "gross_margin_trend", "revenue_yoy", "rd_to_revenue_trend", "contract_liability_yoy"],
+                           "note": "拐点期: '研发→收益'验证窗口, 关注毛利率趋势和合同负债增速"},
+            "growth":     {"primary": ["roiic", "roic", "gross_margin_trend", "operating_leverage", "revenue_yoy"],
+                           "note": "成长期: 验证扩张质量, ROIIC应>当前ROIC"},
+            "mature":     {"primary": ["roic_stability", "fcf_conversion", "gross_margin", "inventory_revenue_ratio"],
+                           "note": "成熟期: 验证护城河是否还在, 利润是否真金白银"},
+            "decline":    {"primary": ["revenue_yoy", "fcf_conversion", "gross_margin_trend", "inventory_revenue_ratio"],
+                           "note": "衰退期: 关注收入下滑速度和现金流退化"},
+        }.get(stage, {"primary": [], "note": "未知阶段"})
 
     # ═══ Prompt: 六维权力画像 ═══════════════════
 
@@ -314,3 +347,41 @@ class CoreScreeningAgent(ResearchAgent):
 
     @staticmethod
     async def stream(ctx): yield "streaming not implemented"
+
+
+def _classify_company_stage(quarters: list, stock_info: dict) -> str:
+    """基于公司自身财务数据判定生命周期阶段"""
+    if not quarters or len(quarters) < 4:
+        return "startup"
+
+    # 营收 (最近4Q, 亿元)
+    rev_4q = sum(float(q.get("revenue", 0) or 0) for q in quarters[:4]) / 1e8
+    # 归母净利润 (最近4Q)
+    profit_4q = sum(float(q.get("profit", q.get("parent_profit", 0)) or 0) for q in quarters[:4])
+    # 营收同比
+    if len(quarters) >= 8:
+        rev_prior = sum(float(q.get("revenue", 0) or 0) for q in quarters[4:8])
+        rev_yoy = (rev_4q - rev_prior) / abs(rev_prior) * 100 if rev_prior else 0
+    else:
+        rev_yoy = 0
+    # 研发费用率
+    rd_4q = sum(float(q.get("rd_expense", 0) or 0) for q in quarters[:4])
+    rd_intensity = (rd_4q / max(rev_4q, 0.01)) * 100 if rev_4q > 0.01 else 100
+    # 毛利率
+    cost_4q = sum(float(q.get("operate_cost", 0) or 0) for q in quarters[:4])
+    gm = (rev_4q - cost_4q) / max(rev_4q, 0.01) * 100 if rev_4q > 0.01 else 0
+
+    # 判定逻辑
+    if rev_yoy < -10:
+        return "decline"
+    if rev_yoy > 20 and profit_4q > 0 and gm > 15:
+        return "growth"
+    if rev_yoy > 40 and rd_intensity > 15:
+        return "inflection"
+    if 0 <= rev_yoy <= 10 and profit_4q > 0:
+        # 成熟期需要稳定毛利率
+        if gm > 20:
+            return "mature"
+        return "growth"
+    # 默认: 营收小/亏损/高研发 → 初创
+    return "startup"
