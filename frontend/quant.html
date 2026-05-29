@@ -357,12 +357,13 @@
             // Render compute panel
             var el = document.getElementById('fin-compute-panel');
             el.innerHTML =
+                '<div style="font-size:10px;color:var(--text-micro);margin-bottom:6px;">财务数据源: DB (financial_statements表)。请先在 <a href="data.html" target="_blank" style="color:var(--accent-blue);">数据中心→财务Tab</a> 同步最新季报。</div>' +
                 '<div style="margin-bottom:6px;">' +
                   '<label style="font-size:10px;color:var(--text-micro);display:flex;align-items:center;gap:3px;margin-bottom:3px;"><input type="radio" name="fin-scope" value="all" checked onchange="FinCompute._toggleCode()"> 全部持仓+自选股</label>' +
                   '<label style="font-size:10px;color:var(--text-micro);display:flex;align-items:center;gap:3px;"><input type="radio" name="fin-scope" value="custom" onchange="FinCompute._toggleCode()"> 指定代码</label>' +
                   '<input type="text" id="fin-codes" placeholder="如: 688012,002409" disabled style="width:100%;background:#000;border:1px solid var(--border-color);color:#fff;padding:4px 8px;border-radius:4px;font-size:10px;">' +
                 '</div>' +
-                '<button id="fin-btn-submit" onclick="FinCompute._onSubmit()" style="font-size:11px;width:100%;background:transparent;border:1px solid var(--accent-green);color:var(--accent-green);cursor:pointer;padding:6px 10px;border-radius:4px;justify-content:center;display:flex;align-items:center;gap:4px;"><i class="fas fa-paper-plane"></i> 提交计算 (ROIC + ROIIC)</button>' +
+                '<button id="fin-btn-submit" onclick="FinCompute._onSubmit()" style="font-size:11px;width:100%;background:transparent;border:1px solid var(--accent-green);color:var(--accent-green);cursor:pointer;padding:6px 10px;border-radius:4px;justify-content:center;display:flex;align-items:center;gap:4px;"><i class="fas fa-calculator"></i> 计算指标 (ROIC + ROIIC)</button>' +
                 '<div id="fin-status" style="font-size:10px;color:var(--text-micro);margin-top:6px;text-align:center;"></div>';
             // Init stock select + field select for data view
             loadFinStockList();

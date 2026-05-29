@@ -399,20 +399,12 @@ async def compute_financial_indicators(req: FinancialComputeRequest = FinancialC
     if not a_codes:
         return {"success": True, "data": {"message": "无有效A股代码", "computed": 0}}
 
-    logger.info(f"[FinCompute] Computing ROIC/ROIIC for {len(a_codes)} stocks")
-
-    # 强制同步: 全部先拉取最新 akshare 数据
-    try:
-        from app.domain.market_data.services.financial_sync import sync_financials_batch
-        await sync_financials_batch(a_codes)
-        logger.info(f"[FinCompute] Synced all {len(a_codes)} stocks")
-    except Exception as e:
-        logger.warning(f"[FinCompute] Sync failed: {e}")
+    logger.info(f"[FinCompute] Computing ROIC/ROIIC for {len(a_codes)} stocks (using DB data, sync separately in Data Center)")
 
     results = []
     for code in a_codes:
         try:
-            fin = await data_loader.load_financial_statements(code, periods=8)
+            fin = await data_loader.load_financial_statements(code, periods=20)
             quarters = fin.get("quarters", [])
             if len(quarters) < 4:
                 results.append({"code": code, "status": "skipped", "reason": f"仅{len(quarters)}Q数据"})
@@ -422,27 +414,24 @@ async def compute_financial_indicators(req: FinancialComputeRequest = FinancialC
             recent_first = list(reversed(quarters))
             stored_count = 0
 
-            # 为每个可用窗口计算并持久化 ROIC (4Q滚动) + ROIIC (8Q窗口)
-            # 遍历: 每季度作为计算截止点 (至少需要 4Q 数据)
+            # ROIC: 每4Q窗口滚动计算, ROIIC: 每8Q窗口滚动计算
             for i in range(len(recent_first) - 3):
-                window = recent_first[i:i+4]  # 最近4Q
-                rpt_date = window[0].get("report_date", "")[:10]
+                window_4q = recent_first[i:i+4]
+                rpt_date = window_4q[0].get("report_date", "")[:10]
 
-                roic_data = compute_roic(window)
-                roiic_data = {}
-                if i >= 4 and len(recent_first) >= 8:
-                    # ROIIC: 需要 8Q 窗口 (t-4 到 t)
-                    prior = recent_first[i:i+4]
-                    prev = recent_first[i+4:i+8] if i+8 <= len(recent_first) else recent_first[i+4:]
-                    if len(prev) >= 4:
-                        roiic_window = prior + prev
-                        roiic_data = compute_roiic(roiic_window)
+                roic_data = compute_roic(window_4q)
+                roiic_val, roiic_pct = None, None
+                # ROIIC: 取8Q窗口 (i..i+7), 前4Q vs 后4Q
+                if i + 8 <= len(recent_first):
+                    window_8q = recent_first[i:i+8]
+                    ri = compute_roiic(window_8q)
+                    roiic_val, roiic_pct = ri.get("roiic"), ri.get("roiic_pct")
 
                 stored = store_financial_indicator(code, rpt_date, {
                     "roic": roic_data.get("roic"),
                     "roic_pct": roic_data.get("roic_pct"),
-                    "roiic": roiic_data.get("roiic"),
-                    "roiic_pct": roiic_data.get("roiic_pct"),
+                    "roiic": roiic_val,
+                    "roiic_pct": roiic_pct,
                 })
                 if stored:
                     stored_count += 1
