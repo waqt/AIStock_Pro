@@ -10,6 +10,8 @@ from app.framework.finance.roiic import compute_roic
 class ROICIndicator(FinancialIndicator):
     name = "roic"
     label = "投资资本回报率(ROIC)"
+    description = "ROIC = NOPAT / 投入资本。衡量公司每投入一元资本能赚回多少利润，是判断护城河的核心指标。不受资本结构影响，比ROE更能反映经营质量。"
+    judgment = "ROIC>15%=强护城河,定价权突出; 10~15%=良好,有竞争优势; 5~10%=一般,缺乏壁垒; <5%=脆弱需警惕。持续>20%为顶级复利机器。"
     category = "fundamental"
     indicator_type = "moat"
     applicable_stages = ["growth", "mature"]

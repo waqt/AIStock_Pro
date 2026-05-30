@@ -28,6 +28,8 @@
         .badge-chip { background: rgba(255,107,167,0.15); color: #fb6da7; }
         .result-card { background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 6px; padding: 14px; margin-bottom: 10px; }
         .strategy-row { padding: 6px 10px; border-bottom: 1px solid var(--border-thin); font-size: 12px; display: flex; justify-content: space-between; align-items: center; }
+        .fin-cat-title { font-size: 10px; color: var(--text-micro); margin: 8px 0 4px; padding: 3px 6px; background: rgba(255,255,255,0.03); border-radius: 3px; }
+        .fin-table-wrap { overflow-x: auto; max-height: 50vh; overflow-y: auto; }
     </style>
 </head>
 <body data-page-id="quant">
@@ -158,6 +160,7 @@
     <script src="js/framework/modal.js"></script>
     <script src="js/framework/task_monitor.js"></script>
     <script src="js/framework/indicator_compute.js"></script>
+    <script src="js/financial_indicators.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/common.js"></script>
     <script>
@@ -376,7 +379,7 @@
                 var typeClass = { moat: 'badge-trend', prosperity: 'badge-momentum', both: 'badge-crowding' };
                 el.innerHTML = list.map(function(i) {
                     var stages = (i.applicable_stages || []).map(function(s) { return '<span class="badge badge-chip">' + s + '</span>'; }).join(' ');
-                    return '<div class="card" onclick="showFinIndicatorDetail(\'' + i.name + '\')" style="cursor:pointer;">' +
+                    return '<div class="card" onclick="FinInd.showIndicatorDetail(\'' + i.name + '\')" style="cursor:pointer;">' +
                         '<div style="display:flex;justify-content:space-between;align-items:center;">' +
                         '<span class="card-title">' + i.name + '</span>' +
                         '<span class="badge ' + (typeClass[i.indicator_type] || 'badge-trend') + '">' + (typeBadge[i.indicator_type] || i.indicator_type) + '</span>' +
@@ -389,19 +392,7 @@
             }).catch(function(e) { el.innerHTML = '<div style="color:var(--accent-red);">加载失败</div>'; });
         }
         function showFinIndicatorDetail(name) {
-            document.getElementById('panel-empty').style.display = 'none';
-            document.getElementById('panel-detail').style.display = '';
-            document.getElementById('detail-title').textContent = '财务算子: ' + name;
-            fetch(API_BASE + '/quant/financial-indicators/registry').then(function(r) { return r.json(); }).then(function(d) {
-                var ind = (d.data || []).find(function(i) { return i.name === name; });
-                if (!ind) return;
-                var stages = (ind.applicable_stages || []).join(', ');
-                document.getElementById('detail-content').innerHTML =
-                    '<div class="card"><div class="card-title">' + ind.label + ' (' + ind.name + ')</div>' +
-                    '<div class="card-meta">类型: ' + (ind.indicator_type || '?') + ' | 适用阶段: ' + stages + '</div>' +
-                    '<div class="card-desc" style="margin-top:8px;">依赖字段: ' + (ind.requires || []).join(', ') + '</div>' +
-                    '<div class="card-desc">输出字段: ' + (ind.output || []).join(', ') + '</div></div>';
-            });
+            FinInd.showIndicatorDetail(name);
         }
         function initFinancialTab() {
             if (finInited) return;
@@ -415,12 +406,14 @@
                   '<label style="font-size:10px;color:var(--text-micro);display:flex;align-items:center;gap:3px;"><input type="radio" name="fin-scope" value="custom" onchange="FinCompute._toggleCode()"> 指定代码</label>' +
                   '<input type="text" id="fin-codes" placeholder="如: 688012,002409" disabled style="width:100%;background:#000;border:1px solid var(--border-color);color:#fff;padding:4px 8px;border-radius:4px;font-size:10px;">' +
                 '</div>' +
-                '<button id="fin-btn-submit" onclick="FinCompute._onSubmit()" style="font-size:11px;width:100%;background:transparent;border:1px solid var(--accent-green);color:var(--accent-green);cursor:pointer;padding:6px 10px;border-radius:4px;justify-content:center;display:flex;align-items:center;gap:4px;"><i class="fas fa-calculator"></i> 计算指标 (ROIC + ROIIC)</button>' +
+                '<button id="fin-btn-submit" onclick="FinCompute._onSubmit()" style="font-size:11px;width:100%;background:transparent;border:1px solid var(--accent-green);color:var(--accent-green);cursor:pointer;padding:6px 10px;border-radius:4px;justify-content:center;display:flex;align-items:center;gap:4px;"><i class="fas fa-calculator"></i> 计算财务指标</button>' +
                 '<div id="fin-status" style="font-size:10px;color:var(--text-micro);margin-top:6px;text-align:center;"></div>';
             // Init stock select + field select for data view + 算子清单
             loadFinStockList();
             loadFinFieldList();
             loadFinIndicatorList();
+            // Init FinInd cache (stock list + registry)
+            setTimeout(function() { FinInd.initData(); }, 100);
         }
 
         function loadFinStockList() {
@@ -452,76 +445,19 @@
         }
 
         function switchFinView() {
-            var mode = document.getElementById('fin-view-mode').value;
-            document.getElementById('fin-stock-select').style.display = mode === 'by_stock' ? '' : 'none';
-            document.getElementById('fin-field-select').style.display = mode === 'by_field' ? '' : 'none';
-            document.getElementById('fin-data-content').innerHTML = '';
-            document.getElementById('fin-view-info').textContent = '';
-            if (mode === 'by_stock') loadFinStock();
-            else loadFinField();
+            FinInd.switchView();
         }
 
         function loadFinStock() {
-            var code = document.getElementById('fin-stock-select').value;
-            var el = document.getElementById('fin-data-content');
-            var info = document.getElementById('fin-view-info');
-            if (!code) { el.innerHTML = '<div style="color:var(--text-micro);padding:20px;text-align:center;">请选择股票</div>'; return; }
-            el.innerHTML = '<div style="color:var(--text-micro);padding:10px;">加载中...</div>';
-            fetch(API_BASE + '/quant/financial-indicators/history/' + code).then(function(r) { return r.json(); }).then(function(d) {
-                var rows = d.data || [];
-                if (!rows.length) { el.innerHTML = '<div style="color:var(--text-micro);padding:20px;text-align:center;">无财务指标数据 (请先点击"提交计算")</div>'; return; }
-                info.textContent = rows.length + ' 期数据 (新→旧)';
-                var html = '<table class="health-table"><thead><tr><th>报告期</th><th style="text-align:right;">ROIC%</th><th style="text-align:right;">ROIIC%</th></tr></thead><tbody>';
-                rows.forEach(function(r) {
-                    html += '<tr><td>' + (r.report_date || '?') + '</td>' +
-                        '<td style="text-align:right;font-family:var(--font-mono);">' + (r.roic_pct != null ? r.roic_pct.toFixed(1) + '%' : '—') + '</td>' +
-                        '<td style="text-align:right;font-family:var(--font-mono);">' + (r.roiic_pct != null ? r.roiic_pct.toFixed(1) + '%' : '—') + '</td></tr>';
-                });
-                html += '</tbody></table>';
-                el.innerHTML = html;
-            }).catch(function(e) { el.innerHTML = '<div style="color:var(--accent-red);">加载失败</div>'; });
+            FinInd.loadStockFullView(document.getElementById('fin-stock-select').value);
         }
 
         function loadFinField() {
-            var field = document.getElementById('fin-field-select').value;
-            var el = document.getElementById('fin-data-content');
-            var info = document.getElementById('fin-view-info');
-            if (!field) { el.innerHTML = '<div style="color:var(--text-micro);padding:20px;text-align:center;">请选择指标</div>'; return; }
-            el.innerHTML = '<div style="color:var(--text-micro);padding:10px;">加载中...</div>';
-            fetch(API_BASE + '/quant/financial-indicators/field/' + field).then(function(r) { return r.json(); }).then(function(d) {
-                var items = d.data || [];
-                if (!items.length) { el.innerHTML = '<div style="color:var(--text-micro);padding:20px;text-align:center;">无数据</div>'; return; }
-                info.textContent = items.length + ' 只股票';
-                el.innerHTML = '<table class="health-table"><thead><tr><th>代码</th><th>名称</th><th style="text-align:right;">' + field + '</th><th>报告期</th></tr></thead><tbody>' +
-                    items.map(function(i) {
-                        var valStr = i[field] != null ? Number(i[field]).toFixed(2) : '—';
-                        var nm = stockNameMap[i.stock_code] || '';
-                        return '<tr onclick="showFinHistory(\'' + i.stock_code + '\')" style="cursor:pointer;" title="点击查看历史">' +
-                            '<td style="color:var(--accent-blue);">' + i.stock_code + '</td>' +
-                            '<td>' + nm + '</td>' +
-                            '<td style="text-align:right;font-family:var(--font-mono);">' + valStr + '</td>' +
-                            '<td>' + (i.report_date || '') + '</td></tr>';
-                    }).join('') + '</tbody></table>';
-            }).catch(function(e) { el.innerHTML = '<div style="color:var(--accent-red);">加载失败</div>'; });
+            FinInd.loadFieldRanking(document.getElementById('fin-field-select').value);
         }
 
         function showFinHistory(code) {
-            document.getElementById('panel-empty').style.display = 'none';
-            document.getElementById('panel-detail').style.display = '';
-            document.getElementById('detail-title').textContent = '财务指标: ' + code;
-            document.getElementById('detail-content').innerHTML = '<div style="color:var(--text-micro);padding:10px;">加载中...</div>';
-            fetch(API_BASE + '/quant/financial-indicators/history/' + code).then(function(r) { return r.json(); }).then(function(d) {
-                var rows = d.data || [];
-                if (!rows.length) { document.getElementById('detail-content').innerHTML = '<div style="color:var(--text-micro);padding:20px;">无数据</div>'; return; }
-                var html = '<table class="health-table"><thead><tr><th>报告期</th><th style="text-align:right;">ROIC%</th><th style="text-align:right;">ROIIC%</th></tr></thead><tbody>';
-                rows.forEach(function(r) {
-                    html += '<tr><td>' + (r.report_date || '?') + '</td>' +
-                        '<td style="text-align:right;font-family:var(--font-mono);">' + (r.roic_pct != null ? r.roic_pct.toFixed(1) + '%' : '—') + '</td>' +
-                        '<td style="text-align:right;font-family:var(--font-mono);">' + (r.roiic_pct != null ? r.roiic_pct.toFixed(1) + '%' : '—') + '</td></tr>';
-                });
-                html += '</tbody></table>';
-                document.getElementById('detail-content').innerHTML = html;
-            }).catch(function(e) { document.getElementById('detail-content').innerHTML = '<div style="color:var(--accent-red);">加载失败</div>'; });
+            FinInd.loadStockFullViewInPanel(code);
         }
 
         var FinCompute = {

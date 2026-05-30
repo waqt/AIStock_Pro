@@ -9,6 +9,8 @@ from .base import FinancialIndicator, register_financial
 class RDIntensity(FinancialIndicator):
     name = "rd_intensity"
     label = "研发费用率(%)"
+    description = "研发费用占营收比例。衡量公司对技术/创新的投入力度，高研发投入是科技公司构建护城河的基础。"
+    judgment = ">15%=高强度研发投入(多数生物科技/半导体); 8~15%=企业级软件/硬科技; 3~8%=稳健投入型; <3%=研发投入不足,需关注是否壁垒足够。结合营收增速看性价比。"
     category = "fundamental"
     indicator_type = "moat"
     applicable_stages = ["startup", "inflection"]
@@ -31,6 +33,8 @@ class RDIntensity(FinancialIndicator):
 class GrossMargin(FinancialIndicator):
     name = "gross_margin"
     label = "毛利率(%)"
+    description = "毛利率 = (营收-营业成本)/营收。衡量公司定价权和议价能力的核心指标，反映护城河深度。毛利率水平取决于行业结构和竞争格局。"
+    judgment = ">70%=极强定价权(品牌/技术垄断); 50~70%=强护城河(差异化优势); 30~50%=中等(行业竞争可承受); 20~30%=竞争激烈(成本驱动型); <20%=红海市场。毛利率持续下降是危险信号。"
     category = "fundamental"
     indicator_type = "moat"
     applicable_stages = ["inflection", "growth", "mature"]
@@ -53,6 +57,8 @@ class GrossMargin(FinancialIndicator):
 class GrossMarginTrend(FinancialIndicator):
     name = "gross_margin_trend"
     label = "毛利率趋势"
+    description = "判断毛利率连续4Q的变化方向: rising(上升)、stable(稳定)、declining(下降)。趋势比绝对值更能揭示护城河变化。"
+    judgment = "rising=定价权增强/成本降低，护城河在加固; stable=格局稳定，竞争均衡; declining=定价权削弱/成本上升，护城河在侵蚀。连续3Q下降是预警信号。"
     category = "fundamental"
     indicator_type = "moat"
     applicable_stages = ["inflection", "growth", "mature"]
@@ -81,6 +87,8 @@ class GrossMarginTrend(FinancialIndicator):
 class OperatingLeverage(FinancialIndicator):
     name = "operating_leverage"
     label = "经营杠杆"
+    description = "经营杠杆 = 利润增速/营收增速。衡量利润对营收变化的敏感度。高经营杠杆：营收小幅增长就能带来利润大幅增长，但反之亦然。"
+    judgment = ">2.0=高经营杠杆(固定成本高,增收效应显著); 1.5~2.0=中等; 1.0~1.5=低杠杆; <1.0或负=利润增速落后营收,成本失控。高杠杆公司需关注景气度变化。"
     category = "fundamental"
     indicator_type = "prosperity"
     applicable_stages = ["growth"]
@@ -110,6 +118,8 @@ class OperatingLeverage(FinancialIndicator):
 class FCFConversion(FinancialIndicator):
     name = "fcf_conversion"
     label = "现金流转化率"
+    description = "经营性现金流/净利润。衡量利润是否真实转化为现金。是识别纸面利润和应收账款式伪增长的关键指标。"
+    judgment = ">1.0=利润是真金白银，盈利质量优秀; 0.7~1.0=合理，有正常营运资金占用; 0.5~0.7=偏低，应收/存货占用现金; <0.5=利润质量差，需警惕。持续<0.5可能是财务操纵信号。"
     category = "fundamental"
     indicator_type = "moat"
     applicable_stages = ["growth", "mature"]

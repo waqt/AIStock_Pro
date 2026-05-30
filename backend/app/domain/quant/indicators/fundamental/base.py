@@ -11,6 +11,8 @@ class FinancialIndicator:
 
     name: str = ""           # 唯一标识, 全小写+下划线
     label: str = ""          # 中文显示名
+    description: str = ""    # 指标含义说明
+    judgment: str = ""       # 数据判断方法 (阈值/指南)
     category: str = "fundamental"
     indicator_type: str = "both"    # "moat"(护城河) / "prosperity"(高景气) / "both"
     applicable_stages: list = []    # ["startup","inflection","growth","mature","decline"]
@@ -32,6 +34,8 @@ class FinancialIndicator:
         return {
             "name": cls.name,
             "label": cls.label,
+            "description": cls.description,
+            "judgment": cls.judgment,
             "category": cls.category,
             "indicator_type": cls.indicator_type,
             "applicable_stages": cls.applicable_stages,

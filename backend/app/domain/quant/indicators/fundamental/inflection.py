@@ -9,6 +9,8 @@ from .base import FinancialIndicator, register_financial
 class RDToRevenueTrend(FinancialIndicator):
     name = "rd_to_revenue_trend"
     label = "研发费率趋势(百分点)"
+    description = "研发费用率的同比变化。正数=研发费率在下降(收入增速>研发增速)，是商业化拐点确认信号。负数=费率上升(研发增速>收入增速)，仍在投入期。"
+    judgment = "正数越大越好:>3pp=收入爆发式增长,拐点确认; 1~3pp=良性趋势; 0~1pp=拐点初期。负值=仍在投入期,关注何时转正。从负转正是关键拐点信号。"
     category = "fundamental"
     indicator_type = "moat"
     applicable_stages = ["inflection"]
@@ -37,6 +39,8 @@ class RDToRevenueTrend(FinancialIndicator):
 class RevenueAcceleration(FinancialIndicator):
     name = "revenue_acceleration"
     label = "营收加速度(百分点)"
+    description = "本期营收同比增速减去上期同比增速。正值=营收在加速增长(需求扩张),负值=增速放缓。是判断爆发前夜的关键拐点指标。"
+    judgment = ">10pp=爆发式加速,需求井喷; 3~10pp=显著加速; 0~3pp=温和加速; -3~0pp=轻微放缓(关注); <-3pp=显著减速(警惕)。连续2Q加速=强趋势确认。"
     category = "fundamental"
     indicator_type = "prosperity"
     applicable_stages = ["inflection", "growth"]
@@ -62,6 +66,8 @@ class RevenueAcceleration(FinancialIndicator):
 class ProfitTurnaround(FinancialIndicator):
     name = "profit_turnaround"
     label = "扭亏信号"
+    description = "判断公司是否从亏损转向盈利。1=扭亏(利润由负转正), 0=一直盈利或一直亏损, -1=仍在亏损。是拐点期最重要的验证信号之一。"
+    judgment = "1=关键拐点确认,利润从负转正,可开始用ROIIC评估成长质量; 0=持续盈利或持续亏损(无方向变化); -1=仍在亏损,不适合价值评估,需关注技术/产品进展。"
     category = "fundamental"
     indicator_type = "prosperity"
     applicable_stages = ["inflection"]
@@ -87,6 +93,8 @@ class ProfitTurnaround(FinancialIndicator):
 class RevenueQoQ(FinancialIndicator):
     name = "revenue_qoq"
     label = "营收环比增速(%)"
+    description = "最新季度营收相对前一季度的增速。环比增速比同比更灵敏，能更早捕捉景气度变化和季节性拐点。"
+    judgment = ">30%=爆发式增长(需确认是否为季节因素); 10~30%=强劲增长; 5~10%=稳定增长; 0~5%=停滞; <0=环比下滑。连续2Q环比下滑=趋势逆转预警。"
     category = "fundamental"
     indicator_type = "prosperity"
     applicable_stages = ["inflection", "growth"]

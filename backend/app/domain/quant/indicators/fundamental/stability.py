@@ -10,6 +10,8 @@ from app.framework.finance.roiic import compute_roic as _compute_roic
 class ROICStability(FinancialIndicator):
     name = "roic_stability"
     label = "ROIC稳定性"
+    description = "ROIC的变异系数(标准差/均值)。衡量护城河的稳定性,越小说明ROIC越稳定,护城河越可靠。适用于成熟期公司的防御力评估。"
+    judgment = "<0.1=极稳定,护城河牢固(现金流无争议); 0.1~0.3=正常波动; >0.3=ROIC不稳定,护城河在侵蚀或有周期性冲击。同时看均值水平,高均值+低变异=最优质资产。"
     category = "fundamental"
     indicator_type = "moat"
     applicable_stages = ["mature"]
@@ -42,6 +44,8 @@ class ROICStability(FinancialIndicator):
 class InventoryRevenueTrend(FinancialIndicator):
     name = "inventory_revenue_ratio"
     label = "存货/营收比趋势"
+    description = "存货余额/营收的连续变化趋势。上升=存货增长快于营收(有积压风险),下降=存货相对营收在减少(产品或渠道能力强)。"
+    judgment = "rising_alert=存货占比连续上升,可能存在过度扩张或滞销; declining_bullish=存货占比持续下降,产品供不应求或渠道效率在提升; stable=存货和营收同步增长,经营健康。"
     category = "fundamental"
     indicator_type = "both"
     applicable_stages = ["growth", "mature"]
@@ -70,6 +74,8 @@ class InventoryRevenueTrend(FinancialIndicator):
 class OperatingMarginStability(FinancialIndicator):
     name = "operating_margin_stability"
     label = "营业利润率稳定性"
+    description = "近8Q营业利润率的标准差(百分点)。衡量盈利能力的稳定性,间接反映竞争格局变化。标准差越小说明公司盈利能力越稳定。"
+    judgment = "<1pp=护城河牢固,竞争格局稳定; 1~3pp=正常波动; >3pp=盈利不稳,可能竞争加剧或成本波动大。结合毛利率趋势判断波动来源(定价权还是成本)。"
     category = "fundamental"
     indicator_type = "moat"
     applicable_stages = ["mature"]
