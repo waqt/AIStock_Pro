@@ -26,6 +26,20 @@ window.FinInd = (function() {
     };
 
     // ── 工具函数 ──
+    // 每个字段的显示小数位 (0=整数, 1=百分数/个位, 2=比率, 3=变异系数)
+    var FIELD_DECIMALS = {
+        'roic_pct': 1, 'roic_pct_adjusted': 1,
+        'roiic_pct': 1, 'roiic_pct_adjusted': 1,
+        'gross_margin': 1, 'rd_intensity': 1, 'rd_to_opex': 1,
+        'revenue_yoy': 1, 'revenue_acceleration': 1, 'revenue_qoq': 1,
+        'rd_growth': 1, 'contract_liability_yoy': 1, 'inventory_yoy': 1,
+        'working_capital_efficiency': 1, 'rd_to_revenue_trend': 1,
+        'burn_rate_months': 1, 'operating_margin_stability': 1,
+        'operating_leverage': 2, 'fcf_conversion': 2,
+        'roic_stability': 3,
+        'profit_turnaround': 0,
+    };
+
     function escHtml(s) {
         if (!s) return '';
         return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -35,12 +49,30 @@ window.FinInd = (function() {
         return /^(159|510|512|513|560|588)/.test(code);
     }
 
-    function _fmtNum(v, decimals) {
+    // 按字段类型格式化数值: 百分数1位, 比率2位, 变异系数3位, 整数0位
+    function _fmtField(v, field) {
         if (v == null || v === '' || v === undefined) return null;
+        if (typeof v === 'string') {
+            var short = {
+                'rising': '↑上升', 'declining': '↓下降', 'stable': '→稳定',
+                'rising_alert': '↑预警', 'declining_bullish': '↓看涨'
+            };
+            return short[v] || v;
+        }
         var n = Number(v);
         if (isNaN(n)) return String(v);
-        return n.toFixed(decimals || 2);
+        var dec = FIELD_DECIMALS[field];
+        if (dec === 0) return n.toFixed(0);
+        if (dec !== undefined) return n.toFixed(dec);
+        // 未知字段: 智能推断
+        var abs = Math.abs(n);
+        if (abs >= 100) return n.toFixed(0);
+        if (abs >= 1) return n.toFixed(1);
+        return n.toFixed(2);
     }
+
+    // 越低越好的字段 (positive=red, negative=green)
+    var LOWER_BETTER = ['working_capital_efficiency', 'inventory_yoy', 'roic_stability', 'operating_margin_stability'];
 
     function _valueColor(field, v) {
         if (v == null || v === '') return 'var(--text-micro)';
@@ -55,9 +87,16 @@ window.FinInd = (function() {
         var n = Number(v);
         if (isNaN(n)) return 'var(--text-dim)';
 
-        // 正值 = good, 负值 = bad
-        if (n > 0) return 'var(--accent-green)';
-        if (n < 0) return 'var(--accent-red)';
+        // profit_turnaround: 1=good, -1=bad, 0=neutral
+        if (field === 'profit_turnaround') {
+            if (n === 1) return 'var(--accent-green)';
+            if (n === -1) return 'var(--accent-red)';
+            return 'var(--text-dim)';
+        }
+
+        var invert = LOWER_BETTER.indexOf(field) >= 0;
+        if (n > 0) return invert ? 'var(--accent-red)' : 'var(--accent-green)';
+        if (n < 0) return invert ? 'var(--accent-green)' : 'var(--accent-red)';
         return 'var(--text-dim)';
     }
 
@@ -244,7 +283,7 @@ window.FinInd = (function() {
                 dates.forEach(function(d) {
                     var v = dataMap[s.stock_code] ? dataMap[s.stock_code][d] : undefined;
                     var color = _valueColor(fieldName, v);
-                    var valStr = (v != null && v !== '') ? (typeof v === 'number' ? _fmtNum(v, 1) : String(v)) : '—';
+                    var valStr = (v != null && v !== '') ? _fmtField(v, fieldName) : '—';
                     html += '<td style="text-align:right;font-family:var(--font-mono);color:' + color + ';">' + valStr + '</td>';
                 });
                 html += '</tr>';
@@ -322,27 +361,7 @@ window.FinInd = (function() {
                     availableFields.forEach(function(f) {
                         var v = row[f];
                         var color = _valueColor(f, v);
-                        var valStr;
-                        if (v == null || v === '') {
-                            valStr = '—';
-                        } else if (typeof v === 'number') {
-                            // Auto-detect precision based on magnitude
-                            var abs = Math.abs(v);
-                            var decimals = abs >= 100 ? 0 : (abs >= 10 ? 1 : (abs >= 1 ? 2 : 3));
-                            if (abs === 0) decimals = 1;
-                            valStr = v.toFixed(decimals);
-                        } else if (typeof v === 'string') {
-                            var short = {
-                                'rising': '↑上升',
-                                'declining': '↓下降',
-                                'stable': '→稳定',
-                                'rising_alert': '↑预警',
-                                'declining_bullish': '↓看涨'
-                            };
-                            valStr = short[v] || v;
-                        } else {
-                            valStr = String(v);
-                        }
+                        var valStr = (v != null && v !== '') ? _fmtField(v, f) : '—';
                         fullHtml += '<td style="text-align:right;font-family:var(--font-mono);color:' + color + ';">' + valStr + '</td>';
                     });
                     fullHtml += '</tr>';
@@ -393,10 +412,7 @@ window.FinInd = (function() {
                     items.map(function(i) {
                         var v = i[field];
                         var color = _valueColor(field, v);
-                        var valStr = '—';
-                        if (v != null && v !== '') {
-                            valStr = typeof v === 'number' ? v.toFixed(2) : String(v);
-                        }
+                        var valStr = (v != null && v !== '') ? _fmtField(v, field) : '—';
                         var nm = stockNameMap[i.stock_code] || '';
                         return '<tr onclick="FinInd.loadStockFullView(\'' + i.stock_code + '\')" style="cursor:pointer;" title="点击查看全指标">' +
                             '<td style="color:var(--accent-blue);">' + i.stock_code + '</td>' +
@@ -495,26 +511,7 @@ window.FinInd = (function() {
                     availableFields.forEach(function(f) {
                         var v = row[f];
                         var color = _valueColor(f, v);
-                        var valStr;
-                        if (v == null || v === '') {
-                            valStr = '—';
-                        } else if (typeof v === 'number') {
-                            var abs = Math.abs(v);
-                            var decimals = abs >= 100 ? 0 : (abs >= 10 ? 1 : (abs >= 1 ? 2 : 3));
-                            if (abs === 0) decimals = 1;
-                            valStr = v.toFixed(decimals);
-                        } else if (typeof v === 'string') {
-                            var short = {
-                                'rising': '↑上升',
-                                'declining': '↓下降',
-                                'stable': '→稳定',
-                                'rising_alert': '↑预警',
-                                'declining_bullish': '↓看涨'
-                            };
-                            valStr = short[v] || v;
-                        } else {
-                            valStr = String(v);
-                        }
+                        var valStr = (v != null && v !== '') ? _fmtField(v, f) : '—';
                         fullHtml += '<td style="text-align:right;font-family:var(--font-mono);color:' + color + ';">' + valStr + '</td>';
                     });
                     fullHtml += '</tr>';
