@@ -297,7 +297,9 @@ window.FinInd = (function() {
     }
 
     // ════════════════════════════════════════════════
-    // R3: 按股票全指标矩阵 (多张分类子表)
+    // R3: 按股票查看 — 最新一期指标概览 (紧凑视图)
+    // 不按时间展开，只显示最新季度的指标数据
+    // 点击 "展开" 或在分类标题上点击可查看右侧完整历史矩阵
     // ════════════════════════════════════════════════
     async function loadStockFullView(code) {
         var el = document.getElementById('fin-data-content');
@@ -325,8 +327,9 @@ window.FinInd = (function() {
                 return;
             }
 
-            var latestRows = rows.slice(0, 12);
-            if (info) info.textContent = latestRows.length + ' 期数据 (新→旧)';
+            var latest = rows[0]; // 最新一期
+            var stockName = stockNameMap[code] || code;
+            if (info) info.textContent = '最新: ' + (latest.report_date || '?') + ' | 点击 [展开] 查看完整历史';
 
             // Build label cache if needed
             if (!Object.keys(fieldLabelMap).length) {
@@ -338,33 +341,34 @@ window.FinInd = (function() {
 
             var fullHtml = '';
 
+            // ── 股票名称 + 展开按钮 ──
+            fullHtml += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding:6px 10px;background:rgba(255,255,255,0.03);border-radius:4px;">';
+            fullHtml += '<div><span style="font-size:13px;color:var(--accent-blue);font-weight:600;">' + escHtml(code) + ' ' + escHtml(stockName) + '</span>';
+            fullHtml += '<span style="font-size:10px;color:var(--text-micro);margin-left:8px;">最新: ' + (latest.report_date || '?') + '</span></div>';
+            fullHtml += '<button onclick="FinInd.loadStockFullViewInPanel(\'' + code + '\')" style="background:transparent;border:1px solid var(--accent-gold);color:var(--accent-gold);padding:4px 12px;border-radius:4px;cursor:pointer;font-size:10px;"><i class="fas fa-expand"></i> 展开完整历史</button>';
+            fullHtml += '</div>';
+
+            // ── 紧凑视图: 按分类分组, 每类一张小表 (指标 | 本季值) ──
             Object.keys(FIELD_CATEGORIES).forEach(function(catName) {
                 var fields = FIELD_CATEGORIES[catName];
                 var availableFields = fields.filter(function(f) {
-                    return latestRows.some(function(r) { return r[f] !== undefined && r[f] !== null; });
+                    return latest[f] !== undefined && latest[f] !== null;
                 });
                 if (!availableFields.length) return;
 
-                fullHtml += '<div class="fin-cat-title">' + catName + '</div>';
-                fullHtml += '<div class="fin-table-wrap" style="margin-bottom:8px;">';
+                fullHtml += '<div class="fin-cat-title" style="cursor:pointer;" onclick="FinInd.loadStockFullViewInPanel(\'' + code + '\')" title="点击展开完整历史">' +
+                    catName + ' <i class="fas fa-chevron-right" style="font-size:8px;color:var(--text-micro);"></i></div>';
+                fullHtml += '<div class="fin-table-wrap" style="margin-bottom:6px;">';
                 fullHtml += '<table class="health-table" style="font-size:10px;"><thead><tr>';
-                fullHtml += '<th style="position:sticky;left:0;background:#111;z-index:1;">报告期</th>';
+                fullHtml += '<th>指标</th><th style="text-align:right;">本季</th></tr></thead><tbody>';
+
                 availableFields.forEach(function(f) {
                     var lbl = getFieldLabel(f) || f;
-                    fullHtml += '<th style="text-align:right;font-size:9px;">' + escHtml(lbl) + '</th>';
-                });
-                fullHtml += '</tr></thead><tbody>';
-
-                latestRows.forEach(function(row) {
-                    fullHtml += '<tr>';
-                    fullHtml += '<td style="position:sticky;left:0;background:#111;z-index:1;white-space:nowrap;">' + (row.report_date || '?') + '</td>';
-                    availableFields.forEach(function(f) {
-                        var v = row[f];
-                        var color = _valueColor(f, v);
-                        var valStr = (v != null && v !== '') ? _fmtField(v, f) : '—';
-                        fullHtml += '<td style="text-align:right;font-family:var(--font-mono);color:' + color + ';">' + valStr + '</td>';
-                    });
-                    fullHtml += '</tr>';
+                    var v = latest[f];
+                    var color = _valueColor(f, v);
+                    var valStr = (v != null && v !== '') ? _fmtField(v, f) : '—';
+                    fullHtml += '<tr><td style="color:var(--text-dim);font-size:9px;">' + escHtml(lbl) + '</td>';
+                    fullHtml += '<td style="text-align:right;font-family:var(--font-mono);color:' + color + ';">' + valStr + '</td></tr>';
                 });
 
                 fullHtml += '</tbody></table></div>';
