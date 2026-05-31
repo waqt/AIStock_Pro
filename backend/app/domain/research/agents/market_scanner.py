@@ -282,10 +282,10 @@ class MarketScanner(ResearchAgent):
     "supply_demand_mismatch": "strong",
     "timing_mismatch": "moderate",
     "expectation_gap": "weak",
-    "profit_redistribution": {
+    "profit_redistribution": {{
       "strength": "strong",
       "direction": "upstream"
-    },
+    }},
     "pricing_gap": "uncertain",
     "evidence": [
       {{"fact": "支撑逐项判断的关键事实", "from": "search[X.Y]·...",
