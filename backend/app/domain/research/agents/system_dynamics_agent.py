@@ -1,7 +1,8 @@
 """
-SystemDynamicsAgent V5.12 — Step 4: 系统动力学推演
-定位: 消费 Step 3 的静态产业链图谱, 推演结构受压后如何变形
-核心问题: 瓶颈怎么迁移? 谁的资源被挤占? 谁被忽视了? 什么会打破推演?
+SystemDynamicsAgent V5.13 — Step 4: 二层思维系统动力学推演
+定位: 消费 Step 3 的静态产业链图谱, 应用二层思维外推 + 影响力度估算
+核心问题: 瓶颈怎么迁移? 资金拥挤效应? 二阶后果在哪? 什么会打破推演?
+V5.13: +二层思维外推框架(Q1-Q4) +影响力度估算(每节impact_assessment) +反编造(移除至少N条)
 V5.12: +Step2前置判断交叉验证 +sub_processes子工艺消费 +竞争格局搜索 +Glossary枚举注入
 """
 import asyncio, re
@@ -14,7 +15,7 @@ from app.framework.pipeline.glossary import step4_glossary
 
 
 class SystemDynamicsAgent(ResearchAgent):
-    """系统动力学推演 V5.12 — 瓶颈迁移 + 资源挤占 + 隐藏受益者 + Step3反向校验 + Step2交叉验证 + sub_processes消费"""
+    """系统动力学推演 V5.13 — 二层思维外推 + 影响力度估算 + 反编造"""
 
     def __init__(self, provider=None):
         super().__init__(provider=provider, data_loader=data_loader)
@@ -119,10 +120,11 @@ class SystemDynamicsAgent(ResearchAgent):
                 n_dynamics = len(sd.get("bottleneck_migration", {}).get("migration_drivers", []))
                 n_crowding = len(sd.get("resource_crowding", []))
                 n_hidden = len(sd.get("hidden_beneficiaries", []))
+                n_queries = len(sd.get("asset_search_queries", []))
                 sanity = result.get("step3_sanity_check", {})
                 n_questioned = len(sanity.get("questioned", []))
                 confidence = result.get("confidence", "?")
-                logger.info(f"[{self.name}] Done: confidence={confidence}, sanity={n_questioned}, migration={n_dynamics}, crowding={n_crowding}, hidden={n_hidden}")
+                logger.info(f"[{self.name}] Done: confidence={confidence}, sanity={n_questioned}, migration={n_dynamics}, crowding={n_crowding}, hidden={n_hidden}, queries={n_queries}")
                 if trace:
                     trace.record_note("summary", f"confidence={confidence}, sanity_checks={n_questioned}, crowding={n_crowding}, hidden={n_hidden}")
                 return result
@@ -166,9 +168,33 @@ class SystemDynamicsAgent(ResearchAgent):
         else:
             step2_text = "(本轮分析未运行 Step 2, 以下推演仅基于 Step 3 结构)"
 
-        return f"""你是系统动力学专家。输入是 Step 3 输出的产业链静态结构, 你的任务是推演这个结构在压力下**怎么变形**。
+        return f"""你是系统动力学专家。输入是 Step 3 输出的产业链静态结构, 你的任务是应用**二层思维 (Second-Level Thinking)** 推演这个结构在压力下**怎么变形**, 并**估算每项推演的影响力度**。
 
-## ★ 强制: Step 3 反向校验 (推演前必须)
+## ★ 核心方法: 二层思维外推 (V5.13)
+
+### 第一层: 链式推演 (常规分析, 建立 baseline)
+需求变化 → 资源变化 → 供给变化 → 价格变化 → 利润变化 → CAPEX变化 → 再平衡
+建立"市场共识"层面的 baseline。大多数分析师和报告都能做到这一步。
+
+### 第二层: 二阶效应推断 (这是你的差异化价值, 必须执行)
+在第一层基础上追问四个问题:
+
+**Q1 资金拥挤效应** — 当所有人都看到了同样的链式推演, 资金涌向哪里?
+  → 拥挤本身会改变供需格局, 加速或反转第一层的推演路径
+  → 例: 全行业扩 CoWoS → 设备交期不降反升 → 设备商比封测厂更受益
+
+**Q2 共识盲区** — 市场共识中隐含了什么"不会变"的假设? 这个假设可能是错的?
+  → 例: "HBM 持续紧缺"是共识 → 但云厂自研芯片可能绕过 HBM
+  → 识别未被市场质疑但值得挑战的隐含假设
+
+**Q3 二阶后果** — A→B 之后, B→C 是什么? C 才是市场真正忽略的机会。
+  → 例: HBM 挤占 DDR(A→B) → DDR 涨价 → 二线 DDR 厂意外受益(C)
+  → 不是找直接供应商, 而是找"因为别人都去找直接供应商而留下的空白"
+
+**Q4 反身性** — 推演结果会改变参与者行为, 行为反过来改变推演的前提。
+  → 例: 全行业为缓解瓶颈1而扩产 → 新增供给过剩 → CAPEX 回收率低于预期
+
+### 第一步: Step 3 反向校验 (推演前提审视, 必须执行)
 
 在开始推演之前, 先审视 Step 3 的输出:
 1. 哪个瓶颈的 severity 可能被高估/低估? (注意: margin_level 是 LLM 估计值, 见 margin_estimated=true 标记, 需 Step 6 财务审计后回写真实值)
@@ -176,19 +202,22 @@ class SystemDynamicsAgent(ResearchAgent):
 3. 哪个环节的"零替代"断言可能有例外?
 
 → 找出 1-2 个"可能不准确"的 Step 3 判断, 在输出的 step3_sanity_check 字段中写明质疑和调整。
-→ 如果没有质疑出任何问题, 说明审视不够。至少找出 1 个。
+→ 如果审视后认为 Step 3 判断合理, 可以没有质疑, 如实写 step3_sanity_check 为空即可。
 → 基于质疑调整后续推演的前提假设 (如: severity=extreme 被质疑 → 推演中降低该节点的确定性, 标记 confidence=medium)。
 
-## 核心方法: 六步链式推演
-需求变化 → 资源变化 → 供给变化 → 价格变化 → 利润变化 → CAPEX变化 → 再平衡
-
-## 六个参考案例 (few-shot)
+## 参考案例 (few-shot, 标注了一阶→二阶外推)
 1. 资源挤占: HBM消耗3x晶圆 → 挤占DDR产能 → DRAM涨价 → 二线DRAM厂受益
+   → 二层外推: DDR涨价 → 下游延长DDR4生命周期 → DDR4控制器/接口芯片意外需求
 2. 联产经济学: 炼油减产 → 硫磺供给收缩 → 磷肥飞涨 → 化肥企业受益
+   → 二层外推: 市场只看化肥 → 但磷矿作为副产品供给同步收缩 → 磷矿也可能受益
 3. 瓶颈迁移: GPU短缺 → 云厂自研芯片 → CoWoS成新瓶颈 → 封装设备受益
+   → 二层外推: 全行业扩CoWoS需要大量设备 → 设备交期成为下一个瓶颈 → 比封测厂更早受益的是设备商
 4. CAPEX错配: 成熟制程CAPEX不足 → MCU缺货2年 → 成熟代工厂暴利
+   → 二层外推: MCU缺货 → 下游被迫做多源供应 → 验证周期反而缩短 → 国内代工厂加速导入
 5. 利润池迁移: AI从硬件 → 软件 → 云服务 → 应用, 利润流向不同阶段
+   → 二层外推: 市场共识=AI硬件先受益 → 但硬件成熟后利润快速向应用层迁移 → 关注应用层提前布局信号
 6. 供给刚性: 高纯石英砂只有北卡矿 → 光伏扩产 → 石英砂2年涨价10倍
+   → 二层外推: 石英砂涨价 → 坩埚成本占比大幅提升 → 坩埚厂商定价权增强(非石英砂本身)
 
 ## Step 3 产业链结构 (注意: margin_estimated=true 表示该值为 LLM 估计, 待 Step 6 修正)
 行业: {industry}
@@ -241,7 +270,12 @@ class SystemDynamicsAgent(ResearchAgent):
           ]
         }}
       ],
-      "evidence": [...]
+      "evidence": [...],
+      "impact_assessment": {{
+        "magnitude": "重大 / 中等 / 轻微",
+        "reasoning": "定性判断: 市场规模/利润弹性/A股映射明确度/时间紧迫度等",
+        "time_horizon": "3-6个月 / 6-12个月 / 12-24个月 / 24个月以上"
+      }}
     }},
 
     "resource_crowding": [
@@ -258,7 +292,12 @@ class SystemDynamicsAgent(ResearchAgent):
         "search_queries": ["用于下游标的映射的精准搜索词", "禁止输出股票代码"],
         "evidence": [
           {{"fact":"事实","from":"search[X]·来源","quality":{{"level":"high","source_type":"industry_data"}},"evidence_type":"forward_looking_rumor"}}
-        ]
+        ],
+        "impact_assessment": {{
+          "magnitude": "重大 / 中等 / 轻微",
+          "reasoning": "定性判断",
+          "time_horizon": "3-6个月 / 6-12个月 / 12-24个月 / 24个月以上"
+        }}
       }}
     ],
 
@@ -271,7 +310,12 @@ class SystemDynamicsAgent(ResearchAgent):
         "confidence": "high/medium/low/speculative",
         "monitoring_metric": "监控指标",
         "trigger_threshold": "触发阈值",
-        "evidence": [...]
+        "evidence": [...],
+        "impact_assessment": {{
+          "magnitude": "重大 / 中等 / 轻微",
+          "reasoning": "定性判断",
+          "time_horizon": "3-6个月 / 6-12个月 / 12-24个月 / 24个月以上"
+        }}
       }}
     ],
 
@@ -282,7 +326,12 @@ class SystemDynamicsAgent(ResearchAgent):
         "visibility": "very_low/low/moderate — 如实判断, 禁止为追求Alpha压低",
         "time_to_impact": "immediate/medium_term/long_term",
         "search_queries": ["用于下游标的映射的搜索词"],
-        "evidence": [...]
+        "evidence": [...],
+        "impact_assessment": {{
+          "magnitude": "重大 / 中等 / 轻微",
+          "reasoning": "定性判断",
+          "time_horizon": "3-6个月 / 6-12个月 / 12-24个月 / 24个月以上"
+        }}
       }}
     ],
 
@@ -291,7 +340,20 @@ class SystemDynamicsAgent(ResearchAgent):
         "thesis": "推演出的核心论点",
         "break_condition": "什么具体条件变化会打破这个论点 (必须是可量化/可观测的)",
         "watch_signal": "监控什么指标来验证 (必须是可获取的高频数据)",
-        "evidence": [...]
+        "evidence": [...],
+        "impact_assessment": {{
+          "magnitude": "重大 / 中等 / 轻微",
+          "reasoning": "定性判断",
+          "time_horizon": "3-6个月 / 6-12个月 / 12-24个月 / 24个月以上"
+        }}
+      }}
+    ],
+
+    "asset_search_queries": [
+      {{
+        "query": "用于Step 6资产标的检索的精准搜索词, 含行业+环节+A股关键词",
+        "source": "哪个推演结论产生的 (如: bottleneck_migration→设备瓶颈)",
+        "priority": "high / medium"
       }}
     ]
 
@@ -313,12 +375,13 @@ class SystemDynamicsAgent(ResearchAgent):
 - migration_drivers.from/to: 必须是具体的产业环节名称 (不是行业分类)
 - evidence_type: forward_looking_rumor / hard_data_confirmation
 
-## 证据要求
-- 每个结论块必须附 evidence 数组, 至少 1 条
-- from 格式: "search[轮次]·来源简称"
-- quality.level: high/medium/low
-- quality.source_type: company_filing/industry_data/official_policy/sell_side_report/news_media
-- evidence_type: forward_looking_rumor (前瞻信号/传闻→试探仓) / hard_data_confirmation (财报/公告→重仓)
+## 证据要求 (V5.13 — 能找到就找, 找不到不要瞎编)
+- 每个结论块优先附 evidence 数组, **如果搜索返回结果不足以支撑, 数组可以为空**
+- 空证据的结论块须在 confidence_note 中说明"缺乏直接搜索证据, 属于逻辑推演"
+- 来源可信度权重: company_filing > official_policy > industry_data > sell_side_report > news_media
+- quality.level=high 必须有 company_filing 或 official_policy 支撑, 纯媒体来源最高 medium
+- quality.level=low 或 insufficient_data 是诚实的, 不被惩罚
+- evidence_type: forward_looking_rumor (前瞻信号/传闻) / hard_data_confirmation (财报/公告)
 - self_media/ai_summary 仅参考, 不得单独支撑关键推演
 
 ## 质量自检 — 推演十问 (逐条确认)
@@ -326,7 +389,7 @@ class SystemDynamicsAgent(ResearchAgent):
 4.谁会供给下降? 5.谁会意外涨价? 6.谁拥有定价权?
 7.哪个瓶颈最难扩产? 8.利润会迁移到哪里? 9.市场还没发现谁?
 10.什么信号会证伪我?
-确保你的推演回答了以上所有问题。resource_crowding 和 hidden_beneficiaries 至少各 1 条。
+确保你的推演尽可能回答以上问题。如果某方面搜索无结果, 对应部分可精简或为空, 不在 evidence 上编造。
 禁止 LLM 直接输出股票代码 (china_stocks 已删除, 用 search_queries 替代)。
 不做数值评分, 不做行业分类描述, 聚焦跨环节推演。
 
@@ -340,7 +403,7 @@ class SystemDynamicsAgent(ResearchAgent):
 
     @staticmethod
     @staticmethod
-    def build_prompt(ctx): return "SystemDynamicsAgent V5.12"
+    def build_prompt(ctx): return "SystemDynamicsAgent V5.13"
 
     @staticmethod
     async def stream(ctx): yield "streaming not implemented"

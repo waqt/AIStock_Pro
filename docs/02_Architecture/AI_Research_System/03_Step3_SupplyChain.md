@@ -588,6 +588,28 @@ Step 3 prompt 末尾调用 `step3_glossary()` 注入 `cycle_phase` + `prosperity
 
 **改动量 (V5.11b)**: ~30 行 prompt 调整, 零新增文件。
 
+### V5.11b 三层抽象验证结果 (2026-05-31)
+
+用存储产业 Step 3 L1 "HBM先进封装 (CoWoS/TSV)" 瓶颈节点做了纯LLM推理测试（无搜索），与已知 13 步 HBM→GPU 工艺链对比：
+
+| 维度 | 结果 | 结论 |
+|------|------|------|
+| **sub_process 分解** | ⭐⭐⭐⭐ 11步覆盖全部主流程, 额外识别了HBM Base Die（基准遗漏） | 无需搜索, LLM领域知识足够 |
+| **value_magnitude** | ⭐⭐⭐ 偏差均在1个数量级内, 无离谱错误 | 粗估可信, 精确锚定需要搜索 |
+| **pricing_behavior** | ⭐⭐⭐⭐ 6/9准确, 3个偏差均有讨论空间 | 独立判断能力好, 不从structure推导 |
+| **a_stock_mapping** | ⭐⭐⭐⭐ 全部给出具体代码+逻辑 | 需要搜索验证最新进展（6个月变一次） |
+
+**LLM vs Web Search 职责划分验证通过：**
+
+| 维度 | LLM 推理 | Web Search |
+|------|----------|------------|
+| 瓶颈→子工艺分解 | ✅ 常识推理, 无需搜索 | — |
+| global_players | ✅ 行业结构知识, 无需搜索 | — |
+| pricing_behavior | ✅ 独立归类能力强 | 仅需验证（确认近期有无价格战） |
+| value_magnitude 粗估 | ✅ order-of-magnitude 粗估 | 🟡 Round 2 搜市场报告锚定精确量级 |
+| a_stock_mapping | ⚠️ 能给出候选, 但时效性差 | 🟡 Round 3 搜最新国产替代进展 |
+| china_substitution_rate | ❌ 无法准确估计 | ✅ 必须搜索 |
+
 ---
 
 ## 验证标准

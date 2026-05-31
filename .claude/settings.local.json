@@ -233,7 +233,11 @@
       "PowerShell(Get-ChildItem E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro -Directory -Recurse -Depth 2 | Where-Object { $_.Name -eq 'data' } | Select-Object FullName, @{N='Items';E={@\\(Get-ChildItem $_.FullName\\).Count}})",
       "PowerShell(Write-Host \"=== Checking for remaining empty data dirs ===\"; @\\( \"E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\data\", \"E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\backend\\\\app\\\\data\" \\) | ForEach-Object { if \\(Test-Path $_\\) { Write-Host \"STILL EXISTS: $_\"; Get-ChildItem $_ } else { Write-Host \"REMOVED: $_\" } }; Write-Host \"`n=== backend/data/ contents ===\"; Get-ChildItem E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\backend\\\\data | Select-Object Name | Format-Table -AutoSize)",
       "Bash(/d/develop_env/python_related/anaconda/Anaconda3/envs/aiteacher/python.exe *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "PowerShell(cd E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro; $env:PYTHONPATH = \"E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\backend\"; & \"D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe\" \"temp_lab\\\\test_three_layer_abstract.py\")",
+      "PowerShell(cd E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro; $env:PYTHONPATH = \"E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\backend\"; & \"D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe\" \"temp_lab\\\\test_three_layer_v2.py\")",
+      "PowerShell(cd E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro; $env:PYTHONIOENCODING = 'utf-8'; & \"D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe\" \"temp_lab\\\\eval_three_layer.py\")",
+      "PowerShell(cd E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro; $env:PYTHONIOENCODING = 'utf-8'; & \"D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe\" \"temp_lab\\\\eval_human_review.py\")"
     ]
   },
   "hooks": {

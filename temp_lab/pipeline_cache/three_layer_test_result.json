@@ -1,0 +1,25 @@
+{
+  "node": "HBM先进封装 (CoWoS/TSV)",
+  "node_description": "AI服务器需求爆发导致HBM供不应求，台积电CoWoS封装产能是HBM从晶圆到成品的绝对瓶颈，2026年缺口超5%。",
+  "llm_raw_reasoning": "",
+  "llm_structured_result": [],
+  "comparison": {
+    "covered": [],
+    "missing": [
+      "DRAM Wafer Fabrication",
+      "TSV (Through Silicon Via)",
+      "Micro Bump Formation",
+      "Stack Bonding (TCB/Hybrid Bonding)",
+      "Molding & Underfill",
+      "Dicing & Singulation",
+      "HBM Test & KGD",
+      "CoW (Chip-on-Wafer)",
+      "oS (on-Substrate) / Assembly",
+      "ABF Substrate",
+      "TIM & Thermal Solutions",
+      "Final Test & SLT",
+      "System Assembly / GPU Card"
+    ],
+    "coverage_rate": "0/13"
+  }
+}

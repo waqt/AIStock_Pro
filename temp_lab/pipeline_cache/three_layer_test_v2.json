@@ -1,0 +1,251 @@
+{
+  "node": "HBM先进封装 (CoWoS/TSV)",
+  "llm_raw_output": "[\n  {\n    \"sub_process\": \"DRAM晶圆制造\",\n    \"description\": \"在先进DRAM工艺节点上制造存储单元和外围电路，为HBM提供基础存储芯片\",\n    \"global_players\": [\"三星电子 — IDM自用\", \"SK海力士 — IDM自用\", \"美光科技 — IDM自用\"],\n    \"value_magnitude\": {\n      \"order\": \"10B_100B\",\n      \"basis\": \"HBM市场2026年预计达300亿美元，DRAM晶圆成本占HBM模块总成本的50-60%，对应150-180亿美元\"\n    },\n    \"pricing_behavior\": \"collusive_oligopoly\",\n    \"a_stock\": [\"兆易创新(603986) — 利基型DRAM，HBM无关\", \"北京君正(300223) — 存储芯片，无HBM DRAM能力\", \"设备：中微公司(688012)、北方华创(002371) — 刻蚀/沉积设备，已进入存储厂供应链\"]\n  },\n  {\n    \"sub_process\": \"TSV通孔制造\",\n    \"description\": \"在DRAM晶圆上通过深硅刻蚀、绝缘层沉积、阻挡/种子层溅射和铜电镀形成硅通孔\",\n    \"global_players\": [\"应用材料 — 设备商\", \"泛林集团 — 设备商\", \"东京电子 — 设备商\", \"SK海力士/三星 — 工艺集成IDM\", \"台积电 — 在中介层上制作TSV\"],\n    \"value_magnitude\": {\n      \"order\": \"1B_10B\",\n      \"basis\": \"TSV相关设备（刻蚀、CVD、PVD、电镀）市场2026年预计超过20亿美元，材料市场约5亿美元，合计小于整体封装市场但为关键环节\"\n    },\n    \"pricing_behavior\": \"collusive_oligopoly\",\n    \"a_stock\": [\"中微公司(688012) — TSV深硅刻蚀\", \"北方华创(002371) — PVD/CVD/ALD\", \"盛美上海(688082) — 铜电镀、湿法清洗\", \"拓荆科技(688072) — CVD\"]\n  },\n  {\n    \"sub_process\": \"晶圆减薄与背面露铜\",\n    \"description\": \"将DRAM晶圆从数百微米减薄至约50微米以下，露出TSV铜柱以实现背面连接\",\n    \"global_players\": [\"DISCO — 减薄/划片设备垄断\", \"东京精密 — 减薄设备\", \"SK海力士/三星 — 内部减薄工艺\"],\n    \"value_magnitude\": {\n      \"order\": \"1B_10B\",\n      \"basis\": \"先进减薄设备市场约15亿美元，其中HBM需求驱动高精度减薄订单增长显著\"\n    },\n    \"pricing_behavior\": \"monopoly\",\n    \"a_stock\": [\"暂无直接A股标的 — DISCO市占率超70%\", \"耗材：岱勒新材(300700) — 金刚线，但非晶圆减薄主用\", \"划片：迈为股份(300751) — 激光划片，可关注\"]\n  },\n  {\n    \"sub_process\": \"微凸点制作\",\n    \"description\": \"在DRAM芯片或逻辑芯片表面制作Cu pillar/SnAg微凸点，用于堆叠时的电互连\",\n    \"global_players\": [\"台积电 — 代工bumping\", \"三星 — 内部bumping\", \"安靠 — OSAT bumping\", \"日月光 — OSAT bumping\", \"长电科技 — 国内OSAT bumping\"],\n    \"value_magnitude\": {\n      \"order\": \"1B_10B\",\n      \"basis\": \"先进凸块（bumping）市场2026年约30亿美元，HBM微凸点高宽比、超细间距要求带来价值提升\"\n    },\n    \"pricing_behavior\": \"collusive_oligopoly\",\n    \"a_stock\": [\"长电科技(600584) — 先进bumping产线\", \"通富微电(002156) — bumping与堆叠封装\", \"华天科技(002185) — bumping布局\", \"设备：新益昌(688383) — 固晶机，微凸点间接相关\"]\n  },\n  {\n    \"sub_process\": \"逻辑控制芯片制造\",\n    \"description\": \"制造位于HBM堆栈底部的接口/控制器逻辑芯片，通常采用先进逻辑工艺\",\n    \"global_players\": [\"台积电 — 为无晶圆厂或海力士代工\", \"三星电子 — IDM自供\", \"SK海力士 — 部分自制，部分外包台积电\"],\n    \"value_magnitude\": {\n      \"order\": \"1B_10B\",\n      \"basis\": \"逻辑基片成本约占HBM模块的15%，2026年对应约45亿美元市场规模\"\n    },\n    \"pricing_behavior\": \"collusive_oligopoly\",\n    \"a_stock\": [\"中芯国际(688981) — 先进逻辑工艺落后2代以上，暂难参与HBM基片\", \"无直接A股逻辑代工受益\"]\n  },\n  {\n    \"sub_process\": \"堆叠键合\",\n    \"description\": \"使用热压键合将多层DRAM芯片逐层堆叠到逻辑芯片上，形成HBM立方体\",\n    \"global_players\": [\"ASMPT — TCB设备龙头\", \"Besi — TCB设备\", \"Kulicke & Soffa — 键合设备\", \"SK海力士 — 自研MR-MUF堆叠工艺\", \"三星 — TC-NCF堆叠工艺\"],\n    \"value_magnitude\": {\n      \"order\": \"1B_10B\",\n      \"basis\": \"先进堆叠键合设备市场约25亿美元，HBM为增长最快应用\"\n    },\n    \"pricing_behavior\": \"collusive_oligopoly\",\n    \"a_stock\": [\"无直接TCB设备A股 — ASMPT为港股\", \"次要相关：新益昌(688383) — 固晶机，技术差距大\", \"易天股份(300812) — 显示邦定，不用于HBM\"]\n  },\n  {\n    \"sub_process\": \"底部填充与模塑\",\n    \"description\": \"在堆叠的芯片间填充毛细underfill，并对整个HBM堆栈进行环氧塑封\",\n    \"global_players\": [\"住友电木 — 塑封料\", \"Namics — 底部填充胶\", \"昭和电工 — 材料\", \"Towa — 模塑设备\", \"长电科技/通富微电 — 提供模塑服务\"],\n    \"value_magnitude\": {\n      \"order\": \"1B_10B\",\n      \"basis\": \"先进封装材料中底部填充与塑封料市场合计约20亿美元，HBM是单价最高品类\"\n    },\n    \"pricing_behavior\": \"collusive_oligopoly\",\n    \"a_stock\": [\"德邦科技(688035) — 底部填充胶、芯片粘接膜\", \"华海诚科(688535) — 环氧塑封料\", \"联瑞新材(688300) — 硅微粉填料\"]\n  },\n  {\n    \"sub_process\": \"硅中介层制造\",\n    \"description\": \"制造带有TSV和多层RDL的硅中介层晶圆，实现HBM与GPU高密度互连\",\n    \"global_players\": [\"台积电 — CoWoS-S中介层独家主力\", \"三星 — I-Cube中介层\", \"联电 — 尝试提供中介层代工\", \"英特尔 — EMIB替代方案\"],\n    \"value_magnitude\": {\n      \"order\": \"10B_100B\",\n      \"basis\": \"台积电CoWoS收入2024年超80亿美元，中介层制造是核心增值环节，硅中介层整体市场超百亿美元\"\n    },\n    \"pricing_behavior\": \"monopoly\",\n    \"a_stock\": [\"无直接A股 — 高端硅中介层由台积电主导\", \"通富微电(002156) — 有FCBGA封装，类似2.5D但非硅中介层\", \"兴森科技(002436) — IC载板，中介层替代技术\"]\n  },\n  {\n    \"sub_process\": \"Chip on Wafer组装\",\n    \"description\": \"将HBM堆栈、GPU/ASIC等已知好芯片通过微凸点键合到中介层晶圆上，并完成芯片间底部填充\",\n    \"global_players\": [\"台积电 — CoWoS核心环节\", \"三星 — I-Cube对应环节\", \"安靠 — 提供类似服务\", \"日月光 — 先进封装协同\"],\n    \"value_magnitude\": {\n      \"order\": \"10B_100B\",\n      \"basis\": \"此环节与中介层制造共同构成CoWoS，台积电先进封装收入多数归于此，市场达百亿美元级别\"\n    },\n    \"pricing_behavior\": \"monopoly\",\n    \"a_stock\": [\"长电科技(600584) — XDFOI封装平台可对标部分CoW功能\", \"通富微电(002156) — 与AMD合作2.5D封装，类似Chip on Wafer\", \"甬矽电子(688362) — 先进封装布局\"]\n  },\n  {\n    \"sub_process\": \"基板集成与最终封装\",\n    \"description\": \"将载有芯片的中介层切割后键合到有机基板上，形成可表面贴装的最终芯片模块\",\n    \"global_players\": [\"台积电 — oS环节\", \"IBIDEN — 高端IC载板\", \"新光电气 — IC载板\", \"三星电机 — 载板\", \"日月光/安靠 — 基板集成服务\"],\n    \"value_magnitude\": {\n      \"order\": \"10B_100B\",\n      \"basis\": \"高端ABF载板市场超100亿美元，2.5D封装对大面积载板需求推高价值量\"\n    },\n    \"pricing_behavior\": \"collusive_oligopoly\",\n    \"a_stock\": [\"兴森科技(002436) — ABF载板布局\", \"深南电路(002916) — 封装基板\", \"珠海越亚 — 未上市\", \"华正新材(603186) — 载板材料\"]\n  },\n  {\n    \"sub_process\": \"算力卡集成与测试\",\n    \"description\": \"将封装好的GPU-HBM模块贴装到PCB，加上散热、电源模块，组装成AI加速卡并做系统级测试\",\n    \"global_players\": [\"鸿海/富士康 — 系统组装\", \"广达 — 服务器组装\", \"英伟达 — 公版设计\", \"超微 — 系统集成\", \"Advantest — 系统级测试设备\"],\n    \"value_magnitude\": {\n      \"order\": \"100B+\",\n      \"basis\": \"AI加速卡市场2026年超1000亿美元，包含GPU板卡和系统级价值\"\n    },\n    \"pricing_behavior\": \"collusive_oligopoly\",\n    \"a_stock\": [\"工业富联(601138) — AI服务器/加速卡组装\", \"中际旭创(300308) — 光模块，配合算力卡\", \"浪潮信息(000977) — AI服务器\", \"测试：长川科技(300604)、华峰测控(688200)\"]\n  }\n]",
+  "llm_structured": [
+    {
+      "sub_process": "DRAM晶圆制造",
+      "description": "在先进DRAM工艺节点上制造存储单元和外围电路，为HBM提供基础存储芯片",
+      "global_players": [
+        "三星电子 — IDM自用",
+        "SK海力士 — IDM自用",
+        "美光科技 — IDM自用"
+      ],
+      "value_magnitude": {
+        "order": "10B_100B",
+        "basis": "HBM市场2026年预计达300亿美元，DRAM晶圆成本占HBM模块总成本的50-60%，对应150-180亿美元"
+      },
+      "pricing_behavior": "collusive_oligopoly",
+      "a_stock": [
+        "兆易创新(603986) — 利基型DRAM，HBM无关",
+        "北京君正(300223) — 存储芯片，无HBM DRAM能力",
+        "设备：中微公司(688012)、北方华创(002371) — 刻蚀/沉积设备，已进入存储厂供应链"
+      ]
+    },
+    {
+      "sub_process": "TSV通孔制造",
+      "description": "在DRAM晶圆上通过深硅刻蚀、绝缘层沉积、阻挡/种子层溅射和铜电镀形成硅通孔",
+      "global_players": [
+        "应用材料 — 设备商",
+        "泛林集团 — 设备商",
+        "东京电子 — 设备商",
+        "SK海力士/三星 — 工艺集成IDM",
+        "台积电 — 在中介层上制作TSV"
+      ],
+      "value_magnitude": {
+        "order": "1B_10B",
+        "basis": "TSV相关设备（刻蚀、CVD、PVD、电镀）市场2026年预计超过20亿美元，材料市场约5亿美元，合计小于整体封装市场但为关键环节"
+      },
+      "pricing_behavior": "collusive_oligopoly",
+      "a_stock": [
+        "中微公司(688012) — TSV深硅刻蚀",
+        "北方华创(002371) — PVD/CVD/ALD",
+        "盛美上海(688082) — 铜电镀、湿法清洗",
+        "拓荆科技(688072) — CVD"
+      ]
+    },
+    {
+      "sub_process": "晶圆减薄与背面露铜",
+      "description": "将DRAM晶圆从数百微米减薄至约50微米以下，露出TSV铜柱以实现背面连接",
+      "global_players": [
+        "DISCO — 减薄/划片设备垄断",
+        "东京精密 — 减薄设备",
+        "SK海力士/三星 — 内部减薄工艺"
+      ],
+      "value_magnitude": {
+        "order": "1B_10B",
+        "basis": "先进减薄设备市场约15亿美元，其中HBM需求驱动高精度减薄订单增长显著"
+      },
+      "pricing_behavior": "monopoly",
+      "a_stock": [
+        "暂无直接A股标的 — DISCO市占率超70%",
+        "耗材：岱勒新材(300700) — 金刚线，但非晶圆减薄主用",
+        "划片：迈为股份(300751) — 激光划片，可关注"
+      ]
+    },
+    {
+      "sub_process": "微凸点制作",
+      "description": "在DRAM芯片或逻辑芯片表面制作Cu pillar/SnAg微凸点，用于堆叠时的电互连",
+      "global_players": [
+        "台积电 — 代工bumping",
+        "三星 — 内部bumping",
+        "安靠 — OSAT bumping",
+        "日月光 — OSAT bumping",
+        "长电科技 — 国内OSAT bumping"
+      ],
+      "value_magnitude": {
+        "order": "1B_10B",
+        "basis": "先进凸块（bumping）市场2026年约30亿美元，HBM微凸点高宽比、超细间距要求带来价值提升"
+      },
+      "pricing_behavior": "collusive_oligopoly",
+      "a_stock": [
+        "长电科技(600584) — 先进bumping产线",
+        "通富微电(002156) — bumping与堆叠封装",
+        "华天科技(002185) — bumping布局",
+        "设备：新益昌(688383) — 固晶机，微凸点间接相关"
+      ]
+    },
+    {
+      "sub_process": "逻辑控制芯片制造",
+      "description": "制造位于HBM堆栈底部的接口/控制器逻辑芯片，通常采用先进逻辑工艺",
+      "global_players": [
+        "台积电 — 为无晶圆厂或海力士代工",
+        "三星电子 — IDM自供",
+        "SK海力士 — 部分自制，部分外包台积电"
+      ],
+      "value_magnitude": {
+        "order": "1B_10B",
+        "basis": "逻辑基片成本约占HBM模块的15%，2026年对应约45亿美元市场规模"
+      },
+      "pricing_behavior": "collusive_oligopoly",
+      "a_stock": [
+        "中芯国际(688981) — 先进逻辑工艺落后2代以上，暂难参与HBM基片",
+        "无直接A股逻辑代工受益"
+      ]
+    },
+    {
+      "sub_process": "堆叠键合",
+      "description": "使用热压键合将多层DRAM芯片逐层堆叠到逻辑芯片上，形成HBM立方体",
+      "global_players": [
+        "ASMPT — TCB设备龙头",
+        "Besi — TCB设备",
+        "Kulicke & Soffa — 键合设备",
+        "SK海力士 — 自研MR-MUF堆叠工艺",
+        "三星 — TC-NCF堆叠工艺"
+      ],
+      "value_magnitude": {
+        "order": "1B_10B",
+        "basis": "先进堆叠键合设备市场约25亿美元，HBM为增长最快应用"
+      },
+      "pricing_behavior": "collusive_oligopoly",
+      "a_stock": [
+        "无直接TCB设备A股 — ASMPT为港股",
+        "次要相关：新益昌(688383) — 固晶机，技术差距大",
+        "易天股份(300812) — 显示邦定，不用于HBM"
+      ]
+    },
+    {
+      "sub_process": "底部填充与模塑",
+      "description": "在堆叠的芯片间填充毛细underfill，并对整个HBM堆栈进行环氧塑封",
+      "global_players": [
+        "住友电木 — 塑封料",
+        "Namics — 底部填充胶",
+        "昭和电工 — 材料",
+        "Towa — 模塑设备",
+        "长电科技/通富微电 — 提供模塑服务"
+      ],
+      "value_magnitude": {
+        "order": "1B_10B",
+        "basis": "先进封装材料中底部填充与塑封料市场合计约20亿美元，HBM是单价最高品类"
+      },
+      "pricing_behavior": "collusive_oligopoly",
+      "a_stock": [
+        "德邦科技(688035) — 底部填充胶、芯片粘接膜",
+        "华海诚科(688535) — 环氧塑封料",
+        "联瑞新材(688300) — 硅微粉填料"
+      ]
+    },
+    {
+      "sub_process": "硅中介层制造",
+      "description": "制造带有TSV和多层RDL的硅中介层晶圆，实现HBM与GPU高密度互连",
+      "global_players": [
+        "台积电 — CoWoS-S中介层独家主力",
+        "三星 — I-Cube中介层",
+        "联电 — 尝试提供中介层代工",
+        "英特尔 — EMIB替代方案"
+      ],
+      "value_magnitude": {
+        "order": "10B_100B",
+        "basis": "台积电CoWoS收入2024年超80亿美元，中介层制造是核心增值环节，硅中介层整体市场超百亿美元"
+      },
+      "pricing_behavior": "monopoly",
+      "a_stock": [
+        "无直接A股 — 高端硅中介层由台积电主导",
+        "通富微电(002156) — 有FCBGA封装，类似2.5D但非硅中介层",
+        "兴森科技(002436) — IC载板，中介层替代技术"
+      ]
+    },
+    {
+      "sub_process": "Chip on Wafer组装",
+      "description": "将HBM堆栈、GPU/ASIC等已知好芯片通过微凸点键合到中介层晶圆上，并完成芯片间底部填充",
+      "global_players": [
+        "台积电 — CoWoS核心环节",
+        "三星 — I-Cube对应环节",
+        "安靠 — 提供类似服务",
+        "日月光 — 先进封装协同"
+      ],
+      "value_magnitude": {
+        "order": "10B_100B",
+        "basis": "此环节与中介层制造共同构成CoWoS，台积电先进封装收入多数归于此，市场达百亿美元级别"
+      },
+      "pricing_behavior": "monopoly",
+      "a_stock": [
+        "长电科技(600584) — XDFOI封装平台可对标部分CoW功能",
+        "通富微电(002156) — 与AMD合作2.5D封装，类似Chip on Wafer",
+        "甬矽电子(688362) — 先进封装布局"
+      ]
+    },
+    {
+      "sub_process": "基板集成与最终封装",
+      "description": "将载有芯片的中介层切割后键合到有机基板上，形成可表面贴装的最终芯片模块",
+      "global_players": [
+        "台积电 — oS环节",
+        "IBIDEN — 高端IC载板",
+        "新光电气 — IC载板",
+        "三星电机 — 载板",
+        "日月光/安靠 — 基板集成服务"
+      ],
+      "value_magnitude": {
+        "order": "10B_100B",
+        "basis": "高端ABF载板市场超100亿美元，2.5D封装对大面积载板需求推高价值量"
+      },
+      "pricing_behavior": "collusive_oligopoly",
+      "a_stock": [
+        "兴森科技(002436) — ABF载板布局",
+        "深南电路(002916) — 封装基板",
+        "珠海越亚 — 未上市",
+        "华正新材(603186) — 载板材料"
+      ]
+    },
+    {
+      "sub_process": "算力卡集成与测试",
+      "description": "将封装好的GPU-HBM模块贴装到PCB，加上散热、电源模块，组装成AI加速卡并做系统级测试",
+      "global_players": [
+        "鸿海/富士康 — 系统组装",
+        "广达 — 服务器组装",
+        "英伟达 — 公版设计",
+        "超微 — 系统集成",
+        "Advantest — 系统级测试设备"
+      ],
+      "value_magnitude": {
+        "order": "100B+",
+        "basis": "AI加速卡市场2026年超1000亿美元，包含GPU板卡和系统级价值"
+      },
+      "pricing_behavior": "collusive_oligopoly",
+      "a_stock": [
+        "工业富联(601138) — AI服务器/加速卡组装",
+        "中际旭创(300308) — 光模块，配合算力卡",
+        "浪潮信息(000977) — AI服务器",
+        "测试：长川科技(300604)、华峰测控(688200)"
+      ]
+    }
+  ],
+  "comparison": {
+    "covered": [
+      "DRAM Wafer Fabrication"
+    ],
+    "missing": [
+      "TSV (Through Silicon Via)",
+      "Micro Bump Formation",
+      "Stack Bonding (TCB/Hybrid Bonding)",
+      "Molding & Underfill",
+      "Dicing & Singulation",
+      "HBM Test & KGD",
+      "CoW (Chip-on-Wafer)",
+      "oS (on-Substrate)",
+      "ABF Substrate",
+      "TIM & Thermal Solutions",
+      "Final Test & SLT",
+      "System Assembly / GPU Card"
+    ]
+  }
+}
