@@ -48,7 +48,6 @@ FULL_PIPELINE = [
     "step2_gatekeeper",
     "step3_sc_hacker",
     "step4_system_dynamics",
-    "step5_cross_industry",
     "step6_core_screening",
     "step7_financial_audit",
     "step8_human_capital",

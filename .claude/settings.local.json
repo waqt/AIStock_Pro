@@ -1,5 +1,6 @@
 {
   "permissions": {
+    "defaultMode": "auto",
     "allow": [
       "Bash(Get-ChildItem -Path \"E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\" -Depth 1)",
       "Bash(Select-Object Mode, Name)",
