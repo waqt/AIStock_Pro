@@ -820,10 +820,21 @@ async def industry_drilldown(req: IndustryDrilldownRequest):
             try:
                 from app.domain.research.agents.system_dynamics_agent import SystemDynamicsAgent
                 sd = SystemDynamicsAgent(provider=DeepSeekProvider())
+                # V5.12: Step 2 可选增强
+                s2_analysis = {} if not target else {
+                    "cycle_phase": target.get("cycle_position", {}).get("phase", ""),
+                    "sub_phase": target.get("cycle_position", {}).get("sub_phase", ""),
+                    "profit_redirection": target.get("mismatch_analysis", {}).get("profit_redistribution", {}).get("direction", ""),
+                    "repricing_stage": target.get("time_horizon", {}).get("market_repricing_stage", ""),
+                    "payoff_asymmetry": target.get("payoff", {}).get("asymmetry", ""),
+                    "substitution_risk": target.get("thesis_killers", {}).get("substitution_risk", ""),
+                    "propagation_depth": target.get("propagation", {}).get("depth", ""),
+                }
                 sd_ctx = {"industry": req.industry_name,
                           "supply_chain_map": result.get("supply_chain_map", []),
                           "scarcity_ranking": result.get("scarcity_ranking", []),
-                          "core_stocks": result.get("core_stocks", [])}
+                          "core_stocks": result.get("core_stocks", []),
+                          "step2_analysis": s2_analysis}
                 sd_trace = TraceContext(run_id)
                 step4_result = await sd.analyze(sd_ctx, trace=sd_trace)
                 save_checkpoint("step4_system_dynamics", run_id, "drilldown", step4_result, {"elapsed": 0})
@@ -1004,10 +1015,22 @@ async def continue_pipeline_step(run_id: str, step: str):
                 try:
                     from app.domain.research.agents.system_dynamics_agent import SystemDynamicsAgent
                     sd = SystemDynamicsAgent(provider=DeepSeekProvider())
+                    # V5.12: 从 s2_out 提取 Step 2 分析数据
+                    _s2_entry = next((i for i in s2_out.get("industries", []) if i.get("industry") == industry), s2_out)
+                    step2_analysis = {
+                        "cycle_phase": _s2_entry.get("cycle_position", {}).get("phase", ""),
+                        "sub_phase": _s2_entry.get("cycle_position", {}).get("sub_phase", ""),
+                        "profit_redirection": _s2_entry.get("mismatch_analysis", {}).get("profit_redistribution", {}).get("direction", ""),
+                        "repricing_stage": _s2_entry.get("time_horizon", {}).get("market_repricing_stage", ""),
+                        "payoff_asymmetry": _s2_entry.get("payoff", {}).get("asymmetry", ""),
+                        "substitution_risk": _s2_entry.get("thesis_killers", {}).get("substitution_risk", ""),
+                        "propagation_depth": _s2_entry.get("propagation", {}).get("depth", ""),
+                    }
                     sd_ctx = {"industry": industry,
                               "supply_chain_map": scm,
                               "scarcity_ranking": result.get("scarcity_ranking", []),
-                              "core_stocks": result.get("core_stocks", [])}
+                              "core_stocks": result.get("core_stocks", []),
+                              "step2_analysis": step2_analysis}
                     sd_trace = TraceContext(run_id)
                     step4_result = await sd.analyze(sd_ctx, trace=sd_trace)
                     save_checkpoint("step4_system_dynamics", run_id, "continue", step4_result, {"elapsed": 0})
@@ -1068,10 +1091,29 @@ async def continue_pipeline_step(run_id: str, step: str):
 
             from app.domain.research.agents.system_dynamics_agent import SystemDynamicsAgent
             sd = SystemDynamicsAgent(provider=DeepSeekProvider())
+            # V5.12: 尝试加载 Step 2 数据 (可选)
+            s2_file = find_checkpoint_file(run_id, "step2_gatekeeper")
+            if s2_file:
+                with open(s2_file, "r", encoding="utf-8") as f:
+                    s2_out = _json.load(f).get("output", {})
+                _industry = s3_out.get("industry", "")
+                _s2_entry = next((i for i in s2_out.get("industries", []) if i.get("industry") == _industry), s2_out)
+                step2_analysis = {
+                    "cycle_phase": _s2_entry.get("cycle_position", {}).get("phase", ""),
+                    "sub_phase": _s2_entry.get("cycle_position", {}).get("sub_phase", ""),
+                    "profit_redirection": _s2_entry.get("mismatch_analysis", {}).get("profit_redistribution", {}).get("direction", ""),
+                    "repricing_stage": _s2_entry.get("time_horizon", {}).get("market_repricing_stage", ""),
+                    "payoff_asymmetry": _s2_entry.get("payoff", {}).get("asymmetry", ""),
+                    "substitution_risk": _s2_entry.get("thesis_killers", {}).get("substitution_risk", ""),
+                    "propagation_depth": _s2_entry.get("propagation", {}).get("depth", ""),
+                }
+            else:
+                step2_analysis = {}
             sd_ctx = {"industry": s3_out.get("industry", ""),
                       "supply_chain_map": scm,
                       "scarcity_ranking": s3_out.get("scarcity_ranking", []),
-                      "core_stocks": s3_out.get("core_stocks", [])}
+                      "core_stocks": s3_out.get("core_stocks", []),
+                      "step2_analysis": step2_analysis}
             trace = TraceContext(run_id)
             result = await sd.analyze(sd_ctx, trace=trace)
             save_checkpoint("step4_system_dynamics", run_id, "continue", result, {"elapsed": 0})

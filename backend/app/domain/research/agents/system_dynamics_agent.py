@@ -1,8 +1,8 @@
 """
-SystemDynamicsAgent V1.1 — Step 4: 系统动力学推演
+SystemDynamicsAgent V5.12 — Step 4: 系统动力学推演
 定位: 消费 Step 3 的静态产业链图谱, 推演结构受压后如何变形
 核心问题: 瓶颈怎么迁移? 谁的资源被挤占? 谁被忽视了? 什么会打破推演?
-V1.1: +Step3反向校验 +search_queries替代china_stocks +monitoring_metric +evidence_type +confidence
+V5.12: +Step2前置判断交叉验证 +sub_processes子工艺消费 +竞争格局搜索 +Glossary枚举注入
 """
 import asyncio, re
 from decimal import Decimal
@@ -10,10 +10,11 @@ from typing import Dict, Any, List
 from app.domain.research.agents.base import ResearchAgent
 from app.domain.research.services.data_loader import data_loader
 from app.framework.logger import logger
+from app.framework.pipeline.glossary import step4_glossary
 
 
 class SystemDynamicsAgent(ResearchAgent):
-    """系统动力学推演 V1.1 — 瓶颈迁移 + 资源挤占 + 隐藏受益者 + Step3反向校验"""
+    """系统动力学推演 V5.12 — 瓶颈迁移 + 资源挤占 + 隐藏受益者 + Step3反向校验 + Step2交叉验证 + sub_processes消费"""
 
     def __init__(self, provider=None):
         super().__init__(provider=provider, data_loader=data_loader)
@@ -28,6 +29,29 @@ class SystemDynamicsAgent(ResearchAgent):
         text = re.sub(r'<[^>]+>', '', text)
         text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', text)
         return text[:250]
+
+    @staticmethod
+    def _format_chain_with_sub(chain_map: list, max_nodes: int = 2, max_subs: int = 5) -> str:
+        """展开 supply_chain_map, 含 sub_processes 子工艺概要 (V5.12)"""
+        lines = []
+        for node in chain_map[:max_nodes]:
+            sr = node.get("supply_rigidity", {})
+            node_conf = node.get("confidence", "?")
+            margin_est = node.get("profit_pool", {}).get("margin_estimated", "?")
+            lines.append(f"- L{node.get('level','?')} {node.get('name','?')}: severity={sr.get('severity','?')}, root_cause={sr.get('root_cause','?')}, expand={sr.get('expand_cycle','?')}, confidence={node_conf} | margin_estimated={margin_est}")
+            # sub_processes (仅 severity>=high 的节点才展开)
+            sps = node.get("sub_processes", [])
+            if sps:
+                for sp in sps[:max_subs]:
+                    vm = sp.get("value_magnitude", {}).get("order_of_magnitude", "?")
+                    pb = sp.get("competitive_landscape", {}).get("pricing_behavior", "?")
+                    sub = sp.get("supply_rigidity", {}).get("substitutability", "?")
+                    lines.append(f"  └ {sp.get('name','?')}: value_magnitude={vm}, pricing={pb}, substitutability={sub}")
+        # 剩余节点不带 sub_processes
+        for node in chain_map[max_nodes:]:
+            sr = node.get("supply_rigidity", {})
+            lines.append(f"- L{node.get('level','?')} {node.get('name','?')}: severity={sr.get('severity','?')}, root_cause={sr.get('root_cause','?')}, expand={sr.get('expand_cycle','?')}")
+        return "\n".join(lines)
 
     async def _search_adaptive(self, chains: List[List[str]], num: int = 4, trace=None) -> List[Dict]:
         all_data = []
@@ -57,8 +81,10 @@ class SystemDynamicsAgent(ResearchAgent):
         chain_map = ctx.get("supply_chain_map", [])
         scarcity = ctx.get("scarcity_ranking", [])
         core_stocks = ctx.get("core_stocks", [])
+        # V5.12: Step 2 前置判断 (可选)
+        step2 = ctx.get("step2_analysis", {})
 
-        logger.info(f"[{self.name}] Deduction: {industry} ({len(chain_map)} chain nodes)")
+        logger.info(f"[{self.name}] Deduction: {industry} ({len(chain_map)} chain nodes) | step2={'yes' if step2 and step2.get('cycle_phase') else 'no'}")
 
         # 2+1 轮搜索: 瓶颈迁移 + 隐藏受益者 + 兜底(不依赖 top_node)
         top_node = (scarcity[0].get("segment", industry) if scarcity else industry)
@@ -74,11 +100,15 @@ class SystemDynamicsAgent(ResearchAgent):
             [f"{industry} 产业链 结构变形 利润迁移 赢家 输家 2026",
              f"{industry} 产能 释放 CAPEX 受益者 受损者 2026",
              f"{industry} supply chain winners losers structural shift 2026"],
+            # V5.12: 竞争格局 + 替代技术验证
+            [f"{industry} {top_node} 竞争格局 市场份额 龙头 集中度 定价权 2026",
+             f"{industry} 供应商 议价权 竞争 壁垒 格局 替代",
+             f"{industry} pricing power market share concentration competition"],
         ]
         search_data = await self._search_adaptive(search_chains, num=4, trace=trace)
 
         # LLM 推演
-        prompt = self._build_prompt(industry, chain_map, scarcity, core_stocks, search_data)
+        prompt = self._build_prompt(industry, chain_map, scarcity, core_stocks, search_data, step2)
 
         try:
             text = await self.provider.chat_pro(prompt, max_tokens=6144, timeout=300)
@@ -105,13 +135,9 @@ class SystemDynamicsAgent(ResearchAgent):
 
     # ═══ Prompt 构建 ═══════════════════════════
 
-    def _build_prompt(self, industry, chain_map, scarcity, core_stocks, search_data) -> str:
-        chain_summary = ""
-        for node in chain_map[:3]:
-            sr = node.get("supply_rigidity", {})
-            node_conf = node.get("confidence", "?")
-            margin_est = node.get("profit_pool", {}).get("margin_estimated", "?")
-            chain_summary += f"- L{node.get('level','?')} {node.get('name','?')}: severity={sr.get('severity','?')}, root_cause={sr.get('root_cause','?')}, expand={sr.get('expand_cycle','?')}, confidence={node_conf} | margin_estimated={margin_est}\n"
+    def _build_prompt(self, industry, chain_map, scarcity, core_stocks, search_data, step2=None) -> str:
+        # V5.12: 含 sub_processes 展开 + Step 2 可选输入
+        chain_summary = self._format_chain_with_sub(chain_map, max_nodes=2, max_subs=5)
 
         scarcity_summary = "\n".join(
             f"{s.get('rank','?')}. {s.get('segment','?')}: {s.get('rigidity_narrative','')[:80]}"
@@ -124,6 +150,21 @@ class SystemDynamicsAgent(ResearchAgent):
             search_summary += f"\n### {sd['query']}\n"
             for r in sd["results"][:3]:
                 search_summary += f"  - {r['title']}: {r['snippet'][:180]}\n"
+
+        # V5.12: Step 2 可选输入
+        step2_available = bool(step2 and step2.get("cycle_phase"))
+        if step2_available:
+            s2 = step2
+            step2_text = f"""
+- 周期阶段: {s2.get('cycle_phase','?')}/{s2.get('sub_phase','?')}
+- 利润再分配方向: {s2.get('profit_redirection','?')}
+- 市场重定价阶段: {s2.get('repricing_stage','?')}
+- 赔率不对称性: {s2.get('payoff_asymmetry','?')}
+- 替代风险: {s2.get('substitution_risk','?')}
+- 传导深度: {s2.get('propagation_depth','?')}
+"""
+        else:
+            step2_text = "(本轮分析未运行 Step 2, 以下推演仅基于 Step 3 结构)"
 
         return f"""你是系统动力学专家。输入是 Step 3 输出的产业链静态结构, 你的任务是推演这个结构在压力下**怎么变形**。
 
@@ -156,6 +197,16 @@ class SystemDynamicsAgent(ResearchAgent):
 {chain_summary}
 稀缺排序:
 {scarcity_summary}
+
+## Step 2 前置判断 (可选输入, 用于交叉验证)
+{step2_text}
+
+使用说明:
+- profit_redirection (利润再分配方向) 可作为 profit_pool_shift 的方向锚定
+- repricing_stage (市场重定价阶段) 影响瓶颈迁移置信度 (晚期→已定价→迁移空间有限)
+- payoff_asymmetry (赔率不对称性) 和 substitution_risk (替代风险) 应纳入 thesis_breakers 考量
+- cycle_phase (周期阶段) 影响迁移速度判断
+- 如果无 Step 2 数据, 完全基于 Step 3 结构独立推演, 不受此段影响
 
 ## 补充搜索
 {search_summary}
@@ -247,6 +298,13 @@ class SystemDynamicsAgent(ResearchAgent):
   }}
 }}
 
+## sub_processes 使用说明 (V5.12)
+- 瓶颈迁移: 引用具体子工艺名称 (如 "CoWoS.硅中介层制造"), 不只说 "L1 HBM先进封装"
+- 利润迁移: 参考 value_magnitude 判断绝对量级, 不只说 "利润流向X"
+- 资源挤占: 参考 pricing_behavior 判断谁有转嫁能力优势 (monopoly→能转嫁, capacity_war→不能)
+- hidden_beneficiaries: 如果 Step 3 已提供 sub_processes[].value_owners[] 和 a_stock_mapping[], 聚焦跨节点/跨产业二阶效应, 不重复子工艺级的价值捕获者
+- 如果 Step 3 未提供 sub_processes (空数组), 维持原有 L1/L2 级别推演粒度
+
 ## 枚举约束 (★ 强制)
 - confidence (整体): high / medium / low / insufficient_data
 - profit_pool_shift.confidence: high / medium / low / speculative
@@ -270,7 +328,10 @@ class SystemDynamicsAgent(ResearchAgent):
 10.什么信号会证伪我?
 确保你的推演回答了以上所有问题。resource_crowding 和 hidden_beneficiaries 至少各 1 条。
 禁止 LLM 直接输出股票代码 (china_stocks 已删除, 用 search_queries 替代)。
-不做数值评分, 不做行业分类描述, 聚焦跨环节推演。"""
+不做数值评分, 不做行业分类描述, 聚焦跨环节推演。
+
+{step4_glossary()}
+"""
 
     # ═══ 基类 ═══════════════════════════════
 
@@ -278,7 +339,8 @@ class SystemDynamicsAgent(ResearchAgent):
         return await super().load_context(ctx)
 
     @staticmethod
-    def build_prompt(ctx): return "SystemDynamicsAgent V1.1"
+    @staticmethod
+    def build_prompt(ctx): return "SystemDynamicsAgent V5.12"
 
     @staticmethod
     async def stream(ctx): yield "streaming not implemented"

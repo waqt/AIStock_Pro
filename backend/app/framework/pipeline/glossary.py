@@ -262,8 +262,20 @@ def step3_glossary() -> str:
 
 
 def step4_glossary() -> str:
-    """Step 4 (System Dynamics) 需要的术语"""
+    """Step 4 (System Dynamics) 需要的术语 — V5.12 扩展"""
     return inject_glossary("", [
         "cycle_phase", "prosperity_type", "demand_quality",
         "propagation_depth",
+        # V5.12: Step 2 交叉验证 + sub_processes 消费
+        "supply_rigidity_severity",
+        "bottleneck_severity",
+        "pricing_behavior",
+        "substitutability_level",
+        "value_magnitude",
+        "value_share",
+        "future_outlook",
+        "attention_quality",
+        "profit_pool_share",
+        "margin_level",
+        "china_substitution_rate",
     ])
