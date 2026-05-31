@@ -175,6 +175,40 @@ GLOSSARY: Dict[str, Dict[str, str]] = {
         "bottleneck_resolved": "瓶颈解除 — 供给将追上甚至超过需求, 警惕周期反转",
         "new_bottleneck_emerging": "新瓶颈形成 — 当前宽松但2-3年内可能收紧, 前瞻布局机会",
     },
+
+    # ── 瓶颈严重程度 (Step 3 V5.11b, 替换 chokepoint_score 数值评分) ──
+    "bottleneck_severity": {
+        "very_high": "极度瓶颈 — 独家或双寡头垄断, 供给侧完全无弹性, 景气窗口最清晰",
+        "high": "严重瓶颈 — CR3控制>80%产能, 扩产周期>12个月, 供给侧弹性有限",
+        "moderate": "中度瓶颈 — 供给偏紧但有替代方案, 扩产6-12个月可部分缓解",
+        "low": "轻度瓶颈 — 供给充裕或竞争激烈, 定价权有限",
+        "none": "非瓶颈 — 充分竞争或产能过剩, 供给侧不是约束因素",
+    },
+
+    # ── 竞争行为模式 (Step 3 V5.11b sub_processes) ──
+    "pricing_behavior": {
+        "monopoly": "独家垄断 — 完全定价权, 无竞争约束",
+        "collusive_oligopoly": "寡头合谋 — 产能协同/人为控量, 不打价格战, 事实上的垄断定价权",
+        "capacity_war": "产能竞赛 — 大家都在扩产抢份额, 定价权恶化中, 价格竞争激烈",
+        "price_taker": "价格接受者 — 充分竞争, 无定价权, 跟随市场价格",
+    },
+
+    # ── 价值量级 (Step 3 V5.11b sub_processes) ──
+    "value_magnitude": {
+        "100B+": "千亿美元级市场 (如 HBM 制造、AI 加速卡)",
+        "10B_100B": "百亿美元级市场 (如 CoWoS 封装、ABF 载板)",
+        "1B_10B": "十亿美元级市场 (如 TSV 设备、先进封装材料)",
+        "<1B": "十亿美元以下 (如 TIM 散热、探针卡等小众环节)",
+        "unknown": "无搜索结果, 无法估算",
+    },
+
+    # ── 价值份额 (Step 3 V5.11b sub_processes) ──
+    "value_share": {
+        "dominant": "主导地位 (>50% 份额)",
+        "major": "重要参与者 (15-50%)",
+        "challenger": "挑战者 (<15%, 但增速快或有技术突破)",
+        "niche": "小众/边缘参与者",
+    },
 }
 
 
@@ -222,6 +256,8 @@ def step3_glossary() -> str:
         "substitutability_level", "supplier_concentration",
         "profit_pool_share", "margin_level",
         "attention_quality", "china_substitution_rate", "future_outlook",
+        # V5.11b
+        "bottleneck_severity", "pricing_behavior", "value_magnitude", "value_share",
     ])
 
 

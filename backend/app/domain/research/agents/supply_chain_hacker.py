@@ -1,8 +1,9 @@
 """
-SupplyChainHacker V5.9 — 供应链降维穿透 (纯静态拆链)
-V5.9: 移除 Phase 1.8 (→ Step 4), 专注 L1-L4 瓶颈图谱 + 证据层
-V5.9.1: 证据节点级合并 + chat_pro→chat_flash + glossary注入
-输出: supply_chain_map + core_stocks + sales/expansion chain
+SupplyChainHacker V5.11b — 供应链降维穿透
+V5.11b: chokepoint_score→bottleneck_severity (定性枚举)
+        sub_processes 三层抽象模型 (value_magnitude/value_owners/pricing_behavior)
+        glossary 新增 bottleneck_severity/pricing_behavior/value_magnitude/value_share
+输出: supply_chain_map + sub_processes + sales/expansion chain + scarcity_ranking
 """
 import asyncio, re
 from decimal import Decimal
@@ -213,7 +214,7 @@ class SupplyChainHacker(ResearchAgent):
         "capacity_util_rate": 0.95,
         "order_backlog_months": 24,
         "regulatory_moat": true,
-        "chokepoint_score": 87
+        "bottleneck_severity": "very_high"
       }},
 
       "supply_rigidity": {{
@@ -240,7 +241,52 @@ class SupplyChainHacker(ResearchAgent):
       }},
       "value_node_tags": ["标签1", "标签2"],
       "a_stock_transmission": "全球瓶颈传导到 A 股标的逻辑",
-      
+
+      // ═══ V5.11b: 子工艺拆解 (可选, 仅 L1-L2 severity≥high 节点, max 5) ═══
+      "sub_processes": [
+        {{
+          "name": "子工艺名如: TSV通孔制造",
+          "confidence": "high",
+
+          "supply_rigidity": {{
+            "severity": "extreme/..." , "root_cause": "equipment_constraint/...",
+            "expand_cycle": "over_24m/...", "substitutability": "none_short_term/...",
+            "concentration": "monopoly_single_supplier/..."
+          }},
+
+          "value_magnitude": {{
+            "order_of_magnitude": "1B_10B",
+            "unit_economics_hint": "估算依据, 如: TSV设备市场约25亿美元, 占HBM成本约15%"
+          }},
+
+          "value_owners": [
+            {{"name":"公司名","public_market":"NASDAQ:AMAT","value_share":"dominant","investable_in_a_share":false,"investment_logic":"为什么捕获此环节价值"}}
+          ],
+
+          "profit_pool": {{
+            "share_of_industry_profit": "significant_15_30pct",
+            "margin_level": "very_high_above_40pct",
+            "margin_estimated": true,
+            "margin_data_source": "LLM估计"
+          }},
+
+          "competitive_landscape": {{
+            "structure": "oligopoly_CR3_above_70",
+            "pricing_behavior": "collusive_oligopoly",
+            "global_leaders": ["龙头1","龙头2"],
+            "china_substitution_rate": "20_50pct"
+          }},
+
+          "a_stock_mapping": [
+            {{"code":"688012","name":"中微公司","investment_logic":"TSV深硅刻蚀设备国产替代龙头"}}
+          ],
+          "value_node_tags": ["子工艺标签"],
+          "evidence": [
+            {{"fact":"关键事实","from":"search[1.3]·来源","quality":{{"level":"high","source_type":"industry_data"}}}}
+          ]
+        }}
+      ],
+
       "evidence": [
         {{"fact":"关键事实1","from":"search[1.3]·来源","quality":{{"level":"high","source_type":"industry_data"}}}},
         {{"fact":"关键事实2","from":"search[2.1]·来源","quality":{{"level":"medium","source_type":"sell_side_report"}}}}
@@ -263,11 +309,22 @@ class SupplyChainHacker(ResearchAgent):
 - evidence 数组在节点级别 (每节点 2-4 条), 子字段不各自带 evidence
 - from 格式: "search[轮次.序号]·来源简称", 禁止自创前缀
 - supply_chain_map >= L1-L3, sales/expansion chain >= 各 2 条
-- chokepoint_checklist 必须根据事实估算数值，避免空谈
+- chokepoint_checklist.customer_switch_cost_months/cost_share_of_downstream 等基于搜索数据估算
+- chokepoint_checklist.bottleneck_severity 从 glossary 枚举值中选, 不能从 supply_rigidity.severity 自动映射
 - self_media/ai_summary 仅参考, 不得单独支撑关键判断
 - ★ margin_estimated=true 表示 margin_level/share_of_profit 为 LLM 估计
 - ★ 3轮搜索仍无有效结果时: 不丢弃数据, 输出 confidence=insufficient_data + confidence_note 说明缺口
-- ★ expand_cycle 三档: under_12m / 12_24m / over_24m (与 Step 4/5 时间枚举对齐)"""
+- ★ expand_cycle 三档: under_12m / 12_24m / over_24m (与 Step 4/5 时间枚举对齐)
+
+## 子工艺拆解规则 (V5.11b)
+- sub_processes 仅对 L1-L2 且 supply_rigidity.severity 为 extreme 或 high 的节点展开, 非瓶颈节点不得展开
+- 单个节点的 sub_processes 最多 5 个, 从物理工艺过程分解 (一个物理步骤一个子工艺), 不要按公司分解
+- 每个子工艺必须标注 value_magnitude.order_of_magnitude (无搜索结果时标注 unknown, 不猜测)
+- 每个子工艺须列出至少 1 个 value_owners[].investable_in_a_share 标记是否可直接在 A 股投资
+- 每个子工艺必须标注 pricing_behavior, 且不能与 competitive_landscape.structure 自动关联 — 基于搜索中的实际定价行为独立推断
+- 每个子工艺的 evidence 至少 1 条支撑 rigidity/value_magnitude 判断
+- 零 A 股映射的子工艺标注 a_stock_mapping: [] (不要省略)
+- pricing_behavior 定义见 glossary, 特别注意: collusive_oligopoly 和 capacity_war 同属 oligopoly 结构但投资含义完全不同"""
 
         try:
             text = await self.provider.chat_pro(prompt, max_tokens=8192, timeout=240)
@@ -280,6 +337,8 @@ class SupplyChainHacker(ResearchAgent):
 
             if isinstance(result, dict):
                 result["findings_count"] = len(findings)
+                # V5.11b: 标准化 — 旧 checkpoint 补 bottleneck_severity + sub_processes
+                result = self._normalize_step3_output(result)
                 logger.info(f"[{self.name}] Structured: {len(result.get('supply_chain_map',[]))} layers")
                 return result
         except asyncio.TimeoutError:
@@ -288,6 +347,31 @@ class SupplyChainHacker(ResearchAgent):
             logger.warning(f"[{self.name}] Phase 2 failed: {e}")
 
         return {"raw_findings": findings, "error": "Structuring failed"}
+
+    # ═══ V5.11b: 向后兼容标准化 ═════════════════
+
+    @staticmethod
+    def _normalize_step3_output(result: Dict) -> Dict:
+        """标准化 Step 3 输出:
+        - 旧 checkpoint: chokepoint_score → bottleneck_severity
+        - 旧 checkpoint: 补 sub_processes: []
+        """
+        for node in result.get("supply_chain_map", []):
+            if "sub_processes" not in node:
+                node["sub_processes"] = []
+            cl = node.get("chokepoint_checklist", {})
+            if cl and "bottleneck_severity" not in cl and "chokepoint_score" in cl:
+                cl["bottleneck_severity"] = SupplyChainHacker._old_score_to_severity(cl["chokepoint_score"])
+        return result
+
+    @staticmethod
+    def _old_score_to_severity(score: int) -> str:
+        """chokepoint_score (0-100) → bottleneck_severity 枚举"""
+        if score >= 80: return "very_high"
+        if score >= 60: return "high"
+        if score >= 40: return "moderate"
+        if score >= 20: return "low"
+        return "none"
 
     # ═══ analyze_level ═════════════════════════
 
@@ -327,7 +411,7 @@ all_assets >= 5家, moat_level: absolute_monopoly/strong/medium/weak"""
         return ctx
 
     @staticmethod
-    def build_prompt(ctx): return "SupplyChainHacker V5.9.1"
+    def build_prompt(ctx): return "SupplyChainHacker V5.11b"
     @staticmethod
     async def stream(ctx): yield "streaming not implemented"
 

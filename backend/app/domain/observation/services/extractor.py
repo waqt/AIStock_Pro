@@ -114,6 +114,23 @@ def _industry_from_output(output: dict) -> str:
     return output.get('industry', output.get('industry_name', ''))
 
 
+def _step3_bottleneck_desc(node: dict, node_name: str) -> str:
+    """Step 3 节点瓶颈描述 — 兼容新旧格式"""
+    cl = node.get('chokepoint_checklist', {})
+    severity = cl.get('bottleneck_severity', '')
+    if severity:
+        bottleneck = f"瓶颈: {severity}"
+    else:
+        bottleneck = f"瓶颈评分: {cl.get('chokepoint_score', 'N/A')}"
+    return f"所属环节: {node_name}\n{bottleneck}\n供给刚性: {node.get('supply_rigidity', {}).get('severity', '')}\n利润率: {node.get('profit_pool', {}).get('margin_level', '')}\n\n{node.get('a_stock_transmission', '')}"
+
+
+def _step3_bottleneck_meta(node: dict) -> str:
+    """Step 3 瓶颈元数据 — 兼容新旧格式"""
+    cl = node.get('chokepoint_checklist', {})
+    return cl.get('bottleneck_severity', str(cl.get('chokepoint_score', 'N/A')))
+
+
 def _get_level_tag(direction: str, source: str) -> str:
     """根据方向和来源推断观察层级"""
     if direction == 'negative':
@@ -375,7 +392,7 @@ def extract_step3_observations(output: dict, run_id: str, run_created_at: str) -
                 'source_step': 'step3',
                 'level': 'supply_chain_node',
                 'title': f"价值节点: {tag}",
-                'description': f"所属环节: {node_name}\n瓶颈评分: {node.get('chokepoint_checklist', {}).get('chokepoint_score', 'N/A')}\n供给刚性: {node.get('supply_rigidity', {}).get('severity', '')}\n利润率: {node.get('profit_pool', {}).get('margin_level', '')}\n\n{node.get('a_stock_transmission', '')}",
+                'description': _step3_bottleneck_desc(node, node_name),
                 'category': '利润类/利润迁移',
                 'direction': 'positive',
                 'confidence': 'medium',
@@ -385,14 +402,78 @@ def extract_step3_observations(output: dict, run_id: str, run_created_at: str) -
                 'industry': industry,
                 'metadata': json.dumps({
                     "source": "value_node_tag", "node_name": node_name,
-                    "chokepoint_score": node.get('chokepoint_checklist', {}).get('chokepoint_score'),
+                    "bottleneck": _step3_bottleneck_meta(node),
                     "severity": node.get('supply_rigidity', {}).get('severity'),
                     "market_attention": node.get('value_capture', {}).get('market_attention'),
+                    "has_sub_processes": len(node.get('sub_processes', [])) > 0,
                 }, ensure_ascii=False),
                 'source_info': _make_source_info('pipeline', run_id=run_id, step='step3', field='supply_chain_map.value_node_tags'),
                 'status': 'active',
             }
             observations.append(obs)
+
+    # 1b. V5.11b: sub_processes → 子工艺级观察
+    for node in output.get('supply_chain_map', []):
+        node_name = node.get('name', '')
+        for sp in node.get('sub_processes', []):
+            sp_name = sp.get('name', '')
+            if not sp_name:
+                continue
+            resolved = resolve_relative_time('12-24个月', anchor)
+            # value_magnitude
+            vm = sp.get('value_magnitude', {})
+            observations.append({
+                'source_step': 'step3', 'level': 'supply_chain_node',
+                'title': f"子工艺: {sp_name}",
+                'description': f"所属节点: {node_name}\n价值量级: {vm.get('order_of_magnitude', '?')}\n估算依据: {vm.get('unit_economics_hint', '?')}\n定价行为: {sp.get('competitive_landscape', {}).get('pricing_behavior', '?')}\n供给刚性: {sp.get('supply_rigidity', {}).get('severity', '?')}",
+                'category': '利润类/利润迁移', 'direction': 'positive',
+                'confidence': sp.get('confidence', 'medium'),
+                'window_description': resolved['window_description'],
+                'window_start': resolved['window_start'], 'window_end': resolved['window_end'],
+                'industry': industry,
+                'metadata': json.dumps({"source": "sub_process", "node_name": node_name, "sub_process": sp_name, "value_magnitude": vm.get('order_of_magnitude'), "pricing_behavior": sp.get('competitive_landscape', {}).get('pricing_behavior'), "a_stock_count": len(sp.get('a_stock_mapping', []))}, ensure_ascii=False),
+                'source_info': _make_source_info('pipeline', run_id=run_id, step='step3', field='supply_chain_map.sub_processes'),
+                'status': 'active',
+            })
+            # value_owners
+            for owner in sp.get('value_owners', []):
+                owner_name = owner.get('name', '')
+                if not owner_name:
+                    continue
+                observations.append({
+                    'source_step': 'step3', 'level': 'supply_chain_node',
+                    'title': f"价值归属: {owner_name} → {sp_name}",
+                    'description': f"子工艺: {sp_name}\n归属者: {owner_name}\n市场: {owner.get('public_market', '?')}\n份额: {owner.get('value_share', '?')}\nA股可投: {owner.get('investable_in_a_share', False)}\n投资逻辑: {owner.get('investment_logic', '?')}",
+                    'category': '利润类/利润结构',
+                    'direction': 'positive' if owner.get('investable_in_a_share') else 'neutral',
+                    'confidence': 'medium',
+                    'window_description': resolved['window_description'],
+                    'window_start': resolved['window_start'], 'window_end': resolved['window_end'],
+                    'industry': industry,
+                    'metadata': json.dumps({"source": "value_owner", "node_name": node_name, "sub_process": sp_name, "owner": owner_name, "investable": owner.get('investable_in_a_share')}, ensure_ascii=False),
+                    'source_info': _make_source_info('pipeline', run_id=run_id, step='step3', field='supply_chain_map.sub_processes.value_owners'),
+                    'status': 'active',
+                })
+            # a_stock_mapping
+            for astock in sp.get('a_stock_mapping', []):
+                code = astock.get('code', '')
+                name = astock.get('name', '')
+                if not code or not name:
+                    continue
+                observations.append({
+                    'source_step': 'step3', 'level': 'stock',
+                    'title': f"子工艺映射: {name}({code}) → {sp_name}",
+                    'description': f"子工艺: {sp_name}\n所属节点: {node_name}\n投资逻辑: {astock.get('investment_logic', '?')}",
+                    'category': '利润类/利润迁移', 'direction': 'positive',
+                    'confidence': 'medium',
+                    'window_description': resolved['window_description'],
+                    'window_start': resolved['window_start'], 'window_end': resolved['window_end'],
+                    'industry': industry,
+                    'related_stock_code': code,
+                    'metadata': json.dumps({"source": "a_stock_mapping", "node_name": node_name, "sub_process": sp_name, "stock_code": code, "stock_name": name}, ensure_ascii=False),
+                    'source_info': _make_source_info('pipeline', run_id=run_id, step='step3', field='supply_chain_map.sub_processes.a_stock_mapping'),
+                    'status': 'active',
+                })
 
     # 2. catalysts → 产业事件
     for cat in output.get('catalysts', []):
