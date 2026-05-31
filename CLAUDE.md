@@ -128,15 +128,25 @@ Step 1b 资本流向扫描 (CapitalFlowScanner)
 
 Step 2  行业看门人 (MarketScanner V5.10)
   → 定性筛选: 6-block 输出 + 结构化证据 + 粒度过滤 + 错配分析
+  → 用户查看结论后手动选择下一步:
+     ├─ [A] 直接资产挖掘 → POST /direct-asset-mine (CoreScreeningAgent step2_only)
+     │    从 transmission_order 节点直接挖标的, 跳过产业链深挖
+     │    (用于: 产业逻辑强但认知差弱, 市场已定价)
+     ├─ [B] 二阶推演      → POST /second-order-extrapolate (SecondOrderExtrapolator)
+     │    外推相邻产业的预期差, 寻找市场未定价的机会
+     │    (用于: 主产业预期差弱, 但存在跨产业溢出潜力)
+     └─ [C] 产业链深挖    → POST /scan/industry-drilldown 走 Step 3→4→5→6
+          标准全链路穿透 (用于: 认知差强的产业)
 
 Step 3  产业链拆解 (SupplyChainHacker V5.9)
   → L1-L4 瓶颈图谱 + 供给刚性 + 利润池 + 价值捕获 + 竞争格局
 
-Step 4  系统动力学推演 (📋 计划中)
-Step 6  核心资产筛选 (📋 计划中)
-Step 7  财务质量审计 (FinancialAuditor, 已有)
-Step 8  人力资本审计 (HumanCapitalDetective, 可选, 📋 计划中)
-Step 8  估值定价 (ValuationPricer, 已有, 📋 计划中)
+Step 4  系统动力学推演 (SystemDynamicsAgent, 已有)
+Step 5  跨产业关联分析 (CrossIndustryLinkageAgent, 已有)
+Step 6  核心资产筛选 (CoreScreeningAgent, 已有, 含 step2_only 模式)
+Step 7  财务质量审计 (FinancialAuditor, 已有, 由 Step 6 内部调用)
+Step 8  人力资本审计 (HumanCapitalDetective, 可选)
+Step 8  估值定价 (ValuationPricer, 已有, 未接入 pipeline)
 Step 9  市场预期差 (📋 计划中)
 Step 10 风险分析 (📋 计划中)
 Step 11 综合报告 (📋 计划中)
@@ -150,9 +160,13 @@ Step 11 综合报告 (📋 计划中)
 | CapitalFlowScanner | capital_flow_scanner.py | V1.0 | 1b | ✅ 完成 |
 | MarketScanner | market_scanner.py | V5.10 | 2 | ✅ 完成 (证据层+粒度过滤+错配分析) |
 | SupplyChainHacker | supply_chain_hacker.py | V5.9 | 3 | ✅ 完成 (定性schema+证据层+自适应搜索) |
-| FinancialAuditor | financial_auditor.py | - | 7 | ⚠️ 已有, 待接入 pipeline |
+| SystemDynamicsAgent | system_dynamics.py | V1.0 | 4 | ✅ 完成 |
+| CrossIndustryLinkageAgent | cross_industry_linkage.py | V1.0 | 5 | ✅ 完成 |
+| CoreScreeningAgent | core_screening_agent.py | V5.10 | 6 | ✅ 完成 (含 step2_only 模式供 Path A) |
+| FinancialAuditor | financial_auditor.py | - | 7 | ⚠️ 已有, 由 Step 6 内部调用 |
 | HumanCapitalDetective | human_capital_detective.py | - | 8 | ⚠️ 已有, 可选步骤 |
 | ValuationPricer | valuation_pricer.py | V5.7 | 8 | ⚠️ 已有, 未使用 framework/finance |
+| SecondOrderExtrapolator | second_order_extrapolator.py | V1.0 | 2B | ✅ 完成 (Path B: 二阶推演) |
 | DAGOrchestrator | dag_orchestrator.py | - | 6+10+11 | ⚠️ 遗留, 未接入新 pipeline |
 
 V3.0 遗留 (向后兼容): SupplyChainAnalyst, IndustryAnalyst, ResearchCoordinator
@@ -164,6 +178,7 @@ V3.0 遗留 (向后兼容): SupplyChainAnalyst, IndustryAnalyst, ResearchCoordin
 | Checkpoint | framework/pipeline/checkpoint.py | 检查点落盘+缓存+跨版本查找+过期 |
 | Trace | framework/pipeline/trace.py | TraceContext: 搜索/LLM/DB 全链路记录 |
 | Glossary | framework/pipeline/glossary.py | 16类跨Step枚举定义, prompt注入 |
+| ObservationStore | domain/observation/ | ★ 投研观察框架: 提取/存储/查询/前端 badge |
 | Valuation | framework/finance/valuation.py | PE/PB/PS/EV_EBITDA/PEG/FCF纯函数 |
 | Model Map | framework/finance/model_map.py | 资产类型→估值模型映射 |
 | Task Engine | framework/tasks/engine.py V5.1 | 按类别信号量+去重+异步执行 |
@@ -294,6 +309,12 @@ from app.framework.finance import (
 # 节点输出: GET /api/research/pipeline/{run_id}/checkpoint/{step}
 # 编辑保存: PUT /api/research/pipeline/{run_id}/checkpoint/{step}
 # 溯源日志: GET /api/research/pipeline/{run_id}/trace/{step}
+# 星标收藏: PUT /api/research/pipeline/{run_id}/star
+# 删除项目: DELETE /api/research/pipeline/{run_id}
+# Path A 直挖: POST /api/research/direct-asset-mine (CoreScreeningAgent step2_only)
+# Path B 二阶: POST /api/research/second-order-extrapolate (SecondOrderExtrapolator)
+# 观察列表: GET /api/observations/stocks/{code} — 单股观察计数
+# 观察列表: GET /api/observations/steps/{step} — 按步骤筛选
 # 星标收藏: PUT /api/research/pipeline/{run_id}/star
 # 删除项目: DELETE /api/research/pipeline/{run_id}
 

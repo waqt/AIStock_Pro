@@ -1,6 +1,6 @@
-# AIStock Pro V5.6 — 全系统功能清单
+# AIStock Pro V5.10 — 全系统功能清单
 
-> 最后更新: 2026-05-21 | 版本: V5.6
+> 最后更新: 2026-05-31 | 版本: V5.10
 
 ---
 
@@ -64,6 +64,10 @@
 | B1.16 | 研报回看 | 点击历史报告加载完整分析 (DAG/V3.0格式自动识别) | |
 | B1.17 | 删除研报 | 点击删除按钮, Modal.confirm 确认 | |
 | B1.18 | 缓存恢复 | localStorage 保存最近一次分析, 刷新页面自动恢复 | |
+| B1.19 | 直接资产挖掘 | Step 2 完成后 "直挖" 按钮 → 从 transmission_order 挖标的, 跳过 Step 3 | ✅ |
+| B1.20 | 二阶推演 | Step 2 完成后 "二阶" 按钮 → 外推相邻产业预期差 | ✅ |
+| B1.21 | 产业链深挖 | Step 2 完成后 "深挖" 按钮 → 走标准 Step 3→4→5→6 全链路 | ✅ |
+| B1.22 | 结果面板 | 直挖结果: ranked_stocks 表格 + future_strong 候选; 二阶结果: 相邻产业卡片 + 预期差分析 | ✅ |
 
 ### B2. V4.0 投研 Agent (后端)
 
@@ -76,9 +80,39 @@
 | B2.5 | FinancialAuditor | 8Q剪刀差+四连击+Beneish M-Score+存货/合同负债/OCF | stock_code | verdict(PASS/CAUTION/FAIL) + flags + metrics[8Q] | |
 | B2.6 | HumanCapitalDetective | 3维搜索(创始人/专利/股权) → LLM审计 | stock_code + name | verdict(STRONG/ADEQUATE/WEAK) + founder_background + patent_quality | |
 | B2.7 | ValuationPricer | 全球对标+PEG/PS+护城河时间窗 + DB硬锚PE/PS | stock + audit结果 | target_valuation + moat_window + position_suggest | |
-| B2.8 | DAGOrchestrator | Phase A(并行扫描) → B(并行审计) → C(定价) → D(CIO合成) | industry | final_summary + top_picks + portfolio_allocation + risks | |
-| B2.9 | 研报持久化 | JSON文件存储到 data/research_reports/ | - | save/list/get/delete | |
-| B2.10 | 数据新鲜度戳 | 每个API响应附带 ResearchAgent.freshness_stamp() | - | generated_at + data_sources 说明 | |
+| B2.8 | DAGOrchestrator | Phase A(并行扫描) → B(并行审计) → C(定价) → D(CIO合成) | industry | final_summary + top_picks + portfolio_allocation + risks | ⚠️ 遗留, 未接入新 pipeline |
+| B2.9 | 研报持久化 | JSON文件存储到 data/research_reports/ | - | save/list/get/delete | ✅ |
+| B2.10 | 数据新鲜度戳 | 每个API响应附带 ResearchAgent.freshness_stamp() | - | generated_at + data_sources 说明 | ✅ |
+| B2.11 | CoreScreeningAgent | Step 6: 标签→A股映射 + 财务/人力审计 + 护城河评分 + 排名 | industry + supply_chain_map (或 step2_output) | ranked_stocks[] + future_strong[] + thesis_breakers | ✅ |
+| B2.12 | SecondOrderExtrapolator | Path B: 从 Step 2 外推相邻产业预期差 | industry + step2_output | adjacent_industries[] + recommended_drilldown[] | ✅ |
+| B2.13 | SystemDynamicsAgent | Step 4: 供给/需求/政策三维动力学推演 | supply_chain_map | dynamics_report + scenarios[] | ✅ |
+| B2.14 | CrossIndustryLinkageAgent | Step 5: 跨产业关联 + 溢出效应分析 | supply_chain_map + dynamics | cross_industry_links[] + spillover_map | ✅ |
+
+### B3. Pipeline 路径分叉 V5.10
+
+| # | 功能 | 说明 | 状态 |
+|---|------|------|------|
+| B3.1 | Step 2 后三选一 | 用户查看 Step 2 结论后手动选择: [A]直挖 [B]二阶 [C]深挖 | ✅ |
+| B3.2 | Path A: 直接资产挖掘 | POST /direct-asset-mine → CoreScreeningAgent(step2_only=True) | ✅ |
+| B3.3 | Path A: 从 transmission_order 挖标的 | 复用 CoreScreeningAgent 的 prescreen/audit/moat/ranking 全流程 | ✅ |
+| B3.4 | Path A: 结果面板 | ranked_stocks 表格 + future_strong 候选 + thesis_breakers | ✅ |
+| B3.5 | Path B: 二阶推演 | POST /second-order-extrapolate → SecondOrderExtrapolator | ✅ |
+| B3.6 | Path B: 四轮搜索 | 相邻产业 / 隐藏受益者 / 溢出效应 / 资源挤占 | ✅ |
+| B3.7 | Path B: 结果面板 | 相邻产业卡片: 预期差分析 / 时间窗口 / A股方向 / 搜索证据 | ✅ |
+| B3.8 | Path C: 产业链深挖 | 原有 POST /scan/industry-drilldown → Step 3→4→5→6 | ✅ |
+| B3.9 | Checkpoint 保存 | 直挖结果存 step2a_direct_asset, 二阶结果存 step2b_second_order | ✅ |
+| B3.10 | 观察提取 | 直挖/二阶结果自动提取 observations 入库 | ✅ |
+
+### B4. 投研观察框架 V5.10
+
+| # | 功能 | 说明 | 状态 |
+|---|------|------|------|
+| B4.1 | Observation 数据模型 | stock_code / source_step / title / direction / category / window 等字段 | ✅ |
+| B4.2 | 提取器注册 | STEP_EXTRACTORS 字典: key=step_name, value=extract 函数 | ✅ |
+| B4.3 | 内置提取器 | step1b→macro_cycle, step2→gatekeeper, step2a→direct_asset, step2b→second_order | ✅ |
+| B4.4 | 观察列表 API | GET /observations/stocks/{code} — 单股观察计数 | ✅ |
+| B4.5 | 观察列表 API | GET /observations/steps/{step} — 按步骤筛选 | ✅ |
+| B4.6 | 前端 badge | research.html/positions.html 显示观察计数徽章 | ✅ |
 
 ---
 
@@ -206,7 +240,7 @@
 |---|------|------|------|------|
 | F1 | 数据库 | MySQL异步 | aiomysql + SQLAlchemy 2.0 async | |
 | F2 | 数据库 | 自动建表 | 启动时 Base.metadata.create_all | |
-| F3 | 数据库 | 10张表 | Position/MarketData/StockIndicator/TaskDefinition/TaskExecution/TradeHistory/ExchangeRate/StockInfo/StrategySignal/SystemSetting | |
+| F3 | 数据库 | 11张表 | Position/MarketData/StockIndicator/TaskDefinition/TaskExecution/TradeHistory/ExchangeRate/StockInfo/StrategySignal/SystemSetting/Observation | |
 | F4 | 日志 | loguru | 结构化日志, 按日期滚动到 logs/ | |
 | F5 | 配置 | pydantic-settings | 从 .env 读取, settings.XXX 全局访问 | |
 | F6 | AI | DeepSeek(主) | api.deepseek.com/anthropic/messages (Anthropic兼容) | |
@@ -303,4 +337,4 @@
 
 ---
 
-> **统计**: 模块A-G 共 170 项功能点 | 后端API: 71个 | 数据库表: 10张 | 后台任务: 3个 | AI Agent: 8个(V4.0:6 + V3.0:2) | 量化算子: 16个 | 量化策略: 8个
+> **统计**: 模块A-H 共 210 项功能点 | 后端API: 78个 | 数据库表: 11张 | 后台任务: 3个 | AI Agent: 12个 | 量化算子: 16个 | 量化策略: 8个
