@@ -439,8 +439,8 @@ async def compute_financial_indicators(req: FinancialComputeRequest = FinancialC
                             if ri.get("roiic_pct") is not None and adj_profit_ratio > 1.01:
                                 record["roiic_adjusted"] = (ri.get("roiic") or 0) * adj_profit_ratio
                                 record["roiic_pct_adjusted"] = round((ri.get("roiic_pct") or 0) * adj_profit_ratio, 1)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.warning(f"[FinCompute] {code}: adjust_rd_capitalization failed: {e}")
 
                 # 遍历所有注册的财务指标并计算 (传完整窗口, 各指标内部自行取所需长度)
                 full_window = recent_first[i:]
@@ -449,8 +449,8 @@ async def compute_financial_indicators(req: FinancialComputeRequest = FinancialC
                         result = cls.compute(full_window)
                         for k, v in result.items():
                             record[k] = v
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.warning(f"[FinCompute] {code}: {cls.__name__}.compute failed: {e}")
 
                 record["source"] = data_source
                 stored = store_financial_indicator(code, rpt_date, record)

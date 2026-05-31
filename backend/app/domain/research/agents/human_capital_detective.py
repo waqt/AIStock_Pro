@@ -129,8 +129,7 @@ class HumanCapitalDetective(ResearchAgent):
 搜索结果有限的字段填 null, 不要编造。"""
 
         try:
-            text = await asyncio.wait_for(
-                self.provider.chat_pro(prompt, max_tokens=3072), timeout=60)
+            text = await self.provider.chat_pro(prompt, max_tokens=3072, timeout=240)
             result = self.parse_json(text)
             if isinstance(result, dict):
                 logger.info(

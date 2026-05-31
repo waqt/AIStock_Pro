@@ -1,0 +1,12 @@
+{
+  "step": "step4_system_dynamics",
+  "run_id": "20260527_资本流向_v3",
+  "input_hash": "continue",
+  "saved_at": "2026-05-27T14:13:30.146304",
+  "elapsed_seconds": 0,
+  "input_summary": "",
+  "output": {
+    "raw_text": "",
+    "parse_error": true
+  }
+}

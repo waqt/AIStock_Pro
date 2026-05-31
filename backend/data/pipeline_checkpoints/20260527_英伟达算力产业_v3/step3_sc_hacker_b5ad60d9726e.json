@@ -1,0 +1,46 @@
+{
+  "step": "step3_sc_hacker",
+  "run_id": "20260527_英伟达算力产业_v3",
+  "input_hash": "b5ad60d9726e",
+  "saved_at": "2026-05-27T11:32:18.733415",
+  "elapsed_seconds": 0,
+  "input_summary": "",
+  "output": {
+    "raw_text": "{\"core_stocks\":[{\"code\":\"688041\",\"name\":\"海光信息\",\"segment\":\"算力芯片\"},{\"code\":\"688256\",\"name\":\"寒武纪\",\"segment\":\"算力芯片\"},{\"code\":\"002916\",\"name\":\"深南电路\",\"segment\":\"封装基板\"},{\"code\":\"002436\",\"name\":\"兴森科技\",\"segment\":\"封装基板\"},{\"code\":\"688981\",\"name\":\"中芯国际\",\"segment\":\"先进制程晶圆代工\"},{\"code\":\"601138\",\"name\":\"工业富联\",\"segment\":\"AI服务器\"},{\"code\":\"300308\",\"name\":\"中际旭创\",\"]}}",
+    "parse_error": true,
+    "findings_count": 5,
+    "core_stocks": [
+      {
+        "code": "688041",
+        "name": "海光信息"
+      },
+      {
+        "code": "300474",
+        "name": "景嘉微"
+      },
+      {
+        "code": "603019",
+        "name": "中科曙光"
+      },
+      {
+        "code": "000977",
+        "name": "浪潮信息"
+      },
+      {
+        "code": "002916",
+        "name": "深南电路"
+      },
+      {
+        "code": "002436",
+        "name": "兴森科技"
+      },
+      {
+        "code": "300308",
+        "name": "中际旭创"
+      }
+    ],
+    "agent": "SupplyChainHacker",
+    "industry": "英伟达算力产业",
+    "search_rounds": 2
+  }
+}

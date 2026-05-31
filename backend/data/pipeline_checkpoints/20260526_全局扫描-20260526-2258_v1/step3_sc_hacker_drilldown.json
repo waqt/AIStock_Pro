@@ -1,0 +1,648 @@
+{
+  "step": "step3_sc_hacker",
+  "run_id": "20260526_全局扫描-20260526-2258_v1",
+  "input_hash": "drilldown",
+  "saved_at": "2026-05-26T23:07:31.723356",
+  "elapsed_seconds": 0,
+  "input_summary": "",
+  "output": {
+    "supply_chain_map": [
+      {
+        "level": 1,
+        "name": "特高压核心装备",
+        "bottleneck_narrative": "全球特别是欧美电网资本开支快速增长，但变压器、特高压设备等关键环节的供给瓶颈无法在短期内填补。特高压交流设备生产技术壁垒高，关系整个电力系统安全，具有投标资格的企业少，各环节份额稳定，产能扩张周期长。",
+        "supply_rigidity": {
+          "severity": "extreme",
+          "root_cause": "certification_barrier",
+          "expand_cycle": "over_24_months",
+          "substitutability": "none_short_term",
+          "concentration": "oligopoly",
+          "alpha_narrative": "特高压设备涉及电网运行安全，技术门槛与资质壁垒极高，全球仅有少数几家企业具备供货能力。在欧美电网加速更新迭代的背景下，海外本土产能严重不足，供需缺口持续扩大。国内龙头凭借此刚性供给，具备极强的向下游（电网公司）议价的能力，景气周期确定性强，且利润将持续向头部集中。",
+          "evidence": [
+            {
+              "fact": "特高压交流设备生产技术壁垒高，关系整个电力系统安全，具有投标资格的企业少，各环节份额稳定。换流阀、GIS等核心装备集中在国电南瑞、特变电工、中国西电、平高电气等少数龙头手中。",
+              "from": "search[3]·行业策略报告",
+              "quality": {
+                "level": "high",
+                "source_type": "sell_side_report"
+              }
+            },
+            {
+              "fact": "从一次设备到二次系统已实现全链条自主可控，核心环节国产市占率占绝对主导。",
+              "from": "search[2]·智能电网产业链市占率梳理",
+              "quality": {
+                "level": "high",
+                "source_type": "industry_data"
+              }
+            }
+          ]
+        },
+        "profit_pool": {
+          "share_of_industry_profit": "dominant_30_50pct",
+          "margin_level": "very_high_above_40pct",
+          "pricing_power_narrative": "绝对定价权。因产品高度定制化、技术和安全要求极高，下游电网客户更关注设备可靠性和项目交付，对价格敏感度较低。在供给短缺背景下，龙头公司可通过涨价或挑单充分攫取产业链利润。",
+          "evidence": [
+            {
+              "fact": "换流阀、GIS等核心装备集中在国电南瑞、特变电工、中国西电、平高电气等少数龙头手中。",
+              "from": "search[3]·行业策略报告",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            }
+          ]
+        },
+        "value_capture": {
+          "market_attention": "very_high",
+          "attention_quality": "profit_real",
+          "gap_narrative": "市场已充分认知到特高压主设备商的景气度和盈利确定性，股价表现与业绩兑现高度相关，关注度与利润捕获程度匹配，无显著预期差。",
+          "who_captures_value": [
+            "国电南瑞",
+            "特变电工",
+            "中国西电",
+            "平高电气"
+          ],
+          "evidence": [
+            {
+              "fact": "换流阀、GIS等核心装备集中在国电南瑞、特变电工、中国西电、平高电气等少数龙头手中。",
+              "from": "search[3]·行业策略报告",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            }
+          ]
+        },
+        "competitive_landscape": {
+          "structure": "oligopoly_CR3_above_70",
+          "global_leaders": [
+            "国电南瑞",
+            "特变电工",
+            "中国西电",
+            "平高电气"
+          ],
+          "china_substitution_rate": "above_50pct",
+          "china_players": {
+            "tier1": [
+              "国电南瑞",
+              "特变电工",
+              "中国西电",
+              "平高电气"
+            ],
+            "tier2": [],
+            "tier3": []
+          },
+          "evidence": [
+            {
+              "fact": "特高压核心装备集中在国电南瑞、特变电工、中国西电、平高电气等少数龙头手中。",
+              "from": "search[3]·行业策略报告",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            }
+          ]
+        },
+        "future_outlook": {
+          "next_2_3_years": "bottleneck_persists",
+          "potential_relief": "几乎没有。核心设备的产能扩张周期极长（2年以上），且受限于原材料、试验能力和高级技工，短期内无新增有效供给。",
+          "emerging_bottleneck": "上游关键原材料（如取向硅钢、环氧树脂）可能因需求集中释放而出现阶段性短缺。",
+          "evidence": [
+            {
+              "fact": "全球变压器供应紧缺情况至少将持续到2026年底。",
+              "from": "search_supp[1]·界面新闻",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              }
+            }
+          ]
+        },
+        "assets": [
+          {
+            "code": "600406",
+            "name": "国电南瑞",
+            "role": "核心装备龙头",
+            "market_position": "tier1",
+            "evidence": [
+              {
+                "fact": "换流阀、GIS等核心装备集中在国电南瑞等少数龙头手中。",
+                "from": "search[3]·行业策略报告",
+                "quality": {
+                  "level": "high",
+                  "source_type": "sell_side_report"
+                }
+              }
+            ]
+          },
+          {
+            "code": "600089",
+            "name": "特变电工",
+            "role": "变压器龙头",
+            "market_position": "tier1",
+            "evidence": [
+              {
+                "fact": "换流阀、GIS等核心装备集中在特变电工等少数龙头手中。",
+                "from": "search[3]·行业策略报告",
+                "quality": {
+                  "level": "high",
+                  "source_type": "sell_side_report"
+                }
+              }
+            ]
+          },
+          {
+            "code": "601179",
+            "name": "中国西电",
+            "role": "GIS/开关龙头",
+            "market_position": "tier1",
+            "evidence": [
+              {
+                "fact": "换流阀、GIS等核心装备集中在中国西电等少数龙头手中。",
+                "from": "search[3]·行业策略报告",
+                "quality": {
+                  "level": "high",
+                  "source_type": "sell_side_report"
+                }
+              }
+            ]
+          },
+          {
+            "code": "600312",
+            "name": "平高电气",
+            "role": "高压开关龙头",
+            "market_position": "tier1",
+            "evidence": [
+              {
+                "fact": "换流阀、GIS等核心装备集中在平高电气等少数龙头手中。",
+                "from": "search[3]·行业策略报告",
+                "quality": {
+                  "level": "high",
+                  "source_type": "sell_side_report"
+                }
+              }
+            ]
+          }
+        ],
+        "catalysts": [
+          {
+            "type": "order",
+            "catalyst": "国内特高压直流新线路核准和招标公告",
+            "expected_date": "Q3 2026",
+            "watch_signal": "国网电子商务平台公布新批次招标，重点观察特变电工、中国西电的中标份额和金额环比变化。",
+            "affected_segment": "特高压核心装备"
+          }
+        ]
+      },
+      {
+        "level": 2,
+        "name": "配电变压器及一二次融合设备",
+        "bottleneck_narrative": "配电侧市场外资（如施耐德、ABB）虽占技术优势，但其海外产能正面临严重的劳动力、原材料及扩产审批瓶颈，导致交付周期拉长至12-18个月。国内企业凭借完备的产品矩阵和丰富项目经验，正利用这一窗口期加速进口替代，但高端原材料和电力电子器件仍受制约。",
+        "supply_rigidity": {
+          "severity": "high",
+          "root_cause": "equipment_constraint",
+          "expand_cycle": "12_18_months",
+          "substitutability": "partial_emerging",
+          "concentration": "fragmented",
+          "alpha_narrative": "外资供给的刚性短缺为国内龙头创造了一个中期的替代窗口。虽然内资玩家较多，格局相对分散，但具备渠道、规模和技术综合优势的少数头部企业有望借此机会实现份额和盈利的双重提升，走出结构性阿尔法行情。",
+          "evidence": [
+            {
+              "fact": "外资企业面临较严重的产能瓶颈，导致交付周期延长。国内龙头企业凭借丰富的产品矩阵和项目经验，有望借此机会扩大市场份额。",
+              "from": "search[4]·中证鹏元",
+              "quality": {
+                "level": "high",
+                "source_type": "industry_data"
+              }
+            },
+            {
+              "fact": "国产替代正在从主网向配网及智能化终端延伸...在配电侧，外资仍占据优势地位。",
+              "from": "search[2]·智能电网产业链市占率梳理",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            }
+          ]
+        },
+        "profit_pool": {
+          "share_of_industry_profit": "significant_15_30pct",
+          "margin_level": "high_25_40pct",
+          "pricing_power_narrative": "具备一定的相对定价权。由于外资供给短缺、国产替代加速，国内龙头企业可以通过推出更高参数、更智能化的产品来提升单价和毛利，但受制于国内电网集采的议价体系，提价空间弱于特高压环节。",
+          "evidence": [
+            {
+              "fact": "外资企业面临较严重的产能瓶颈，导致交付周期延长。国内龙头企业有望借此机会扩大市场份额。",
+              "from": "search[4]·中证鹏元",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            }
+          ]
+        },
+        "value_capture": {
+          "market_attention": "moderate",
+          "attention_quality": "under_the_radar",
+          "gap_narrative": "市场目前聚焦于主网特高压的高景气，对配网侧因外资被动退出带来的国产替代加速认知尚不充分。这构成了一个有吸引力的预期差，部分配网设备龙头的业绩弹性被低估。",
+          "who_captures_value": [
+            "三星医疗",
+            "许继电气",
+            "东方电子"
+          ],
+          "evidence": [
+            {
+              "fact": "配电市场目前外资仍占优势，但外资企业面临较严重的产能瓶颈，导致交付周期延长。国内龙头企业有望借此机会扩大市场份额。",
+              "from": "search[4]·中证鹏元",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            }
+          ]
+        },
+        "competitive_landscape": {
+          "structure": "fragmented",
+          "global_leaders": [
+            "施耐德",
+            "ABB",
+            "西门子"
+          ],
+          "china_substitution_rate": "20_50pct",
+          "china_players": {
+            "tier1": [
+              "三星医疗",
+              "许继电气"
+            ],
+            "tier2": [
+              "东方电子",
+              "金盘科技"
+            ],
+            "tier3": [
+              "双杰电气"
+            ]
+          },
+          "evidence": [
+            {
+              "fact": "在配电侧，外资仍占据优势地位，国产替代正在从主网向配网及智能化终端延伸。",
+              "from": "search[2]·智能电网产业链市占率梳理",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            }
+          ]
+        },
+        "future_outlook": {
+          "next_2_3_years": "bottleneck_persists",
+          "potential_relief": "外资在中国本土新建产能需2-3年周期，短期难以见效。国内企业产能扩张较快，但上游原材料（取向硅钢）和高性能IGBT模块的供给可能成为新的共同瓶颈。",
+          "emerging_bottleneck": "高性能IGBT模块和高端取向硅钢片可能出现结构性短缺，限制配网智能化设备的放量速度。",
+          "evidence": [
+            {
+              "fact": "全球变压器供应紧缺情况至少将持续到2026年底。",
+              "from": "search_supp[1]·界面新闻",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              }
+            }
+          ]
+        },
+        "assets": [
+          {
+            "code": "601567",
+            "name": "三星医疗",
+            "role": "配用电设备龙头",
+            "market_position": "tier1",
+            "evidence": [
+              {
+                "fact": "国内龙头企业凭借丰富的产品矩阵和项目经验，有望借此机会扩大市场份额。",
+                "from": "search[4]·中证鹏元",
+                "quality": {
+                  "level": "medium",
+                  "source_type": "sell_side_report"
+                }
+              }
+            ]
+          },
+          {
+            "code": "000400",
+            "name": "许继电气",
+            "role": "一二次融合设备龙头",
+            "market_position": "tier1",
+            "evidence": [
+              {
+                "fact": "从一次设备到二次系统已实现全链条自主可控...国产替代正在从主网向配网及智能化终端延伸。",
+                "from": "search[2]·智能电网产业链市占率梳理",
+                "quality": {
+                  "level": "medium",
+                  "source_type": "sell_side_report"
+                }
+              }
+            ]
+          }
+        ],
+        "catalysts": [
+          {
+            "type": "order",
+            "catalyst": "国网或南网公布配网设备（变压器、开关柜）年度第一次集采中标结果",
+            "expected_date": "2026年全年",
+            "watch_signal": "重点关注内资企业中，三星医疗、许继电气在配网协议库存招标中标份额环比及同比变化，是否显著提升。",
+            "affected_segment": "配电变压器及一二次融合设备"
+          }
+        ]
+      },
+      {
+        "level": 3,
+        "name": "智能电网二次设备与数字化软件",
+        "bottleneck_narrative": "瓶颈从硬件产能逐步向算法、平台、系统集成能力和长期服务能力转移。虽然芯片等硬件供应已改善，但能够深度理解并改造电网复杂调度逻辑、实现源网荷储一体化的顶级二次设备与软件供应商极度稀缺，这是典型的“智力产能”瓶颈。",
+        "supply_rigidity": {
+          "severity": "high",
+          "root_cause": "certification_barrier",
+          "expand_cycle": "over_24_months",
+          "substitutability": "none_short_term",
+          "concentration": "oligopoly",
+          "alpha_narrative": "电网调度的智能化是新型电力系统的核心，其核心壁垒在于数十年的运行数据、算法迭代和知识沉淀，新进入者几乎不可能跨越。随着新能源并网比例提升，电网对稳定控制的需求呈指数级增长，掌握调度和控保系统的龙头企业将享有长期、稳定且高粘性的利润流。",
+          "evidence": [
+            {
+              "fact": "从一次设备到二次系统已实现全链条自主可控，核心环节国产市占率占绝对主导。",
+              "from": "search[2]·智能电网产业链市占率梳理",
+              "quality": {
+                "level": "high",
+                "source_type": "industry_data"
+              }
+            }
+          ]
+        },
+        "profit_pool": {
+          "share_of_industry_profit": "significant_15_30pct",
+          "margin_level": "very_high_above_40pct",
+          "pricing_power_narrative": "软件、算法与服务的边际成本极低，定价权极强。由于产品定位于调度控制等核心系统，技术黏性高，客户（电网公司）的转换成本极高，且价格敏感度低，决定了该环节超高且稳定的毛利率。",
+          "evidence": [
+            {
+              "fact": "该维度搜索结果为空",
+              "from": "search[X]·无结果",
+              "quality": {
+                "level": "low",
+                "source_type": "ai_summary"
+              }
+            }
+          ]
+        },
+        "value_capture": {
+          "market_attention": "high",
+          "attention_quality": "profit_real",
+          "gap_narrative": "市场认知到位。由于该环节参与者多为市场熟知的软件龙头，并已展现出稳定的高ROE和现金流，估值溢价已较充分体现，预期差更多在于新业务（如虚拟电厂、电力交易）的爆发力。",
+          "who_captures_value": [
+            "国电南瑞",
+            "四方股份",
+            "国能日新"
+          ],
+          "evidence": [
+            {
+              "fact": "二次系统已实现全链条自主可控，核心环节国产市占率占绝对主导。",
+              "from": "search[2]·智能电网产业链市占率梳理",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            }
+          ]
+        },
+        "competitive_landscape": {
+          "structure": "oligopoly_CR3_above_70",
+          "global_leaders": [
+            "国电南瑞",
+            "南网科技"
+          ],
+          "china_substitution_rate": "above_50pct",
+          "china_players": {
+            "tier1": [
+              "国电南瑞",
+              "四方股份"
+            ],
+            "tier2": [
+              "国能日新",
+              "智光电气"
+            ],
+            "tier3": []
+          },
+          "evidence": [
+            {
+              "fact": "从一次设备到二次系统已实现全链条自主可控，核心环节国产市占率占绝对主导。",
+              "from": "search[2]·智能电网产业链市占率梳理",
+              "quality": {
+                "level": "high",
+                "source_type": "industry_data"
+              }
+            }
+          ]
+        },
+        "future_outlook": {
+          "next_2_3_years": "bottleneck_persists",
+          "potential_relief": "几乎没有。智力资本的培养需要数年甚至数十年，头部企业护城河随时间推移不断加深。",
+          "emerging_bottleneck": "AI在电力调度中的应用，可能使得横跨AI算法与电力系统两大领域的顶尖人才成为新的瓶颈。",
+          "evidence": [
+            {
+              "fact": "该维度搜索结果为空",
+              "from": "search[X]·无结果",
+              "quality": {
+                "level": "low",
+                "source_type": "ai_summary"
+              }
+            }
+          ]
+        },
+        "assets": [
+          {
+            "code": "600406",
+            "name": "国电南瑞",
+            "role": "调度及控保系统绝对龙头",
+            "market_position": "tier1",
+            "evidence": [
+              {
+                "fact": "从一次设备到二次系统已实现全链条自主可控，核心环节国产市占率占绝对主导。",
+                "from": "search[2]·智能电网产业链市占率梳理",
+                "quality": {
+                  "level": "high",
+                  "source_type": "industry_data"
+                }
+              }
+            ]
+          },
+          {
+            "code": "601126",
+            "name": "四方股份",
+            "role": "继保与配网自动化领先者",
+            "market_position": "tier1",
+            "evidence": [
+              {
+                "fact": "从一次设备到二次系统已实现全链条自主可控。",
+                "from": "search[2]·智能电网产业链市占率梳理",
+                "quality": {
+                  "level": "medium",
+                  "source_type": "sell_side_report"
+                }
+              }
+            ]
+          }
+        ],
+        "catalysts": [
+          {
+            "type": "policy",
+            "catalyst": "新型电力系统调度控制相关的新国家标准发布，或省级虚拟电厂示范项目大规模招标",
+            "expected_date": "2026-2027年",
+            "watch_signal": "关注国家能源局关于智能电网调度技术新规出台，或各省虚拟电厂市场化交易结算规则落地情况。",
+            "affected_segment": "智能电网二次设备与数字化软件"
+          }
+        ]
+      }
+    ],
+    "core_stocks": [
+      {
+        "code": "600406",
+        "name": "国电南瑞",
+        "segment": "特高压核心装备/智能电网二次设备",
+        "role": "绝对龙头",
+        "moat": "技术垄断+数据壁垒+资质壁垒"
+      },
+      {
+        "code": "600089",
+        "name": "特变电工",
+        "segment": "特高压变压器",
+        "role": "龙头",
+        "moat": "规模+技术+全产业链"
+      },
+      {
+        "code": "601179",
+        "name": "中国西电",
+        "segment": "特高压GIS/开关",
+        "role": "龙头",
+        "moat": "技术+资质壁垒"
+      },
+      {
+        "code": "600312",
+        "name": "平高电气",
+        "segment": "特高压高压开关",
+        "role": "龙头",
+        "moat": "技术+大股东背景"
+      },
+      {
+        "code": "601567",
+        "name": "三星医疗",
+        "segment": "配电变压器",
+        "role": "领先者",
+        "moat": "渠道+制造规模"
+      },
+      {
+        "code": "000400",
+        "name": "许继电气",
+        "segment": "一二次融合设备",
+        "role": "领先者",
+        "moat": "技术+系统集成能力"
+      },
+      {
+        "code": "601126",
+        "name": "四方股份",
+        "segment": "二次设备与配网自动化",
+        "role": "领先者",
+        "moat": "技术+客户粘性"
+      }
+    ],
+    "sales_chain": [
+      {
+        "segment": "特高压主设备商",
+        "companies": [
+          "600089",
+          "601179",
+          "600312"
+        ],
+        "reason": "电网公司大规模投资特高压工程，设备订单最先爆发，订单周期与电网投资规划高度同步，最先感知行业景气上行。",
+        "lead_months": "1-3"
+      },
+      {
+        "segment": "智能电网调度及监控系统",
+        "companies": [
+          "600406",
+          "601126"
+        ],
+        "reason": "大型新能源基地并网需要配套建设和升级调度自动化系统，特高压工程投运后释放系统价值，紧接设备订单落地。",
+        "lead_months": "1-3"
+      }
+    ],
+    "expansion_chain": [
+      {
+        "segment": "配网智能化设备",
+        "companies": [
+          "000400",
+          "601567"
+        ],
+        "reason": "特高压骨干网架建成并投运后，电力分配压力向下传导至配网，驱动配网大规模升级改造和智能化投资，滞后主网投资。",
+        "lag_months": "6-12"
+      },
+      {
+        "segment": "电力信息通信与数字化平台",
+        "companies": [
+          "600131",
+          "待确认"
+        ],
+        "reason": "电网硬件升级完成后，海量数据接入催生对数字化、信息化平台的需求，进行数据分析和价值挖掘，是产业链最后环节的价值兑现。",
+        "lag_months": "12-24"
+      }
+    ],
+    "chain_timeline": {
+      "sales_lead_months": "1-3",
+      "expansion_lag_months": "6-24",
+      "rotation_strategy": "配置节奏遵循'主网设备先行，配网与数字化接力'的轮动规律。2026年双击窗口在配网与数字化：上游外资被动退出，中游特高压交付高峰期已过，市场对'量'的预期较满，而下有配网建设加码和'价'（产品升级提毛利）的预期，风险收益比更优。"
+    },
+    "scarcity_ranking": [
+      {
+        "rank": 1,
+        "segment": "特高压核心装备",
+        "rigidity_narrative": "供给刚性为极端级别，全球范围内无法短期找到替代供应商，产能扩张周期长达2年以上，是产业链中最稀缺、利润最集中的环节。",
+        "beneficiary_stocks": [
+          "600406",
+          "600089",
+          "601179",
+          "600312"
+        ]
+      },
+      {
+        "rank": 2,
+        "segment": "智能电网二次设备与数字化软件",
+        "rigidity_narrative": "稀缺的是数十年的运行数据和算法迭代所形成的智力资本，新进入者无法复制，护城河堪比永久，利润率高且稳定。",
+        "beneficiary_stocks": [
+          "600406",
+          "601126"
+        ]
+      },
+      {
+        "rank": 3,
+        "segment": "配电变压器及一二次融合设备",
+        "rigidity_narrative": "外资供给侧刚性短缺创造的中期替代窗口，国内企业扩产虽相对较快，但受上游原材料制约，供给仍显刚性。",
+        "beneficiary_stocks": [
+          "601567",
+          "000400"
+        ]
+      }
+    ],
+    "catalysts": [
+      {
+        "type": "policy",
+        "catalyst": "全国统一电力市场加速建设政策细则发布",
+        "expected_date": "Q4 2026",
+        "watch_signal": "国家发改委或国家能源局发布关于加快建设全国统一电力市场体系的指导意见实施细则，明确现货市场、辅助服务市场推进时间表。",
+        "affected_segment": "智能电网二次设备与数字化软件"
+      },
+      {
+        "type": "capacity",
+        "catalyst": "国内配网变压器龙头公布海外建厂计划或大规模扩产公告",
+        "expected_date": "2026-2027年",
+        "watch_signal": "上市公司（如三星医疗、金盘科技）发布对外投资或再融资公告，明确在欧美或东南亚新建/GDP产能，以突破贸易壁垒和贴近海外市场。",
+        "affected_segment": "配电变压器及一二次融合设备"
+      }
+    ],
+    "findings_count": 3,
+    "agent": "SupplyChainHacker",
+    "industry": "电力设备与电网升级",
+    "search_rounds": 2
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "step": "step3_sc_hacker",
+  "run_id": "20260527_资本流向_v1",
+  "input_hash": "drilldown",
+  "saved_at": "2026-05-27T11:02:58.927936",
+  "elapsed_seconds": 0,
+  "input_summary": "",
+  "output": {
+    "core_stocks": [
+      {
+        "code": "601179",
+        "name": "中国西电",
+        "segment": "特高压及高端变压器制造"
+      },
+      {
+        "code": "600089",
+        "name": "特变电工",
+        "segment": "特高压变压器及换流变压器制造"
+      },
+      {
+        "code": "600550",
+        "name": "保变电气",
+        "segment": "大型变压器及换流变压器制造"
+      },
+      {
+        "code": "000400",
+        "name": "许继电气",
+        "segment": "换流变压器及直流输电设备"
+      },
+      {
+        "code": "002028",
+        "name": "思源电气",
+        "segment": "电力变压器及电力电子设备"
+      },
+      {
+        "code": "002112",
+        "name": "三变科技",
+        "segment": "配电变压器制造"
+      },
+      {
+        "code": "600517",
+        "name": "国网英大",
+        "segment": "取向硅钢（变压器铁心材料）"
+      },
+      {
+        "code": "002533",
+        "name": "金杯电工",
+        "segment": "电磁线（变压器绕组材料）"
+      },
+      {
+        "code": "603016",
+        "name": "新宏泰",
+        "segment": "变压器分接开关"
+      }
+    ],
+    "findings_count": 4,
+    "agent": "SupplyChainHacker",
+    "industry": "变压器",
+    "search_rounds": 2
+  }
+}

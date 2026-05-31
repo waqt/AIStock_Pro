@@ -1,0 +1,341 @@
+{
+  "step": "step4_system_dynamics",
+  "run_id": "20260529_STT固态变压器_v1",
+  "input_hash": "continue",
+  "saved_at": "2026-05-29T08:51:10.125565",
+  "elapsed_seconds": 0,
+  "input_summary": "",
+  "output": {
+    "confidence": "high",
+    "confidence_note": "Step 3 数据质量较高，补充搜索覆盖了2026年产业拐点、产能释放与技术成熟度，具备推演基础。但 margin_estimated=true 的环节存在 LLM 估计偏差，需 Step 6 回写验证。",
+    "step3_sanity_check": {
+      "questioned": [
+        {
+          "claim": "L1 SiC 功率模块 severity=extreme 可能被高估",
+          "doubt": "补充搜索显示 2026 年是 8 英寸 SiC 晶圆产能全面释放的元年，单位安培成本断崖式下降（search[1]·掘金），衬底与外延的工艺成熟度和良率大幅提高，供给刚性可能在 12-18 个月内出现松动。当前 extreme 评级未充分考虑这一即将发生的技术节点切换，可能高估瓶颈持续期。"
+        },
+        {
+          "claim": "L2 高频变压器与磁芯材料 severity=moderate 可能被低估",
+          "doubt": "非晶/纳米晶磁芯产能集中于少数头部企业（如云路股份），扩产周期 2-3 年，且叠加工频/中频变压器超级缺口带来的全谱系磁材需求共振。一旦 SST 放量，磁芯环节的供给弹性甚至低于 SiC 模块，其 severity 可能在 12 个月内从 moderate 跳升至 extreme。"
+        }
+      ],
+      "adjustment": "将 L1 SiC 功率模块的瓶颈确定性从 high 下调为 medium，推演中该节点在 12-24 个月内趋于缓解；将 L2 高频磁芯的瓶颈等级前置，作为下一阶段瓶颈迁移的主要候选，置信度 medium-high。"
+    },
+    "system_dynamics": {
+      "bottleneck_migration": {
+        "current": "SiC 功率模块（含衬底/器件）",
+        "next_12m": "高频变压器用非晶/纳米晶磁芯材料及定制化绕制工艺",
+        "next_24m": "高压驱动芯片与智能控制 FPGA 的国产供给",
+        "next_36m": "SiC 模块再次紧张（若 6-8 英寸晶圆扩产节奏不及需求增长）或整机测试认证产能",
+        "migration_drivers": [
+          {
+            "from": "SiC 功率模块",
+            "to": "高频磁芯材料",
+            "trigger": "8 英寸 SiC 晶圆产能爬坡完成，模块交期恢复正常（<12 周），SST 月出货突破千台，非晶带材订单交期开始拉长",
+            "monitoring_metric": "非晶/纳米晶带材主流供应商的交货周期（周）；SiC MOSFET 模块公开市场交期（周）",
+            "trigger_threshold": "非晶带材交期连续两个季度 >20 周，或 SiC 模块交期降至 12 周以下且 SST 季度出货环比增速 >30%",
+            "evidence": [
+              {
+                "fact": "2026 年是 8 英寸（200mm）SiC 晶圆产能全面释放的元年，SiC MOSFET 模块的单位安培成本经历了断崖式的下降",
+                "from": "search[1]·掘金",
+                "quality": {
+                  "level": "high",
+                  "source_type": "industry_data"
+                },
+                "evidence_type": "hard_data_confirmation"
+              },
+              {
+                "fact": "2026 年固态变压器正式跨越技术验证鸿沟，进入规模化商用元年",
+                "from": "search[1]·知乎",
+                "quality": {
+                  "level": "medium",
+                  "source_type": "news_media"
+                },
+                "evidence_type": "forward_looking_rumor"
+              }
+            ]
+          },
+          {
+            "from": "高频磁芯材料",
+            "to": "控制芯片（FPGA/DSP）",
+            "trigger": "非晶磁芯产能扩张不足，SST 整机厂转向部分铁氧体方案但无法完全替代，同时 800V HVDC 架构对实时控制芯片提出更高要求，进口高端 FPGA 受政策限制加剧",
+            "monitoring_metric": "国产 FPGA（如安路科技）在 SST 领域的 Design-win 数量；英伟达/赛灵思工业级 FPGA 对华出口审核周期（天）",
+            "trigger_threshold": "国产 FPGA 获得 ≥3 家头部 SST 整机厂定点，或进口 FPGA 出口许可审核周期 >180 天",
+            "evidence": [
+              {
+                "fact": "高端控制芯片出口受限，国产芯片稀缺性凸显",
+                "from": "Step 3 瓶颈描述",
+                "quality": {
+                  "level": "medium",
+                  "source_type": "sell_side_report"
+                },
+                "evidence_type": "hard_data_confirmation"
+              },
+              {
+                "fact": "SST 产业链价值高度集中于上游（占总成本 75%），中游为技术整合核心",
+                "from": "search[3]·电力人工智能大会",
+                "quality": {
+                  "level": "medium",
+                  "source_type": "industry_data"
+                },
+                "evidence_type": "hard_data_confirmation"
+              }
+            ]
+          }
+        ],
+        "evidence": [
+          {
+            "fact": "固态变压器产业链呈高度垂直化结构，价值高度集中于上游（占总成本 75%）",
+            "from": "search[3]·电力人工智能大会",
+            "quality": {
+              "level": "medium",
+              "source_type": "industry_data"
+            },
+            "evidence_type": "hard_data_confirmation"
+          },
+          {
+            "fact": "2026 年 SST 进入规模化商用元年，SiC 器件成本下降 + 800V HVDC 标准统一 + AI 算力需求爆发三大因素共同推动产业链加速成熟",
+            "from": "search[3]·电力人工智能大会",
+            "quality": {
+              "level": "high",
+              "source_type": "industry_data"
+            },
+            "evidence_type": "forward_looking_rumor"
+          }
+        ]
+      },
+      "resource_crowding": [
+        {
+          "resource": "非晶/纳米晶磁芯带材的精密快淬产能",
+          "squeezed_from": "传统中低频配电变压器、电抗器、互感器制造商",
+          "squeezed_by": "SST 高频变压器制造商的爆发式需求",
+          "victim_sector": "电网公司传统变压器采购（交货周期延长，成本上升）；新能源汽车车载充电机磁元件（被挤占产能）",
+          "hidden_beneficiary": "拥有自主非晶带材产线且有能力延伸至高频纳米晶磁芯的企业（如云路股份），以及提供替代软磁材料（如高牌号超薄硅钢、高频铁氧体）的供应商",
+          "visibility": "low",
+          "time_to_impact": "medium_term",
+          "monitoring_metric": "非晶带材行业周度开工率（%）及龙头企业未交付订单量（吨）",
+          "trigger_threshold": "非晶带材行业开工率连续两月 >92%，且未交付订单量同比增幅 >40%",
+          "search_queries": [
+            "非晶带材 产能 供需缺口",
+            "高频磁芯 纳米晶 扩产周期",
+            "变压器超级缺口 非晶合金 交期延长"
+          ],
+          "evidence": [
+            {
+              "fact": "高频变压器及非晶磁芯：高端磁芯材料认证门槛高，定制化程度深，产能弹性低，受益于变压器整体超级缺口",
+              "from": "Step 3 稀缺排序",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              },
+              "evidence_type": "forward_looking_rumor"
+            },
+            {
+              "fact": "SST 高频变压器采用非晶/纳米晶材料，工作频率高，需要极薄带材和定制化绕制，全球优质供应商极其集中",
+              "from": "search[3]·电力人工智能大会",
+              "quality": {
+                "level": "medium",
+                "source_type": "industry_data"
+              },
+              "evidence_type": "hard_data_confirmation"
+            }
+          ]
+        },
+        {
+          "resource": "半导体前道制造设备（高温离子注入机、SiC 长晶炉）",
+          "squeezed_from": "硅基 IGBT、MOSFET 等成熟功率器件的产能扩张",
+          "squeezed_by": "SiC 功率模块的急剧扩张（8 英寸产线建设抢占核心设备，如高温离子注入与外延生长设备）",
+          "victim_sector": "新能源汽车硅基 IGBT 供应商（被迫推迟扩产或承受设备涨价）；工业变频器制造商",
+          "hidden_beneficiary": "半导体设备商中具备 SiC 专用设备交货能力的供应商，以及二手翻新设备贸易商",
+          "visibility": "moderate",
+          "time_to_impact": "long_term",
+          "monitoring_metric": "SiC 长晶炉与高温离子注入机的全球交期（月）",
+          "trigger_threshold": "主流设备商交期延长至 18 个月以上，且出现硅基设备订单被取消而转为 SiC 设备订单的现象",
+          "search_queries": [
+            "SiC 长晶炉 交期 2026",
+            "碳化硅设备 挤占 硅基IGBT 产能",
+            "高温离子注入机 主流供应商 backlog"
+          ],
+          "evidence": [
+            {
+              "fact": "SiC 功率模块 bottleneck 的根本原因是 equipment_constraint，即设备约束",
+              "from": "Step 3 瓶颈图谱",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              },
+              "evidence_type": "hard_data_confirmation"
+            },
+            {
+              "fact": "全球有效产能集中于少数厂商，供给极度刚性",
+              "from": "Step 3 稀缺排序",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              },
+              "evidence_type": "hard_data_confirmation"
+            }
+          ]
+        }
+      ],
+      "profit_pool_shift": [
+        {
+          "from_segment": "SiC 功率模块器件（当前超额利润池）",
+          "to_segment": "SST 整机系统集成商与高频磁芯材料供应商",
+          "trigger": "8 英寸 SiC 晶圆良率稳定突破 70%，模块 ASP 年降幅 >15%，同时 SST 招标中对智能化、长期运维服务的权重上升",
+          "timeline": "12-24 个月",
+          "confidence": "high",
+          "monitoring_metric": "SiC MOSFET 模块公开招标价格（$/A）；SST 中标价格中系统集成服务费占比（%）",
+          "trigger_threshold": "SiC 模块价格年均降幅 >15% 且连续两个季度 SST 中标价中非硬件服务费占比 >30%",
+          "evidence": [
+            {
+              "fact": "SST 产业链价值高度集中于上游（占总成本 75%），中游为技术整合核心，下游正迎来 AI 数据中心、智能电网双引擎驱动的爆发式增长",
+              "from": "search[3]·电力人工智能大会",
+              "quality": {
+                "level": "medium",
+                "source_type": "industry_data"
+              },
+              "evidence_type": "hard_data_confirmation"
+            },
+            {
+              "fact": "SiC 模块成本下降 + 800V HVDC 标准统一 + AI 算力需求爆发三大因素共同推动产业链加速成熟，整机环节盈利能力将大幅提升",
+              "from": "search[3]·电力人工智能大会",
+              "quality": {
+                "level": "medium",
+                "source_type": "industry_data"
+              },
+              "evidence_type": "forward_looking_rumor"
+            }
+          ]
+        },
+        {
+          "from_segment": "被动工频变压器与中低压开关柜（存量利润池）",
+          "to_segment": "基于 SST 的智能配电与能源管理云服务",
+          "trigger": "AI 数据中心要求 PUE <1.15 且实现毫秒级电网响应，传统工频变压器无法满足，楼宇/园区级智能微网项目落地数量突破 500 个",
+          "timeline": "24-36 个月",
+          "confidence": "medium",
+          "monitoring_metric": "全美/中国数据中心行业新项目中 SST 方案的渗透率（%）",
+          "trigger_threshold": "新增数据中心配电方案中 SST 渗透率 >20%，且智能微网示范项目超 500 个",
+          "evidence": [
+            {
+              "fact": "当 AI 大模型的算力需求呈指数级爆发，传统工频变压器已成为制约数据中心 PUE 优化与电网柔性升级的瓶颈",
+              "from": "search[1]·知乎",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              },
+              "evidence_type": "forward_looking_rumor"
+            },
+            {
+              "fact": "SST 作为供电架构的第四次演进方向，已进入产品验证与实际部署阶段",
+              "from": "search[5]·东方财富网",
+              "quality": {
+                "level": "low",
+                "source_type": "self_media"
+              },
+              "evidence_type": "forward_looking_rumor"
+            }
+          ]
+        }
+      ],
+      "hidden_beneficiaries": [
+        {
+          "sector": "SST 可靠性测试设备与热管理解决方案提供商",
+          "reason": "SST 高频化（数十 kHz）带来严峻的 IGBT/SiC 模块结温波动和电磁干扰问题，全生命周期可靠性验证成为刚性需求。市场过度关注功率模块与磁芯，忽视了为保证 SST 15-20 年寿命所需的功率循环测试台、热瞬态测试仪、液冷散热模组等“卖铲人”角色。",
+          "visibility": "very_low",
+          "time_to_impact": "medium_term",
+          "search_queries": [
+            "固态变压器 寿命测试 功率循环 测试设备",
+            "SST 散热 液冷 热管理 方案",
+            "SiC 高频 变压器 绝缘 测试 市场"
+          ],
+          "evidence": [
+            {
+              "fact": "固变 SST 在工业现场大规模部署，其全生命周期的可靠性问题开始凸显，变流器底层失效机理与部分损坏工况的物理表征研究迫切",
+              "from": "search[4]·电子工程世界",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              },
+              "evidence_type": "hard_data_confirmation"
+            },
+            {
+              "fact": "金元证券报告强调 SiC 在高功率密度场景下的热管理挑战需要全新解决方案",
+              "from": "search[4]·电子工程专辑",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              },
+              "evidence_type": "forward_looking_rumor"
+            }
+          ]
+        },
+        {
+          "sector": "面向 SST 的国产 FPGA 与实时控制芯片厂商",
+          "reason": "SST 需要高性能 FPGA/DSP 实现复杂的实时控制（如模型预测控制、多电平调制），进口芯片出口限制使国产替代成为刚需。市场认为 SST 增量在功率器件，但控制芯片的单位价值量占比可能在需求倒逼下提升，且一旦定点后替换壁垒极高。",
+          "visibility": "low",
+          "time_to_impact": "long_term",
+          "search_queries": [
+            "固态变压器 FPGA 控制 国产替代",
+            "智能电网 实时控制 芯片 出口管制",
+            "安路科技 FPGA 电力电子"
+          ],
+          "evidence": [
+            {
+              "fact": "控制芯片（FPGA/DSP）：国产替代迫切但技术代差明显，高端芯片出口受限，国产芯片稀缺性凸显",
+              "from": "Step 3 稀缺排序",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              },
+              "evidence_type": "hard_data_confirmation"
+            },
+            {
+              "fact": "SST 智能数字控制是三大核心技术之一，与 SiC 功率器件、高频磁集成并列",
+              "from": "search[1]·知乎",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              },
+              "evidence_type": "hard_data_confirmation"
+            }
+          ]
+        }
+      ],
+      "thesis_breakers": [
+        {
+          "thesis": "高频磁芯材料将接替 SiC 成为新瓶颈",
+          "break_condition": "非晶/纳米晶带材头部企业提前超预期扩产，或铁氧体/超薄硅钢等替代材料在高频段性能取得突破，成本与效率可完全替代非晶方案",
+          "watch_signal": "非晶带材龙头企业季度资本支出指引环比增幅 >50%，或主流 SST 厂商公开发布采用铁氧体变压器的 >99% 效率样机",
+          "evidence": [
+            {
+              "fact": "高端磁芯材料认证门槛高，定制化程度深，产能弹性低",
+              "from": "Step 3 稀缺排序",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              },
+              "evidence_type": "hard_data_confirmation"
+            }
+          ]
+        },
+        {
+          "thesis": "SST 产业链利润从上游器件向中游集成与云服务迁移",
+          "break_condition": "8 英寸 SiC 良率爬坡慢于预期，或 Wolfspeed/ST 等巨头形成更强价格联盟，导致模块价格降幅 <8%/年，整机厂无法实现规模利润",
+          "watch_signal": "SiC 公开市场模块季度报价环比变化，以及龙头晶圆厂 8 英寸良率进度（可从季报电话会纪要中提取）",
+          "evidence": [
+            {
+              "fact": "2026 年是 8 英寸（200mm）SiC 晶圆产能全面释放的元年，但实际良率与产能爬坡节奏仍存不确定性",
+              "from": "search[1]·掘金",
+              "quality": {
+                "level": "high",
+                "source_type": "industry_data"
+              },
+              "evidence_type": "hard_data_confirmation"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

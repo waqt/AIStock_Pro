@@ -1,0 +1,467 @@
+{
+  "step": "step3_sc_hacker",
+  "run_id": "20260529_STT固态变压器_v1",
+  "input_hash": "continue",
+  "saved_at": "2026-05-29T08:48:25.518782",
+  "elapsed_seconds": 0,
+  "input_summary": "",
+  "output": {
+    "confidence": "medium",
+    "confidence_note": "搜索覆盖了SST行业趋势、SiC核心器件与变压器整体供需缺口，但产业仍处早期，针对SST专用SiC模块的详细财务数据与份额为估计值。数据缺口：高频变压器磁芯材料供应商的具体市场份额和扩产周期细节不足，依赖券商研报片段推断。SiC国内替代率、SST设备商毛利率为LLM基于搜索片段推断，待财务验证。",
+    "supply_chain_map": [
+      {
+        "level": 1,
+        "name": "SiC功率模块（含衬底/器件）",
+        "bottleneck_narrative": "SiC模块是SST实现高频化、高效率的核心功率转换单元，其衬底产能受长晶炉设备交期与良率制约，扩产缓慢，构成全产业链产能瓶颈。",
+        "confidence": "high",
+        "supply_rigidity": {
+          "severity": "extreme",
+          "root_cause": "equipment_constraint",
+          "expand_cycle": "over_24m",
+          "substitutability": "none_short_term",
+          "concentration": "oligopoly",
+          "alpha_narrative": "SiC模块供给完全刚性，全球TOP4占据80%以上产能，SST及其他下游需求爆发将推动SiC持续涨价和卖方市场，利润高度集中，景气窗口至少持续至2028年。"
+        },
+        "profit_pool": {
+          "share_of_industry_profit": "dominant_30_50pct",
+          "margin_level": "very_high_above_40pct",
+          "margin_estimated": true,
+          "margin_data_source": "LLM估计，基于华经产业研究院报告中SiC器件成本占比高及券商研报提及的高毛利特征；待Step 6财务验证回写",
+          "pricing_power_narrative": "SiC模块定制化程度高、认证周期长，下游SST系统集成商缺乏替代方案，供应商拥有极强议价权，毛利率可维持40%以上。"
+        },
+        "value_capture": {
+          "market_attention": "very_high",
+          "attention_quality": "profit_real",
+          "gap_narrative": "市场高度聚焦SiC赛道，利润确实集中于该环节，无错配，但估值需警惕产能兑现节奏。",
+          "who_captures_value": [
+            "SiC衬底龙头",
+            "IDM功率器件厂",
+            "模块封装厂商"
+          ]
+        },
+        "competitive_landscape": {
+          "structure": "oligopoly_CR3_above_70",
+          "global_leaders": [
+            "Wolfspeed",
+            "英飞凌",
+            "意法半导体",
+            "罗姆"
+          ],
+          "china_substitution_rate": "5_20pct",
+          "china_players": {
+            "tier1": [
+              "天岳先进(688234)",
+              "天科合达(拟上市)"
+            ],
+            "tier2": [
+              "三安集成(600703子公司)",
+              "芯联集成(688469)"
+            ],
+            "tier3": [
+              "瀚天天成",
+              "东尼电子(603595)"
+            ]
+          }
+        },
+        "future_outlook": {
+          "next_2_3_years": "bottleneck_persists",
+          "potential_relief": "国产8英寸衬底量产突破及长晶效率提升，但最快2027年后见效",
+          "emerging_bottleneck": "SiC模块封装用银烧结、AMB基板等材料可能成为新瓶颈"
+        },
+        "assets": [
+          {
+            "code": "688234",
+            "name": "天岳先进",
+            "role": "SiC衬底生产",
+            "market_position": "tier1"
+          },
+          {
+            "code": "688469",
+            "name": "芯联集成",
+            "role": "SiC器件代工及模块",
+            "market_position": "tier2"
+          },
+          {
+            "code": "600703",
+            "name": "三安光电",
+            "role": "SiC全产业链",
+            "market_position": "tier2"
+          }
+        ],
+        "assets_note": "",
+        "evidence": [
+          {
+            "fact": "SST采用“交-直-交”或“交-直-直-交”变换需依赖SiC MOSFET等高频电力电子开关器件，SiC模块为刚需。",
+            "from": "search[1.4]·华经情报网",
+            "quality": {
+              "level": "medium",
+              "source_type": "industry_report"
+            }
+          },
+          {
+            "fact": "基于SiC模块的固态变压器可缓解AI数据中心、EV超充带来的全球变压器供应链危机，SiC供应是SST放量关键。",
+            "from": "search[1.1]·倾佳杨茜",
+            "quality": {
+              "level": "medium",
+              "source_type": "self_media"
+            }
+          },
+          {
+            "fact": "全球变压器交货周期已排至2028年，缺口超级，暗示对新型SST及核心器件需求急迫。",
+            "from": "search[1.3]·钛媒体",
+            "quality": {
+              "level": "medium",
+              "source_type": "media_report"
+            }
+          },
+          {
+            "fact": "国内SST行业核心器件国产化突破推动成本下降，但目前高性能SiC仍主要依赖进口。",
+            "from": "search[1.4]·华经情报网",
+            "quality": {
+              "level": "medium",
+              "source_type": "industry_report"
+            }
+          }
+        ]
+      },
+      {
+        "level": 2,
+        "name": "高频变压器与磁芯材料",
+        "bottleneck_narrative": "高频变压器是SST实现电压变换和隔离的关键部件，要求高饱和磁感、低损耗的非晶/纳米晶磁芯，高端产品产能有限，是次一级瓶颈。",
+        "confidence": "medium",
+        "supply_rigidity": {
+          "severity": "moderate",
+          "root_cause": "certification_barrier",
+          "expand_cycle": "12_24m",
+          "substitutability": "partial_high_cost",
+          "concentration": "oligopoly",
+          "alpha_narrative": "定制化高频变压器设计和验证周期长，头部供应商掌握配方和绕制工艺，供给扩张慢于需求，享有较高议价能力。"
+        },
+        "profit_pool": {
+          "share_of_industry_profit": "moderate_5_15pct",
+          "margin_level": "high_25_40pct",
+          "margin_estimated": true,
+          "margin_data_source": "LLM估计，基于变压器行业高端品类毛利率水平推断，待财务验证",
+          "pricing_power_narrative": "高端非晶磁芯及大功率高频变压器定制化程度高，客户切换成本大，供应商有一定定价权。"
+        },
+        "value_capture": {
+          "market_attention": "medium",
+          "attention_quality": "under_the_radar",
+          "gap_narrative": "市场对SiC关注过热，高频变压器环节关注度低但利润率稳健，存在预期差。",
+          "who_captures_value": [
+            "非晶/纳米晶带材厂",
+            "定制变压器厂商"
+          ]
+        },
+        "competitive_landscape": {
+          "structure": "fragmented",
+          "global_leaders": [
+            "日立金属",
+            "安泰科技",
+            "云路股份"
+          ],
+          "china_substitution_rate": "20_50pct",
+          "china_players": {
+            "tier1": [
+              "云路股份(688190)",
+              "安泰科技(000969)"
+            ],
+            "tier2": [
+              "铂科新材(300811)",
+              "东睦股份(600114)"
+            ],
+            "tier3": [
+              "扬电科技(002705)"
+            ]
+          }
+        },
+        "future_outlook": {
+          "next_2_3_years": "bottleneck_persists",
+          "potential_relief": "国产非晶带材产能爬坡，但SST用高频大功率变压器工艺仍集中，改善缓慢",
+          "emerging_bottleneck": "新能源与数据中心大量使用非晶变压器，可能造成带材供应紧张"
+        },
+        "assets": [
+          {
+            "code": "688190",
+            "name": "云路股份",
+            "role": "非晶带材龙头",
+            "market_position": "tier1"
+          },
+          {
+            "code": "000969",
+            "name": "安泰科技",
+            "role": "非晶纳米晶材料",
+            "market_position": "tier1"
+          },
+          {
+            "code": "300811",
+            "name": "铂科新材",
+            "role": "金属磁粉芯",
+            "market_position": "tier2"
+          }
+        ],
+        "assets_note": "",
+        "evidence": [
+          {
+            "fact": "固态变压器依赖高频变压器实现隔离与电压变换，对磁芯材料高频损耗要求极高。",
+            "from": "search[1.4]·华经情报网",
+            "quality": {
+              "level": "medium",
+              "source_type": "industry_report"
+            }
+          },
+          {
+            "fact": "全球变压器供需缺口显著，交货周期大幅拉长，传统变压器产能也紧张，高频变压器作为升级方案受益。",
+            "from": "search[1.2]·证券时报",
+            "quality": {
+              "level": "high",
+              "source_type": "media_report"
+            }
+          }
+        ]
+      },
+      {
+        "level": 3,
+        "name": "控制芯片与驱动电路",
+        "bottleneck_narrative": "SST需要高性能DSP/MCU/FPGA实现复杂控制算法和快速保护，高端芯片进口依赖度高，供应链受地缘政治影响，是潜在卡脖子环节。",
+        "confidence": "medium",
+        "supply_rigidity": {
+          "severity": "moderate",
+          "root_cause": "policy_restriction",
+          "expand_cycle": "12_24m",
+          "substitutability": "partial_emerging",
+          "concentration": "oligopoly",
+          "alpha_narrative": "高端控制芯片受美国出口管制，国内SST设备商备货需求强烈，国产替代芯片享有政策和订单红利。"
+        },
+        "profit_pool": {
+          "share_of_industry_profit": "moderate_5_15pct",
+          "margin_level": "high_25_40pct",
+          "margin_estimated": true,
+          "margin_data_source": "LLM估计，类比工控类芯片毛利率水平，待财务验证",
+          "pricing_power_narrative": "高端DSP/FPGA寡头垄断，定价强势；国产芯片通过替代认证后享受高溢价。"
+        },
+        "value_capture": {
+          "market_attention": "medium",
+          "attention_quality": "profit_diverted",
+          "gap_narrative": "国产替代叙事热度高，但真实利润仍被海外龙头获取，国内公司份额尚小，需跟踪技术突破。",
+          "who_captures_value": [
+            "TI",
+            "AMD(Xilinx)",
+            "国产FPGA厂商",
+            "MCU厂商"
+          ]
+        },
+        "competitive_landscape": {
+          "structure": "oligopoly_CR3_above_70",
+          "global_leaders": [
+            "TI",
+            "AMD",
+            "Microchip"
+          ],
+          "china_substitution_rate": "below_5pct",
+          "china_players": {
+            "tier1": [
+              "安路科技(688107)",
+              "复旦微电(688385)"
+            ],
+            "tier2": [
+              "紫光国微(002049)",
+              "国民技术(300077)"
+            ],
+            "tier3": []
+          }
+        },
+        "future_outlook": {
+          "next_2_3_years": "bottleneck_persists",
+          "potential_relief": "国产28nm FPGA逐步导入，但高端16nm以下仍受限，完全自主需3-5年",
+          "emerging_bottleneck": "若中美摩擦升级，成熟制程芯片也可能面临限制"
+        },
+        "assets": [
+          {
+            "code": "688107",
+            "name": "安路科技",
+            "role": "国产FPGA龙头",
+            "market_position": "tier1"
+          },
+          {
+            "code": "688385",
+            "name": "复旦微电",
+            "role": "高可靠FPGA与MCU",
+            "market_position": "tier1"
+          }
+        ],
+        "assets_note": "",
+        "evidence": [
+          {
+            "fact": "SST控制电路需实时处理复杂算法，依赖DSP/FPGA，国产替代需求迫切。",
+            "from": "search[1.4]·华经情报网",
+            "quality": {
+              "level": "medium",
+              "source_type": "industry_report"
+            }
+          },
+          {
+            "fact": "AIDC与电力设备国产化投资策略强调核心器件自主可控，芯片环节受益政策。",
+            "from": "search[1.5]·国信证券",
+            "quality": {
+              "level": "medium",
+              "source_type": "sell_side_report"
+            }
+          }
+        ]
+      }
+    ],
+    "core_stocks": [
+      {
+        "code": "688234",
+        "name": "天岳先进",
+        "segment": "SiC衬底",
+        "role": "国内衬底龙头",
+        "moat": "8英寸SiC衬底技术领先，客户认证壁垒高"
+      },
+      {
+        "code": "600703",
+        "name": "三安光电",
+        "segment": "SiC全产业链",
+        "role": "IDM综合龙头",
+        "moat": "从衬底到器件全链条布局，规模优势"
+      },
+      {
+        "code": "688190",
+        "name": "云路股份",
+        "segment": "非晶磁芯",
+        "role": "全球非晶龙头",
+        "moat": "非晶带材全球份额领先，高频变压器关键材料"
+      },
+      {
+        "code": "688107",
+        "name": "安路科技",
+        "segment": "控制芯片FPGA",
+        "role": "国产FPGA先锋",
+        "moat": "SST控制逻辑主芯片国产替代唯一选项之一"
+      },
+      {
+        "code": "600406",
+        "name": "国电南瑞",
+        "segment": "SST系统集成",
+        "role": "电网自动化龙头",
+        "moat": "依托电网系统资源，SST在配电网试点中优先受益"
+      },
+      {
+        "code": "000400",
+        "name": "许继电气",
+        "segment": "电力电子装备",
+        "role": "柔直及配网设备商",
+        "moat": "新型电力系统建设核心标的，布局电力电子变压器"
+      }
+    ],
+    "sales_chain": [
+      {
+        "segment": "SST系统集成与设备商",
+        "companies": [
+          "600406",
+          "000400",
+          "601877"
+        ],
+        "reason": "AI数据中心、超充站需求首先体现为SST整机招标和订单，集成商最先感受需求爆发。",
+        "lead_months": "1-3"
+      },
+      {
+        "segment": "SiC功率模块供应商",
+        "companies": [
+          "688234",
+          "600703",
+          "688469"
+        ],
+        "reason": "SST设备商获得订单后即向上游采购SiC模块，订单传导快，交货周期拉长信号明显。",
+        "lead_months": "1-3"
+      }
+    ],
+    "expansion_chain": [
+      {
+        "segment": "SiC衬底产能建设",
+        "companies": [
+          "688234",
+          "600703"
+        ],
+        "reason": "SiC衬底扩产需长晶炉等关键设备，设备交期超过18个月，实际产出释放滞后需求2年以上。",
+        "lag_months": "6-12"
+      },
+      {
+        "segment": "高频变压器与磁芯扩产",
+        "companies": [
+          "688190",
+          "000969"
+        ],
+        "reason": "非晶带材产线建设及达产周期12-18个月，且下游认证严格，爬坡慢于SST放量。",
+        "lag_months": "6-12"
+      }
+    ],
+    "chain_timeline": {
+      "sales_lead_months": "1-3",
+      "expansion_lag_months": "6-12",
+      "rotation_strategy": "先买设备集成商（订单先行指标），再布局SiC模块与磁材（利润释放滞后但弹性大），最后投入控制芯片（国产替代长尾收益）。"
+    },
+    "scarcity_ranking": [
+      {
+        "rank": 1,
+        "segment": "SiC功率模块",
+        "rigidity_narrative": "扩产周期超过24个月，全球有效产能集中于少数厂商，下游新能源和SST需求共振，供给极度刚性。",
+        "beneficiary_stocks": [
+          "688234",
+          "600703",
+          "688469"
+        ]
+      },
+      {
+        "rank": 2,
+        "segment": "高频变压器及非晶磁芯",
+        "rigidity_narrative": "高端磁芯材料认证门槛高，定制化程度深，产能弹性低，受益于变压器整体超级缺口。",
+        "beneficiary_stocks": [
+          "688190",
+          "000969"
+        ]
+      },
+      {
+        "rank": 3,
+        "segment": "控制芯片（FPGA/DSP）",
+        "rigidity_narrative": "国产替代迫切但技术代差明显，高端芯片出口受限，国产芯片稀缺性凸显。",
+        "beneficiary_stocks": [
+          "688107",
+          "688385"
+        ]
+      }
+    ],
+    "catalysts": [
+      {
+        "type": "capacity",
+        "catalyst": "天岳先进8英寸SiC衬底量产公告",
+        "expected_date": "2026Q2-Q3",
+        "watch_signal": "月产能突破5000片及客户验证通过",
+        "affected_segment": "SiC功率模块"
+      },
+      {
+        "type": "demand",
+        "catalyst": "国内头部云厂商AI数据中心SST示范项目招标",
+        "expected_date": "2026Q3",
+        "watch_signal": "单项目采购规模达百台级",
+        "affected_segment": "SST系统集成"
+      },
+      {
+        "type": "policy",
+        "catalyst": "《新型电力系统建设推进方案》SST专项政策",
+        "expected_date": "2026H2",
+        "watch_signal": "明确SST在配电侧渗透率目标",
+        "affected_segment": "全产业链"
+      }
+    ],
+    "cycle_phase": "theme_emergence",
+    "sub_phase": "early",
+    "phase_switch_trigger": "首个GW级SST订单落地或SST设备商年报中出现该业务收入占比超10%，则切换至demand_explosion阶段。",
+    "prosperity_type": "demand_explosion",
+    "findings_count": 0,
+    "agent": "SupplyChainHacker",
+    "industry": "固态变压器 (SST)",
+    "search_rounds": 2
+  }
+}

@@ -1,0 +1,337 @@
+{
+  "step": "step2_gatekeeper",
+  "run_id": "20260527_MLCC_v1",
+  "input_hash": "a1d09ff09d4f",
+  "saved_at": "2026-05-27T10:16:21.145414",
+  "elapsed_seconds": 62.3,
+  "input_summary": "mode=auto, target=MLCC",
+  "output": {
+    "industry": "MLCC",
+    "industry_granularity": {
+      "type": "specific_industry",
+      "action": "allow",
+      "reason": "MLCC是电子元器件中的具体产品，拥有完整的物理供应链（陶瓷粉料→电极→制造→下游应用），可进行供需与利润链的定点分析。"
+    },
+    "cycle_position": {
+      "phase": "bottleneck_formation",
+      "sub_phase": "early",
+      "evidence": [
+        {
+          "fact": "2026年3月MLCC平均交期已从2025年初的8-12周延长至16-20周，部分AI专用型号交期超过半年",
+          "from": "search[2.2]·东方财富网财富号",
+          "quality": {
+            "level": "medium",
+            "source_type": "self_media"
+          }
+        },
+        {
+          "fact": "AI/车规级高端MLCC涨价幅度达15%-35%，供给持续收紧",
+          "from": "search[3.2]·东方财富网财富号",
+          "quality": {
+            "level": "medium",
+            "source_type": "self_media"
+          }
+        },
+        {
+          "fact": "高端设备交付周期至少10个月，且日韩厂商限制设备外售",
+          "from": "search[2.1]·新浪财经",
+          "quality": {
+            "level": "high",
+            "source_type": "news_media"
+          }
+        }
+      ],
+      "next_phase": "capital_frenzy",
+      "estimated_duration": "12-18个月",
+      "phase_switch_trigger": "新增MLCC产能集中释放，或AI需求增速显著放缓"
+    },
+    "prosperity": {
+      "type": "demand_explosion",
+      "demand_quality": "real_demand",
+      "demand_evidence": [
+        {
+          "fact": "全球MLCC市场规模2026年预计达262.5亿美元，同比增长10.9%",
+          "from": "search[1.2]·中经视野",
+          "quality": {
+            "level": "medium",
+            "source_type": "industry_data"
+          }
+        },
+        {
+          "fact": "AI服务器消耗大量高端MLCC，2026年Q2起高端供给持续偏紧",
+          "from": "search[2.2]·东方财富网财富号",
+          "quality": {
+            "level": "medium",
+            "source_type": "self_media"
+          }
+        }
+      ],
+      "growth_narrative": "AI算力军备竞赛驱动高端MLCC需求爆发式增长，而供给端受到设备交付周期长、高端产能扩建受限的硬约束，供需缺口持续扩大，推动涨价周期启动。",
+      "core_contradiction": "AI/车规高端MLCC需求增速（15%+）远超供给扩产速度（设备交付10个月+），且现有产能被日韩巨头垄断，新进入者难以突破设备壁垒。",
+      "driver_decomposition": [
+        {
+          "driver": "AI服务器/数据中心算力建设",
+          "weight": "主导",
+          "certainty": "高",
+          "duration": "3-5年",
+          "leading_indicator": "全球主要CSP资本开支增速、AI服务器出货量",
+          "evidence": [
+            {
+              "fact": "高盛报告指出MLCC交期已直接影响全球AI服务器组装进度",
+              "from": "search[4.1]·东方财富网财富号",
+              "quality": {
+                "level": "medium",
+                "source_type": "self_media"
+              }
+            },
+            {
+              "fact": "TrendForce预测2026年下半年高端MLCC价格温和上涨",
+              "from": "search[2.3]·腾讯新闻",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              }
+            }
+          ]
+        },
+        {
+          "driver": "车规级电子化（ADAS/电动化）",
+          "weight": "次要",
+          "certainty": "中",
+          "duration": "5-10年",
+          "leading_indicator": "新能源汽车渗透率、单车MLCC用量",
+          "evidence": [
+            {
+              "fact": "汽车MLCC市场持续增长，但未给出具体增速数据",
+              "from": "search[1.3]·爱建证券",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "payoff": {
+      "asymmetry": "强非对称",
+      "narrative": "若景气兑现，高端MLCC涨价周期持续，龙头企业利润有望翻倍（如村田AI相关收入占比提升），而若需求证伪（如AI资本开支放缓），由于MLCC是基础元件，需求只会推迟不会消失，且供给端扩产缓慢，价格下行有限。当前市场对涨价持续性的定价不足30%。",
+      "evidence": [
+        {
+          "fact": "高端MLCC涨幅15%-35%已开始落地，而供给约束至少持续至2028年",
+          "from": "search[2.2]·东方财富网财富号",
+          "quality": {
+            "level": "medium",
+            "source_type": "self_media"
+          }
+        },
+        {
+          "fact": "前五大厂商CR5>80%，村田在高端AI服务器领域份额超70%，定价权强势",
+          "from": "search[3.3]·中国报告大厅",
+          "quality": {
+            "level": "medium",
+            "source_type": "industry_data"
+          }
+        }
+      ]
+    },
+    "propagation": {
+      "depth": "中",
+      "transmission_order": [
+        {
+          "stage": 1,
+          "node": "MLCC制造商（高端产能）",
+          "reason": "供需缺口直接推涨价格，利润弹性最大",
+          "evidence": [
+            {
+              "fact": "AI/车规级高端MLCC涨价15-35%，厂商产能利用率满载",
+              "from": "search[2.1]·新浪财经",
+              "quality": {
+                "level": "high",
+                "source_type": "news_media"
+              }
+            }
+          ]
+        },
+        {
+          "stage": 2,
+          "node": "上游陶瓷粉料供应商",
+          "reason": "高端MLCC需求拉动陶瓷粉料量价齐升，且日本厂商垄断高端粉料",
+          "evidence": [
+            {
+              "fact": "陶瓷粉料市场规模预计2021-2026年CAGR 7.8%，供应偏紧",
+              "from": "search[4.3]·头豹",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            }
+          ]
+        },
+        {
+          "stage": 3,
+          "node": "MLCC设备供应商",
+          "reason": "扩产需求导致设备订单激增，但高端设备受行业协会限制出货",
+          "evidence": [
+            {
+              "fact": "设备交付周期至少10个月，高端设备不对外出售",
+              "from": "search[2.1]·新浪财经",
+              "quality": {
+                "level": "high",
+                "source_type": "news_media"
+              }
+            }
+          ]
+        }
+      ],
+      "last_beneficiary": "下游AI服务器集成商（成本压力）",
+      "last_bottleneck": "高端MLCC产能（日韩厂商独家供应）",
+      "alpha_implication": "利润集中在中游MLCC制造商，其次上游粉料，下游服务器组装环节利润承压"
+    },
+    "time_horizon": {
+      "alpha_window": "6-12个月",
+      "profit_expansion_window": "12-24个月",
+      "capacity_relief_eta": "2028年上半年",
+      "market_repricing_stage": "早期",
+      "evidence": [
+        {
+          "fact": "MLCC涨价周期于2025年末启动，2026年3月交期仍处于延长趋势",
+          "from": "search[2.2]·东方财富网财富号",
+          "quality": {
+            "level": "medium",
+            "source_type": "self_media"
+          }
+        },
+        {
+          "fact": "新产能设备交付需10个月以上，且日韩扩产谨慎，供给紧张预计延续至2028年",
+          "from": "search[2.1]·新浪财经",
+          "quality": {
+            "level": "high",
+            "source_type": "news_media"
+          }
+        }
+      ]
+    },
+    "mismatch_analysis": {
+      "supply_demand_mismatch": "strong",
+      "timing_mismatch": "strong",
+      "expectation_gap": "moderate",
+      "profit_redistribution": "strong",
+      "pricing_gap": "moderate",
+      "evidence": [
+        {
+          "fact": "需求端AI服务器装机量爆发，供给端设备交付周期10个月+，供需缺口显著",
+          "from": "search[2.1]·新浪财经",
+          "quality": {
+            "level": "high",
+            "source_type": "news_media"
+          }
+        },
+        {
+          "fact": "高端MLCC交期拉长至16-20周，部分型号超半年，显示时间错配严重",
+          "from": "search[2.2]·东方财富网财富号",
+          "quality": {
+            "level": "medium",
+            "source_type": "self_media"
+          }
+        },
+        {
+          "fact": "多家机构（高盛、TrendForce）已关注该涨价周期，但市场对结构性变化的持续性和幅度仍存分歧",
+          "from": "search[4.1]·东方财富网财富号",
+          "quality": {
+            "level": "low",
+            "source_type": "self_media"
+          }
+        },
+        {
+          "fact": "高端MLCC涨价15-35%，利润从下游客户向上游MLCC厂商转移",
+          "from": "search[3.2]·东方财富网财富号",
+          "quality": {
+            "level": "medium",
+            "source_type": "self_media"
+          }
+        },
+        {
+          "fact": "MLCC相关公司（如风华高科）股价尚未完全反映涨价带来的盈利弹性，当前估值处于历史中位数附近",
+          "from": "search[3.1]·AI摘要",
+          "quality": {
+            "level": "low",
+            "source_type": "ai_summary"
+          }
+        }
+      ]
+    },
+    "verdict": {
+      "enter_step3": true,
+      "priority": "高",
+      "rationale": "五错配中供需错配、时间错配、利润迁移均达到strong，认知错配和定价缺口为moderate。供给侧硬约束（设备交付周期长、高端设备受限）确保供需缺口短期无法弥合，AI需求真实且持续，利润向MLCC制造商集中明显。虽然市场已有初步反应，但涨价持续性尚未充分定价，具备深度推演价值。",
+      "key_uncertainties": [
+        "AI资本开支节奏是否会因全球经济放缓而推迟，导致高端MLCC需求增速下滑",
+        "日系厂商是否有意外增产计划打破供给约束",
+        "国产替代能否在中高端实现技术突破，改变竞争格局"
+      ],
+      "evidence": [
+        {
+          "fact": "全球前五大MLCC厂商CR5>80%，高端AI领域村田份额>70%，供给端话语权极强",
+          "from": "search[3.3]·中国报告大厅",
+          "quality": {
+            "level": "medium",
+            "source_type": "industry_data"
+          }
+        },
+        {
+          "fact": "2026年Q2 MLCC市场分化明显，AI需求强劲但消费电子疲软，结构性特征突出",
+          "from": "search[2.3]·腾讯新闻",
+          "quality": {
+            "level": "medium",
+            "source_type": "news_media"
+          }
+        }
+      ]
+    },
+    "kill_reasons": [],
+    "catalysts": [
+      {
+        "type": "earnings",
+        "catalyst": "头部MLCC厂商（村田、三星电机）最新季度财报显示AI相关收入占比大幅提升，毛利率超预期",
+        "expected_date": "2026年4-5月",
+        "watch_signal": "财报中AI/车规MLCC收入环比增速>50%，毛利率环比提升>3个百分点",
+        "status": "pending"
+      },
+      {
+        "type": "order",
+        "catalyst": "AI服务器厂商（如英伟达、超微）公布新一代产品MLCC用料量数据，确认单机用量翻倍",
+        "expected_date": "2026年Q3",
+        "watch_signal": "公开拆解报告或供应链调研显示单服务器MLCC用量>5000颗",
+        "status": "pending"
+      },
+      {
+        "type": "policy",
+        "catalyst": "日本政府进一步收紧高端MLCC设备出口管制，加剧全球供给紧张",
+        "expected_date": "2026年下半年",
+        "watch_signal": "日本经济产业省发布新的出口管制清单",
+        "status": "pending"
+      }
+    ],
+    "mode": "manual",
+    "agent": "MarketScanner",
+    "_step3_guidance": {
+      "cycle_phase": "bottleneck_formation",
+      "cycle_meaning": "交期暴涨, 供给不足 — 搜索时重点找产能/交期/设备约束数据",
+      "prosperity_type": "demand_explosion",
+      "prosperity_meaning": "需求驱动 — 分析框架: 找产能扩张瓶颈和订单传导链",
+      "propagation_depth": "中",
+      "enter_step3": true,
+      "priority": "高",
+      "mismatch_summary": "S=strong/T=strong/E=moderate/P=strong/$=moderate",
+      "industry_granularity": "specific_industry",
+      "search_focus": "周期阶段=bottleneck_formation → 交期暴涨, 供给不足 — 搜索时重点找产能/交期/设备约束数据; 景气类型=demand_explosion → 需求驱动 — 分析框架: 找产能扩张瓶颈和订单传导链",
+      "key_uncertainties": [
+        "AI资本开支节奏是否会因全球经济放缓而推迟，导致高端MLCC需求增速下滑",
+        "日系厂商是否有意外增产计划打破供给约束",
+        "国产替代能否在中高端实现技术突破，改变竞争格局"
+      ],
+      "core_contradiction": "AI/车规高端MLCC需求增速（15%+）远超供给扩产速度（设备交付10个月+），且现有产能被日韩巨头垄断，新进入者难以突破设备壁垒。"
+    }
+  }
+}

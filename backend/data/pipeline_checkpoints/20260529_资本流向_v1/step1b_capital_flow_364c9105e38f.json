@@ -1,0 +1,171 @@
+{
+  "step": "step1b_capital_flow",
+  "run_id": "20260529_资本流向_v1",
+  "input_hash": "364c9105e38f",
+  "saved_at": "2026-05-29T22:07:23.421813",
+  "elapsed_seconds": 0,
+  "input_summary": "",
+  "output": {
+    "capital_flow_summary": "全球AI及云计算巨头资本开支大幅增长，中国专项债与央国企投资聚焦新兴产业，资本密集流向算力基础设施与高技术制造环节。",
+    "energy_flow_summary": "高技术及装备制造业、充换电服务业、互联网数据服务业用电量增速领跑，分别达10.6%、55.1%、46.2%，反映先进制造与算力基础设施真实产能扩张；高耗能行业用电增速仅1.8%，显示传统产能收缩。",
+    "pressure_vectors": [
+      {
+        "capital_source": "全球科技巨头（云计算、AI公司）",
+        "source_region": "global",
+        "system_node": "power_infrastructure",
+        "pressure_type": "infrastructure_bottleneck",
+        "pressure_signals": [
+          "AI资本开支增速可能因发电能力限制而放缓",
+          "大型开发者资本开支规模已对宏观经济产生影响，电力供应成为最终制约"
+        ],
+        "intensity": "high",
+        "duration": "3_5_years",
+        "transmission_direction": "upstream",
+        "evidence": [
+          {
+            "fact": "虽然人工智能相关资本开支仍将维持在高水平，但其增长速度可能于2026年放缓，且最终可能受到发电能力限制",
+            "from": "capital[4.1]·透视: Shiller、彭博、Multpl.com",
+            "quality": {
+              "level": "high",
+              "source_type": "company_filing"
+            }
+          }
+        ]
+      },
+      {
+        "capital_source": "全球云计算大厂（谷歌、Meta、亚马逊）",
+        "source_region": "global",
+        "system_node": "optical_interconnect_and_advanced_packaging",
+        "pressure_type": "equipment_lead_time",
+        "pressure_signals": [
+          "NPO和CPO在柜内从0到1突破，但相关供应链尚未成熟",
+          "云厂商资本开支加速扩张72%，光互连技术需求激增，产能瓶颈明显"
+        ],
+        "intensity": "moderate",
+        "duration": "1_3_years",
+        "transmission_direction": "bidirectional",
+        "evidence": [
+          {
+            "fact": "展望2026年，谷歌、Meta、亚马逊三家资本开支合计约5050亿美元(yoy+72%)，光入柜内成为大趋势，NPO和CPO迎来0到1的突破",
+            "from": "capital[1.3]·云计算大厂26年CAPEX继续大增70%+",
+            "quality": {
+              "level": "medium",
+              "source_type": "industry_report"
+            }
+          }
+        ]
+      },
+      {
+        "capital_source": "中国中央及地方财政（专项债、央国企投资）",
+        "source_region": "domestic",
+        "system_node": "high_value_manufacturing_expansion",
+        "pressure_type": "infrastructure_bottleneck",
+        "pressure_signals": [
+          "央国企聚焦‘两重’领域及新兴产业，高技术制造业投资需求旺盛",
+          "专项债投向优化，但项目落地可能受限于高端设备与材料供给"
+        ],
+        "intensity": "moderate",
+        "duration": "1_3_years",
+        "transmission_direction": "bidirectional",
+        "evidence": [
+          {
+            "fact": "2026年，国资央企将持续加大拓市增收、降本增效的力度，同时积极扩大有效投资，聚焦‘两重’...",
+            "from": "capital[5.1]·更好发挥央国企扩投资作用",
+            "quality": {
+              "level": "medium",
+              "source_type": "government_policy"
+            }
+          },
+          {
+            "fact": "一季度新增专项债发行提速投向优化",
+            "from": "capital[3.1]·一季度新增专项债发行提速投向优化",
+            "quality": {
+              "level": "medium",
+              "source_type": "government_policy"
+            }
+          }
+        ]
+      }
+    ],
+    "constraint_vectors": [
+      {
+        "node": "power_infrastructure",
+        "constraint_type": "infrastructure_bottleneck",
+        "severity": "high",
+        "lead_time": "over_24m",
+        "trigger": "AI算力集群大规模建设导致电力需求远超当前发电及输配电能力",
+        "evidence": [
+          {
+            "fact": "虽然人工智能相关资本开支仍将维持在高水平，但其增长速度可能于2026年放缓，且最终可能受到发电能力限制",
+            "from": "capital[4.1]·透视: Shiller、彭博、Multpl.com",
+            "quality": {
+              "level": "high",
+              "source_type": "company_filing"
+            }
+          }
+        ]
+      }
+    ],
+    "energy_flow_signals": [
+      {
+        "sector_hint": "先进制造（高技术及装备制造业）",
+        "energy_type": "electricity",
+        "growth_direction": "surging",
+        "growth_narrative": "用电量增速达10.6%，在制造业中大幅领先，反映该领域真实产能扩张和持续高景气",
+        "signal_strength": "strong",
+        "evidence": [
+          {
+            "fact": "高技术及装备制造业用电量同比增长10.6%，增速在制造业中明显领先",
+            "from": "energy[1.1]·2026年1-2月份全社会用电量同比增长6.1%",
+            "quality": {
+              "level": "high",
+              "source_type": "government_data"
+            }
+          },
+          {
+            "fact": "高技术及装备制造业全年用电量同比增长6.4%，各季度增速均领先制造业",
+            "from": "energy[1.2]·中电联发布《2025-2026年度全国电力供需形势分析预测报告》",
+            "quality": {
+              "level": "high",
+              "source_type": "industry_report"
+            }
+          }
+        ]
+      },
+      {
+        "sector_hint": "算力基础设施与电动车服务",
+        "energy_type": "electricity",
+        "growth_direction": "surging",
+        "growth_narrative": "充换电服务业用电量增速55.1%，互联网数据服务业46.2%，显示电动车保有量和数据中心算力需求爆发式增长",
+        "signal_strength": "strong",
+        "evidence": [
+          {
+            "fact": "充换电服务业、互联网数据服务业用电量增速分别达到55.1%、46.2%",
+            "from": "energy[1.1]·2026年1-2月份全社会用电量同比增长6.1%",
+            "quality": {
+              "level": "high",
+              "source_type": "government_data"
+            }
+          }
+        ]
+      },
+      {
+        "sector_hint": "传统高耗能行业",
+        "energy_type": "electricity",
+        "growth_direction": "declining",
+        "growth_narrative": "高耗能行业用电增速仅1.8%，远低于全社会平均增速，反映产能收缩和景气下行",
+        "signal_strength": "moderate",
+        "evidence": [
+          {
+            "fact": "高耗能行业用电增速相对偏低，同比增长1.8%",
+            "from": "energy[1.2]·中电联发布《2025-2026年度全国电力供需形势分析预测报告》",
+            "quality": {
+              "level": "medium",
+              "source_type": "industry_report"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,383 @@
+{
+  "step": "step6_core_screening",
+  "run_id": "20260529_资本流向_v1",
+  "input_hash": "continue",
+  "saved_at": "2026-05-29T22:23:18.974785",
+  "elapsed_seconds": 0,
+  "input_summary": "",
+  "output": {
+    "agent": "CoreScreeningAgent",
+    "confidence": "medium",
+    "lifecycle_gate": {
+      "cycle_position": "",
+      "gate_mode": "growth"
+    },
+    "candidate_pool": {
+      "total_collected": 6,
+      "after_prescreen": 6,
+      "ranked": 6
+    },
+    "ranked_stocks": [],
+    "future_strong_candidates": [
+      {
+        "code": "601899",
+        "name": "紫金矿业",
+        "source": [
+          {
+            "step": "step3",
+            "field": "core_stocks",
+            "role": "全球铜矿龙头"
+          },
+          {
+            "step": "step3",
+            "field": "supply_chain_map.assets",
+            "role": "全球铜矿龙头，A股核心铜标的"
+          },
+          {
+            "step": "step3",
+            "field": "sales_chain",
+            "role": ""
+          }
+        ],
+        "flags": [
+          "revenue_yoy_low (-16.5%)"
+        ],
+        "gate_mode": "growth",
+        "risk_tags": [],
+        "audit": {
+          "verdict": "SKIP",
+          "score": 0,
+          "flags": [],
+          "beneish_m_score": null
+        },
+        "company_stage": "decline",
+        "stage_indicators": {
+          "primary": [
+            "revenue_yoy",
+            "fcf_conversion",
+            "gross_margin_trend",
+            "inventory_revenue_ratio"
+          ],
+          "note": "衰退期: 关注收入下滑速度和现金流退化"
+        },
+        "category": "future_strong"
+      },
+      {
+        "code": "603993",
+        "name": "洛阳钼业",
+        "source": [
+          {
+            "step": "step3",
+            "field": "core_stocks",
+            "role": "核心铜钴矿企"
+          },
+          {
+            "step": "step3",
+            "field": "supply_chain_map.assets",
+            "role": "大型铜钴矿企，受益铜价上涨"
+          },
+          {
+            "step": "step3",
+            "field": "sales_chain",
+            "role": ""
+          }
+        ],
+        "flags": [
+          "revenue_yoy_low (-6.2%)"
+        ],
+        "gate_mode": "growth",
+        "risk_tags": [],
+        "audit": {
+          "verdict": "SKIP",
+          "score": 0,
+          "flags": [],
+          "beneish_m_score": null
+        },
+        "company_stage": "decline",
+        "stage_indicators": {
+          "primary": [
+            "revenue_yoy",
+            "fcf_conversion",
+            "gross_margin_trend",
+            "inventory_revenue_ratio"
+          ],
+          "note": "衰退期: 关注收入下滑速度和现金流退化"
+        },
+        "category": "future_strong"
+      },
+      {
+        "code": "600690",
+        "name": "海尔智家",
+        "source": [
+          {
+            "step": "step3",
+            "field": "core_stocks",
+            "role": "国内L4级供应链管理先行者"
+          },
+          {
+            "step": "step3",
+            "field": "supply_chain_map.assets",
+            "role": "旗下COSMOPlat平台是L4级供应链控制的实践者，对外赋能"
+          },
+          {
+            "step": "step3",
+            "field": "sales_chain",
+            "role": ""
+          }
+        ],
+        "flags": [
+          "revenue_yoy_low (-1.2%)"
+        ],
+        "gate_mode": "growth",
+        "moat_profile": {
+          "position_power": "strong",
+          "position_evidence": [
+            "证据: 根据欧睿国际报告，海尔2025年再度获得全球大型家用电器品牌零售量第一，实现“17连冠”，全球市场份额稳步提升。这表明其在全球家电销售渠道中占据了核心的、难以被绕过的位置，是终端消费者心智中的首选品牌之一。",
+            "证据: 海尔是全球白电市场“三足鼎立”格局中的领导者之一，与美的、格力及国际品牌竞争，其市场份额和品牌影响力构成了其在销售终端的强大节点地位。客户（特别是渠道商）若要覆盖最广泛的消费群体，很难绕过海尔。"
+          ],
+          "pricing_power": "medium",
+          "pricing_evidence": [
+            "证据: 报告指出“量采买模式边际效益递减，用户心智的长期沉淀成为竞争壁垒”。这说明海尔不再主要依赖低价竞争，而是通过建立品牌和用户心智来支撑产品溢价。依托其高端品牌（如卡萨帝）和全球化布局，在细分领域具有一定定价权。",
+            "证据: 市场竞争格局“仍呈高度分散特征”，虽然海尔是领导者，但面临来自美的、格力以及其他国际和区域品牌的激烈竞争。在整体白电市场，完全不受限制的涨价能力有限，更多体现在高端产品线和特定新兴市场。"
+          ],
+          "expansion_power": "medium",
+          "expansion_evidence": [
+            "证据: 报告提到“新兴市场消费升级趋势依然明确，年行业复合增长预计超过7%”。这表明海尔存在通过扩张产能或渠道覆盖来抓住新兴市场增长机遇的空间。",
+            "证据: 报告提及地缘政治与关税壁垒增加了出海经营的不确定性，这对全球产能扩张构成了制约。扩张并非无限制，需要平衡本地化运营、供应链韧性和地缘风险。此外，在国内市场，家电行业已进入存量竞争阶段，大规模扩张难度加大。"
+          ],
+          "certification_power": "medium",
+          "certification_evidence": [
+            "证据: “用户心智的长期沉淀成为竞争壁垒”，这本质上是一种面向终端消费者的“认证”或品牌信任状。消费者从购买到使用，再到形成口碑和复购，是一个漫长的用户心智沉淀过程，竞争对手难以在短期内复制。",
+            "证据: 作为全球零售量第一的品牌，海尔已通过了全球不同市场、不同渠道、不同消费者的广泛“认证”。这种已建立的全球品牌声誉和渠道合作关系的切换成本较高。但搜索证据未明确提及B端（如房地产商、酒店集团）的供应商认证周期。"
+          ],
+          "resource_power": "strong",
+          "resource_evidence": [
+            "证据: “全球市场领导者”、“17连冠”等证据表明海尔占据了最核心的市场份额资源，这是一种稀缺的、难以复制的市场地位资源。",
+            "证据: 海尔旗下的COSMOPlat平台是L4级供应链控制的实践者。这种领先的供应链管理和工业互联网平台能力本身就是一种稀缺的技术和组织资源，能够对内优化生产、对外进行赋能，是强大的竞争壁垒。",
+            "证据: 报告提及“具备自然工质技术储备与智能化系统集成能力的供应商有望”在绿色新政下胜出。海尔在相关领域的提前布局和储备，构成了应对未来技术法规变化的稀缺技术资源。"
+          ],
+          "cognitive_power": "strong",
+          "cognitive_evidence": [
+            "证据: 报告明确指出海尔是“全球化、高端化、智能化三重驱动下的智慧家庭生态龙头”。这表明公司管理层提前并正确地押注了全球化布局、品牌高端化（如卡萨帝）以及智慧家庭生态（将产品从硬件转向服务）这几个关键方向。",
+            "证据: 旗下的COSMOPlat平台作为L4级供应链控制的实践者并对外赋能，体现了公司对工业互联网和智能制造趋势的前瞻性判断和提前布局，这在传统家电企业中较为领先。这比大多数同行更早地认识到供应链数字化的价值。"
+          ]
+        },
+        "profit_capture_thesis": {
+          "why_it_captures_profit": [
+            "通过强大的品牌护城河（用户心智）和高端化战略（卡萨帝），在不打价格战的情况下实现产品溢价，直接提升毛利率。",
+            "通过全球化布局，特别是进入快速增长的新兴市场，开拓新的利润来源，同时利用不同市场的周期差异平滑业绩波动。",
+            "通过COSMOPlat等平台进行高效的供应链管理和智能制造，降低生产成本，提高运营效率，将成本优势转化为利润。"
+          ],
+          "future_profit_driver": [
+            "高端化和全球化是核心驱动。随着新兴市场中产阶级崛起，海尔的高端品牌和全球化网络将直接受益于消费升级，带来收入和利润的持续增长。",
+            "智能化与服务化转型。从销售硬件转向提供智慧家庭解决方案，通过软件、服务和生态收入创造更持续、利润率更高的盈利模式。",
+            "运营效率的进一步提升。通过数字化和工业互联网平台（COSMOPlat）对内对外赋能，持续优化成本结构，提升资产周转效率。"
+          ]
+        },
+        "growth_asymmetry": {
+          "growth_type": "inflection_point",
+          "triggers": [
+            "全球新兴市场（如东南亚、南亚、拉美、中东非）消费升级加速，中产阶级规模爆发式增长。",
+            "智能家居和IoT技术从概念普及进入大规模市场落地阶段，海尔“智慧家庭”生态的先发优势开始兑现为收入和利润。",
+            "全球供应链重构过程中，海尔的全球化布局和供应链韧性优势（如墨西哥、印度、印尼等地产能）使其成为地缘政治不确定性下的受益者。"
+          ],
+          "current_stage": "海尔已从一家国内家电制造商，成功转型为全球性品牌，并正在向智慧家庭生态服务商进行二次转型。当前正处于从“全球化+高端化”的量变，向“智能化+生态化”的质变过渡期。其增长模式正从传统的线性增长，转向由高端化、智能化、全球化多重拐点叠加的非线性增长阶段。"
+        },
+        "thesis_breakers": [
+          "海外本地化运营严重失误，导致核心市场（如美国、欧洲）出现重大亏损或品牌声誉危机，全球化战略受阻。",
+          "高端化战略受挫，无法在消费降级趋势下维持品牌溢价，市场份额被竞争对手以性价比策略侵蚀。",
+          "智慧家庭生态战略被证明是伪需求或技术路线错误，巨额研发投入无法转化为有效盈利，反而拉低整体ROE。",
+          "地缘政治风险全面升级，如在关键市场的资产被没收、或面临极高关税壁垒，供应链成本急剧上升，动摇其全球竞争力。"
+        ],
+        "risk_tags": [],
+        "audit": {
+          "verdict": "SKIP",
+          "score": 0,
+          "flags": [],
+          "beneish_m_score": null
+        },
+        "company_stage": "decline",
+        "stage_indicators": {
+          "primary": [
+            "revenue_yoy",
+            "fcf_conversion",
+            "gross_margin_trend",
+            "inventory_revenue_ratio"
+          ],
+          "note": "衰退期: 关注收入下滑速度和现金流退化"
+        },
+        "category": "future_strong"
+      },
+      {
+        "code": "688012",
+        "name": "中微公司",
+        "source": [
+          {
+            "step": "step3",
+            "field": "core_stocks",
+            "role": "国产刻蚀设备龙头，受益先进封装设备投资"
+          },
+          {
+            "step": "step3",
+            "field": "expansion_chain",
+            "role": ""
+          }
+        ],
+        "flags": [
+          "revenue_yoy_low (-26.6%)"
+        ],
+        "gate_mode": "growth",
+        "risk_tags": [],
+        "audit": {
+          "verdict": "SKIP",
+          "score": 0,
+          "flags": [],
+          "beneish_m_score": null
+        },
+        "company_stage": "decline",
+        "stage_indicators": {
+          "primary": [
+            "revenue_yoy",
+            "fcf_conversion",
+            "gross_margin_trend",
+            "inventory_revenue_ratio"
+          ],
+          "note": "衰退期: 关注收入下滑速度和现金流退化"
+        },
+        "category": "future_strong"
+      },
+      {
+        "code": "688019",
+        "name": "安集科技",
+        "source": [
+          {
+            "step": "step3",
+            "field": "core_stocks",
+            "role": "国产CMP抛光液龙头，国产替代先锋"
+          },
+          {
+            "step": "step3",
+            "field": "expansion_chain",
+            "role": ""
+          }
+        ],
+        "flags": [
+          "revenue_yoy_low (-25.4%)"
+        ],
+        "gate_mode": "growth",
+        "risk_tags": [],
+        "audit": {
+          "verdict": "SKIP",
+          "score": 0,
+          "flags": [],
+          "beneish_m_score": null
+        },
+        "company_stage": "decline",
+        "stage_indicators": {
+          "primary": [
+            "revenue_yoy",
+            "fcf_conversion",
+            "gross_margin_trend",
+            "inventory_revenue_ratio"
+          ],
+          "note": "衰退期: 关注收入下滑速度和现金流退化"
+        },
+        "category": "future_strong"
+      },
+      {
+        "code": "603638",
+        "name": "603638",
+        "source": [
+          {
+            "step": "step3",
+            "field": "expansion_chain",
+            "role": ""
+          }
+        ],
+        "flags": [
+          "revenue_yoy_low (-20.3%)"
+        ],
+        "gate_mode": "growth",
+        "moat_profile": {
+          "position_power": "strong",
+          "position_evidence": [
+            "证据: 根据公司半年度报告，其产品‘占据了国内的绝大部分市场份额’。这表明公司在国内液压破碎锤市场中是绝对龙头，客户（如主机厂、维修市场）很难绕过其进行大规模采购，具有显著的节点位置优势。",
+            "证据: 报告同时指出其‘在国际市场具有较高的品牌影响力’，暗示其已突破国内市场，在全球供应链中占据一席之地，进一步巩固了其产业节点地位。"
+          ],
+          "pricing_power": "medium",
+          "pricing_evidence": [
+            "证据: 公司年报提到‘产品的市场竞争力大幅度提高’，且市场占有率提升，这通常意味着具有一定的定价能力或成本转嫁能力。",
+            "证据不足: 证据链未提供毛利率的历史趋势、与竞争对手的价格对比、或占客户总成本的比重。在液压件领域，虽然龙头地位有利，但下游主机厂（如挖掘机厂商）同样非常强势，并倾向于压低供应商价格。因此，在没有更多证据前，定价权判断为中等水平。"
+          ],
+          "expansion_power": "medium",
+          "expansion_evidence": [
+            "证据: 公司提及‘全球制造业向发展中国家转移’，为其提供了潜在的产能扩张市场机会。年报中没有提及具体的产能扩张项目或‘在建工程’金额。",
+            "推理: 作为已占据国内绝大部分市场份额的龙头，其进一步在国内扩张的空间有限。未来的扩张更多依赖于海外市场的拓展和液压件（如液压泵、马达等）新业务的规模化。扩张权受限于下游需求的增长速度和新产品的市场验证周期，而非明确的产能瓶颈。判断为中等。"
+          ],
+          "certification_power": "strong",
+          "certification_evidence": [
+            "证据: 公司产品‘迅速崛起’且具有‘较高的品牌影响力’，并‘占据了国内的绝大部分市场份额’。这些事实本身就证明了其产品已通过了市场长期的检验和客户的严格认证。",
+            "推理: 工程机械领域的破碎锤和液压件属于高可靠性、高安全要求的部件，客户（主机厂）的认证和导入周期通常较长（1-3年），切换成本高。一旦进入供应链，公司就建立了强大的认证壁垒。‘绝大部分市场份额’是这一壁垒最直接的体现。"
+          ],
+          "resource_power": "weak",
+          "resource_evidence": [
+            "证据不足: 搜索证据中未提及公司控制了上游任何稀缺矿产资源（如特种钢材）、关键制造设备专利、特殊人才或政府配额。",
+            "分析: 艾迪精密作为制造商，其价值创造更多来自工艺技术、生产管理和市场客户，而非对上游关键资源的垄断。因此，在这一维度的产业权力较弱。"
+          ],
+          "cognitive_power": "medium",
+          "cognitive_evidence": [
+            "证据: 公司战略性地实现了核心工艺的‘完全国产化’，并‘迅速崛起’，这体现了其在国产替代大趋势下对技术路线的正确判断和提前布局。",
+            "证据不足: 当前证据无法判断公司在未来新技术（如电动化、智能化液压系统、新材料应用）上的布局是否“比市场更早”。‘认知权’需要前瞻性证据，现有信息仅表明其抓住了过去的国产化机遇，对未来技术方向的押注能力尚不明朗。判断为中等。"
+          ]
+        },
+        "profit_capture_thesis": {
+          "why_it_captures_profit": [
+            "国产替代红利：作为国内液压破碎锤市场的绝对龙头，公司成功抓住国产替代的产业趋势，将国内主机厂从依赖进口转向本土采购的市场红利，转化为了自身的高市场占有率和品牌溢价。",
+            "品牌与认证壁垒：市场上的“绝大部分市场份额”和“高品牌影响力”构成了强大的客户粘性和竞争壁垒，使其能够维持高于行业平均水平的利润，将行业的景气度转变为自身稳定的收入和利润。",
+            "技术工艺护城河：通过实现核心工艺的完全国产化，公司不仅降低了成本，还建立了基于工艺know-how的技术护城河，这是其能够快速响应市场需求并维持竞争力的核心，进而保护其利润空间。"
+          ],
+          "future_profit_driver": [
+            "液压件第二增长曲线：从高市占率的破碎锤业务向成长空间更大的液压件（泵、阀、马达）领域扩张。若新产品能复制破碎锤的国产替代路径，将打开数倍于现有业务的利润天花板。",
+            "海外市场渗透：利用已有的国际品牌影响力，持续拓展全球市场份额。海外市场尤其是高端市场的利润率通常更高，是未来利润增长的重要驱动力。",
+            "行业集中度提升：工程机械行业周期性调整将淘汰部分弱势竞争者，公司作为龙头有望通过收购或自然增长进一步提升市占率，增强议价能力，从而提升利润率。"
+          ]
+        },
+        "growth_asymmetry": {
+          "growth_type": "cyclical_with_nonlinear_potential",
+          "triggers": [
+            "新业务（液压件）获得重要主机厂（如三一、徐工、卡特彼勒等）的批量订单或认证突破。",
+            "国内新一轮大规模基建或设备更新政策落地，带动工程机械行业需求反转。",
+            "海外市场（尤其是欧美高端市场）营收占比出现非线性大幅提升。"
+          ],
+          "current_stage": "当前的破碎锤主业已进入成熟期，占据市场主导地位，增长与下游工程机械行业景气度高度相关，呈现明显的周期性特征。而其第二增长曲线（高端液压件业务）仍处于成长期验证阶段，若成功则可能迎来非线性突破。整体处于‘周期性底部等待反转，新业务蓄势待发’的阶段。"
+        },
+        "thesis_breakers": [
+          "技术路线颠覆：如行业出现颠覆性替代技术（例如更高效、无噪音的破碎技术或完全集成化的电驱动系统），而艾迪未能及时跟进，导致其现有工艺和市场份额被快速侵蚀。",
+          "下游需求长期萎缩：若国内房地产、基建投资进入长期且大幅度的下行周期，导致工程机械行业需求持续萎缩，公司的周期性和现金流将面临严峻考验，新业务扩张的窗口期也可能被关闭。",
+          "新业务拓展失败：液压件业务若在技术上长期无法达到国际一线水平，或无法突破主机厂的认证壁垒，将无法成长为第二增长曲线，公司将陷入依赖单一成熟周期性业务的增长困境。",
+          "客户过度集中风险：虽然证据显示市场份额大，但若客户主要集中在少数几家大型主机厂，一旦主要客户转向自研或更换供应商，将对公司营收产生巨大冲击（当前证据未提及客户结构，此为假设性风险点）。"
+        ],
+        "risk_tags": [],
+        "audit": {
+          "verdict": "SKIP",
+          "score": 0,
+          "flags": [],
+          "beneish_m_score": null
+        },
+        "company_stage": "decline",
+        "stage_indicators": {
+          "primary": [
+            "revenue_yoy",
+            "fcf_conversion",
+            "gross_margin_trend",
+            "inventory_revenue_ratio"
+          ],
+          "note": "衰退期: 关注收入下滑速度和现金流退化"
+        },
+        "category": "future_strong"
+      }
+    ],
+    "step3_backfill": {},
+    "filter_log": []
+  }
+}

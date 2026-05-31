@@ -221,7 +221,7 @@ class DAGOrchestrator(ResearchAgent):
 
         prompt = "你是投资委员会主席。基于以下审计数据用中文写投资结论。\\n行业: " + str(industry) + "\\n推荐标的 (系统判定): " + _json.dumps(top_picks, ensure_ascii=False, cls=_E) + "\\n组合配置: " + _json.dumps(portfolio, ensure_ascii=False, cls=_E) + "\\n审计汇总: " + _json.dumps(all_stocks[:8], ensure_ascii=False, cls=_E) + '\\n输出纯JSON: {"final_summary":"3-4句中文本结论","key_risks":["风险1","风险2","风险3"],"catalysts_to_watch":["催化1","催化2"],"timeline":"时间建议"}'
         try:
-            text = await asyncio.wait_for(self.provider.chat_pro(prompt, max_tokens=2048), timeout=45)
+            text = await self.provider.chat_pro(prompt, max_tokens=2048, timeout=240)
             synthesis = self.parse_json(text)
             if isinstance(synthesis, dict):
                 synthesis["top_picks"] = top_picks

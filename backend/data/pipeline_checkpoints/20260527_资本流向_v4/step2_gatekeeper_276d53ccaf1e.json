@@ -1,0 +1,1333 @@
+{
+  "step": "step2_gatekeeper",
+  "run_id": "20260527_资本流向_v4",
+  "input_hash": "276d53ccaf1e",
+  "saved_at": "2026-05-27T23:29:31.752252",
+  "elapsed_seconds": 245.1,
+  "input_summary": "mode=auto, target=资本流向-20260527-2325",
+  "output": {
+    "industries": [
+      {
+        "industry": "铜",
+        "industry_granularity": {
+          "type": "specific_industry",
+          "action": "allow",
+          "reason": "铜是一种具体商品，具有从矿山到终端的完整物理供应链，适合进行供需、利润迁移等深度推演。"
+        },
+        "cycle_position": {
+          "phase": "demand_explosion",
+          "sub_phase": "early",
+          "evidence": [
+            {
+              "fact": "2026年美国约半数数据中心项目因电力配套延迟或取消，高功率变压器及开关设备严重短缺",
+              "from": "search[pressure_signals]·capital_flow_pressure",
+              "quality": {
+                "level": "high",
+                "source_type": "industry_data"
+              }
+            },
+            {
+              "fact": "储能和AI数据中心将接替风电、光伏成为未来铜消费强劲增长点",
+              "from": "search[1.1]·新湖有色",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            }
+          ],
+          "next_phase": "bottleneck_formation",
+          "estimated_duration": "12-18个月",
+          "phase_switch_trigger": "全球铜矿产量增速降至1%以下或电力基础设施投资加速落地"
+        },
+        "prosperity": {
+          "type": "demand_explosion",
+          "demand_quality": "real_demand",
+          "demand_evidence": [
+            {
+              "fact": "AI算力扩张通过电力系统放大铜消费，储能和AI数据中心成为未来铜消费强劲增长点",
+              "from": "search[1.1]·新湖有色",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            }
+          ],
+          "growth_narrative": "铜矿供给增速长期维持在2%以下，而AI数据中心和储能需求爆发式增长，导致供需矛盾持续加剧",
+          "core_contradiction": "供给端资本开支不足导致新增产能有限，需求端因AI电力基础设施扩张而跃升，电力配套瓶颈进一步放大铜需求",
+          "driver_decomposition": [
+            {
+              "driver": "AI数据中心电力基础设施扩张",
+              "weight": "主导",
+              "certainty": "高",
+              "duration": "3-5年",
+              "leading_indicator": "美国数据中心电力配套项目审批量及变压器订单",
+              "evidence": [
+                {
+                  "fact": "2026年美国约半数数据中心项目因电力配套延迟或取消，高功率变压器及开关设备严重短缺",
+                  "from": "search[pressure_signals]·capital_flow_pressure",
+                  "quality": {
+                    "level": "high",
+                    "source_type": "industry_data"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "payoff": {
+          "asymmetry": "强非对称",
+          "narrative": "若AI数据中心电力需求兑现，铜价因供给刚性可能大幅上涨（铜矿利润弹性大）；若证伪，铜有传统电气化需求及成本支撑，下行空间有限",
+          "evidence": [
+            {
+              "fact": "全球铜矿供给端干扰率上升，长期勘探支出不足，铜矿供给长期紧缺",
+              "from": "search[1.2]·中邮证券",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            },
+            {
+              "fact": "26-28年全球铜矿供应增速预计维持在2%低位，精铜产量增速降至2%以下",
+              "from": "search[1.1]·新湖有色",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            }
+          ]
+        },
+        "propagation": {
+          "depth": "深",
+          "transmission_order": [
+            {
+              "stage": 1,
+              "node": "铜矿开采",
+              "reason": "供给刚性最强，最先受益于铜价上涨",
+              "evidence": [
+                {
+                  "fact": "2026年全球铜矿供给或呈现零增长甚至负增长",
+                  "from": "search[2.3]·国金证券",
+                  "quality": {
+                    "level": "medium",
+                    "source_type": "sell_side_report"
+                  }
+                }
+              ]
+            },
+            {
+              "stage": 2,
+              "node": "铜冶炼",
+              "reason": "铜精矿短缺→加工费下降，利润可能被压缩，但精铜产量受限于原料",
+              "evidence": []
+            },
+            {
+              "stage": 3,
+              "node": "电力设备（变压器、开关）",
+              "reason": "下游需求旺盛但受限于铜原料供应，利润被上游侵蚀",
+              "evidence": [
+                {
+                  "fact": "高功率变压器及开关设备严重短缺",
+                  "from": "search[pressure_signals]·capital_flow_pressure",
+                  "quality": {
+                    "level": "high",
+                    "source_type": "industry_data"
+                  }
+                }
+              ]
+            }
+          ],
+          "last_beneficiary": "数据中心运营商（成本上升）",
+          "last_bottleneck": "电力变压器和开关设备产能",
+          "alpha_implication": "集中投资于铜矿企业（供给壁垒最高），其次关注有资源保障的冶炼龙头"
+        },
+        "time_horizon": {
+          "alpha_window": "6-12个月",
+          "profit_expansion_window": "12-24个月",
+          "capacity_relief_eta": "2028H1",
+          "market_repricing_stage": "早期",
+          "evidence": [
+            {
+              "fact": "AI数据中心电力瓶颈刚刚浮现，铜矿扩产周期通常5-7年，2028年前新增供给有限",
+              "from": "search[1.1]·新湖有色",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            }
+          ]
+        },
+        "mismatch_analysis": {
+          "supply_demand_mismatch": "strong",
+          "timing_mismatch": "strong",
+          "expectation_gap": "moderate",
+          "profit_redistribution": "strong",
+          "pricing_gap": "moderate",
+          "evidence": [
+            {
+              "fact": "供给增速<2%，需求增速因AI数据中心而显著提升，供需缺口扩大",
+              "from": "search[1.1]·新湖有色",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            },
+            {
+              "fact": "铜矿扩产周期5-7年，而数据中心投资周期2-3年，时间错配显著",
+              "from": "search[2.3]·国金证券",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            },
+            {
+              "fact": "市场虽关注铜短缺，但低估了AI电力基础设施对铜需求的长期结构性拉动",
+              "from": "search[1.3]·研报掘金",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            },
+            {
+              "fact": "利润从下游电力设备向上游铜矿迁移（铜矿利润弹性>冶炼和加工）",
+              "from": "search[2.1]·知乎（行业分析）",
+              "quality": {
+                "level": "low",
+                "source_type": "self_media"
+              }
+            },
+            {
+              "fact": "铜价虽处历史高位，但研报仍看好2026年再创辉煌，反映尚未完全定价",
+              "from": "search[1.1]·新湖有色",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            }
+          ]
+        },
+        "verdict": {
+          "enter_step3": true,
+          "priority": "高",
+          "rationale": "供需错配与时间错配均为strong（供给增速<2%、扩产周期5-7年 vs 需求爆发），利润迁移strong（上游铜矿受益），认知错配moderate（市场低估AI电力拉动的持续性），定价缺口moderate（当前估值未充分反映长期结构性短缺）。五错配均达到可接受水平，综合判断进入深度推演。",
+          "key_uncertainties": [
+            "AI数据中心电力配套实际落地速度不及预期",
+            "铜矿新项目（如QB2、Kakula）产量超预期",
+            "经济衰退导致传统铜需求大幅下滑"
+          ],
+          "evidence": [
+            {
+              "fact": "26-28年全球铜矿供应增速预计维持在2%低位，精铜产量增速降至2%以下",
+              "from": "search[1.1]·新湖有色",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            },
+            {
+              "fact": "AI算力扩张通过电力系统放大铜消费，储能和AI数据中心成为未来铜消费强劲增长点",
+              "from": "search[1.1]·新湖有色",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            }
+          ]
+        },
+        "kill_reasons": [],
+        "catalysts": [
+          {
+            "type": "policy",
+            "catalyst": "美国《电网现代化法案》或数据中心电力审批加速",
+            "expected_date": "2026Q1-Q2",
+            "watch_signal": "美国能源部宣布加速电网互联或大型变压器采购计划",
+            "status": "pending"
+          },
+          {
+            "type": "capacity",
+            "catalyst": "主要铜矿（如QB2、Grasberg）产量指引下调",
+            "expected_date": "2026Q1",
+            "watch_signal": "季度产量报告低于预期",
+            "status": "pending"
+          },
+          {
+            "type": "earnings",
+            "catalyst": "铜矿企业2025年报及2026Q1业绩超预期（利润大幅增长）",
+            "expected_date": "2026年3-4月",
+            "watch_signal": "实际净利润vs一致预期",
+            "status": "pending"
+          }
+        ],
+        "_step3_guidance": {
+          "cycle_phase": "demand_explosion",
+          "cycle_meaning": "订单暴增, 渗透率快速拉升 — 搜索时关注下游订单和产能扩张计划",
+          "prosperity_type": "demand_explosion",
+          "prosperity_meaning": "需求驱动 — 分析框架: 找产能扩张瓶颈和订单传导链",
+          "propagation_depth": "深",
+          "enter_step3": true,
+          "priority": "高",
+          "mismatch_summary": "S=strong/T=strong/E=moderate/P=strong/$=moderate",
+          "industry_granularity": "specific_industry",
+          "search_focus": "周期阶段=demand_explosion → 订单暴增, 渗透率快速拉升 — 搜索时关注下游订单和产能扩张计划; 景气类型=demand_explosion → 需求驱动 — 分析框架: 找产能扩张瓶颈和订单传导链",
+          "key_uncertainties": [
+            "AI数据中心电力配套实际落地速度不及预期",
+            "铜矿新项目（如QB2、Kakula）产量超预期",
+            "经济衰退导致传统铜需求大幅下滑"
+          ],
+          "core_contradiction": "供给端资本开支不足导致新增产能有限，需求端因AI电力基础设施扩张而跃升，电力配套瓶颈进一步放大铜需求"
+        }
+      },
+      {
+        "industry": "电网设备",
+        "industry_granularity": {
+          "type": "subsector",
+          "action": "allow",
+          "reason": "电网设备包含变压器、开关、特高压等具体物理供应链环节，属于有真实供需链的产业板块"
+        },
+        "cycle_position": {
+          "phase": "demand_explosion",
+          "sub_phase": "early",
+          "evidence": [
+            {
+              "fact": "2026年开年电网设备板块持续走高，多只个股连续涨停，行业龙头中国西电涨停",
+              "from": "search[1.1]·中国基金报",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              }
+            },
+            {
+              "fact": "国家电网'十五五'投资4万亿元，较'十四五'增长40%",
+              "from": "search[1.1]·中国基金报",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              }
+            },
+            {
+              "fact": "AI算力爆发引发全球'电力焦虑'，欧美电网升级需求迫切，交付周期延长",
+              "from": "search[1.1]·中国基金报",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              }
+            }
+          ],
+          "next_phase": "bottleneck_formation",
+          "estimated_duration": "12-18个月",
+          "phase_switch_trigger": "核心瓶颈环节（如高功率变压器）交期超过12个月且价格大幅上涨"
+        },
+        "prosperity": {
+          "type": "demand_explosion",
+          "demand_quality": "real_demand",
+          "demand_evidence": [
+            {
+              "fact": "全球电网投资2024年达3900亿美元，2025年预计突破4000亿美元，发达国家更新换代和AI算力配套为确定性增量",
+              "from": "search[1.2]·东方财富网财富号",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            },
+            {
+              "fact": "2026年美国半数数据中心项目因电力配套延迟或取消，高功率变压器及开关设备严重短缺",
+              "from": "预判信息 - capital_flow_pressure",
+              "quality": {
+                "level": "high",
+                "source_type": "industry_data"
+              }
+            }
+          ],
+          "growth_narrative": "AI算力和新能源并网驱动的电力基础设施需求增速（年均15-20%）显著高于变压器、开关等关键设备供给响应速度（扩产周期2-3年）",
+          "core_contradiction": "数据中心与电网扩容的超前需求 vs 变压器/开关等核心设备产能弹性不足",
+          "driver_decomposition": [
+            {
+              "driver": "AI数据中心电力配套",
+              "weight": "主导",
+              "certainty": "高",
+              "duration": "3-5年",
+              "leading_indicator": "北美数据中心电力容量招标量",
+              "evidence": [
+                {
+                  "fact": "AI算力爆发引发全球'电力焦虑'，美国半数数据中心项目因电力配套延迟或取消",
+                  "from": "search[1.1]·中国基金报",
+                  "quality": {
+                    "level": "medium",
+                    "source_type": "news_media"
+                  }
+                }
+              ]
+            },
+            {
+              "driver": "国家电网投资加码",
+              "weight": "主导",
+              "certainty": "高",
+              "duration": "5年以上",
+              "leading_indicator": "国家电网招标金额",
+              "evidence": [
+                {
+                  "fact": "国家电网'十五五'固定资产投资4万亿元，较'十四五'增长40%",
+                  "from": "search[1.1]·中国基金报",
+                  "quality": {
+                    "level": "medium",
+                    "source_type": "news_media"
+                  }
+                }
+              ]
+            },
+            {
+              "driver": "欧美电网更新换代",
+              "weight": "重要",
+              "certainty": "中",
+              "duration": "3-5年",
+              "leading_indicator": "欧美电网设备进口数据",
+              "evidence": [
+                {
+                  "fact": "欧美电网升级需求迫切，交付周期已拉长",
+                  "from": "search[1.1]·中国基金报",
+                  "quality": {
+                    "level": "medium",
+                    "source_type": "news_media"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "payoff": {
+          "asymmetry": "强非对称",
+          "narrative": "判断依据: 如果景气兑现（AI+电网投资双轮驱动），变压器/开关等瓶颈环节利润可增长3-5倍；如果证伪（AI电力需求低于预期），下游电网投资仍为刚性支出（国网4万亿已规划），下行空间有限，需求仅为推迟而非消失",
+          "evidence": [
+            {
+              "fact": "国家电网'十五五'投资规模已明确，确定性高；AI数据中心对电力配套的需求属于新增量，即使不及预期原有电网投资仍在",
+              "from": "search[1.1]·中国基金报",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              }
+            }
+          ]
+        },
+        "propagation": {
+          "depth": "中",
+          "transmission_order": [
+            {
+              "stage": 1,
+              "node": "高功率变压器及开关设备",
+              "reason": "最先受益于严重短缺和涨价弹性最大",
+              "evidence": [
+                {
+                  "fact": "预判信息明确指出高功率变压器及开关设备严重短缺",
+                  "from": "预判信息 - capital_flow_pressure",
+                  "quality": {
+                    "level": "high",
+                    "source_type": "industry_data"
+                  }
+                }
+              ]
+            },
+            {
+              "stage": 2,
+              "node": "特高压及输变电设备",
+              "reason": "大基地外送和跨区互联拉动，订单确定性高",
+              "evidence": [
+                {
+                  "fact": "中国西电中标国家电网逾14亿元输变电项目",
+                  "from": "search[1.3]·一财网",
+                  "quality": {
+                    "level": "medium",
+                    "source_type": "news_media"
+                  }
+                }
+              ]
+            },
+            {
+              "stage": 3,
+              "node": "配电侧设备（智能化、节能型）",
+              "reason": "分布式能源和充电桩带动配网升级，受益时间稍晚",
+              "evidence": [
+                {
+                  "fact": "2026年行业景气逻辑中提及配网智能化方向",
+                  "from": "search[1.3]·一财网",
+                  "quality": {
+                    "level": "medium",
+                    "source_type": "news_media"
+                  }
+                }
+              ]
+            }
+          ],
+          "last_beneficiary": "电网运维与软件服务",
+          "last_bottleneck": "大容量变压器的产能瓶颈（扩产周期长、核心材料受限）",
+          "alpha_implication": "重点配置变压器环节，关注开关、特高压的阶段性接力"
+        },
+        "time_horizon": {
+          "alpha_window": "6-12个月",
+          "profit_expansion_window": "12-24个月",
+          "capacity_relief_eta": "2028H1",
+          "market_repricing_stage": "早期",
+          "evidence": [
+            {
+              "fact": "搜索显示2026年开年电网设备板块异动但基本面仍在验证中，市场尚未完全反映AI电力配套的长期影响",
+              "from": "search[1.1]·中国基金报",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              }
+            },
+            {
+              "fact": "预计2026年样机验证大年，2027年商业化落地，产能释放需到2028年",
+              "from": "search[2.1]·东方财富网研报",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            }
+          ]
+        },
+        "mismatch_analysis": {
+          "supply_demand_mismatch": "strong",
+          "timing_mismatch": "moderate",
+          "expectation_gap": "weak",
+          "profit_redistribution": "weak",
+          "pricing_gap": "uncertain",
+          "evidence": [
+            {
+              "fact": "高功率变压器及开关设备严重短缺，需求增速＞供给响应速度 → 供需错配 strong",
+              "from": "预判信息",
+              "quality": {
+                "level": "high",
+                "source_type": "industry_data"
+              }
+            },
+            {
+              "fact": "变压器扩产周期约2-3年，数据中心电力需求爆发在1-2年内 → 时间错配 moderate（无明确扩产周期数据，需推断）",
+              "from": "search[2.2]·市场分析报告",
+              "quality": {
+                "level": "low",
+                "source_type": "sell_side_report"
+              }
+            },
+            {
+              "fact": "市场已开始关注电网设备板块（批量异动、多家研报覆盖），认知差在缩小 → 认知错配 weak",
+              "from": "search[1.1]·中国基金报",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              }
+            },
+            {
+              "fact": "利润迁移环节尚不明确，变压器龙头增速突出但未展示利润从下游向上游转移的清晰证据 → 利润迁移 weak",
+              "from": "search[2.2]·市场分析报告",
+              "quality": {
+                "level": "low",
+                "source_type": "sell_side_report"
+              }
+            },
+            {
+              "fact": "板块指数持续走高但缺乏估值百分位数据，无法判断是否充分定价 → 定价 gap uncertain",
+              "from": "search[1.1]·中国基金报",
+              "quality": {
+                "level": "low",
+                "source_type": "news_media"
+              }
+            }
+          ]
+        },
+        "verdict": {
+          "enter_step3": false,
+          "priority": "低",
+          "rationale": "基于 mismatch_analysis: 供需错配 strong, 时间错配 moderate, 但认知错配 weak（市场已关注）、利润迁移 weak（证据不足）、定价 gap uncertain（未获估值数据）。五错配中仅两项较强，不满足'同时满足全部五项'的进入条件，故裁定跳过深度推演",
+          "key_uncertainties": [
+            "AI数据中心电力需求的实际落地节奏和规模",
+            "变压器/开关的利润率能否持续提升",
+            "当前估值已反映多少预期"
+          ],
+          "evidence": [
+            {
+              "fact": "mismatch_analysis 显示 profit_redistribution 和 expectation_gap 评分偏低",
+              "from": "自分析逻辑",
+              "quality": {
+                "level": "low",
+                "source_type": "ai_summary"
+              }
+            }
+          ]
+        },
+        "kill_reasons": [
+          {
+            "reason": "传导链<3层Alpha空间有限",
+            "monitor_signal": "利润迁移是否清晰显现（如变压器毛利率同比大幅提升）",
+            "data_source_hint": "上市公司季度报告中的毛利率、分部利润数据"
+          },
+          {
+            "reason": "估值透支3年增长",
+            "monitor_signal": "行业加权平均PE（TTM）超过历史85%分位数",
+            "data_source_hint": "Wind或同花顺行业估值数据"
+          }
+        ],
+        "catalysts": [
+          {
+            "type": "order",
+            "catalyst": "国家电网2026年第一批输变电项目招标结果公布，金额超预期",
+            "expected_date": "2026Q2",
+            "watch_signal": "招投标金额同比增长>30%",
+            "status": "pending"
+          },
+          {
+            "type": "policy",
+            "catalyst": "美国发布数据中心电力优先配套政策或补贴",
+            "expected_date": "2026年中期",
+            "watch_signal": "法案通过或行政令签署",
+            "status": "pending"
+          },
+          {
+            "type": "earnings",
+            "catalyst": "变压器/开关龙头2026年一季报业绩增速超50%",
+            "expected_date": "2026年4月底",
+            "watch_signal": "净利润同比增速",
+            "status": "pending"
+          }
+        ],
+        "_step3_guidance": {
+          "cycle_phase": "demand_explosion",
+          "cycle_meaning": "订单暴增, 渗透率快速拉升 — 搜索时关注下游订单和产能扩张计划",
+          "prosperity_type": "demand_explosion",
+          "prosperity_meaning": "需求驱动 — 分析框架: 找产能扩张瓶颈和订单传导链",
+          "propagation_depth": "中",
+          "enter_step3": false,
+          "priority": "低",
+          "mismatch_summary": "S=strong/T=moderate/E=weak/P=weak/$=uncertain",
+          "industry_granularity": "subsector",
+          "search_focus": "周期阶段=demand_explosion → 订单暴增, 渗透率快速拉升 — 搜索时关注下游订单和产能扩张计划; 景气类型=demand_explosion → 需求驱动 — 分析框架: 找产能扩张瓶颈和订单传导链",
+          "key_uncertainties": [
+            "AI数据中心电力需求的实际落地节奏和规模",
+            "变压器/开关的利润率能否持续提升",
+            "当前估值已反映多少预期"
+          ],
+          "core_contradiction": "数据中心与电网扩容的超前需求 vs 变压器/开关等核心设备产能弹性不足"
+        }
+      },
+      {
+        "industry": "变压器",
+        "industry_granularity": {
+          "type": "specific_industry",
+          "action": "allow",
+          "reason": "变压器具有从原材料到制造到销售的清晰物理供应链，属于具体产业节点"
+        },
+        "cycle_position": {
+          "phase": "demand_explosion",
+          "sub_phase": "early",
+          "evidence": [
+            {
+              "fact": "2026年以来多家变压器厂商订单激增，A股变压器板块持续走高，金盘科技签订6.96亿元海外合同",
+              "from": "search[1.3]·电网基建与AIDC需求共振 变压器行业高景气延续",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              }
+            },
+            {
+              "fact": "广东、江苏两省变压器工厂产能利用率维持在90%以上，部分龙头满产",
+              "from": "search[1.1]·2026年中国变压器行业市场前景及投资研究报告",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            }
+          ],
+          "next_phase": "bottleneck_formation",
+          "estimated_duration": "12-18个月",
+          "phase_switch_trigger": "核心原材料（如取向硅钢）或关键元器件出现持续性短缺，交货周期进一步翻倍"
+        },
+        "prosperity": {
+          "type": "demand_explosion",
+          "demand_quality": "real_demand",
+          "demand_evidence": [
+            {
+              "fact": "国家电网‘十五五’规划4万亿元固定资产投资，较‘十四五’增40%，特高压投资5000-8000亿元，变压器单条线路投资占比25%-30%",
+              "from": "search[1.1]·2026年中国变压器行业市场前景及投资研究报告",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            }
+          ],
+          "growth_narrative": "电网升级、AI数据中心建设、新能源并网三重需求叠加，变压器订单爆发式增长；但供给端受产能利用率已近饱和、扩产周期较长（约1-2年）制约，增速落后于需求",
+          "core_contradiction": "当前产能利用率已高企（>90%），新增产能释放前，大量订单与有限产能之间的矛盾持续加剧",
+          "driver_decomposition": [
+            {
+              "driver": "国家电网投资扩张",
+              "weight": "主导",
+              "certainty": "高",
+              "duration": "3-5年",
+              "leading_indicator": "国家电网年度投资预算及特高压线路审批进度",
+              "evidence": [
+                {
+                  "fact": "国家电网‘十五五’固定资产投资4万亿元",
+                  "from": "search[1.1]·2026年中国变压器行业市场前景及投资研究报告",
+                  "quality": {
+                    "level": "medium",
+                    "source_type": "sell_side_report"
+                  }
+                }
+              ]
+            },
+            {
+              "driver": "AI数据中心电力需求",
+              "weight": "中",
+              "certainty": "中",
+              "duration": "2-3年",
+              "leading_indicator": "美国数据中心项目获批数量与电力配套进度",
+              "evidence": [
+                {
+                  "fact": "2026年美国约半数数据中心项目因电力配套延迟或取消",
+                  "from": "source·capital_flow_pressure",
+                  "quality": {
+                    "level": "low",
+                    "source_type": "ai_summary"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "payoff": {
+          "asymmetry": "强非对称",
+          "narrative": "若景气兑现：变压器价格上行+产能利用率维持高位，利润弹性显著；若证伪（如AI投资放缓）：电网刚性投资仍支撑基本盘，下行空间有限，因此上涨空间远大于下跌风险",
+          "evidence": [
+            {
+              "fact": "电网投资属国家战略性支出，波动性低，而AI数据中心为增量弹性需求",
+              "from": "search[1.1]·2026年中国变压器行业市场前景及投资研究报告",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            }
+          ]
+        },
+        "propagation": {
+          "depth": "中",
+          "transmission_order": [
+            {
+              "stage": 1,
+              "node": "变压器制造厂商",
+              "reason": "直接受益于订单增长与价格上行",
+              "evidence": [
+                {
+                  "fact": "金盘科技、伊戈尔、特变电工等企业披露在手订单饱满",
+                  "from": "search[1.3]·电网基建与AIDC需求共振 变压器行业高景气延续",
+                  "quality": {
+                    "level": "medium",
+                    "source_type": "news_media"
+                  }
+                }
+              ]
+            },
+            {
+              "stage": 2,
+              "node": "上游原材料（硅钢、铜、绝缘材料）",
+              "reason": "变压器产量增加带动原材料需求，但利润增量可能被中游挤压",
+              "evidence": [
+                {
+                  "fact": "暂无直接证据，逻辑推演",
+                  "from": "",
+                  "quality": {
+                    "level": "low",
+                    "source_type": "ai_summary"
+                  }
+                }
+              ]
+            }
+          ],
+          "last_beneficiary": "下游电网运营商（受益于设备升级后系统效率提升）",
+          "last_bottleneck": "取向硅钢等核心材料供应瓶颈",
+          "alpha_implication": "关注变压器制造龙头，利润集中度较高，但产业链传导层数有限，轮动机会较少"
+        },
+        "time_horizon": {
+          "alpha_window": "6-12个月",
+          "profit_expansion_window": "12-24个月",
+          "capacity_relief_eta": "2028H1",
+          "market_repricing_stage": "早期",
+          "evidence": [
+            {
+              "fact": "当前产能利用率高但尚未大规模扩产，市场关注度提升但股价未充分反映持续性缺口",
+              "from": "search[1.3]·电网基建与AIDC需求共振 变压器行业高景气延续",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              }
+            }
+          ]
+        },
+        "mismatch_analysis": {
+          "supply_demand_mismatch": "strong",
+          "timing_mismatch": "moderate",
+          "expectation_gap": "weak",
+          "profit_redistribution": "strong",
+          "pricing_gap": "uncertain",
+          "evidence": [
+            {
+              "fact": "产能利用率>90%，订单饱满，需求增速明显超过供给响应速度",
+              "from": "search[1.1]·2026年中国变压器行业市场前景及投资研究报告",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            },
+            {
+              "fact": "扩产周期(1-2年)长于需求爆发周期，但缺乏具体扩产计划统计数据",
+              "from": "search[2]·无结果",
+              "quality": {
+                "level": "low",
+                "source_type": "ai_summary"
+              }
+            },
+            {
+              "fact": "市场已通过股价上涨部分反映，但研报普遍仍持乐观预期，认知错配证据不足",
+              "from": "search[1.3]·电网基建与AIDC需求共振 变压器行业高景气延续",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              }
+            },
+            {
+              "fact": "利润正从下游（电网、数据中心）向中游变压器制造商转移，但缺乏利润率迁徙数据",
+              "from": "search[1.1]·2026年中国变压器行业市场前景及投资研究报告",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            },
+            {
+              "fact": "无法判断当前估值是否充分反映上述错配，缺乏PE、PB等估值历史分位数据",
+              "from": "",
+              "quality": {
+                "level": "low",
+                "source_type": "ai_summary"
+              }
+            }
+          ]
+        },
+        "verdict": {
+          "enter_step3": false,
+          "priority": "跳过",
+          "rationale": "mismatch_analysis显示：供需错配(strong)和利润迁移(strong)两项满足，时间错配(moderate)有间接支撑，但认知错配(weak)和定价缺口(uncertain)证据不足或缺失，不满足“五错配”全部条件。其中认知错配被市场部分定价削弱，定价缺口因缺乏具体估值数据无法确认。综合判断当前阶段不进入深度推演。",
+          "key_uncertainties": [
+            "产能扩张计划的实际速度与规模不明",
+            "市场对变压器景气预期的定价程度（PE vs 历史分位）",
+            "AI数据中心建设进度的不确定性"
+          ],
+          "evidence": [
+            {
+              "fact": "缺少关于扩产周期、供给端资本开支、行业估值历史分位等关键数据",
+              "from": "search[2]·无结果",
+              "quality": {
+                "level": "low",
+                "source_type": "ai_summary"
+              }
+            }
+          ]
+        },
+        "kill_reasons": [
+          {
+            "reason": "估值透支3年增长",
+            "monitor_signal": "变压器龙头公司PE（TTM）高于历史中位数1.5倍以上",
+            "data_source_hint": "Wind或同花顺行业PE-Band数据"
+          }
+        ],
+        "catalysts": [
+          {
+            "type": "order",
+            "catalyst": "龙头变压器企业获得超预期大额海外订单或特高压招标结果",
+            "expected_date": "2026Q3",
+            "watch_signal": "公司公告如“金盘科技/特变电工签订XX亿元订单”",
+            "status": "pending"
+          },
+          {
+            "type": "capacity",
+            "catalyst": "头部企业宣布大规模扩产计划或新建工厂",
+            "expected_date": "2026H2",
+            "watch_signal": "公司公告投资XX亿元建设新变压器产能",
+            "status": "pending"
+          }
+        ],
+        "_step3_guidance": {
+          "cycle_phase": "demand_explosion",
+          "cycle_meaning": "订单暴增, 渗透率快速拉升 — 搜索时关注下游订单和产能扩张计划",
+          "prosperity_type": "demand_explosion",
+          "prosperity_meaning": "需求驱动 — 分析框架: 找产能扩张瓶颈和订单传导链",
+          "propagation_depth": "中",
+          "enter_step3": false,
+          "priority": "跳过",
+          "mismatch_summary": "S=strong/T=moderate/E=weak/P=strong/$=uncertain",
+          "industry_granularity": "specific_industry",
+          "search_focus": "周期阶段=demand_explosion → 订单暴增, 渗透率快速拉升 — 搜索时关注下游订单和产能扩张计划; 景气类型=demand_explosion → 需求驱动 — 分析框架: 找产能扩张瓶颈和订单传导链",
+          "key_uncertainties": [
+            "产能扩张计划的实际速度与规模不明",
+            "市场对变压器景气预期的定价程度（PE vs 历史分位）",
+            "AI数据中心建设进度的不确定性"
+          ],
+          "core_contradiction": "当前产能利用率已高企（>90%），新增产能释放前，大量订单与有限产能之间的矛盾持续加剧"
+        }
+      },
+      {
+        "industry": "液冷散热",
+        "industry_granularity": {
+          "type": "specific_industry",
+          "action": "allow",
+          "reason": "液冷散热有明确的物理供应链（冷板、Manifold、泵阀、管路、冷却液等），可画出从零部件到系统集成的具体节点。"
+        },
+        "cycle_position": {
+          "phase": "demand_explosion",
+          "sub_phase": "early",
+          "evidence": [
+            {
+              "fact": "全球液冷龙头Vertiv 2026Q4订单同比暴增252%，业绩指引大幅超预期",
+              "from": "search[2.1]·财富号",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              }
+            },
+            {
+              "fact": "AI数据中心液冷渗透率预计从2024年14%跃升至2026年40%，全球市场空间2026年约150亿美元",
+              "from": "search[2.2]·工控",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            }
+          ],
+          "next_phase": "bottleneck_formation",
+          "estimated_duration": "12-18个月",
+          "phase_switch_trigger": "液冷核心零部件（如快接头、Manifold）出现涨价或交期显著延长"
+        },
+        "prosperity": {
+          "type": "demand_explosion",
+          "demand_quality": "real_demand",
+          "demand_evidence": [
+            {
+              "fact": "全球服务器液冷市场空间2026-2030年CAGR达43.6%，预计从125.7亿美元增至535.1亿美元",
+              "from": "search[1.1]·新浪财经",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            },
+            {
+              "fact": "中国液冷市场2025年同比增长53%至236亿元，未来三年CAGR超40%",
+              "from": "search[1.2]·新浪财经",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            }
+          ],
+          "growth_narrative": "AI算力高密度部署驱动液冷渗透率从14%向40%跃升，需求增速（40%+）远超液冷产能扩张速度（龙头扩产周期12-18个月），供需矛盾持续加剧",
+          "core_contradiction": "液冷定制化产线建设周期（12-18个月）无法匹配AI数据中心快速上量（季度级）的散热需求",
+          "driver_decomposition": [
+            {
+              "driver": "AI算力机柜功率密度提升",
+              "weight": "主导",
+              "certainty": "高",
+              "duration": "3-5年",
+              "leading_indicator": "单机柜功率密度（kW/rack）季度变化",
+              "evidence": [
+                {
+                  "fact": "AI服务器高密度部署加速液冷散热需求",
+                  "from": "search[0]·pressure_signals",
+                  "quality": {
+                    "level": "medium",
+                    "source_type": "ai_summary"
+                  }
+                }
+              ]
+            },
+            {
+              "driver": "国内算力集群建设政策推动",
+              "weight": "重要",
+              "certainty": "中",
+              "duration": "2-3年",
+              "leading_indicator": "地方政府智算中心招标公告数量",
+              "evidence": [
+                {
+                  "fact": "国内算力集群建设推动散热配套升级",
+                  "from": "search[0]·pressure_signals",
+                  "quality": {
+                    "level": "low",
+                    "source_type": "ai_summary"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "payoff": {
+          "asymmetry": "强非对称",
+          "narrative": "若AI算力持续高增兑现，液冷渗透率从14%升至40%对应约150亿美元市场空间，龙头营收有望翻倍以上；若需求短暂放缓，AI数据中心建设仅是推迟而非消失，且液冷方案具技术锁定效应，下行风险有限。",
+          "evidence": [
+            {
+              "fact": "液冷渗透率提升势能明确，即使短期需求波动，长期趋势不变",
+              "from": "search[2.2]·工控",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            }
+          ]
+        },
+        "propagation": {
+          "depth": "深",
+          "transmission_order": [
+            {
+              "stage": 1,
+              "node": "液冷系统集成商（如Vertiv、英维克）",
+              "reason": "最先受益于数据中心招标订单，订单增速直接反映需求强度",
+              "evidence": [
+                {
+                  "fact": "Vertiv 2026Q4订单暴增252%",
+                  "from": "search[2.1]·财富号",
+                  "quality": {
+                    "level": "medium",
+                    "source_type": "news_media"
+                  }
+                }
+              ]
+            },
+            {
+              "stage": 2,
+              "node": "核心零部件（快接头、Manifold、水泵）",
+              "reason": "系统集成商扩产带动零部件采购需求，零部件产能瓶颈将早于系统出现",
+              "evidence": [
+                {
+                  "fact": "冷板式液冷中Manifold市场空间2030年达22.9亿美元",
+                  "from": "search[1.1]·新浪财经",
+                  "quality": {
+                    "level": "medium",
+                    "source_type": "sell_side_report"
+                  }
+                }
+              ]
+            },
+            {
+              "stage": 3,
+              "node": "冷却液、管路等耗材",
+              "reason": "液冷系统运维及补液需求随存量增长而持续增长",
+              "evidence": []
+            }
+          ],
+          "last_beneficiary": "冷却液供应商",
+          "last_bottleneck": "高端快接头/Manifold精密制造能力",
+          "alpha_implication": "优先配置系统集成商，待零部件出现涨价信号时切换至零部件环节"
+        },
+        "time_horizon": {
+          "alpha_window": "6-12个月",
+          "profit_expansion_window": "12-24个月",
+          "capacity_relief_eta": "2028H1",
+          "market_repricing_stage": "早期",
+          "evidence": [
+            {
+              "fact": "渗透率从14%向40%跃升集中于2026-2028年，扩产周期约12-18个月，2027年底新增产能开始释放",
+              "from": "search[2.2]·工控",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            }
+          ]
+        },
+        "mismatch_analysis": {
+          "supply_demand_mismatch": "strong",
+          "timing_mismatch": "moderate",
+          "expectation_gap": "moderate",
+          "profit_redistribution": "strong",
+          "pricing_gap": "uncertain",
+          "evidence": [
+            {
+              "fact": "供需错配strong：需求CAGR 43.6%，供给响应仅能在12-18个月后逐步释放",
+              "from": "search[1.1]·新浪财经+search[1.3]·知乎",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            },
+            {
+              "fact": "时间错配moderate：扩产周期（1-1.5年）与需求爆发周期（2-3年）有重叠但未严重背离",
+              "from": "search[1.3]·知乎",
+              "quality": {
+                "level": "low",
+                "source_type": "self_media"
+              }
+            },
+            {
+              "fact": "认知错配moderate：市场已有液冷主题研报，但对渗透率爬坡速度和瓶颈环节利润集中度认知不足",
+              "from": "search[1.2]·新浪财经",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            },
+            {
+              "fact": "利润迁移strong：AI服务器散热方案从风冷切换至液冷，液冷厂商毛利率显著高于传统风冷",
+              "from": "search[1.2]·新浪财经",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            },
+            {
+              "fact": "定价gap uncertain：搜索结果中缺乏液冷板块整体估值数据，无法判断当前估值是否已充分反映上述错配",
+              "from": "search[2.3]·无相关数据",
+              "quality": {
+                "level": "low",
+                "source_type": "ai_summary"
+              }
+            }
+          ]
+        },
+        "verdict": {
+          "enter_step3": false,
+          "priority": "跳过",
+          "rationale": "五错配中供需错配、利润迁移为strong，时间错配、认知错配为moderate，但pricing_gap为uncertain（无估值数据支持“尚未充分定价”）。缺少一条错配的明确证据，因此不满足进入深度推演条件。",
+          "key_uncertainties": [
+            "液冷板块当前估值水平未知，无法判断是否已充分定价",
+            "液冷关键零部件（快接头等）产能瓶颈实际扩产周期数据缺失"
+          ],
+          "evidence": [
+            {
+              "fact": "pricing_gap uncertain导致五错配不完整",
+              "from": "search[2.3]·无结果",
+              "quality": {
+                "level": "low",
+                "source_type": "ai_summary"
+              }
+            }
+          ]
+        },
+        "kill_reasons": [
+          {
+            "reason": "已进入资本狂热后期",
+            "monitor_signal": "液冷相关上市公司单月涨幅超过50%、新进入者密集发布扩产公告、卖方一致预期上调幅度超过30%",
+            "data_source_hint": "公司公告、券商研报一致预期变化"
+          }
+        ],
+        "catalysts": [
+          {
+            "type": "order",
+            "catalyst": "国内头部云厂商（如阿里、腾讯）批量招标液冷数据中心",
+            "expected_date": "2026Q3-Q4",
+            "watch_signal": "上市公司公告中标金额超预期",
+            "status": "pending"
+          }
+        ],
+        "_step3_guidance": {
+          "cycle_phase": "demand_explosion",
+          "cycle_meaning": "订单暴增, 渗透率快速拉升 — 搜索时关注下游订单和产能扩张计划",
+          "prosperity_type": "demand_explosion",
+          "prosperity_meaning": "需求驱动 — 分析框架: 找产能扩张瓶颈和订单传导链",
+          "propagation_depth": "深",
+          "enter_step3": false,
+          "priority": "跳过",
+          "mismatch_summary": "S=strong/T=moderate/E=moderate/P=strong/$=uncertain",
+          "industry_granularity": "specific_industry",
+          "search_focus": "周期阶段=demand_explosion → 订单暴增, 渗透率快速拉升 — 搜索时关注下游订单和产能扩张计划; 景气类型=demand_explosion → 需求驱动 — 分析框架: 找产能扩张瓶颈和订单传导链",
+          "key_uncertainties": [
+            "液冷板块当前估值水平未知，无法判断是否已充分定价",
+            "液冷关键零部件（快接头等）产能瓶颈实际扩产周期数据缺失"
+          ],
+          "core_contradiction": "液冷定制化产线建设周期（12-18个月）无法匹配AI数据中心快速上量（季度级）的散热需求"
+        }
+      },
+      {
+        "industry": "服务器电源",
+        "industry_granularity": {
+          "type": "specific_industry",
+          "action": "allow",
+          "reason": "服务器电源是AI算力硬件中的具体物理环节，存在明确的供应链（芯片→电源模块→系统集成）。"
+        },
+        "cycle_position": {
+          "phase": "theme_emergence",
+          "sub_phase": "early",
+          "evidence": [
+            {
+              "fact": "AI服务器高密度部署推动液冷散热需求，但服务器电源市场规模CAGR仅7-9%，尚处早期认知阶段。",
+              "from": "search[1.2]·新浪财经",
+              "quality": {
+                "level": "low",
+                "source_type": "sell_side_report"
+              }
+            }
+          ],
+          "next_phase": "demand_explosion",
+          "estimated_duration": "12-18个月",
+          "phase_switch_trigger": "AI服务器出货量同比增速突破50%且电源订单出现连续季度环比增长>20%"
+        },
+        "prosperity": {
+          "type": "demand_explosion",
+          "demand_quality": "real_demand",
+          "demand_evidence": [
+            {
+              "fact": "全球碳化硅服务器电源市场规模预计从2.41亿美元增至4.34亿美元，CAGR 8.9%。",
+              "from": "search[1.3]·行业报告",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            }
+          ],
+          "growth_narrative": "AI算力投资驱动服务器电源需求温和增长，但增速低于算力芯片扩张速度，且供给端成熟企业扩产灵活，供需矛盾不突出。",
+          "core_contradiction": "需求增速（~9%）与供给扩产速度基本匹配，未形成显著缺口。",
+          "driver_decomposition": [
+            {
+              "driver": "AI服务器出货量增长",
+              "weight": "主导",
+              "certainty": "中",
+              "duration": "2-3年",
+              "leading_indicator": "全球AI服务器出货量季度数据",
+              "evidence": [
+                {
+                  "fact": "搜索结果未提供具体装机量数据，仅显示市场规模增速。",
+                  "from": "search[1.1]·行业分析",
+                  "quality": {
+                    "level": "low",
+                    "source_type": "ai_summary"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "payoff": {
+          "asymmetry": "对称",
+          "narrative": "若需求兑现，市场规模仅增长约2倍，且供给弹性大，利润弹性有限；若证伪，需求推迟但不会消失，下行风险温和。",
+          "evidence": [
+            {
+              "fact": "行业CAGR 7-9%，远低于AI芯片30%+增速，上行空间小。",
+              "from": "search[1.3]·行业报告",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            }
+          ]
+        },
+        "propagation": {
+          "depth": "中",
+          "transmission_order": [
+            {
+              "stage": 1,
+              "node": "AI服务器整机厂",
+              "reason": "最先受益于AI算力资本开支，拉动电源采购。",
+              "evidence": [
+                {
+                  "fact": "AI算力集群建设推动散热配套升级，间接带动电源需求。",
+                  "from": "search[0]·原始压力信号",
+                  "quality": {
+                    "level": "low",
+                    "source_type": "self_media"
+                  }
+                }
+              ]
+            }
+          ],
+          "last_beneficiary": "电源模组用树脂等上游材料供应商",
+          "last_bottleneck": "高功率电源模块的半导体器件（SiC）产能",
+          "alpha_implication": "产业链传导仅3层左右，利润迁移空间有限。"
+        },
+        "time_horizon": {
+          "alpha_window": "6-12个月",
+          "profit_expansion_window": "12-24个月",
+          "capacity_relief_eta": "2027H2",
+          "market_repricing_stage": "早期",
+          "evidence": [
+            {
+              "fact": "市场规模预测至2032年，但当前未见供需紧张信号。",
+              "from": "search[1.1]·行业分析",
+              "quality": {
+                "level": "low",
+                "source_type": "ai_summary"
+              }
+            }
+          ]
+        },
+        "mismatch_analysis": {
+          "supply_demand_mismatch": "weak",
+          "timing_mismatch": "weak",
+          "expectation_gap": "weak",
+          "profit_redistribution": "uncertain",
+          "pricing_gap": "uncertain",
+          "evidence": [
+            {
+              "fact": "搜索结果显示市场规模CAGR 7-9%，无供给短缺、扩产周期或利润转移数据。",
+              "from": "search[1.1]·行业分析, search[2]·无相关详细信息",
+              "quality": {
+                "level": "low",
+                "source_type": "ai_summary"
+              }
+            }
+          ]
+        },
+        "verdict": {
+          "enter_step3": false,
+          "priority": "跳过",
+          "rationale": "五错配中供需错配、时间错配、认知错配、利润迁移、定价缺口均缺乏支撑证据。需求增速（7-9%）温和，供给响应灵活，不存在显著错配；搜索结果无利润迁移线索，估值数据缺失。综合判断不满足进入深度推演条件。",
+          "key_uncertainties": [
+            "上游SiC器件供应瓶颈是否加剧",
+            "AI服务器电源单位价值量提升是否超预期"
+          ],
+          "evidence": [
+            {
+              "fact": "所有维度搜索结果均未提供支持强错配的数据。",
+              "from": "search[1]·整体搜索结果",
+              "quality": {
+                "level": "low",
+                "source_type": "ai_summary"
+              }
+            }
+          ]
+        },
+        "kill_reasons": [
+          {
+            "reason": "供给扩张>需求",
+            "monitor_signal": "头部电源厂商（如台达、光宝）宣布新增产能计划或资本开支增速超过20%。",
+            "data_source_hint": "龙头公司财报、扩产公告、行业CAPEX数据"
+          },
+          {
+            "reason": "传导链<3层Alpha空间有限",
+            "monitor_signal": "服务器电源环节在AI产业链中利润分配占比低于5%。",
+            "data_source_hint": "产业链利润拆分研究报告、公司毛利率数据"
+          }
+        ],
+        "catalysts": [
+          {
+            "type": "order",
+            "catalyst": "国际AI芯片厂商发布新一代高功耗GPU，带动电源功率升级需求",
+            "expected_date": "2026H2",
+            "watch_signal": "GPU TDP提高至1000W+且官方推荐电源方案变更",
+            "status": "pending"
+          }
+        ],
+        "_step3_guidance": {
+          "cycle_phase": "theme_emergence",
+          "cycle_meaning": "技术验证阶段, 收入未体现 — 搜索时关注技术路线和专利, 而非产能数据",
+          "prosperity_type": "demand_explosion",
+          "prosperity_meaning": "需求驱动 — 分析框架: 找产能扩张瓶颈和订单传导链",
+          "propagation_depth": "中",
+          "enter_step3": false,
+          "priority": "跳过",
+          "mismatch_summary": "S=weak/T=weak/E=weak/P=uncertain/$=uncertain",
+          "industry_granularity": "specific_industry",
+          "search_focus": "周期阶段=theme_emergence → 技术验证阶段, 收入未体现 — 搜索时关注技术路线和专利, 而非产能数据; 景气类型=demand_explosion → 需求驱动 — 分析框架: 找产能扩张瓶颈和订单传导链",
+          "key_uncertainties": [
+            "上游SiC器件供应瓶颈是否加剧",
+            "AI服务器电源单位价值量提升是否超预期"
+          ],
+          "core_contradiction": "需求增速（~9%）与供给扩产速度基本匹配，未形成显著缺口。"
+        }
+      }
+    ],
+    "count": 5,
+    "agent": "MarketScanner",
+    "mode": "auto"
+  }
+}

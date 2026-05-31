@@ -1,0 +1,233 @@
+{
+  "step": "step5_cross_industry",
+  "run_id": "20260529_资本流向_v1",
+  "input_hash": "continue",
+  "saved_at": "2026-05-29T22:19:43.536661",
+  "elapsed_seconds": 0,
+  "input_summary": "",
+  "output": {
+    "confidence": "medium",
+    "confidence_note": "跨产业关联本质上是推演，多数证据来自产业媒体报道和券商研报，而非确凿的财务数据。Step 3部分瓶颈节点的严重程度使用了估算的财务影响数据(margin_estimated=True)，这增加了不确定性。铜和石英砂的供应紧张有高频价格数据支撑，但传导到下游非半导体行业的时滞和强度难以精确量化。",
+    "step3_step4_sanity_check": {
+      "questioned": [
+        {
+          "source": "Step3",
+          "claim": "先进封装与关键芯片产能瓶颈严重程度为extreme，且估计了封装设备厂商的超额利润率",
+          "doubt": "先进封装产能瓶颈确实存在且严重，但将其界定为最高级别的“extreme”可能高估了其在全球半导体产业链中的绝对优先度。设备约束是中期瓶颈，但设备厂商本身的营收和利润弹性可能被高估——设备交付周期长、确认收入存在滞后，且设备商的议价权在面对台积电、英特尔级别客户时并非无限大，margin_estimated=True意味着相关财务数据是LLM估计而非实际披露，severity的极端定性需要更谨慎。"
+        },
+        {
+          "source": "Step4",
+          "claim": "resource_crowding中，先进封装设备与高端基板挤占传统封装及成熟制程所需的设备产能，hidden_beneficiary为国产先进封装设备供应商及ABF基板二线厂商",
+          "doubt": "这份资源挤占的隐含假设是成熟制程和传统封装设备产能与先进封装设备产能存在重叠，由同一批设备商或同一生产线供给。但实际上，成熟制程的前道光刻、刻蚀设备与先进封装的键合、减薄等后道设备差异巨大，产能重叠度较低。更可能的挤占发生在“高端封装基板(ABF/BT)与普通PCB的铜箔、树脂等上游材料”上，而非设备端。ABF基板二线厂商能否承接外溢订单，还取决于其是否能快速通过客户认证，这一步在Step 4中可能被过度乐观预期了。"
+        },
+        {
+          "source": "Step4",
+          "claim": "bottleneck_migration中，next_24m瓶颈迁移到高纯石英砂与特种化学材料",
+          "doubt": "高纯石英砂的供需缺口在2023-2025年就已经显性化，光伏领域的资本开支已经在2024年底开始释放新产能，到2026-2027年可能反而进入相对宽松期。将其定义为24个月后的核心瓶颈，需要考虑光伏领域新增供给的跨行业溢出效应——即光伏级石英砂过剩后，部分海外矿源可能转向半导体级，缓解供应紧张。因此，石英砂成为24个月后瓶颈的判断需要重新审视，时间线可能提前或矛盾可能比预期的更复杂。"
+        }
+      ],
+      "adjustment": "基于上述质疑，在后续跨产业关联推演中：1) 下调对封装设备环节超额收益的直接预期，更多关注被挤占的材料端；2) 将高纯石英砂的跨产业影响聚焦在更短的时间窗口(immediate~medium_term)，而非放入长期；3) 重新审视铜作为共享资源的挤占路径——铜的供需矛盾比石英砂更刚性(矿山开发周期8-10年 vs 石英砂提纯扩产2-3年)，铜的跨产业波及效应可能更持久。"
+    },
+    "cross_industry_linkages": [
+      {
+        "source_node": "先进封装与关键芯片产能(CoWoS瓶颈)",
+        "linkage_type": "crowding_out_victim",
+        "affected_sector": "高速网络交换芯片与AI定制ASIC设计服务",
+        "sector_description": "为数据中心交换机、AI服务器提供高速交换芯片和定制化网络处理器的Fabless设计公司，以及为其提供物理实现和封装设计的ASIC服务商",
+        "impact_direction": "negative",
+        "impact_narrative": "CoWoS产能被GPU和HBM占据后，其他需要2.5D/3D封装的高端芯片面临直接被挤出的风险。高速网络交换芯片(如数据中心ToR/Spine交换机芯片)同样需要中介层实现高密度I/O，但单芯片面积和毛利率不及AI训练GPU，在产能分配优先级上处于弱势。更隐蔽的冲击在于：CoWoS产能排期过长(至2026年底)导致这类芯片的设计公司在流片和量产环节被迫等待或转向非最优的封装方案，产品迭代周期被拉长，错失下一代交换机升级窗口。",
+        "target_profile": "以高速以太网交换芯片、智能网卡DPU或AI定制ASIC为主营的Fabless设计公司，营收规模中等(数十亿级别)，毛利率偏高(50%+)但低于GPU厂商，先进封装是产品竞争力的关键约束。",
+        "linkage_method": "shared_equipment",
+        "time_to_impact": "medium_term",
+        "impact_materiality": "medium",
+        "visibility": "low",
+        "evidence": [
+          {
+            "fact": "AI数据中心推动高速交换机升级，400G/800G交换芯片需先进封装集成更多SerDes通道，但台积电CoWoS产能被GPU/TPU预订至2026年底",
+            "from": "search[0.1]·钛媒体·CoWoS产能分析; search[0.3]·台积电全球扩产封装工厂",
+            "quality": {
+              "level": "high",
+              "source_type": "industry_data"
+            },
+            "evidence_type": "forward_looking_rumor"
+          },
+          {
+            "fact": "下一代数据中心交换机芯片需要超过100个高速SerDes通道，必须依赖2.5D封装实现die-to-die互联，技术路径与AI芯片高度重叠",
+            "from": "search[2.1]·先进封装行业深度报告",
+            "quality": {
+              "level": "medium",
+              "source_type": "industry_report"
+            },
+            "evidence_type": "hard_data_confirmation"
+          }
+        ]
+      },
+      {
+        "source_node": "关键原材料（铜——AI数据中心建设驱动需求激增）",
+        "linkage_type": "shared_constraint",
+        "affected_sector": "电力变压器与中高压开关设备制造",
+        "sector_description": "为电网公司、数据中心、新能源电站提供电力变压器、气体绝缘开关柜和中高压配电设备的重型电气设备制造商",
+        "impact_direction": "positive",
+        "impact_narrative": "AI数据中心对电力的贪婪消耗正在全球范围内拉动电网基础设施投资，铜是变压器绕组和母线的核心材料。铜的供需缺口同时作用于数据中心内部(服务器冷却、连接器)和外部(变电站、输电线路)，形成双重需求拉动。变压器厂商手握数年订单排期，铜价上涨时其基于成本加成的定价机制使铜价传导较为顺畅，且大型变压器厂商多拥有铜期货套保能力。更重要的是，数据中心配电站对变压器的定制化需求(低噪音、高可靠性、紧凑设计)提升了产品溢价，铜涨价反而成为淘汰小型竞争对手的利器。",
+        "target_profile": "主营电力变压器、GIS开关设备、中压配电柜的重型电气制造企业，营收规模较大(百亿级别)，直接采购电解铜或铜杆作为核心原材料，铜成本占营业成本15%-25%，毛利率通常在20%-30%。",
+        "linkage_method": "shared_constraint",
+        "time_to_impact": "medium_term",
+        "impact_materiality": "medium",
+        "visibility": "low",
+        "evidence": [
+          {
+            "fact": "每建设一兆瓦数据中心容量需消耗27-33吨铜，远高于传统数据中心的10-12吨；2026-2030年全球数据中心用铜量将从59.4万吨攀升至140万吨",
+            "from": "search[1.1]·AI基建热正在制造铜荒; search[1.2]·华创证券铜需求报告",
+            "quality": {
+              "level": "high",
+              "source_type": "industry_data"
+            },
+            "evidence_type": "forward_looking_rumor"
+          },
+          {
+            "fact": "AI算力建设成为'吞电兽'，数据中心电力配套所消耗的铜(变压器+电缆+母线)可能超过服务器内部的用铜量，形成被低估的二级需求",
+            "from": "search[1.3]·AI时代新石油铜价高位震荡; search[1.1]·每兆瓦5吨铜用于电力配套",
+            "quality": {
+              "level": "medium",
+              "source_type": "industry_report"
+            },
+            "evidence_type": "forward_looking_rumor"
+          }
+        ]
+      },
+      {
+        "source_node": "关键原材料（高纯石英砂）",
+        "linkage_type": "shared_constraint",
+        "affected_sector": "高纯化学品容器与反应器内衬制造",
+        "sector_description": "为半导体湿法清洗、刻蚀、CVD工艺提供高纯石英器皿、石英舟、石英管和石英坩埚的精密石英加工商，以及为光伏单晶炉提供石英坩埚的制造商",
+        "impact_direction": "positive",
+        "impact_narrative": "高纯石英砂是半导体和光伏行业共享的基础原料。光伏单晶炉用石英坩埚消耗大量外层高纯砂，半导体用石英器件要求更高纯度的内层砂和合成石英。光伏行业大规模扩产已经消耗了大量高纯石英砂源，导致半导体级原料供给被动收紧。随着半导体用石英器件厂商面临砂源紧张且涨价，有能力锁定美国尤尼明或挪威TQC长协的头部石英加工商将获得显著的成本优势和供货保障，而中小石英加工商因拿不到砂源被迫减产甚至停产。下游Fab厂为了保证石英器件的洁净度和供货稳定性，愿意接受提价并集中采购头部供应商的产品。",
+        "target_profile": "主营半导体级石英玻璃制品(石英舟、石英管、石英反应腔体)的精密加工企业，高纯石英砂是核心原材料占成本40%-60%，下游直接供应国内外晶圆代工厂和光伏硅片厂，营收规模中小但产品单价高、定制化强。",
+        "linkage_method": "shared_constraint",
+        "time_to_impact": "immediate",
+        "impact_materiality": "high",
+        "visibility": "low",
+        "evidence": [
+          {
+            "fact": "高纯石英砂价格在2023年3月已上涨50%至7.5万元/吨，光伏石英坩埚用砂紧张直接影响了硅片生产，隆基绿能因此上调硅片价格",
+            "from": "search[2.1]·证券日报·高纯石英砂上涨; search[2.2]·第一财经·高纯石英砂半月涨价50%",
+            "quality": {
+              "level": "high",
+              "source_type": "hard_data_confirmation"
+            },
+            "evidence_type": "hard_data_confirmation"
+          },
+          {
+            "fact": "高纯石英砂的矿床集中于美国Spruce Pine和挪威，全球仅少数矿源能提供半导体级纯度；光伏级需求激增挤占了矿源的总供给，半导体级砂源与光伏级共享矿源",
+            "from": "search[2.3]·产业链受益上市公司梳理; search[3.1]·高纯石英砂国产替代进程",
+            "quality": {
+              "level": "medium",
+              "source_type": "industry_report"
+            },
+            "evidence_type": "hard_data_confirmation"
+          }
+        ]
+      },
+      {
+        "source_node": "关键原材料（铜——AI数据中心建设驱动需求激增）",
+        "linkage_type": "crowding_out_victim",
+        "affected_sector": "家用空调与家电铜配件制造",
+        "sector_description": "制造家用/商用空调、冰箱冷凝管、电机绕组线的白色家电及零部件企业",
+        "impact_direction": "negative",
+        "impact_narrative": "铜价上涨对家电行业的利润侵蚀是经典的跨产业传导路径。AI数据中心和能源转型带来的超预期铜需求，叠加矿山供给刚性，推动铜价在高位持续更长。家电行业用铜量大(一台空调约1-1.5kg铜)，且处于充分竞争的下游市场，成本转嫁能力远弱于变压器等电力设备。更关键的是，这一轮铜价上涨的结构性特征——即'绿铜'(能源转型用)需求占比提升——意味着即使全球经济放缓，铜价也难以大幅回调，家电企业的毛利率将持续受压。中国作为全球最大的空调生产国，国内品牌面临的不仅是成本端压力，还有出口市场因铜价导致的产品竞争力下降。",
+        "target_profile": "主营家用空调、商用空调、冰箱压缩机的白电制造商或为其提供铜管、铜线等部件的配套商，铜材成本占产品成本15%-30%，处于竞争性市场，毛利率通常在15%-25%且对原材料价格高度敏感。",
+        "linkage_method": "shared_constraint",
+        "time_to_impact": "medium_term",
+        "impact_materiality": "medium",
+        "visibility": "moderate",
+        "evidence": [
+          {
+            "fact": "铜价突破历史高位，家电、新能源汽车、电子制造等对铜高度依赖的制造业利润被压缩，且铜价上涨具有结构性支撑",
+            "from": "search[1.4]·钛媒体·铜价暴涨背后的产业链博弈",
+            "quality": {
+              "level": "medium",
+              "source_type": "industry_report"
+            },
+            "evidence_type": "hard_data_confirmation"
+          },
+          {
+            "fact": "预计2026年精炼铜将从小幅过剩转向至少10万吨的短缺，2026-2030年全球数据中心用铜量复合增长率23.2%",
+            "from": "search[1.2]·AI时代新石油铜价高位震荡; search[1.1]·AI基建热正在制造铜荒",
+            "quality": {
+              "level": "high",
+              "source_type": "industry_data"
+            },
+            "evidence_type": "forward_looking_rumor"
+          }
+        ]
+      },
+      {
+        "source_node": "先进封装与关键芯片产能(CoWoS及HBM集成)",
+        "linkage_type": "cobweb_oversupply",
+        "affected_sector": "先进封装设备与检测设备售后维护及翻新市场",
+        "sector_description": "为晶圆厂和封装厂提供二手翻新设备、设备升级改造、备品备件和售后维护服务的技术服务商",
+        "impact_direction": "positive",
+        "impact_narrative": "当前CoWoS产能严重不足，台积电及全球封测巨头正以史无前例的速度扩张先进封装产能，新设备采购订单集中在2025-2026年交付。按照蛛网模型的逻辑，这批大规模设备投资在2-3年后将从'产能紧张期'进入'供给洪峰期'，届时新设备采购需求骤降，但存量设备的维护、校准、翻新和零部件替换需求将进入上升通道。技术服务商受益于: 1) 庞大设备基数的维保合同；2) 产能过剩期客户转向降本，更倾向翻新而非新购；3) 先进封装设备精密且复杂，第三方维保的性价比优势凸显。",
+        "target_profile": "提供半导体封装与测试设备(键合机、探针台、分选机等)的翻新、改造和维护服务的技术服务企业，营收规模较小(数亿至十亿级别)，工程师团队是核心资产，毛利率较高(30%+)且与CAPEX周期呈反向波动的特征。",
+        "linkage_method": "cobweb_oversupply",
+        "time_to_impact": "long_term",
+        "impact_materiality": "low",
+        "visibility": "very_low",
+        "evidence": [
+          {
+            "fact": "台积电以史无前例的规模扩张CoWoS先进封装产能，全球封测巨头跟投，大规模设备采购集中在2025-2026年",
+            "from": "search[0.3]·台积电全球扩产封装工厂; search[2.2]·先进封装行业现状与前瞻",
+            "quality": {
+              "level": "high",
+              "source_type": "industry_data"
+            },
+            "evidence_type": "forward_looking_rumor"
+          },
+          {
+            "fact": "半导体设备市场具有明显的周期性，大规模CAPEX后的设备维保和翻新市场一般滞后2-3年启动",
+            "from": "search[2.2]·先进封装行业深度报告",
+            "quality": {
+              "level": "medium",
+              "source_type": "industry_report"
+            },
+            "evidence_type": "hard_data_confirmation"
+          }
+        ]
+      },
+      {
+        "source_node": "关键原材料（铜——AI数据中心建设驱动需求激增）",
+        "linkage_type": "bullwhip_amplification",
+        "affected_sector": "铜箔与覆铜板CCL材料",
+        "sector_description": "为PCB电路板提供铜箔、玻纤布、树脂等原材料的上游材料制造商，以及将铜箔压合为覆铜板CCL的加工商",
+        "impact_direction": "positive",
+        "impact_narrative": "AI服务器和数据中心建设通过多层牛鞭效应显著放大了对铜箔的需求波动。逻辑链条如下: 终端云厂商增加AI服务器订单→ODM组装厂追加PCB订单→PCB厂商集中采购覆铜板CCL→CCL厂紧急抢购铜箔。每一层都将信号放大，最终铜箔/CCL厂商看到的是远超终端真实需求的订单泡沫。叠加AI服务器PCB层数增加(从传统20层提升至30+层)和面积增大的结构性变化，单位面积用铜量显著提升，高端铜箔(超薄铜箔、反转铜箔)出现阶段性供不应求。CCL厂商在此过程中获得短暂的定价权窗口，可将铜价上涨和自身溢价同时向下游传导。但需注意这种超额收益的脆弱性——一旦终端AI资本开支增速放缓，牛鞭效应将反向抽打。",
+        "target_profile": "主营电解铜箔(尤其电子电路用超薄铜箔、锂电铜箔产能可切换)或覆铜板CCL的材料制造商，铜是其直接成本占比最大的原材料(30%-50%)，营收规模中等到大型，下游为PCB厂商。",
+        "linkage_method": "bullwhip_amplification",
+        "time_to_impact": "immediate",
+        "impact_materiality": "medium",
+        "visibility": "moderate",
+        "evidence": [
+          {
+            "fact": "电子布年初至今已连续四次提价，多家厂商库存紧张满负荷生产；AI服务器需求导致高端CCL供需失衡，定价权从成本端切换至供需端",
+            "from": "search[2.5]·别盯暴涨600%光纤了·石英砂+电子布+芯片原材料分析",
+            "quality": {
+              "level": "high",
+              "source_type": "hard_data_confirmation"
+            },
+            "evidence_type": "hard_data_confirmation"
+          },
+          {
+            "fact": "半导体行业超20家企业发出涨价函，芯片全面涨价的背后是AI服务器DDR5/HBM需求挤兑消费级产能，价格传导链条清晰: AI服务器→HBM→DRAM产能→消费级DDR→模组→终端",
+            "from": "search[0.5]·半导体行业掀涨价风暴; search[0.6]·芯片因何全面涨价",
+            "quality": {
+              "level": "high",
+              "source_type": "hard_data_confirmation"
+            },
+            "evidence_type": "hard_data_confirmation"
+          }
+        ]
+      }
+    ],
+    "discovery_summary": "AI先进封装和关键原材料的瓶颈正在向三个方向产生跨产业波及: 铜的供需缺口通过电力基础设施链条(Tier-2)传导到变压器行业形成正反馈，同时通过成本端持续压制家电制造业利润；高纯石英砂的光伏-半导体双赛道争抢导致半导体级石英器皿加工商获得超额议价权；CoWoS产能挤出效应使得高速网络交换芯片设计公司面临首次流片延迟风险——这些第二层、第三层的传导路径尚未被市场充分定价。"
+  }
+}

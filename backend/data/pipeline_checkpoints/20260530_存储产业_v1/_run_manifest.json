@@ -1,0 +1,13 @@
+{
+  "run_id": "20260530_存储产业_v1",
+  "industry": "存储产业",
+  "mode": "manual",
+  "mode_id": "manual_industry",
+  "agent_id": "supply_chain",
+  "status": "completed",
+  "started_at": "2026-05-30T23:26:24.445309",
+  "completed_at": "2026-05-30T23:27:14.585407",
+  "elapsed_seconds": 50.1,
+  "step": "step2_gatekeeper",
+  "input_hash": "a3493e7da541"
+}

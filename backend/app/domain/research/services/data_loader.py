@@ -52,19 +52,73 @@ class ResearchDataLoader:
             }
 
     async def load_indicators(self, codes: List[str]) -> Dict[str, Dict]:
-        """加载最新技术指标 (SQLite)"""
+        """加载最新技术指标 (SQLite)，支持遭遇新股票时 JIT(Just-In-Time) 现场计算"""
         if not codes:
             return {}
         from app.domain.quant.engine import indicator_store
+        from app.domain.quant.engine.indicator_runner import IndicatorRunner
+        from app.domain.quant.engine.engine import QuantEngine
+        
         result = {}
         rows = indicator_store.get_latest_for_codes(list(codes))
+        found_codes = set()
+        
         for row in rows:
             code = row.get("stock_code")
             if code:
+                found_codes.add(code)
                 result[code] = {
                     "date": row.get("trade_date"),
                     "snapshot": row,
                 }
+                
+        # JIT: 处理本地未命中的标的 (新探索标的)
+        missing_codes = set(codes) - found_codes
+        if missing_codes:
+            logger.info(f"[JIT] Missing indicators for {missing_codes}, triggering live compute...")
+            async with async_session() as db:
+                engine = QuantEngine(db)
+                for code in missing_codes:
+                    # 1. 尝试强行拉取最新几天的基础日线 (兜底)
+                    await engine.sync_market_data(code, mode="FORCE")
+                    # 2. 触发历史计算
+                    await IndicatorRunner.compute_historical(code)
+            
+            # 3. JIT 补全基本信息: 从 MarketData 新增代码中抓取 StockInfo(名称/交易所)
+            from app.domain.market_data.services.stock_list import sync_stock_list
+            await sync_stock_list()
+                    
+            # 重新查一次
+            new_rows = indicator_store.get_latest_for_codes(list(missing_codes))
+            for row in new_rows:
+                code = row.get("stock_code")
+                if code:
+                    result[code] = {
+                        "date": row.get("trade_date"),
+                        "snapshot": row,
+                    }
+        return result
+
+    async def load_indicators_timeseries(self, codes: List[str], fields: List[str] = None, days: int = 10) -> Dict[str, Dict]:
+        """加载过去 N 天的连续量价指标时序序列 (支持趋势和背离分析)"""
+        if not codes:
+            return {}
+        # 预触发 JIT 数据补全
+        await self.load_indicators(codes)
+        
+        from app.domain.quant.engine import indicator_store
+        result = {}
+        if not fields:
+            from app.domain.quant.engine.indicator_store import ALL_COLS
+            fields = ALL_COLS
+            
+        for code in codes:
+            history = indicator_store.get_history(code, fields, days=days)
+            if history and history.get("dates"):
+                # 只保留最后 N 天
+                dates = history["dates"][-days:]
+                trimmed_fields = {k: v[-days:] for k, v in history["fields"].items()}
+                result[code] = {"dates": dates, "fields": trimmed_fields}
         return result
 
     async def load_positions(self) -> List[Dict]:
@@ -176,9 +230,6 @@ class ResearchDataLoader:
                 ...
             ]}
         """
-        import pandas as pd
-        from app.framework.config import settings
-
         # DB 优先: 查 financial_statements 表
         from app.models.models import FinancialStatement
         async with async_session() as db:
@@ -207,65 +258,41 @@ class ResearchDataLoader:
                 } for r in reversed(rows)]
                 return {"code": code, "quarters": quarters, "source": "DB"}
 
-        # DB 无数据 → akshare 实时拉取 (旧逻辑)
-        prefix = self._code_to_akshare_prefix(code)
-        if not prefix:
-            logger.warning(f"[Financial] Unsupported code format: {code}")
-            return {"code": code, "quarters": [], "error": "Unsupported code format"}
-
-        try:
-            # 在线程池中运行同步 akshare 调用
-            loop = __import__('asyncio').get_event_loop()
-
-            # 1. 季度利润表 → 营业总收入、净利润
-            income_df = await loop.run_in_executor(
-                None, self._fetch_income_sheet, prefix)
-            # 2. 季度现金流量表 → 经营活动现金流量净额
-            cashflow_df = await loop.run_in_executor(
-                None, self._fetch_cashflow_sheet, prefix)
-            # 3. 资产负债表 → 存货、合同负债
-            balance_df = await loop.run_in_executor(
-                None, self._fetch_balance_sheet, prefix)
-
-            if income_df is None or income_df.empty:
-                return {"code": code, "quarters": [], "error": "No financial data available"}
-
-            # 合并三表, 取最近 N 个季度
-            merged = self._merge_financial_sheets(income_df, cashflow_df, balance_df, periods)
-            quarters = []
-            for _, row in merged.iterrows():
-                q = {
-                    "report_date": str(row.get("REPORT_DATE", ""))[:10],
-                    "revenue": float(row.get("revenue", 0) or 0),
-                    "profit": float(row.get("profit", 0) or 0),
-                    "operate_cost": float(row.get("operate_cost", 0) or 0),
-                    "sale_expense": float(row.get("sale_expense", 0) or 0),
-                    "manage_expense": float(row.get("manage_expense", 0) or 0),
-                    "op_cashflow": float(row.get("op_cashflow", 0) or 0),
-                    "inventory": float(row.get("inventory", 0) or 0),
-                    "contract_liability": float(row.get("contract_liability", 0) or 0),
-                    "accounts_receivable": float(row.get("accounts_receivable", 0) or 0),
-                    "total_assets": float(row.get("total_assets", 0) or 0),
-                    "current_assets": float(row.get("current_assets", 0) or 0),
-                    "fixed_assets": float(row.get("fixed_assets", 0) or 0),
-                    "total_liabilities": float(row.get("total_liabilities", 0) or 0),
-                    "total_equity": float(row.get("total_equity", 0) or 0),
-                    "rd_expense": float(row.get("rd_expense", 0) or 0),
-                    "cash": float(row.get("cash", 0) or 0),
-                    "current_liabilities": float(row.get("current_liabilities", 0) or 0),
-                    "short_loan": float(row.get("short_loan", 0) or 0),
-                    "long_loan": float(row.get("long_loan", 0) or 0),
-                    "accounts_payable": float(row.get("accounts_payable", 0) or 0),
-                    "noncurrent_liab_1year": float(row.get("noncurrent_liab_1year", 0) or 0),
-                }
-                quarters.append(q)
-
-            logger.info(f"[Financial] Loaded {len(quarters)} quarters for {code}")
-            return {"code": code, "quarters": quarters}
-
-        except Exception as e:
-            logger.warning(f"[Financial] load_financial_statements({code}) failed: {e}")
-            return {"code": code, "quarters": [], "error": str(e)}
+        # JIT: 如果本地没有足够数据，调用复用的同步方法
+        from app.domain.market_data.services.financial_sync import sync_financials
+        logger.info(f"[Financial] Local data missing for {code}, triggering JIT financial sync...")
+        sync_res = await sync_financials(code)
+        
+        if "error" in sync_res and sync_res["error"]:
+            logger.warning(f"[Financial] JIT sync failed for {code}: {sync_res['error']}")
+            return {"code": code, "quarters": [], "error": sync_res["error"]}
+            
+        # 重新查库返回数据
+        async with async_session() as db:
+            res = await db.execute(
+                select(FinancialStatement)
+                .where(FinancialStatement.stock_code == code)
+                .order_by(FinancialStatement.report_date.desc())
+                .limit(periods)
+            )
+            rows = res.scalars().all()
+            quarters = [{
+                "report_date": str(r.report_date),
+                "revenue": float(r.revenue or 0), "profit": float(r.parent_profit or 0),
+                "operate_cost": float(r.operate_cost or 0), "op_cashflow": float(r.op_cashflow or 0),
+                "inventory": float(r.inventory or 0), "contract_liability": float(r.contract_liability or 0),
+                "accounts_receivable": float(r.accounts_receivable or 0),
+                "total_assets": float(r.total_assets or 0), "current_assets": float(r.current_assets or 0),
+                "fixed_assets": float(r.fixed_assets or 0), "total_liabilities": float(r.total_liabilities or 0),
+                "total_equity": float(r.total_equity or 0),
+                "sale_expense": float(r.sale_expense or 0), "manage_expense": float(r.manage_expense or 0),
+                "rd_expense": float(r.rd_expense or 0),
+                "cash": float(r.cash or 0), "current_liabilities": float(r.current_liabilities or 0),
+                "short_loan": float(r.short_loan or 0), "long_loan": float(r.long_loan or 0),
+                "accounts_payable": float(r.accounts_payable or 0), "noncurrent_liab_1year": float(r.noncurrent_liab_1year or 0),
+            } for r in reversed(rows)]
+            logger.info(f"[Financial] Loaded {len(quarters)} quarters for {code} after JIT sync")
+            return {"code": code, "quarters": quarters, "source": "JIT-Akshare"}
 
     @staticmethod
     def _code_to_akshare_prefix(code: str) -> Optional[str]:
@@ -528,6 +555,61 @@ class ResearchDataLoader:
 
         return {"original_query": query, "rounds": rounds, "sources": all_sources,
                 "total_sources": sum(len(s["results"]) for s in all_sources)}
+
+    # ═══════════════════════════════════════════
+    # 另类数据接口 (Alternative Data) - JIT
+    # ═══════════════════════════════════════════
+
+    _patent_cache = {}
+    _physics_cache = {}
+
+    async def load_patent_vectors(self, code: str, company_name: str) -> Dict[str, float]:
+        """按需(JIT)拉取公司的专利 IPC 分类向量，含简易内存缓存防护"""
+        if code in self._patent_cache:
+            return self._patent_cache[code]
+            
+        from app.domain.market_data.sources.patent_provider import GlobalPatentAggregator
+        import asyncio
+        
+        aggregator = GlobalPatentAggregator()
+        try:
+            # 限制拉取时间，防止阻塞整个推演流
+            vectors = await asyncio.wait_for(
+                aggregator.get_aggregated_ipc_vectors(company_name), timeout=15.0
+            )
+            self._patent_cache[code] = vectors
+            return vectors
+        except asyncio.TimeoutError:
+            logger.warning(f"[Alternative] Patent fetching timed out for {company_name}")
+            return {}
+        except Exception as e:
+            logger.error(f"[Alternative] Patent fetching failed for {company_name}: {e}")
+            return {}
+
+    async def load_physical_parameters(self, query: str, keys: List[str]) -> Dict[str, Optional[float]]:
+        """按需(JIT)全网搜索获取最新的硬科技物理/经济学参数"""
+        cache_key = f"{query}_{','.join(keys)}"
+        if cache_key in self._physics_cache:
+            return self._physics_cache[cache_key]
+            
+        from app.domain.quant.data.physical_extractor import PhysicalParameterExtractor
+        from app.framework.ai.providers.deepseek import DeepSeekProvider
+        import asyncio
+        
+        provider = DeepSeekProvider()
+        extractor = PhysicalParameterExtractor(provider)
+        try:
+            result = await asyncio.wait_for(
+                extractor.extract_parameters(query, keys), timeout=30.0
+            )
+            self._physics_cache[cache_key] = result
+            return result
+        except asyncio.TimeoutError:
+            logger.warning(f"[Alternative] Physics extracting timed out for '{query}'")
+            return {k: None for k in keys}
+        except Exception as e:
+            logger.error(f"[Alternative] Physics extracting failed: {e}")
+            return {k: None for k in keys}
 
 
 # 全局单例

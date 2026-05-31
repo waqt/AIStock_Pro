@@ -81,8 +81,7 @@ class SystemDynamicsAgent(ResearchAgent):
         prompt = self._build_prompt(industry, chain_map, scarcity, core_stocks, search_data)
 
         try:
-            text = await asyncio.wait_for(
-                self.provider.chat_pro(prompt, max_tokens=6144), timeout=480)
+            text = await self.provider.chat_pro(prompt, max_tokens=6144, timeout=300)
             if trace: trace.record_llm(prompt, text, model="deepseek-v4-pro")
             result = self.parse_json(text)
             if isinstance(result, dict):

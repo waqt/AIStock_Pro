@@ -37,6 +37,7 @@
                                     <th style="text-align: right;">盈亏金额</th>
                                     <th style="text-align: right;">收益率</th>
                                     <th style="text-align: right;">总市值</th>
+                                    <th style="text-align: center;">观察</th>
                                     <th style="text-align: center;">操作</th>
                                 </tr>
                             </thead>
@@ -130,15 +131,66 @@
                             ${p.mcap_yi != null ? Math.round(p.mcap_yi).toLocaleString() + '亿' : '—'}
                         </td>
                         <td style="text-align: center;">
+                            <span class="obs-badge" data-code="${p.stock_code}" onclick="showStockObs('${p.stock_code}')" style="cursor:pointer;font-size:11px;color:var(--text-dim);">···</span>
+                        </td>
+                        <td style="text-align: center;">
                             <button class="btn-action" style="padding: 4px 10px; font-size: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: var(--text-normal); border-radius: 4px; cursor: pointer;" onclick="showChart('${p.stock_code}', '${p.stock_name}')"><i class="fas fa-chart-bar" style="color: #60a5fa;"></i> 走势</button>
                             <button class="btn-action" style="padding: 2px 8px; font-size: 10px; border-color: var(--accent-red); color: var(--accent-red); margin-left: 4px;" onclick="deletePosition('${p.stock_code}', '${p.stock_name}')"><i class="fas fa-trash"></i></button>
                         </td>
                     </tr>
                 `).join('');
+                // 加载各股票观察计数
+                const codes = data.map(p => p.stock_code).filter(Boolean);
+                codes.forEach(code => {
+                    fetch(`${API_BASE}/observations/stocks/${code}`)
+                        .then(r => r.json())
+                        .then(d => {
+                            const badge = document.querySelector(`.obs-badge[data-code="${code}"]`);
+                            if (badge) {
+                                const n = d.total || 0;
+                                badge.innerHTML = n > 0 ? `<span style="color:var(--accent-green);font-weight:bold;">${n}</span><span style="font-size:9px;">观</span>` : `<span style="color:var(--text-micro);font-size:10px;">-</span>`;
+                            }
+                        })
+                        .catch(() => {});
+                });
             } catch (e) {
                 console.error('加载持仓失败:', e);
             }
         }
+
+        // 个股观察弹窗
+        async function showStockObs(code) {
+            try {
+                const data = await API.get(`/observations/stocks/${code}`);
+                if (!data.observations || data.observations.length === 0) {
+                    await Modal.alert('观察事件', '该股票暂无关联的观察事件');
+                    return;
+                }
+                let html = `<div style="font-size:11px;">共 ${data.total} 条观察事件</div><table style="width:100%;font-size:11px;border-collapse:collapse;margin-top:8px;">`;
+                html += `<tr style="color:var(--text-micro);border-bottom:1px solid var(--border-color);">
+                    <th style="padding:4px 6px;text-align:left;">来源</th>
+                    <th style="padding:4px 6px;text-align:left;">标题</th>
+                    <th style="padding:4px 6px;text-align:left;">分类</th>
+                    <th style="padding:4px 6px;text-align:left;">方向</th>
+                    <th style="padding:4px 6px;text-align:left;">状态</th>
+                </tr>`;
+                data.observations.forEach(o => {
+                    const dirIcon = o.direction === 'positive' ? '↑' : o.direction === 'negative' ? '↓' : '—';
+                    html += `<tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
+                        <td style="padding:4px 6px;">${o.source_step}</td>
+                        <td style="padding:4px 6px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escHtml(o.description || '')}">${escHtml(o.title || '').substring(0,30)}</td>
+                        <td style="padding:4px 6px;font-size:10px;color:var(--text-micro);">${o.category || '-'}</td>
+                        <td style="padding:4px 6px;">${dirIcon}</td>
+                        <td style="padding:4px 6px;">${o.status}</td>
+                    </tr>`;
+                });
+                html += '</table>';
+                await Modal.alert(`观察事件 - ${code}`, html);
+            } catch (e) {
+                console.error('showStockObs error:', e);
+            }
+        }
+
         async function refreshPrices() {
             const btn = document.getElementById('btn-refresh-price');
             if(btn) {

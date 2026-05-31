@@ -21,6 +21,7 @@ from app.domain.research.pipelines import PIPELINES
 from app.domain.research.services.data_loader import data_loader
 from app.domain.research.services.report_store import save_report, list_reports, get_report, delete_report
 from app.framework.logger import logger
+from app.domain.observation.services.extractor import save_step_observations
 
 router = APIRouter(prefix="/api/research", tags=["投研分析"])
 
@@ -93,6 +94,114 @@ FALLBACK_HYPOTHESIS = [
     {"sector": "半导体设备国产化", "name": "半导体设备"},
     {"sector": "电力设备与电网升级", "name": "电网设备"},
 ]
+
+
+async def _map_pressure_to_industries(vectors: list, provider=None) -> list:
+    """Step 1b → Step 2 桥接: 用 LLM 将系统压力节点映射为候选产业。
+    PRESSURE_INDUSTRY_MAP 保留为种子/提示注入 LLM prompt, 不限制映射范围。
+
+    Args:
+        vectors: pressure_vectors 列表, 每项含 system_node + pressure_signals
+        provider: AI provider, None 时使用 DeepSeekProvider fallback
+
+    Returns:
+        hypothesis: [{"sector":..., "name":..., "pressure_node":..., "pressure_signals":[...], "source":"capital_flow_pressure"}, ...]
+    """
+    import json as _j, re as _re
+    if not vectors:
+        return []
+
+    if not provider:
+        from app.framework.ai.providers.deepseek import DeepSeekProvider
+        provider = DeepSeekProvider()
+
+    # 构建系统节点清单
+    node_lines = []
+    for i, v in enumerate(vectors):
+        node = v.get("system_node", v.get("target", ""))
+        signals = v.get("pressure_signals", [])
+        sig_str = "; ".join(signals[:3]) if signals else "(无信号)"
+        node_lines.append(f'{i+1}. system_node: "{node}"\n   pressure_signals: {sig_str}')
+
+    # 已知映射表作为种子提示
+    seed_lines = []
+    for node, industries in PRESSURE_INDUSTRY_MAP.items():
+        seed_lines.append(f'  "{node}" → {industries}')
+
+    node_list_str = "\n".join(node_lines)
+    seed_list_str = "\n".join(seed_lines)
+
+    prompt = f"""你是A股产业映射专家。给定全球资本与能源流向分析识别的系统压力节点，映射到最相关的A股实体细分产业。
+
+## 系统压力节点列表
+{node_list_str}
+
+## 已知映射参考（仅作种子提示，不限于此）
+{seed_list_str}
+
+## 要求
+- 对每个节点，输出最相关的1-3个A股实体细分产业（如"变压器"、"液冷散热"、"HBM"、"光模块"）
+- 可以沿用已知映射，也可以根据你的知识补充更合适的产业
+- 如果某个节点明显指向多个不相关方向，可以输出多个产业
+- 如果某个节点在你的知识中无对应A股产业，输出空数组
+- 产业名必须是A股真实存在的细分行业
+
+## 输出纯JSON
+{{"mappings": [
+  {{"system_node": "power_infrastructure", "industries": ["变压器", "电网设备", "取向硅钢"]}},
+  ...
+]}}
+## 规则
+- 只输出JSON, 不要任何其他文字
+- mappings 数组长度 = 输入节点数"""
+
+    try:
+        text = await provider.chat_flash(prompt, max_tokens=2048, timeout=90)
+        if isinstance(text, str):
+            m = _re.search(r'\{.*\}', text, _re.DOTALL)
+            text = m.group(0) if m else text
+            result = _j.loads(text)
+        elif isinstance(text, dict):
+            result = text
+        else:
+            result = None
+
+        mappings = result.get("mappings", []) if isinstance(result, dict) else []
+        hypothesis = []
+        for m in mappings:
+            node = m.get("system_node", "")
+            industries = m.get("industries", [])
+            orig = next((v for v in vectors if v.get("system_node", v.get("target", "")) == node), {})
+            signals = orig.get("pressure_signals", [])[:2]
+            for ind in industries[:3]:
+                hypothesis.append({
+                    "sector": ind, "name": ind,
+                    "pressure_node": node, "pressure_signals": signals,
+                    "source": "capital_flow_pressure"
+                })
+        if hypothesis:
+            logger.info(f"[PressureMapping] LLM mapped {len(vectors)} nodes → {len(hypothesis)} candidates")
+            return hypothesis
+    except Exception as e:
+        logger.warning(f"[PressureMapping] LLM failed: {e}, falling back to static map")
+
+    return _fallback_map(vectors)
+
+
+def _fallback_map(vectors: list) -> list:
+    """静态回退: 使用 PRESSURE_INDUSTRY_MAP 做映射 (与 LLM 失败时)"""
+    hypothesis = []
+    for v in vectors:
+        node = v.get("system_node", v.get("target", ""))
+        industries = PRESSURE_INDUSTRY_MAP.get(node, [])
+        signals = v.get("pressure_signals", [])[:2]
+        for ind in industries[:3]:
+            hypothesis.append({
+                "sector": ind, "name": ind,
+                "pressure_node": node, "pressure_signals": signals,
+                "source": "capital_flow_pressure"
+            })
+    return hypothesis
 
 
 # ═══ 分析智能体注册表 ═══════════════════════
@@ -439,14 +548,8 @@ async def _do_scan(req: ScanRequest, pre_run_id: str = None):
                     if not vectors:
                         vectors = output.get("capex_vectors", [])
                         logger.info(f"[MarketScanner] Using legacy capex_vectors format")
-                    # 系统节点 → 候选产业映射 (Step 1b → Step 2 桥接)
-                    for v in vectors:
-                        node = v.get("system_node", "")
-                        industries = PRESSURE_INDUSTRY_MAP.get(node, [])
-                        for ind in industries[:3]:
-                            hypothesis.append({"sector": ind, "name": ind,
-                                "pressure_node": node, "pressure_signals": v.get("pressure_signals", [])[:2],
-                                "source": "capital_flow_pressure"})  # 标记来源: Step 1b 验证过的系统压力
+                    # 系统节点 → 候选产业映射 (Step 1b → Step 2 桥接, 使用 LLM)
+                    hypothesis = await _map_pressure_to_industries(vectors, provider=DeepSeekProvider())
                     if hypothesis:
                         cf_loaded = True
                         cf_cached_output = output  # 稍后复制到 run_id
@@ -470,13 +573,7 @@ async def _do_scan(req: ScanRequest, pre_run_id: str = None):
                 vectors = output.get("pressure_vectors", [])
                 if not vectors:
                     vectors = output.get("capex_vectors", [])
-                for v in vectors:
-                    node = v.get("system_node", v.get("target", ""))
-                    industries = PRESSURE_INDUSTRY_MAP.get(node, [])
-                    for ind in industries[:3]:
-                        hypothesis.append({"sector": ind, "name": ind,
-                            "pressure_node": node, "pressure_signals": v.get("pressure_signals", [])[:2],
-                            "source": "capital_flow_pressure"})
+                hypothesis = await _map_pressure_to_industries(vectors, provider=DeepSeekProvider())
                 # 保存到独立缓存目录 (供后续项目复用)
                 ih = hash_input({"step": "capital_flow", "date": today})
                 save_checkpoint("step1b_capital_flow", cf_run_id, ih, cf_result, {"elapsed": 0})
@@ -530,6 +627,8 @@ async def _do_scan(req: ScanRequest, pre_run_id: str = None):
     elapsed = round(__import__("time").time() - t0, 1)
     try:
         save_checkpoint(step, run_id, input_hash, result, {"elapsed": elapsed, "input_summary": f"mode={req.mode}, target={target}"})
+        _now = datetime.now().isoformat()
+        await save_step_observations(run_id, step, result, _now)
         trace.write(step)
         save_manifest(run_id, {"run_id": run_id, "industry": report_label,
             "mode": "auto" if mode_id == "auto_scan" else "manual",
@@ -541,8 +640,35 @@ async def _do_scan(req: ScanRequest, pre_run_id: str = None):
         logger.warning(f"[MarketScanner] Checkpoint save failed (non-fatal): {e}")
 
     save_report("MarketScanner", report_label, result)
+
+    # ── 仅 1 个候选产业时自动链 Step 3, 多产业等用户手动选择 ──
+    s3_result = None
+    industries = (result or {}).get("industries", [])
+    if len(industries) == 1:
+        pick = industries[0]
+        s3_industry = pick.get("industry", "")
+        if s3_industry:
+            try:
+                logger.info(f"[MarketScanner] Auto-chain Step3: {s3_industry} (single industry)")
+                from app.framework.ai.providers.deepseek import DeepSeekProvider
+                hacker = SupplyChainHacker(provider=DeepSeekProvider())
+                s3_guidance = pick.get("_step3_guidance", {})
+                s3_ctx = {"industry": s3_industry, "step2_guidance": s3_guidance}
+                s3_trace = TraceContext(run_id)
+                s3_result = await hacker.analyze(s3_ctx, trace=s3_trace)
+                s3_result["industry"] = s3_industry
+                save_checkpoint("step3_sc_hacker", run_id, "drilldown", s3_result, {"elapsed": 0})
+                s3_trace.write("step3_sc_hacker")
+                await save_step_observations(run_id, "step3_sc_hacker", s3_result, datetime.now().isoformat())
+                logger.info(f"[MarketScanner] Step3 done: {s3_industry} → {len(s3_result.get('supply_chain_map',[]))} layers")
+            except Exception as e:
+                logger.warning(f"[MarketScanner] Step3 auto-chain failed: {e}")
+    elif len(industries) > 1:
+        logger.info(f"[MarketScanner] {len(industries)} candidates, user to pick: {[i.get('industry','') for i in industries]}")
+
     return {"success": True, "data": result, "run_id": run_id,
-            "freshness": ResearchAgent.freshness_stamp()}
+            "freshness": ResearchAgent.freshness_stamp(),
+            "next_step": "step3_sc_hacker" if s3_result else None}
 
 
 @router.post("/scan")
@@ -624,10 +750,12 @@ async def supply_chain_hacker(req: SupplyChainRequest = SupplyChainRequest(),
         trace = TraceContext(run_id)
         result = await hacker_instance.analyze(ctx, trace=trace)
 
+        result["industry"] = industry
         elapsed = round(__import__("time").time() - t0, 1)
         try:
             save_checkpoint(step, run_id, input_hash, result, {"elapsed": elapsed})
             trace.write(step)
+            await save_step_observations(run_id, step, result, datetime.now().isoformat())
             # 更新已有 manifest (追加 step3 信息)
             from app.framework.pipeline.checkpoint import load_manifest
             manifest = load_manifest(run_id) or {}
@@ -681,8 +809,10 @@ async def industry_drilldown(req: IndustryDrilldownRequest):
         trace = TraceContext(run_id)
         result = await hacker.analyze(ctx, trace=trace)
 
+        result["industry"] = req.industry_name
         save_checkpoint("step3_sc_hacker", run_id, "drilldown", result, {"elapsed": 0})
         trace.write("step3_sc_hacker")
+        await save_step_observations(run_id, "step3_sc_hacker", result, datetime.now().isoformat())
         logger.info(f"[Drilldown] Step3 done: {req.industry_name} → {len(result.get('supply_chain_map',[]))} layers")
 
         # Step 4: 系统动力学推演 (supply_chain_map >= 2 层时触发)
@@ -698,6 +828,7 @@ async def industry_drilldown(req: IndustryDrilldownRequest):
                 step4_result = await sd.analyze(sd_ctx, trace=sd_trace)
                 save_checkpoint("step4_system_dynamics", run_id, "drilldown", step4_result, {"elapsed": 0})
                 sd_trace.write("step4_system_dynamics")
+                await save_step_observations(run_id, "step4_system_dynamics", step4_result, datetime.now().isoformat())
                 logger.info(f"[Drilldown] Step4 done: {req.industry_name}")
 
                 # Step 5: 跨产业关联
@@ -715,6 +846,7 @@ async def industry_drilldown(req: IndustryDrilldownRequest):
                         step5_result = await cross.analyze(cross_ctx, trace=cross_trace)
                         save_checkpoint("step5_cross_industry", run_id, "drilldown", step5_result, {"elapsed": 0})
                         cross_trace.write("step5_cross_industry")
+                        await save_step_observations(run_id, "step5_cross_industry", step5_result, datetime.now().isoformat())
                         logger.info(f"[Drilldown] Step5 done: {len(step5_result.get('cross_industry_linkages',[]))} linkages")
 
                         # Step 6: 核心资产筛选
@@ -731,6 +863,7 @@ async def industry_drilldown(req: IndustryDrilldownRequest):
                                 step6_result = await screener.analyze(screen_ctx, trace=screen_trace)
                                 save_checkpoint("step6_core_screening", run_id, "drilldown", step6_result, {"elapsed": 0})
                                 screen_trace.write("step6_core_screening")
+                                await save_step_observations(run_id, "step6_core_screening", step6_result, datetime.now().isoformat())
                                 logger.info(f"[Drilldown] Step6 done: {len(step6_result.get('ranked_stocks',[]))} strong + {len(step6_result.get('future_strong_candidates',[]))} future")
                             except Exception as e:
                                 logger.warning(f"[Drilldown] Step6 failed (non-fatal): {e}")
@@ -786,6 +919,47 @@ async def system_dynamics_analysis(req: SystemDynamicsRequest = SystemDynamicsRe
         input_hash = hash_input({"industry": industry, "date": __import__("datetime").datetime.now().strftime("%Y%m%d")})
         save_checkpoint("step4_system_dynamics", run_id, input_hash, result, {"elapsed": 0})
         trace.write("step4_system_dynamics")
+        await save_step_observations(run_id, "step4_system_dynamics", result, datetime.now().isoformat())
+
+        # ── 自动链 Step 5: 跨产业关联 + Step 6: 核心资产筛选 ──
+        sd_out = result.get("system_dynamics", {})
+        if sd_out.get("resource_crowding") or sd_out.get("hidden_beneficiaries"):
+            try:
+                cross = CrossIndustryLinkageAgent(provider=DeepSeekProvider())
+                cross_ctx = {
+                    "industry": industry,
+                    "supply_chain_map": step3.get("supply_chain_map", []),
+                    "resource_crowding": sd_out.get("resource_crowding", []),
+                    "bottleneck_migration": sd_out.get("bottleneck_migration", {}),
+                }
+                cross_trace = TraceContext(run_id)
+                step5_result = await cross.analyze(cross_ctx, trace=cross_trace)
+                save_checkpoint("step5_cross_industry", run_id, "auto", step5_result, {"elapsed": 0})
+                cross_trace.write("step5_cross_industry")
+                await save_step_observations(run_id, "step5_cross_industry", step5_result, datetime.now().isoformat())
+                logger.info(f"[SystemDynamics] Step5 auto-chain done: {len(step5_result.get('cross_industry_linkages',[]))} linkages")
+
+                # Step 6
+                if step5_result.get("cross_industry_linkages"):
+                    try:
+                        screener = CoreScreeningAgent(provider=DeepSeekProvider())
+                        screen_ctx = {
+                            "industry": industry,
+                            "step3_output": step3,
+                            "step4_output": {"system_dynamics": sd_out},
+                            "step5_output": step5_result,
+                        }
+                        screen_trace = TraceContext(run_id)
+                        step6_result = await screener.analyze(screen_ctx, trace=screen_trace)
+                        save_checkpoint("step6_core_screening", run_id, "auto", step6_result, {"elapsed": 0})
+                        screen_trace.write("step6_core_screening")
+                        await save_step_observations(run_id, "step6_core_screening", step6_result, datetime.now().isoformat())
+                        logger.info(f"[SystemDynamics] Step6 auto-chain done: {len(step6_result.get('ranked_stocks',[]))} strong, {len(step6_result.get('future_strong_candidates',[]))} future")
+                    except Exception as e:
+                        logger.warning(f"[SystemDynamics] Step6 auto-chain failed: {e}")
+            except Exception as e:
+                logger.warning(f"[SystemDynamics] Step5 auto-chain failed: {e}")
+
         return {"success": True, "data": result, "run_id": run_id}
     except HTTPException:
         raise
@@ -812,14 +986,18 @@ async def continue_pipeline_step(run_id: str, step: str):
             s2_out = s2.get("output", {})
             # manual_industry 模式: 读完整的 step2 输出
             step2_guidance = s2_out.get("_step3_guidance", {})
-            industry = s2_out.get("industry", "")
+            industry = s2_out.get("industry", "") or (s2_out.get("industries", [{}])[0].get("industry", ""))
 
             hacker_instance = SupplyChainHacker(provider=DeepSeekProvider())
             ctx = {"industry": industry, "step2_guidance": step2_guidance}
             trace = TraceContext(run_id)
             result = await hacker_instance.analyze(ctx, trace=trace)
+
+            result["industry"] = industry
             save_checkpoint("step3_sc_hacker", run_id, "continue", result, {"elapsed": 0})
             trace.write("step3_sc_hacker")
+            _now_s3 = datetime.now().isoformat()
+            await save_step_observations(run_id, "step3_sc_hacker", result, _now_s3)
             # 链 Step 4
             scm = result.get("supply_chain_map", [])
             if len(scm) >= 2:
@@ -834,9 +1012,46 @@ async def continue_pipeline_step(run_id: str, step: str):
                     step4_result = await sd.analyze(sd_ctx, trace=sd_trace)
                     save_checkpoint("step4_system_dynamics", run_id, "continue", step4_result, {"elapsed": 0})
                     sd_trace.write("step4_system_dynamics")
+                    await save_step_observations(run_id, "step4_system_dynamics", step4_result, datetime.now().isoformat())
+                    # 链 Step 5
+                    sd_out = step4_result.get("system_dynamics", {})
+                    if sd_out.get("resource_crowding") or sd_out.get("hidden_beneficiaries"):
+                        try:
+                            cross = CrossIndustryLinkageAgent(provider=DeepSeekProvider())
+                            cross_ctx = {
+                                "industry": industry,
+                                "supply_chain_map": scm,
+                                "resource_crowding": sd_out.get("resource_crowding", []),
+                                "bottleneck_migration": sd_out.get("bottleneck_migration", {}),
+                            }
+                            cross_trace = TraceContext(run_id)
+                            step5_result = await cross.analyze(cross_ctx, trace=cross_trace)
+                            save_checkpoint("step5_cross_industry", run_id, "continue", step5_result, {"elapsed": 0})
+                            cross_trace.write("step5_cross_industry")
+                            await save_step_observations(run_id, "step5_cross_industry", step5_result, datetime.now().isoformat())
+                            # 链 Step 6
+                            if step5_result.get("cross_industry_linkages"):
+                                try:
+                                    screener = CoreScreeningAgent(provider=DeepSeekProvider())
+                                    screen_ctx = {
+                                        "industry": industry,
+                                        "step3_output": result,
+                                        "step4_output": {"system_dynamics": sd_out},
+                                        "step5_output": step5_result,
+                                    }
+                                    screen_trace = TraceContext(run_id)
+                                    step6_result = await screener.analyze(screen_ctx, trace=screen_trace)
+                                    save_checkpoint("step6_core_screening", run_id, "continue", step6_result, {"elapsed": 0})
+                                    screen_trace.write("step6_core_screening")
+                                    await save_step_observations(run_id, "step6_core_screening", step6_result, datetime.now().isoformat())
+                                except Exception as e:
+                                    logger.warning(f"[ContinueStep] Step6 chain failed: {e}")
+                        except Exception as e:
+                            logger.warning(f"[ContinueStep] Step5 chain failed: {e}")
                 except Exception as e:
                     logger.warning(f"[ContinueStep] Step4 chain failed: {e}")
-            return {"success": True, "data": result, "run_id": run_id}
+            return {"success": True, "data": result, "run_id": run_id,
+                    "auto_chained": ["step3_sc_hacker", "step4_system_dynamics"]}
 
         elif step == "step4_system_dynamics":
             # 找 Step 3 checkpoint
@@ -861,6 +1076,7 @@ async def continue_pipeline_step(run_id: str, step: str):
             result = await sd.analyze(sd_ctx, trace=trace)
             save_checkpoint("step4_system_dynamics", run_id, "continue", result, {"elapsed": 0})
             trace.write("step4_system_dynamics")
+            await save_step_observations(run_id, "step4_system_dynamics", result, datetime.now().isoformat())
             # 自动链 Step 5
             sd_out = result.get("system_dynamics", {})
             if sd_out.get("resource_crowding") or sd_out.get("hidden_beneficiaries"):
@@ -876,6 +1092,7 @@ async def continue_pipeline_step(run_id: str, step: str):
                     step5_result = await cross.analyze(cross_ctx, trace=cross_trace)
                     save_checkpoint("step5_cross_industry", run_id, "continue", step5_result, {"elapsed": 0})
                     cross_trace.write("step5_cross_industry")
+                    await save_step_observations(run_id, "step5_cross_industry", step5_result, datetime.now().isoformat())
                     # 链 Step 6
                     linkages = step5_result.get("cross_industry_linkages", [])
                     if linkages:
@@ -891,6 +1108,7 @@ async def continue_pipeline_step(run_id: str, step: str):
                             step6_result = await screener.analyze(screen_ctx, trace=screen_trace)
                             save_checkpoint("step6_core_screening", run_id, "continue", step6_result, {"elapsed": 0})
                             screen_trace.write("step6_core_screening")
+                            await save_step_observations(run_id, "step6_core_screening", step6_result, datetime.now().isoformat())
                         except Exception as e:
                             logger.warning(f"[ContinueStep] Step6 chain failed: {e}")
                 except Exception as e:
@@ -924,13 +1142,17 @@ async def continue_pipeline_step(run_id: str, step: str):
             result = await cross.analyze(cross_ctx, trace=trace)
             save_checkpoint("step5_cross_industry", run_id, "continue", result, {"elapsed": 0})
             trace.write("step5_cross_industry")
+            await save_step_observations(run_id, "step5_cross_industry", result, datetime.now().isoformat())
             # 自动链 Step 6
             linkages = result.get("cross_industry_linkages", [])
             if linkages:
                 try:
+                    s3_industry = s3_out.get("industry", "(not set)")
+                    s3_map = len(s3_out.get("supply_chain_map", []))
+                    logger.info(f"[ContinueStep] Chaining Step6: industry={s3_industry}, s3_map_nodes={s3_map}, linkages={len(linkages)}")
                     screener = CoreScreeningAgent(provider=DeepSeekProvider())
                     screen_ctx = {
-                        "industry": s3_out.get("industry", ""),
+                        "industry": s3_industry,
                         "step3_output": s3_out,
                         "step4_output": {"system_dynamics": s4_out},
                         "step5_output": result,
@@ -939,8 +1161,10 @@ async def continue_pipeline_step(run_id: str, step: str):
                     step6_result = await screener.analyze(screen_ctx, trace=screen_trace)
                     save_checkpoint("step6_core_screening", run_id, "continue", step6_result, {"elapsed": 0})
                     screen_trace.write("step6_core_screening")
+                    await save_step_observations(run_id, "step6_core_screening", step6_result, datetime.now().isoformat())
+                    logger.info(f"[ContinueStep] Step6 done: {len(step6_result.get('ranked_stocks',[]))} strong, {len(step6_result.get('future_strong_candidates',[]))} future")
                 except Exception as e:
-                    logger.warning(f"[ContinueStep] Step6 chain failed: {e}")
+                    logger.error(f"[ContinueStep] Step6 chain FAILED: {type(e).__name__}: {e}")
             return {"success": True, "data": result, "run_id": run_id}
 
         elif step == "step6_core_screening":
@@ -972,6 +1196,7 @@ async def continue_pipeline_step(run_id: str, step: str):
             result = await screener.analyze(ctx, trace=trace)
             save_checkpoint("step6_core_screening", run_id, "continue", result, {"elapsed": 0})
             trace.write("step6_core_screening")
+            await save_step_observations(run_id, "step6_core_screening", result, datetime.now().isoformat())
             return {"success": True, "data": result, "run_id": run_id}
         else:
             raise HTTPException(status_code=400, detail=f"Unknown or unsupported step: {step}")
@@ -979,6 +1204,91 @@ async def continue_pipeline_step(run_id: str, step: str):
         raise
     except Exception as e:
         logger.error(f"[ContinueStep] {run_id}/{step} failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/direct-asset-mine")
+async def direct_asset_mine(body: dict):
+    """Path A: 直接资产挖掘 — 用 Step 2 的 transmission_order 节点直接挖掘标的"""
+    try:
+        from app.framework.ai.providers.deepseek import DeepSeekProvider
+        from app.framework.pipeline.checkpoint import generate_run_id, save_checkpoint
+        from app.framework.pipeline.trace import TraceContext
+
+        industry = body.get("industry", "")
+        step2_output = body.get("step2_output", {})
+        if not industry:
+            raise HTTPException(status_code=400, detail="industry is required")
+        if not step2_output:
+            raise HTTPException(status_code=400, detail="step2_output is required")
+
+        provider = DeepSeekProvider()
+        miner = CoreScreeningAgent(provider=provider)
+        run_id = generate_run_id(industry)
+        t0 = __import__("time").time()
+
+        trace = TraceContext(run_id)
+        result = await miner.analyze({
+            "industry": industry,
+            "step2_only": True,
+            "step2_output": step2_output,
+        }, trace=trace)
+
+        elapsed = round(__import__("time").time() - t0, 1)
+        save_checkpoint("step2a_direct_asset", run_id, "direct_asset_mine", result, {"elapsed": elapsed})
+        trace.write("step2a_direct_asset")
+        await save_step_observations(run_id, "step2a_direct_asset", result, datetime.now().isoformat())
+
+        n_strong = len(result.get("ranked_stocks", []))
+        n_future = len(result.get("future_strong_candidates", []))
+        logger.info(f"[DirectAssetMine] {industry}: {n_strong} strong, {n_future} future ({elapsed:.1f}s)")
+        return {"success": True, "data": result, "run_id": run_id, "elapsed": elapsed}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[DirectAssetMine] Failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/second-order-extrapolate")
+async def second_order_extrapolate(body: dict):
+    """Path B: 从 Step 2 输出外推相邻产业预期差"""
+    try:
+        from app.framework.ai.providers.deepseek import DeepSeekProvider
+        from app.framework.pipeline.checkpoint import generate_run_id, save_checkpoint
+        from app.framework.pipeline.trace import TraceContext
+        from app.domain.research.agents.second_order_extrapolator import SecondOrderExtrapolator
+
+        industry = body.get("industry", "")
+        step2_output = body.get("step2_output", {})
+        if not industry:
+            raise HTTPException(status_code=400, detail="industry is required")
+        if not step2_output:
+            raise HTTPException(status_code=400, detail="step2_output is required")
+
+        provider = DeepSeekProvider()
+        extrapolator = SecondOrderExtrapolator(provider=provider)
+        run_id = generate_run_id(industry)
+        t0 = __import__("time").time()
+
+        trace = TraceContext(run_id)
+        result = await extrapolator.analyze({
+            "industry": industry,
+            "step2_output": step2_output,
+        }, trace=trace)
+
+        elapsed = round(__import__("time").time() - t0, 1)
+        save_checkpoint("step2b_second_order", run_id, "second_order_extrapolate", result, {"elapsed": elapsed})
+        trace.write("step2b_second_order")
+        await save_step_observations(run_id, "step2b_second_order", result, datetime.now().isoformat())
+
+        n_adj = len(result.get("adjacent_industries", []))
+        logger.info(f"[SecondOrderExtrapolate] {industry}: {n_adj} adjacent industries ({elapsed:.1f}s)")
+        return {"success": True, "data": result, "run_id": run_id, "elapsed": elapsed}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[SecondOrderExtrapolate] Failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -1008,6 +1318,7 @@ async def cross_industry_analysis():
         elapsed = round(__import__("time").time() - t0, 1)
         save_checkpoint("step5_cross_industry", run_id, input_hash, result, {"elapsed": elapsed})
         trace.write("step5_cross_industry")
+        await save_step_observations(run_id, "step5_cross_industry", result, datetime.now().isoformat())
 
         return {"success": True, "data": result, "run_id": run_id, "elapsed": elapsed}
     except Exception as e:

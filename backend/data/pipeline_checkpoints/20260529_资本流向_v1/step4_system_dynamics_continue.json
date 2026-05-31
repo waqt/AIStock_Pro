@@ -1,0 +1,292 @@
+{
+  "step": "step4_system_dynamics",
+  "run_id": "20260529_资本流向_v1",
+  "input_hash": "continue",
+  "saved_at": "2026-05-29T22:15:36.061734",
+  "elapsed_seconds": 0,
+  "input_summary": "",
+  "output": {
+    "confidence": "medium",
+    "confidence_note": "Step 3 瓶颈严重度估计基于 LLM 判断且 margin_estimated=true，未经过 Step 6 财务数据校验。补充搜索覆盖了 CoWoS 扩产进展与封装技术路线，但对铜矿与高纯石英砂的实时供需数据缺乏硬数据支撑，导致资源挤占推演存在不确定性。",
+    "step3_sanity_check": {
+      "questioned": [
+        {
+          "claim": "L3 供应链韧性管理平台与软件 severity=moderate",
+          "doubt": "高层级供应链人才全球稀缺，培养周期 5-10 年，软件方案认证壁垒高且无法简单复制，在 AI 驱动的产业重构中，这类软性瓶颈往往比硬件扩产更难快速解决，其实际约束力可能被低估，severity 应接近 high。"
+        }
+      ],
+      "adjustment": "推演中将供应链管理能力视为隐性瓶颈，即使硬件产能扩充完成，管理能力的稀缺将滞后释放利润，因此将 L3 相关标的视为更长期的受益方，并调低短期产能扩张对瓶颈消除的预期。"
+    },
+    "system_dynamics": {
+      "bottleneck_migration": {
+        "current": "CoWoS 先进封装产能（台积电垄断）",
+        "next_12m": "先进封装关键设备（高精度临时键合机、FC-BGA 基板等）",
+        "next_24m": "高纯石英砂与特种化学材料（半导体级硅溶胶）",
+        "next_36m": "跨行业供应链管理人才与数字化平台供给",
+        "migration_drivers": [
+          {
+            "from": "CoWoS 先进封装产能",
+            "to": "先进封装关键设备",
+            "trigger": "CoWoS 扩产过程中，台积电及其第二供应商大量采购先进封装设备，导致设备交期延长至 24 个月以上，形成设备瓶颈。",
+            "monitoring_metric": "台积电 CoWoS 月产能（万片/月 wpm）及设备交期（周）",
+            "trigger_threshold": "CoWoS 月产能突破 150K wpm 且先进封装设备交期持续超过 24 周时，设备瓶颈成为主要制约。",
+            "evidence": [
+              {
+                "fact": "台积电 CoWoS 封装扩产三倍，产能仍告罄至 2026 年底，同时引入其他代工厂和封测厂以扩大产能。",
+                "from": "search[1]·新浪财经",
+                "quality": {
+                  "level": "medium",
+                  "source_type": "news_media"
+                },
+                "evidence_type": "hard_data_confirmation"
+              },
+              {
+                "fact": "CoWoS-L 逐渐取代 CoWoS-S，板级封装发展成共识，推动设备更新需求。",
+                "from": "search[3]·知乎",
+                "quality": {
+                  "level": "medium",
+                  "source_type": "sell_side_report"
+                },
+                "evidence_type": "forward_looking_rumor"
+              }
+            ]
+          },
+          {
+            "from": "先进封装关键设备",
+            "to": "高纯石英砂与特种化学材料",
+            "trigger": "先进封装及上游晶圆厂扩产导致高纯石英砂、CMP 抛光液等需求剧增，而高纯石英砂原矿供给刚性（依赖北卡矿），形成化学材料瓶颈。",
+            "monitoring_metric": "高纯石英砂价格（美元/吨）及半导体级硅溶胶交期（周）",
+            "trigger_threshold": "高纯石英砂价格年涨幅超过 30% 且交期突破 12 周时，材料瓶颈凸显。",
+            "evidence": [
+              {
+                "fact": "高纯石英砂只有北卡矿等极少供应，光伏扩产已导致 2 年涨价 10 倍，半导体级供给弹性极小。",
+                "from": "案例参考·供给刚性",
+                "quality": {
+                  "level": "high",
+                  "source_type": "industry_data"
+                },
+                "evidence_type": "hard_data_confirmation"
+              }
+            ]
+          },
+          {
+            "from": "关键原材料",
+            "to": "供应链管理人才与平台",
+            "trigger": "硬件产能缺口缓解后，企业面临多节点协同、库存优化、风险预警的复杂度剧增，而合格的供应链架构师和数字化平台供给有限，形成最持久瓶颈。",
+            "monitoring_metric": "供应链管理岗位招聘周期（天）及头部平台实施成功率",
+            "trigger_threshold": "资深供应链经理平均招聘周期超过 6 个月且平台实施失败率超过 40% 时，软性瓶颈超越硬件。",
+            "evidence": [
+              {
+                "fact": "供应链面临的法律、意外灾祸等风险需要高度专业的韧性管理，人才无法短期培养。",
+                "from": "search[5]·MBA智库百科",
+                "quality": {
+                  "level": "low",
+                  "source_type": "news_media"
+                },
+                "evidence_type": "forward_looking_rumor"
+              }
+            ]
+          }
+        ],
+        "evidence": [
+          {
+            "fact": "CoWoS 产能已成为英伟达 AI 芯片供应瓶颈，台积电正积极扩产，同时引入其他代工厂和封测厂以扩大产能。",
+            "from": "search[3]·知乎",
+            "quality": {
+              "level": "medium",
+              "source_type": "sell_side_report"
+            },
+            "evidence_type": "hard_data_confirmation"
+          }
+        ]
+      },
+      "resource_crowding": [
+        {
+          "resource": "高纯石英砂",
+          "squeezed_from": "半导体制造所需的高纯石英坩埚、光掩模基板",
+          "squeezed_by": "光伏行业大规模扩产",
+          "victim_sector": "半导体硅片厂及先进制程晶圆厂（必须承受更高成本的石英耗材）",
+          "hidden_beneficiary": "高纯石英砂矿主及提纯技术商（资源刚性，定价权极强）",
+          "visibility": "moderate",
+          "time_to_impact": "medium_term",
+          "monitoring_metric": "高纯石英砂现货价（美元/吨）及半导体级与光伏级价差",
+          "trigger_threshold": "价差缩小至 20% 以内，表明光伏需求已显著侵蚀半导体级供给，触发资源挤占。",
+          "search_queries": [
+            "高纯石英砂供应商 产能",
+            "半导体级石英砂 价格 2026",
+            "北卡石英矿 扩产"
+          ],
+          "evidence": [
+            {
+              "fact": "高纯石英砂由于矿源唯一，光伏扩产导致价格 2 年内上涨 10 倍，预计半导体级也将被逐步挤占。",
+              "from": "案例参考·供给刚性",
+              "quality": {
+                "level": "high",
+                "source_type": "industry_data"
+              },
+              "evidence_type": "hard_data_confirmation"
+            }
+          ]
+        },
+        {
+          "resource": "先进封装设备与高端基板",
+          "squeezed_from": "传统封装及成熟制程所需的设备产能",
+          "squeezed_by": "AI 芯片对 CoWoS 的爆发式需求，台积电及第二供应商大量采购封装设备",
+          "victim_sector": "汽车、工业 MCU 等对成本敏感的成熟制程芯片封装线（面临交期延长和涨价）",
+          "hidden_beneficiary": "国产先进封装设备供应商（蚀刻、CVD、临时键合设备）及 ABF 基板二线厂商",
+          "visibility": "low",
+          "time_to_impact": "medium_term",
+          "monitoring_metric": "封装设备交期（周）及 ABF 基板合同价（美元/片）",
+          "trigger_threshold": "封装设备交期突破 52 周，ABF 基板涨幅超过 20%，则二线设备、材料厂进入替代窗口。",
+          "search_queries": [
+            "先进封装设备 国产替代",
+            "ABF基板 产能 2025",
+            "临时键合机 供应商"
+          ],
+          "evidence": [
+            {
+              "fact": "台积电扩产 CoWoS 三倍，导致主要设备交期延长，国内龙头封装公司将受益于产业趋势。",
+              "from": "search[3]·知乎",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              },
+              "evidence_type": "forward_looking_rumor"
+            }
+          ]
+        }
+      ],
+      "profit_pool_shift": [
+        {
+          "from_segment": "AI 芯片设计（GPU/ASIC 原厂）",
+          "to_segment": "先进封装与关键制造设备、材料环节",
+          "trigger": "CoWoS 产能持续紧俏，芯片设计厂被迫接受涨价或让出部分利润以争夺产能；同时自研芯片的云厂商加大 CAPEX 投向封装和设备。",
+          "timeline": "12-24个月",
+          "confidence": "high",
+          "monitoring_metric": "台积电先进封装业务毛利率变化及设备供应商订单出货比 (B/B ratio)",
+          "trigger_threshold": "先进封装毛利率突破 55% 且主要设备厂 B/B ratio 持续 >1.2，确认利润迁移。",
+          "evidence": [
+            {
+              "fact": "2026 年 CoWoS 产能被少数巨头瓜分，中小客户份额不足 15%，产能稀缺演变为市场准入门槛。",
+              "from": "search[2]·知乎",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              },
+              "evidence_type": "hard_data_confirmation"
+            },
+            {
+              "fact": "CoWoS-L 逐渐取代 CoWoS-S，设备更新带来新利润池。",
+              "from": "search[3]·知乎",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              },
+              "evidence_type": "forward_looking_rumor"
+            }
+          ]
+        },
+        {
+          "from_segment": "终端制造企业的运营利润",
+          "to_segment": "供应链管理软件与咨询服务",
+          "trigger": "面对频繁的供应中断与复杂度提升，制造企业（如家电、汽车）被迫加大数字化供应链投入，以牺牲短期利润换取韧性，该笔预算从制造成本端流出。",
+          "timeline": "24-36个月",
+          "confidence": "medium",
+          "monitoring_metric": "头部工业软件企业供应链模块收入增速及项目单价(ASP)变化",
+          "trigger_threshold": "供应链管理软件收入增速连续 4 个季度超过 30%，且 ASP 同比上涨 15%，确认利润池迁移。",
+          "evidence": [
+            {
+              "fact": "供应链的隐性成本通过信任侵蚀、中断损失等侵蚀企业利润，迫使企业进行系统化投资。",
+              "from": "search[4]·中南财经政法大学学报",
+              "quality": {
+                "level": "medium",
+                "source_type": "official_policy"
+              },
+              "evidence_type": "hard_data_confirmation"
+            }
+          ]
+        }
+      ],
+      "hidden_beneficiaries": [
+        {
+          "sector": "供应链韧性管理软件平台与人才培训服务商",
+          "reason": "硬件瓶颈缓解后，能帮助企业动态排产、多点寻源、预警风险的平台将成为刚需，但其价值在当前以硬件扩张为主的叙事中被忽视。",
+          "visibility": "very_low",
+          "time_to_impact": "long_term",
+          "search_queries": [
+            "供应链控制塔 解决方案 市场份额",
+            "采购与供应链管理软件 增长率",
+            "供应链人才培训 2025"
+          ],
+          "evidence": [
+            {
+              "fact": "供应链风险中法律、意外灾祸等需要专业管理，利益相关者管理成为采购环境核心，软件需求具有长期粘性。",
+              "from": "search[5]·MBA智库百科",
+              "quality": {
+                "level": "low",
+                "source_type": "news_media"
+              },
+              "evidence_type": "forward_looking_rumor"
+            }
+          ]
+        },
+        {
+          "sector": "铜矿及伴生稀有金属（钼）资源商",
+          "reason": "市场关注纯铜涨价对紫金矿业的利好，但忽略了AI高性能合金、溅射靶材对钼等小金属的拉动，洛阳钼业等伴生资源商将获得超额利润，而当前市场仍聚焦于铜本身。",
+          "visibility": "low",
+          "time_to_impact": "medium_term",
+          "search_queries": [
+            "钼价 2025 预测",
+            "半导体靶材 用钼 需求",
+            "伴生金属 受益 AI"
+          ],
+          "evidence": [
+            {
+              "fact": "高品位铜矿开发周期超5年，面对AI和新能源需求形成持续缺口，钼作为铜矿伴生品同步受益。",
+              "from": "Step 3 稀缺排序·高品位铜矿",
+              "quality": {
+                "level": "medium",
+                "source_type": "industry_data"
+              },
+              "evidence_type": "hard_data_confirmation"
+            }
+          ]
+        }
+      ],
+      "thesis_breakers": [
+        {
+          "thesis": "CoWoS 瓶颈推动利润向先进封装设备与材料迁移，催生长期受益标的",
+          "break_condition": "若台积电引入的非台系封测厂（如 Intel、三星）在 12 个月内大规模开出等效CoWoS产能，或板级封装（Panel Level）提前商业化且良率突破 85%，则封装产能瓶颈提前瓦解。",
+          "watch_signal": "每月台积电 CoWoS 招标外包份额比例，及板级封装联盟的联合研发良率公开数据",
+          "evidence": [
+            {
+              "fact": "板级封装发展成共识，国内龙头封装公司积极布局。",
+              "from": "search[3]·知乎",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              },
+              "evidence_type": "forward_looking_rumor"
+            }
+          ]
+        },
+        {
+          "thesis": "高纯石英砂资源挤占将严重制约半导体扩产，并让资源商暴利",
+          "break_condition": "人造高纯石英砂合成技术实现吨级量产，且成本降至天然矿 80% 以内，或者中美贸易摩擦导致北卡矿放开对华出口管制并大幅扩产。",
+          "watch_signal": "全球高纯石英砂新增矿权审批数量及合成石英砂中试线投产公告",
+          "evidence": [
+            {
+              "fact": "高纯石英砂供给刚性极强，目前已知仅北卡矿可稳定供给半导体级。",
+              "from": "案例参考·供给刚性",
+              "quality": {
+                "level": "high",
+                "source_type": "industry_data"
+              },
+              "evidence_type": "hard_data_confirmation"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

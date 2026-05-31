@@ -1,0 +1,304 @@
+{
+  "step": "step2_gatekeeper",
+  "run_id": "20260529_STT固态变压器_v1",
+  "input_hash": "f5fa58c9de6a",
+  "saved_at": "2026-05-29T08:40:57.294244",
+  "elapsed_seconds": 66.2,
+  "input_summary": "mode=auto, target=STT固态变压器",
+  "output": {
+    "industry": "固态变压器 (SST)",
+    "industry_granularity": {
+      "type": "specific_industry",
+      "action": "allow",
+      "reason": "SST是电力电子装备，有明确物理供应链：上游SiC/GaN器件→中游整机集成→下游数据中心/智能电网，可追踪供需和利润迁移。"
+    },
+    "cycle_position": {
+      "phase": "theme_emergence",
+      "sub_phase": "early",
+      "evidence": [
+        {
+          "fact": "2026年被视为行业从示范应用向规模化商用过渡的关键拐点，但收入尚未大幅体现，市场仍质疑成本和技术可靠性",
+          "from": "search[4.2]·行业资讯",
+          "quality": {
+            "level": "medium",
+            "source_type": "industry_data"
+          }
+        },
+        {
+          "fact": "政策首次将大容量SST列为重点推广方向，但具体订单和渗透率数据尚未公开",
+          "from": "search[3.1]·虎嗅网",
+          "quality": {
+            "level": "medium",
+            "source_type": "news_media"
+          }
+        }
+      ],
+      "next_phase": "demand_explosion",
+      "estimated_duration": "12-18个月",
+      "phase_switch_trigger": "头部云厂商（如Microsoft、Google）公开招标SST用于AI数据中心，或中国出现GW级集中采购"
+    },
+    "prosperity": {
+      "type": "demand_explosion",
+      "demand_quality": "real_demand",
+      "demand_evidence": [
+        {
+          "fact": "全球SST市场规模从2025年5.3亿美元增至2032年20.93亿美元，CAGR 22.0%",
+          "from": "search[1.1]·Valuates Reports",
+          "quality": {
+            "level": "medium",
+            "source_type": "sell_side_report"
+          }
+        },
+        {
+          "fact": "AI数据中心电力需求爆发、EV快充站建设、电网升级是三大终端驱动力",
+          "from": "search[4.2]·行业资讯",
+          "quality": {
+            "level": "medium",
+            "source_type": "industry_data"
+          }
+        }
+      ],
+      "growth_narrative": "AI算力集群功率从MW级向GW级跃迁，传统变压器体积大、效率低、无法适配HVDC架构，SST凭借高频化、小型化、智能化成为刚需；但上游SiC器件扩产需3年以上，供给响应速度远低于需求增速",
+      "core_contradiction": "高端SiC MOSFET产能释放慢于AI数据中心和快充站的建设节奏，导致SST整机供给受限",
+      "driver_decomposition": [
+        {
+          "driver": "AI数据中心HVDC架构升级",
+          "weight": "主导",
+          "certainty": "高",
+          "duration": "3-5年",
+          "leading_indicator": "全球AI芯片出货量（英伟达/AMD）和单集群功率密度",
+          "evidence": [
+            {
+              "fact": "高盛预计台达电数据中心电源收入占比将从20%+跃升至2026/27年的30%/50%，反映AI对电力基础设施的拉动",
+              "from": "search[2.3]·高盛",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            },
+            {
+              "fact": "中国政策将大容量SST列为重点推广方向，推动智能电网和新型储能应用",
+              "from": "search[3.1]·虎嗅网",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "payoff": {
+      "asymmetry": "强非对称",
+      "narrative": "若景气兑现：全球产能缺口持续至2028年，SST环节利润将从2025年的微利转向暴利，上游国产SiC器件厂商市值可达数百亿（对标SiC龙头上市估值），中游整机厂有望出现10倍股；若证伪：需求可能延迟但非消失（AI能源基建属长期刚需），当前市值仅反映传统变压器估值，下行空间有限（约20%-30%）",
+      "evidence": [
+        {
+          "fact": "全球变压器产能缺口从2025年的30%扩大至2027年的35%，SST整机和核心材料扩产周期3年以上",
+          "from": "search[2.1]·知乎",
+          "quality": {
+            "level": "low",
+            "source_type": "self_media"
+          }
+        },
+        {
+          "fact": "上游SiC器件占SST成本60%，国产化率仅23%，2026年底有望再降20%成本，利润弹性极大",
+          "from": "search[3.2]·行业资讯",
+          "quality": {
+            "level": "medium",
+            "source_type": "industry_data"
+          }
+        }
+      ]
+    },
+    "propagation": {
+      "depth": "深",
+      "transmission_order": [
+        {
+          "stage": 1,
+          "node": "上游SiC/GaN器件（天科合达、斯达半导等）",
+          "reason": "价值高度集中（占总成本60%-75%），且是当前最明确的瓶颈环节，扩产周期长于需求爆发周期",
+          "evidence": [
+            {
+              "fact": "产业链价值高度集中于上游，占成本75%，且SiC国产化率低、扩产周期3年+",
+              "from": "search[4.2]·行业资讯",
+              "quality": {
+                "level": "medium",
+                "source_type": "industry_data"
+              }
+            }
+          ]
+        },
+        {
+          "stage": 2,
+          "node": "中游SST整机集成（金盘科技、四方股份、华为等）",
+          "reason": "整机厂负责模块化设计和系统集成，受益于订单放量和国产替代，但竞争格局尚未稳定",
+          "evidence": [
+            {
+              "fact": "国内第一梯队有中车时代电气、特变电工、许继电气，金盘科技等加速商业化",
+              "from": "search[3.3]·华经情报网",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            }
+          ]
+        },
+        {
+          "stage": 3,
+          "node": "下游应用场景（数据中心/充电站/电网运营商）",
+          "reason": "作为最终用户，受益于能效提升和运维成本降低，但增量利润有限",
+          "evidence": [
+            {
+              "fact": "AI数据中心和EV快充站是需求双引擎，驱动力真实且持续",
+              "from": "search[4.1]·新浪财经",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              }
+            }
+          ]
+        }
+      ],
+      "last_beneficiary": "传统变压器制造商（未转型者）、低端SST组装厂（竞争淘汰）",
+      "last_bottleneck": "高端SiC器件的产能和成本，以及国产化认证进度",
+      "alpha_implication": "利润将从下游应用场景向上游器件和中游整机集中，上游器件环节具备最大弹性，中游选择占据定制化市场且技术领先的厂商"
+    },
+    "time_horizon": {
+      "alpha_window": "6-12个月",
+      "profit_expansion_window": "12-24个月",
+      "capacity_relief_eta": "2028H1",
+      "market_repricing_stage": "早期",
+      "evidence": [
+        {
+          "fact": "行业从示范应用向规模化商用过渡，预计2026年底SiC成本降20%促进拐点",
+          "from": "search[4.2]·行业资讯",
+          "quality": {
+            "level": "medium",
+            "source_type": "industry_data"
+          }
+        },
+        {
+          "fact": "全球变压器产能缺口预计到2030年才收窄至15%，供给紧张至少持续至2028年",
+          "from": "search[2.1]·知乎",
+          "quality": {
+            "level": "low",
+            "source_type": "self_media"
+          }
+        }
+      ]
+    },
+    "mismatch_analysis": {
+      "supply_demand_mismatch": "strong",
+      "timing_mismatch": "strong",
+      "expectation_gap": "moderate",
+      "profit_redistribution": "strong",
+      "pricing_gap": "uncertain",
+      "evidence": [
+        {
+          "fact": "需求增速22% CAGR vs 扩产周期3年+，2025年全球变压器需求850GW产能仅600GW，缺口30%",
+          "from": "search[2.1]·知乎",
+          "quality": {
+            "level": "low",
+            "source_type": "self_media"
+          }
+        },
+        {
+          "fact": "SiC器件国产化率仅23%，2026年成本降20%，利润从传统变压器向SST上游迁移",
+          "from": "search[3.2]·行业资讯",
+          "quality": {
+            "level": "medium",
+            "source_type": "industry_data"
+          }
+        },
+        {
+          "fact": "市场对SST的认知多停留在技术验证阶段，高盛等机构报告有限，定价分歧大",
+          "from": "search[2.3]·高盛",
+          "quality": {
+            "level": "medium",
+            "source_type": "sell_side_report"
+          }
+        },
+        {
+          "fact": "尚无公开数据直接证明当前SST公司估值已充分定价未来错配（如传统变压器PE对标），需后续验证",
+          "from": "search[3]·无财务估值数据",
+          "quality": {
+            "level": "low",
+            "source_type": "ai_summary"
+          }
+        }
+      ]
+    },
+    "verdict": {
+      "enter_step3": true,
+      "priority": "高",
+      "rationale": "基于mismatch_analysis：供需错配（strong）和时间错配（strong）有明确量化证据，需求爆发节奏快于扩产；认知错配（moderate）因为市场仍质疑SST商用，但高盛等机构报告开始流入；利润迁移（strong）清晰指向上游器件和中游整机；定价不足（uncertain）是唯一不确定项，因缺乏SST公司独立估值数据，但综合4条错配均偏向利好，且'强非对称'特性（上行空间大、下行风险有限）符合高优先级特征",
+      "key_uncertainties": [
+        "SiC成本下降能否如期在2026年底实现20%降幅",
+        "AI数据中心能否大规模批量采购SST而非仅小批量试点",
+        "中游整机竞争格局尚未稳定，华为等跨界玩家可能改变利润分配"
+      ],
+      "evidence": [
+        {
+          "fact": "全球SST市场CAGR 22%，且产能缺口30%+，为供需错配提供量化支撑",
+          "from": "search[1.1]·Valuates Reports",
+          "quality": {
+            "level": "medium",
+            "source_type": "sell_side_report"
+          }
+        },
+        {
+          "fact": "高盛明确看好台达电等SST受益者，但指出缺乏现场服务能力等风险",
+          "from": "search[2.3]·高盛",
+          "quality": {
+            "level": "medium",
+            "source_type": "sell_side_report"
+          }
+        }
+      ]
+    },
+    "kill_reasons": [],
+    "catalysts": [
+      {
+        "type": "policy",
+        "catalyst": "中国《节能装备高质量发展实施方案》正式将SST纳入重点推广，可能带动地方补贴和招标",
+        "expected_date": "2026H2",
+        "watch_signal": "工信部或地方政府发布SST专项补贴细则",
+        "status": "pending"
+      },
+      {
+        "type": "earnings",
+        "catalyst": "华为/台达电公布SST相关订单或收入占比显著提升",
+        "expected_date": "2026Q3-Q4",
+        "watch_signal": "季报中数据中心电源收入占比超30%",
+        "status": "pending"
+      },
+      {
+        "type": "capacity",
+        "catalyst": "天科合达或斯达半导公布SiC新产能投产消息",
+        "expected_date": "2026H2",
+        "watch_signal": "SiC衬底产能扩产公告",
+        "status": "pending"
+      }
+    ],
+    "mode": "manual",
+    "agent": "MarketScanner",
+    "_step3_guidance": {
+      "cycle_phase": "theme_emergence",
+      "cycle_meaning": "技术验证阶段, 收入未体现 — 搜索时关注技术路线和专利, 而非产能数据",
+      "prosperity_type": "demand_explosion",
+      "prosperity_meaning": "需求驱动 — 分析框架: 找产能扩张瓶颈和订单传导链",
+      "propagation_depth": "深",
+      "enter_step3": true,
+      "priority": "高",
+      "mismatch_summary": "S=strong/T=strong/E=moderate/P=strong/$=uncertain",
+      "industry_granularity": "specific_industry",
+      "search_focus": "周期阶段=theme_emergence → 技术验证阶段, 收入未体现 — 搜索时关注技术路线和专利, 而非产能数据; 景气类型=demand_explosion → 需求驱动 — 分析框架: 找产能扩张瓶颈和订单传导链",
+      "key_uncertainties": [
+        "SiC成本下降能否如期在2026年底实现20%降幅",
+        "AI数据中心能否大规模批量采购SST而非仅小批量试点",
+        "中游整机竞争格局尚未稳定，华为等跨界玩家可能改变利润分配"
+      ],
+      "core_contradiction": "高端SiC MOSFET产能释放慢于AI数据中心和快充站的建设节奏，导致SST整机供给受限"
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "run_id": "20260527_MLCC_v1",
+  "industry": "MLCC",
+  "mode": "manual",
+  "mode_id": "manual_industry",
+  "agent_id": "supply_chain",
+  "status": "completed",
+  "started_at": "2026-05-27T10:15:18.882280",
+  "completed_at": "2026-05-27T10:16:21.155508",
+  "elapsed_seconds": 62.3,
+  "step": "step2_gatekeeper",
+  "input_hash": "a1d09ff09d4f"
+}

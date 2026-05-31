@@ -212,8 +212,7 @@ class ValuationPricer(ResearchAgent):
 - 综合 HumanCapitalDetective 的 score 调整管理层折价/溢价"""
 
         try:
-            text = await asyncio.wait_for(
-                self.provider.chat_pro(prompt, max_tokens=4096), timeout=90)
+            text = await self.provider.chat_pro(prompt, max_tokens=4096, timeout=240)
             result = self.parse_json(text)
             if isinstance(result, dict):
                 logger.info(

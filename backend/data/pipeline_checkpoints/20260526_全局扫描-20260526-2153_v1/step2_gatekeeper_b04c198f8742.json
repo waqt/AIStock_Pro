@@ -1,0 +1,787 @@
+{
+  "step": "step2_gatekeeper",
+  "run_id": "20260526_全局扫描-20260526-2153_v1",
+  "input_hash": "b04c198f8742",
+  "saved_at": "2026-05-26T21:57:42.720357",
+  "elapsed_seconds": 158.8,
+  "input_summary": "mode=auto, target=全局扫描-20260526-2153",
+  "output": {
+    "industries": [
+      {
+        "industry": "电力设备与电网升级",
+        "industry_granularity": {
+          "type": "subsector",
+          "action": "allow",
+          "reason": "电网设备包含变压器、开关、特高压等实体供应链，具备明确的物理产业链（特高压设备→变压器→GIS→电缆），属于可深度推演的产业板块。"
+        },
+        "cycle_position": {
+          "phase": "bottleneck_formation",
+          "sub_phase": "early",
+          "evidence": [
+            {
+              "fact": "全球变压器供应紧缺情况至少将持续到2026年底，交期延长、价格上涨",
+              "from": "search[2.3]·界面新闻",
+              "quality": {
+                "level": "high",
+                "source_type": "industry_data"
+              }
+            },
+            {
+              "fact": "2026年特高压交流/直流核准开工保持高景气，设备订单饱满",
+              "from": "search[1.1]·证券研究报告",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            }
+          ],
+          "next_phase": "capital_frenzy",
+          "estimated_duration": "12-18个月",
+          "phase_switch_trigger": "全行业资本开支加速、新进入者涌入、设备价格见顶回落"
+        },
+        "prosperity": {
+          "type": "demand_explosion",
+          "demand_quality": "real_demand",
+          "demand_evidence": [
+            {
+              "fact": "两大电网十五五合计投资超5万亿元，国网Q1固投+37%、南网+49.5%",
+              "from": "search[2.2]·新浪财经",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              }
+            },
+            {
+              "fact": "海外主要公用事业企业持续上修25-28年电网资本开支计划，30年接近8000亿美元",
+              "from": "search[2.1]·证券研究报告",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            }
+          ],
+          "growth_narrative": "电网投资进入十五五强周期，叠加AIDC算力中心带来的电力配套需求爆发，全球电网设备需求增速约15-20%，但供给端受劳动力、审批、产能瓶颈制约，响应速度远低于需求增速。",
+          "core_contradiction": "电网设备产能（尤其变压器、特高压核心部件）扩产周期长达3-5年，而需求在2年內快速拉升，供需缺口持续扩大。",
+          "driver_decomposition": [
+            {
+              "driver": "十五五电网基础设施投资（特高压主干网+配网升级）",
+              "weight": "主导",
+              "certainty": "高",
+              "duration": "3-5年",
+              "leading_indicator": "国网/南网招标金额、固定资产投资增速",
+              "evidence": [
+                {
+                  "fact": "特高压直流和交流项目核准开工数量：2026年预计3-4条直、2-3条交流",
+                  "from": "search[1.1]·证券研究报告",
+                  "quality": {
+                    "level": "medium",
+                    "source_type": "sell_side_report"
+                  }
+                }
+              ]
+            },
+            {
+              "driver": "AI数据中心（AIDC）带来的高功率电力配套需求（高压直流电源、固态变压器等）",
+              "weight": "重要",
+              "certainty": "中",
+              "duration": "3-5年",
+              "leading_indicator": "AIDC机柜功率密度、高压直流方案渗透率",
+              "evidence": [
+                {
+                  "fact": "柜外电源从交流升级为高压直流是确定选择，2026年预计是0到1突破",
+                  "from": "search[1.2]·新浪财经",
+                  "quality": {
+                    "level": "medium",
+                    "source_type": "news_media"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "payoff": {
+          "asymmetry": "强非对称",
+          "narrative": "若供需缺口持续兑现，龙头设备企业利润将进入2-3年快速增长，估值有翻倍空间；若需求不及预期（如特高压审批放缓、AIDC建设推迟），需求只是延后而非消失，估值下行有电网长期规划托底，下行空间约20-30%。",
+          "evidence": [
+            {
+              "fact": "全球变压器供应紧缺至少到2026年底，表明供给弹性极低，一旦需求确认，利润弹性极大",
+              "from": "search[2.3]·界面新闻",
+              "quality": {
+                "level": "high",
+                "source_type": "industry_data"
+              }
+            },
+            {
+              "fact": "电力设备出口高增长趋势有望延续，中国企业具备技术产能优势",
+              "from": "search[2.3]·界面新闻",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              }
+            }
+          ]
+        },
+        "propagation": {
+          "depth": "中",
+          "transmission_order": [
+            {
+              "stage": 1,
+              "node": "特高压设备（直流换流阀、变压器、GIS）",
+              "reason": "特高压是十五五电网投资重中之重，核准先于配网，设备订单最先放量",
+              "evidence": [
+                {
+                  "fact": "特高压交流作为稳定器，核心用电区域建设需求乐观",
+                  "from": "search[1.1]·证券研究报告",
+                  "quality": {
+                    "level": "medium",
+                    "source_type": "sell_side_report"
+                  }
+                }
+              ]
+            },
+            {
+              "stage": 2,
+              "node": "变压器（尤其是超高压、大容量变压器）",
+              "reason": "全球变压器紧缺最为突出，国内企业面临出口替代和本土需求双增",
+              "evidence": [
+                {
+                  "fact": "变压器是全球电网关键设备中供应最为短缺的产品之一",
+                  "from": "search[2.3]·界面新闻",
+                  "quality": {
+                    "level": "medium",
+                    "source_type": "news_media"
+                  }
+                }
+              ]
+            },
+            {
+              "stage": 3,
+              "node": "AIDC配套电源（高压直流电源、固态变压器）",
+              "reason": "AIDC是增量市场，国内企业从0到1切入，利润弹性最大",
+              "evidence": [
+                {
+                  "fact": "SST（固态变压器）有望在AIDC领域加速落地",
+                  "from": "search[2.2]·新浪财经",
+                  "quality": {
+                    "level": "medium",
+                    "source_type": "news_media"
+                  }
+                }
+              ]
+            }
+          ],
+          "last_beneficiary": "低压开关、电缆等通用配网设备（需求传导最慢）",
+          "last_bottleneck": "电力电子芯片（IGBT/SiC模块）及高端绝缘材料，国产替代能力制约产能扩张",
+          "alpha_implication": "当前最应配置特高压和变压器龙头，后续关注高压电源和固态变压器新进入者"
+        },
+        "time_horizon": {
+          "alpha_window": "6-12个月",
+          "profit_expansion_window": "12-24个月",
+          "capacity_relief_eta": "2028H1",
+          "market_repricing_stage": "早期",
+          "evidence": [
+            {
+              "fact": "海外电网资本开支计划上修而供给侧瓶颈持续，2026年缺口仍扩大",
+              "from": "search[2.1]·证券研究报告",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            },
+            {
+              "fact": "全球变压器紧缺至少持续到2026年底，新产能释放需要2-3年",
+              "from": "search[2.3]·界面新闻",
+              "quality": {
+                "level": "high",
+                "source_type": "industry_data"
+              }
+            }
+          ]
+        },
+        "mismatch_analysis": {
+          "supply_demand_mismatch": "strong",
+          "timing_mismatch": "moderate",
+          "expectation_gap": "moderate",
+          "profit_redistribution": "strong",
+          "pricing_gap": "uncertain",
+          "evidence": [
+            {
+              "fact": "需求端：电网投资十五五超5万亿+AIDC增量；供给端：海外劳动力/审批/产能多重瓶颈，变压器紧缺至少到2026年底",
+              "from": "search[2.1]·证券研究报告、search[2.3]·界面新闻",
+              "quality": {
+                "level": "high",
+                "source_type": "industry_data"
+              }
+            },
+            {
+              "fact": "扩产周期：变压器扩产需2-3年，特高压核心部件更长；需求爆发在1-2年内",
+              "from": "search[2.3]·界面新闻",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              }
+            },
+            {
+              "fact": "市场目前更多关注特高压投资总量，对AIDC带来的结构性高压直流电源、固态变压器0到1突破认知不足",
+              "from": "search[1.2]·新浪财经",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              }
+            },
+            {
+              "fact": "利润从传统中低压设备向特高压、变压器、AIDC电源等瓶颈环节迁移",
+              "from": "search[2.2]·新浪财经",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              }
+            },
+            {
+              "fact": "当前电力设备板块整体估值处于历史中位，但部分龙头静态PE已反映部分增长，尚未充分计入持续供需缺口和利润迁移",
+              "from": "该维度搜索结果为空，综合判断",
+              "quality": {
+                "level": "low",
+                "source_type": "ai_summary"
+              }
+            }
+          ]
+        },
+        "verdict": {
+          "enter_step3": true,
+          "priority": "高",
+          "rationale": "五错配中供需错配和利润迁移均为strong，时间错配和认知错配为moderate，定价gap不确定但未构成否定条件。供需缺口明确且持续，利润向特高压、变压器、AIDC电源迁移确定性强，市场对结构性变化的认知仍处于早期，综合判断值得进入深度推演。",
+          "key_uncertainties": [
+            "特高压项目核准节奏可能受环保、土地审批影响放缓",
+            "AIDC建设规模及高压直流方案渗透率不及预期",
+            "海外电网资本开支实际落地进度低于计划"
+          ],
+          "evidence": [
+            {
+              "fact": "2026年特高压直流交流项目保持高景气，全球变压器紧缺至少到年底",
+              "from": "search[1.1]·证券研究报告、search[2.3]·界面新闻",
+              "quality": {
+                "level": "high",
+                "source_type": "industry_data"
+              }
+            },
+            {
+              "fact": "中国企业柜外电源高压直流方案有望0到1突破，SST在AIDC加速落地",
+              "from": "search[1.2]·新浪财经、search[2.2]·新浪财经",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              }
+            }
+          ]
+        },
+        "kill_reasons": []
+      },
+      {
+        "industry": "半导体设备国产化",
+        "industry_granularity": {
+          "type": "subsector",
+          "action": "allow",
+          "reason": "半导体设备国产化有真实的物理供应链（设备→零部件→晶圆厂→封装测试），属于产业板块而非纯概念，因此允许进入分析。"
+        },
+        "cycle_position": {
+          "phase": "demand_explosion",
+          "sub_phase": "mid",
+          "evidence": [
+            {
+              "fact": "2026年国内晶圆厂进入自主扩产大爆发阶段，龙头产线满载运行，设备国产化率从2024年20%预计提升至2025年22%，存储和先进逻辑扩产驱动需求爆发",
+              "from": "search[1.1]·东吴证券",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            },
+            {
+              "fact": "国产光刻机已进入28nm测试阶段，良率92%、产能利用率85%，具备商业化潜力，表明需求正在转化为实际采购",
+              "from": "search[2.2]·中金在线",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              }
+            }
+          ],
+          "next_phase": "bottleneck_formation",
+          "estimated_duration": "12-18个月",
+          "phase_switch_trigger": "关键设备环节（如量检测、涂胶显影）出现持续涨价或交期大幅延长，标志着瓶颈从整体供需转向特定环节"
+        },
+        "prosperity": {
+          "type": "demand_explosion",
+          "demand_quality": "real_demand",
+          "demand_evidence": [
+            {
+              "fact": "中国大陆作为全球最大设备需求市场，进口依赖度高的涂胶显影、量检测、光刻等环节国产化率仍低于25%；HBM带动DRAM高增长，存储扩产持续拉动设备需求",
+              "from": "search[2.1]·东吴证券",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            }
+          ],
+          "growth_narrative": "国内晶圆厂产能扩张叠加外部制裁加速国产替代，设备需求增速（预计25%+）显著快于供给响应速度（设备研发验证周期2-3年，产能爬坡1-2年），供需矛盾持续扩大。",
+          "core_contradiction": "国产设备整体国产化率仅20-35%，但先进制程核心环节（光刻、量检测、涂胶显影）国产化率极低（<1%-25%），下游扩产刚性需求与国产供给能力之间出现结构性缺口。",
+          "driver_decomposition": [
+            {
+              "driver": "晶圆厂自主扩产",
+              "weight": "主导",
+              "certainty": "高",
+              "duration": "3-5年",
+              "leading_indicator": "国内晶圆厂CAPEX计划、设备招标数量",
+              "evidence": [
+                {
+                  "fact": "2026年国内晶圆厂进入自主扩产大爆发阶段，龙头厂商扩产力度空前，产线满载运行",
+                  "from": "search[2.3]·新浪财经",
+                  "quality": {
+                    "level": "low",
+                    "source_type": "news_media"
+                  }
+                }
+              ]
+            },
+            {
+              "driver": "外部制裁加速国产替代",
+              "weight": "重要",
+              "certainty": "高",
+              "duration": "3-5年",
+              "leading_indicator": "美国/荷兰/日本出口管制清单更新频率",
+              "evidence": [
+                {
+                  "fact": "美国、荷兰、日本持续强化对14nm及以下先进制程设备出口限制，中国大陆进口依赖度较高的环节国产化率仍低于25%",
+                  "from": "search[2.1]·东吴证券",
+                  "quality": {
+                    "level": "medium",
+                    "source_type": "sell_side_report"
+                  }
+                }
+              ]
+            },
+            {
+              "driver": "HBM与先进封装需求",
+              "weight": "次要",
+              "certainty": "中",
+              "duration": "2-3年",
+              "leading_indicator": "HBM设备招标量、先进封装CAPEX",
+              "evidence": [
+                {
+                  "fact": "存储端HBM带动DRAM高增长，设备商细分龙头有望持续受益",
+                  "from": "search[2.1]·东吴证券",
+                  "quality": {
+                    "level": "medium",
+                    "source_type": "sell_side_report"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "payoff": {
+          "asymmetry": "对称",
+          "narrative": "判断依据: 若景气兑现，国产化率从20%向35%+提升，龙头设备商业绩有望增长2-3倍，但当前估值已处于历史中高分位（北方华创、中微公司等PE在50-80x），PEG约1.5-2倍，上行空间需要业绩增速持续超预期；若证伪（技术突破推迟或制裁缓和），估值回调风险较大，回撤幅度可能超过30%。涨跌空间大致相当，非强非对称。",
+          "evidence": [
+            {
+              "fact": "国产光刻机测试良率92%、产能利用率85%，但尚未大规模量产，技术验证存在不确定性",
+              "from": "search[2.2]·中金在线",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              }
+            }
+          ]
+        },
+        "propagation": {
+          "depth": "深",
+          "transmission_order": [
+            {
+              "stage": 1,
+              "node": "前道设备（刻蚀、薄膜沉积、清洗）",
+              "reason": "晶圆厂扩产最先拉动成熟制程设备采购，国产化率较高的环节（清洗20%、刻蚀23%）率先受益",
+              "evidence": [
+                {
+                  "fact": "清洗设备、刻蚀设备国产化率分别达到20%、23%，成熟制程领域已具备较强竞争力",
+                  "from": "search[1.2]·中金在线",
+                  "quality": {
+                    "level": "medium",
+                    "source_type": "news_media"
+                  }
+                }
+              ]
+            },
+            {
+              "stage": 2,
+              "node": "量检测、涂胶显影等低国产化率环节",
+              "reason": "随着国产替代深化，这些环节替代空间更大（国产化率<25%），利润将从进口向国产厂商迁移",
+              "evidence": [
+                {
+                  "fact": "涂胶显影、清洗、量检测、光刻等环节国产化率仍低于25%",
+                  "from": "search[2.1]·东吴证券",
+                  "quality": {
+                    "level": "medium",
+                    "source_type": "sell_side_report"
+                  }
+                }
+              ]
+            },
+            {
+              "stage": 3,
+              "node": "核心零部件（光刻机、射频电源、真空泵）",
+              "reason": "整机国产化倒逼零部件国产替代，零部件环节国产化率更低、扩产周期更长，利润弹性更大",
+              "evidence": [
+                {
+                  "fact": "光刻机国产化率不足1%，华卓精科双工件台实现量产，核心零部件环节取得突破",
+                  "from": "search[2.2]·中金在线",
+                  "quality": {
+                    "level": "medium",
+                    "source_type": "news_media"
+                  }
+                }
+              ]
+            }
+          ],
+          "last_beneficiary": "半导体材料与零部件供应商",
+          "last_bottleneck": "光刻机与高端量检测设备",
+          "alpha_implication": "由于产业链传导层数多（>5层），每解决一个瓶颈会创造新瓶颈，存在多轮轮动机会，Alpha挖掘空间大"
+        },
+        "time_horizon": {
+          "alpha_window": "6-12个月",
+          "profit_expansion_window": "12-24个月",
+          "capacity_relief_eta": "2028H1",
+          "market_repricing_stage": "中期",
+          "evidence": [
+            {
+              "fact": "国产光刻机28nm测试已完成，预计2026年进入量产验证，若成功将触发新一轮设备采购周期",
+              "from": "search[2.2]·中金在线",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              }
+            },
+            {
+              "fact": "大基金三期落地，政策支持力度持续加大，2025-2026年是国产替代加速的关键窗口",
+              "from": "search[1.1]·东吴证券",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            }
+          ]
+        },
+        "mismatch_analysis": {
+          "supply_demand_mismatch": "strong",
+          "timing_mismatch": "moderate",
+          "expectation_gap": "weak",
+          "profit_redistribution": "strong",
+          "pricing_gap": "uncertain",
+          "evidence": [
+            {
+              "fact": "需求增速：国内晶圆厂扩产带动设备需求25%+；供给响应：设备研发周期2-3年，产能爬坡慢，国产化率仅20-35%",
+              "from": "search[1.1]·东吴证券",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            },
+            {
+              "fact": "扩产周期：光刻机等高端设备验证需2-3年，而需求爆发周期（自主扩产）可能持续3-5年，时间错配存在但非极端",
+              "from": "search[2.2]·中金在线",
+              "quality": {
+                "level": "low",
+                "source_type": "news_media"
+              }
+            },
+            {
+              "fact": "半导体设备国产化是市场持续关注的热点，机构覆盖充分，但先进制程具体突破时间表仍存在分歧，认知差有限",
+              "from": "search[1.1]·东吴证券",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            },
+            {
+              "fact": "利润从进口设备商（应用材料、泛林）向国产设备商迁移趋势明确，且设备环节盈利能力强于晶圆制造环节",
+              "from": "search[1.3]·东吴证券",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            },
+            {
+              "fact": "当前龙头设备商PE（TTM）在50-80倍，市场已给予较高溢价，是否已充分反映未来增长空间尚无定论",
+              "from": "search[2.3]·新浪财经",
+              "quality": {
+                "level": "low",
+                "source_type": "news_media"
+              }
+            }
+          ]
+        },
+        "verdict": {
+          "enter_step3": false,
+          "priority": "低",
+          "rationale": "基于mismatch_analysis结果：供需错配(strong)和时间错配(moderate)支撑产业逻辑，利润迁移(strong)明确；但认知错配(weak)表明市场已充分认知国产替代趋势，并未有明显预期差；尚未充分定价(uncertain)因龙头估值已处历史高分位，上涨空间受限于业绩兑现。缺少两项核心条件，综合判定不适合进入深度推演。",
+          "key_uncertainties": [
+            "国产光刻机等关键设备何时实现量产及良率爬坡速度",
+            "外部制裁力度是否进一步升级或中美关系出现缓和",
+            "当前高估值能否被业绩增长消化"
+          ],
+          "evidence": [
+            {
+              "fact": "半导体设备国产化率已由2017年13%提升至2024年20%，市场进展被持续跟踪，认知已较充分",
+              "from": "search[1.3]·东吴证券",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            }
+          ]
+        },
+        "kill_reasons": [
+          "估值透支3年增长"
+        ]
+      },
+      {
+        "industry": "AI算力基础设施",
+        "industry_granularity": {
+          "type": "subsector",
+          "action": "allow",
+          "reason": "AI算力基础设施有真实供应链(GPU→服务器→数据中心→电力)，属于产业板块"
+        },
+        "cycle_position": {
+          "phase": "demand_explosion",
+          "sub_phase": "early",
+          "evidence": [
+            {
+              "fact": "CPU产能被抢购一空，价格上调10%-15%",
+              "from": "search[1.2]·2026第三届AI算力产业大会暨展览会",
+              "quality": {
+                "level": "high",
+                "source_type": "industry_data"
+              }
+            },
+            {
+              "fact": "全球先进制程产能偏紧，中小客户拿货困难",
+              "from": "search[2.1]·2026年算力“全链通胀”",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            }
+          ],
+          "next_phase": "bottleneck_formation",
+          "estimated_duration": "12-18个月",
+          "phase_switch_trigger": "主流GPU、CoWoS等封装产能出现实质性瓶颈，交期进一步拉长"
+        },
+        "prosperity": {
+          "type": "demand_explosion",
+          "demand_quality": "real_demand",
+          "demand_evidence": [
+            {
+              "fact": "2026年全球AI Capex预计达7939亿美元，同比增长约45%",
+              "from": "search[2.2]·新浪财经",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            }
+          ],
+          "growth_narrative": "AI大模型训练和推理需求爆发，而先进制程产能扩张缓慢，供需矛盾持续加剧",
+          "core_contradiction": "全球先进制程产能紧缺与AI算力爆发式需求的矛盾",
+          "driver_decomposition": [
+            {
+              "driver": "AI大模型训练与推理需求",
+              "weight": "主导",
+              "certainty": "高",
+              "duration": "3-5年",
+              "leading_indicator": "大型科技公司资本开支增速、GPU出货量",
+              "evidence": [
+                {
+                  "fact": "字节跳动2026年AI基础设施资本支出计划上调至约2000亿元，同比增长约25%",
+                  "from": "search[2.1]·2026年算力“全链通胀”",
+                  "quality": {
+                    "level": "medium",
+                    "source_type": "sell_side_report"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "payoff": {
+          "asymmetry": "对称",
+          "narrative": "若AI需求持续爆发，利润集中于上游瓶颈环节（GPU、HBM、先进封装），涨幅可观；但若AI需求证伪（如应用落地不及预期），资本开支骤降将导致全链条承压，下行风险同样显著。当前估值未充分体现不确定性，上涨与下跌空间大致相当。",
+          "evidence": [
+            {
+              "fact": "全球AI Capex 2025-2027年维持45%左右增速，但若需求回落，Capex缩减速度也可能很快",
+              "from": "search[2.2]·新浪财经",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            }
+          ]
+        },
+        "propagation": {
+          "depth": "深",
+          "transmission_order": [
+            {
+              "stage": 1,
+              "node": "GPU（英伟达等）",
+              "reason": "AI算力核心芯片，最先受益于需求爆发和涨价",
+              "evidence": [
+                {
+                  "fact": "CPU产能被抢购一空，价格上调10%-15%",
+                  "from": "search[1.2]·2026第三届AI算力产业大会暨展览会",
+                  "quality": {
+                    "level": "high",
+                    "source_type": "industry_data"
+                  }
+                }
+              ]
+            },
+            {
+              "stage": 2,
+              "node": "HBM存储",
+              "reason": "AI芯片对高带宽内存需求激增，供给紧张推动涨价",
+              "evidence": [
+                {
+                  "fact": "中国存储产业快速崛起，2026-2028年国产存储份额将提升至25%以上",
+                  "from": "search[1.1]·OFweek云计算网",
+                  "quality": {
+                    "level": "medium",
+                    "source_type": "news_media"
+                  }
+                }
+              ]
+            },
+            {
+              "stage": 3,
+              "node": "先进封装（CoWoS）",
+              "reason": "GPU产能瓶颈后封装环节成为下一个瓶颈",
+              "evidence": [
+                {
+                  "fact": "全球先进制程产能偏紧，封装环节产能同样受限",
+                  "from": "search[2.1]·2026年算力“全链通胀”",
+                  "quality": {
+                    "level": "medium",
+                    "source_type": "sell_side_report"
+                  }
+                }
+              ]
+            },
+            {
+              "stage": 4,
+              "node": "AI服务器（浪潮等）",
+              "reason": "GPU缺货下龙头厂商凭借供应链能力获得超额份额",
+              "evidence": [
+                {
+                  "fact": "具备强大供应链拿货能力的龙头厂商（如浪潮）受益于‘缺货涨价’带来的库存收益和份额集中",
+                  "from": "search[2.1]·2026年算力“全链通胀”",
+                  "quality": {
+                    "level": "medium",
+                    "source_type": "sell_side_report"
+                  }
+                }
+              ]
+            }
+          ],
+          "last_beneficiary": "电力基础设施（数据中心运维）",
+          "last_bottleneck": "电力供应与冷却散热",
+          "alpha_implication": "利润将沿GPU→存储→封装→服务器→数据中心逐级传导，当前GPU和存储环节利润最集中，后续封装和服务器环节将出现阶段性超额收益"
+        },
+        "time_horizon": {
+          "alpha_window": "6-12个月",
+          "profit_expansion_window": "12-24个月",
+          "capacity_relief_eta": "2028H1",
+          "market_repricing_stage": "早期",
+          "evidence": [
+            {
+              "fact": "2026年全球AI Capex预计达7939亿美元，2027年预计达11398亿美元，增速维持高位",
+              "from": "search[2.2]·新浪财经",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            }
+          ]
+        },
+        "mismatch_analysis": {
+          "supply_demand_mismatch": "strong",
+          "timing_mismatch": "moderate",
+          "expectation_gap": "moderate",
+          "profit_redistribution": "strong",
+          "pricing_gap": "uncertain",
+          "evidence": [
+            {
+              "fact": "供需错配：CPU产能抢购一空、价格上调，中小客户拿货困难",
+              "from": "search[1.2]·2026第三届AI算力产业大会暨展览会",
+              "quality": {
+                "level": "high",
+                "source_type": "industry_data"
+              }
+            },
+            {
+              "fact": "时间错配：先进制程扩产周期长，但需求爆发迅速（间接证据：英特尔前期资本开支缩减导致产能刚性）",
+              "from": "search[2.1]·2026年算力“全链通胀”",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            },
+            {
+              "fact": "认知错配：CPU角色从GPU配角跃升为系统级算力核心，市场可能尚未充分重估",
+              "from": "search[1.2]·2026第三届AI算力产业大会暨展览会",
+              "quality": {
+                "level": "medium",
+                "source_type": "industry_data"
+              }
+            },
+            {
+              "fact": "利润迁移：存储涨价、CPU涨价、服务器龙头受益，利润正在从下游系统集成向上游芯片和核心组件迁移",
+              "from": "search[1.1]·OFweek云计算网",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              }
+            },
+            {
+              "fact": "定价gap：没有直接数据判断当前估值是否已反映上述错配",
+              "from": "search[2]·无结果",
+              "quality": {
+                "level": "low",
+                "source_type": "ai_summary"
+              }
+            }
+          ]
+        },
+        "verdict": {
+          "enter_step3": false,
+          "priority": "跳过",
+          "rationale": "基于 mismatch_analysis 结果：供需错配和利润迁移为 strong，时间错配和认知错配为 moderate，但定价 gap 为 uncertain（无法确认当前估值是否已反映错配）。由于五错配中“尚未充分定价”不足，且认知错配仅为 moderate 而非 strong，整体未满足全部五错配条件，因此判定为跳过。",
+          "key_uncertainties": [
+            "当前AI算力相关股票估值是否已计入供需紧张和利润迁移预期；",
+            "AI需求持续增长的不确定性（应用落地进度可能低于预期）"
+          ],
+          "evidence": [
+            {
+              "fact": "未找到直接关于估值定价的证据",
+              "from": "search[2]·无结果",
+              "quality": {
+                "level": "low",
+                "source_type": "ai_summary"
+              }
+            }
+          ],
+          "kill_reasons": [
+            "传导链<3层Alpha空间有限"
+          ]
+        }
+      }
+    ],
+    "count": 3,
+    "agent": "MarketScanner",
+    "mode": "auto"
+  }
+}

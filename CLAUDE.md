@@ -83,8 +83,8 @@ backend/app/
 ├── portfolio/services/
 │   └── ai_import.py               #   AI 截图识别
 ├── api/                           # 路由 (data.py/positions.py/import_api.py)
-└── models/                        # 数据模型 (11张表, 不含StockIndicator)
-    └── models.py
+├── models/                        # 数据模型 (11张表, 不含StockIndicator)
+│   └── models.py
 ├── index.html                     # 指挥中心
 ├── positions.html                 # 持仓管理
 ├── research.html                  # AI 投研
@@ -101,7 +101,16 @@ backend/app/
 │   └── data-tabs/                 # 数据中心 Tab 模块
 │       ├── core.js / macro.js / watchlist.js / health.js
 │       ├── financial.js / fundamental.js / alt.js
-└── data/indicators.db             # ★ SQLite 指标库 (单文件可备份)
+├── main.py
+
+backend/scripts/                   # 迁移/维护脚本
+└── migrate_v5.*.py
+
+backend/data/                      # ★ 数据文件 (单目录统一管理)
+├── indicators.db                  #   SQLite 指标库 (宽表, 52列)
+├── macro_report.json              #   宏观周期报告缓存
+├── pipeline_checkpoints/          #   投研 Pipeline 检查点
+└── research_reports/              #   研报 JSON 输出
 ```
 
 ## V5.10 投研 Pipeline 架构
@@ -172,7 +181,7 @@ V3.0 遗留 (向后兼容): SupplyChainAnalyst, IndustryAnalyst, ResearchCoordin
 
 ### 指标存储 schema (SQLite wide table)
 
-指标存储已从 MySQL JSON blob 迁移至 **SQLite 宽表** (`data/indicators.db`)。
+指标存储已从 MySQL JSON blob 迁移至 **SQLite 宽表** (`backend/data/indicators.db`)。
 每字段一列, 支持 `pd.read_sql()` 直接读入 DataFrame 做时间序列分析。
 
 ```

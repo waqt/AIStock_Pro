@@ -115,10 +115,32 @@ class MarketScanner(ResearchAgent):
                 evaluation["_step3_guidance"] = self._build_step3_guidance(evaluation)
                 results.append(evaluation)
 
+        results = self._deduplicate_industries(results)
+
         priority_order = {"高": 0, "中": 1, "低": 2, "跳过": 3}
         results.sort(key=lambda r: priority_order.get(
             (r.get("verdict", {}).get("priority", "低")), 3))
         return {"industries": results, "count": len(results)}
+
+    def _deduplicate_industries(self, results: List[Dict]) -> List[Dict]:
+        """如果父行业和子行业同时出现，保留子行业（更具体可操作）"""
+        SUBSECTOR_MAP = {
+            "电网设备": ["变压器", "开关设备", "配电自动化", "电力电子"],
+            "半导体": ["封装", "刻蚀", "光刻", "存储", "先进封装", "半导体设备", "半导体材料"],
+            "消费电子": ["智能手机", "PC", "可穿戴设备", "AR/VR"],
+            "新能源车": ["电池", "电机", "电控", "整车", "充电桩"],
+        }
+        industry_names = [r.get("industry", "") for r in results]
+        output = []
+        for r in results:
+            ind = r.get("industry", "")
+            children_of_ind = SUBSECTOR_MAP.get(ind, [])
+            has_child_present = any(c in industry_names for c in children_of_ind)
+            if has_child_present:
+                logger.info(f"[{self.name}] 剔除宽泛父行业: {ind}, 因存在更细分子行业")
+                continue
+            output.append(r)
+        return output
 
     # ═══ manual 模式: 自适应搜索 ═══════════
 
@@ -323,6 +345,10 @@ class MarketScanner(ResearchAgent):
 - weak: 证据薄弱或矛盾
 - uncertain: 完全没有数据, 不确定
 
+## 避免同质化重复 (★ 强制)
+- 规则：每条 evidence 只能在整个输出中引用一次（不要用同样的事实填充不同的字段）。
+- 如果某条 evidence 需要支撑多个字段，请在 evidence 数组中用 "also_supports": ["prosperity", "payoff"] 声明适用范围，但 fact 本身只写一次。
+
 ## 规则
 - 不要在 rationale 中使用"五错配全部满足/不满足"等笼统表述 — 必须引用 mismatch_analysis 的具体结果
 - 如果 enter_step3=false, kill_reasons 必须使用标准枚举值(需求来自渠道补库存/已进入资本狂热后期/估值透支3年增长/政策抢装非真实需求/供给扩张>需求/传导链<3层Alpha空间有限), 选最接近的。每个 kill_reason 附带 monitor_signal 和 data_source_hint
@@ -333,8 +359,7 @@ class MarketScanner(ResearchAgent):
         prompt += step2_glossary()
 
         try:
-            text = await asyncio.wait_for(
-                self.provider.chat_flash(prompt, max_tokens=6144), timeout=60)
+            text = await self.provider.chat_flash(prompt, max_tokens=6144, timeout=90)
             if trace:
                 trace.record_llm(prompt, text, model=getattr(self.provider, 'model', 'deepseek-v4-flash'))
             result = self.parse_json(text)
@@ -382,6 +407,7 @@ class MarketScanner(ResearchAgent):
         ptype = pr.get("type", "unknown")
 
         return {
+            "industry_name_for_search": output.get("industry", ""),
             "cycle_phase": phase,
             "cycle_meaning": phase_meanings.get(phase, ""),
             "prosperity_type": ptype,
@@ -443,8 +469,7 @@ class MarketScanner(ResearchAgent):
 
 请输出纯 JSON 数组:
 [{{"name":"AI算力","score":9,"lifecycle_stage":"成长期","stage_evidence":"...","type":"中期趋势","reason":"...","global_drivers":"...","a_stock_codes":["688256","300308"]}}]"""
-        text = await asyncio.wait_for(
-            self.provider.chat_flash(prompt, max_tokens=2048), timeout=30) or ""
+        text = await self.provider.chat_flash(prompt, max_tokens=2048, timeout=60) or ""
         return self.parse_json(text)
 
     async def _generate_briefing(self, signals: Dict, industries: List) -> str:
@@ -473,8 +498,7 @@ class MarketScanner(ResearchAgent):
 
     async def _safe_call(self, prompt: str) -> str:
         try:
-            return await asyncio.wait_for(
-                self.provider.chat_pro(prompt, max_tokens=2048), timeout=45) or ""
+            return await self.provider.chat_pro(prompt, max_tokens=2048, timeout=120) or ""
         except asyncio.TimeoutError:
             logger.warning("[MarketScanner] LLM call timed out")
             return "分析超时, 请重试"

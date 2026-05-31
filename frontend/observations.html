@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>AIStock | 投研观察</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .workspace { display: flex; flex-direction: column; gap: 12px; padding: 14px; height: calc(100vh - 110px); }
+        .obs-header { display: flex; align-items: center; gap: 10px; padding: 0 0 8px 0; flex-shrink: 0; }
+        .obs-header select { background: #000; border: 1px solid var(--border-color); color: #fff; padding: 6px 10px; border-radius: 4px; font-size: 12px; min-width: 300px; }
+        .obs-header .btn { font-size: 11px; padding: 5px 14px; border-radius: 4px; cursor: pointer; border: none; }
+        .btn-primary { background: #2563eb; color: #fff; }
+        .btn-primary:hover { background: #1d4ed8; }
+        .btn-success { background: #16a34a; color: #fff; }
+        .btn-success:hover { background: #15803d; }
+        .btn-outline { background: transparent; border: 1px solid var(--border-color); color: #ccc; }
+        .btn-outline:hover { background: rgba(255,255,255,0.04); }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .obs-stats { font-size: 11px; color: var(--text-micro); margin-left: auto; }
+
+        .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border-color); flex-shrink: 0; }
+        .tabs .tab { padding: 7px 18px; font-size: 12px; cursor: pointer; color: var(--text-dim); border-bottom: 2px solid transparent; }
+        .tabs .tab.active { color: #60a5fa; border-bottom-color: #60a5fa; }
+        .tabs .tab:hover { color: #ccc; }
+
+        .obs-content { flex: 1; overflow-y: auto; min-height: 0; }
+
+        /* Table */
+        .obs-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        .obs-table th { text-align: left; padding: 6px 8px; color: var(--text-micro); font-weight: 500; border-bottom: 1px solid var(--border-color); position: sticky; top: 0; background: #0a0a0a; }
+        .obs-table td { padding: 5px 8px; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: top; }
+        .obs-table tr:hover td { background: rgba(255,255,255,0.02); }
+        .obs-table .chk { width: 28px; text-align: center; }
+        .obs-table .chk input { cursor: pointer; }
+
+        .badge { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: 500; }
+        .badge-step2 { background: rgba(96,165,250,0.15); color: #60a5fa; }
+        .badge-step3 { background: rgba(52,211,153,0.15); color: #34d399; }
+        .badge-step4 { background: rgba(251,191,36,0.15); color: #fbbf24; }
+        .badge-step5 { background: rgba(244,114,182,0.15); color: #f472b6; }
+        .badge-step6 { background: rgba(168,85,247,0.15); color: #a855f7; }
+        .badge-saved { background: rgba(22,163,74,0.15); color: #4ade80; font-size: 9px; }
+        .badge-new { background: rgba(37,99,235,0.15); color: #60a5fa; font-size: 9px; }
+
+        .dir-positive { color: #34d399; }
+        .dir-negative { color: #f87171; }
+        .dir-neutral { color: var(--text-dim); }
+
+        .category-tag { font-size: 10px; color: var(--text-micro); }
+        .title-text { color: #ddd; max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .title-text:hover { white-space: normal; }
+
+        .toolbar { display: flex; align-items: center; gap: 8px; padding: 6px 0; flex-shrink: 0; }
+        .toolbar .info { font-size: 11px; color: var(--text-dim); }
+
+        /* Filter */
+        .filter-bar { display: flex; align-items: center; gap: 8px; padding: 6px 0; flex-shrink: 0; flex-wrap: wrap; }
+        .filter-bar select, .filter-bar input { background: #000; border: 1px solid var(--border-color); color: #fff; padding: 4px 8px; border-radius: 3px; font-size: 11px; }
+        .filter-bar label { font-size: 10px; color: var(--text-micro); }
+
+        .empty-state { text-align: center; padding: 40px; color: var(--text-dim); font-size: 13px; }
+        .empty-state i { font-size: 32px; margin-bottom: 12px; opacity: 0.3; }
+
+        .group-label { font-size: 10px; color: var(--text-micro); padding: 4px 8px; background: rgba(255,255,255,0.02); border-radius: 2px; margin: 4px 0; }
+
+        /* Modal */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000; display: flex; align-items: center; justify-content: center; }
+        .modal-box { background: #111; border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; }
+        .modal-box h3 { font-size: 14px; color: #eee; margin-bottom: 10px; }
+        .modal-box pre { font-size: 11px; color: #aaa; white-space: pre-wrap; background: #000; padding: 10px; border-radius: 4px; max-height: 400px; overflow-y: auto; }
+        .modal-box .btn { margin-top: 12px; }
+    </style>
+</head>
+<body data-page-id="observations">
+<div class="app-container">
+    <aside class="sidebar"></aside>
+    <main class="main-content">
+        <div class="top-bar"></div>
+        <div class="workspace">
+            <!-- Header: Run Selector + Actions -->
+            <div class="obs-header">
+                <select id="run-selector"><option value="">-- 选择投研项目 --</option></select>
+                <button class="btn btn-primary" id="btn-extract" onclick="ExtractUI.extract()"><i class="fas fa-search"></i> 提取观察</button>
+                <button class="btn btn-success" id="btn-save" onclick="ExtractUI.batchSave()" disabled><i class="fas fa-save"></i> 确认入库</button>
+                <button class="btn btn-outline" onclick="ExtractUI.refreshSaved()"><i class="fas fa-sync"></i> 刷新</button>
+                <span class="obs-stats" id="stats-display"></span>
+            </div>
+
+            <!-- Tabs -->
+            <div class="tabs">
+                <div class="tab active" data-tab="extract" onclick="ExtractUI.switchTab('extract')">待提取预览</div>
+                <div class="tab" data-tab="saved" onclick="ExtractUI.switchTab('saved')">已入库观察</div>
+            </div>
+
+            <!-- Tab: Extract Preview -->
+            <div class="obs-content" id="tab-extract">
+                <div class="empty-state" id="extract-empty">
+                    <i class="fas fa-eye"></i><br>
+                    选择一个投研项目，点击「提取观察」预览可入库的观察事件
+                </div>
+                <div id="extract-table-wrap" style="display:none;">
+                    <div class="toolbar">
+                        <label><input type="checkbox" id="select-all" onchange="ExtractUI.toggleAll()"> 全选</label>
+                        <span class="info" id="selection-info">已选 0 条</span>
+                    </div>
+                    <table class="obs-table" id="extract-table">
+                        <thead>
+                            <tr>
+                                <th class="chk"></th>
+                                <th style="width:48px;">Step</th>
+                                <th style="width:50px;">级别</th>
+                                <th>观察标题</th>
+                                <th style="width:100px;">分类</th>
+                                <th style="width:54px;">方向</th>
+                                <th style="width:90px;">时间窗口</th>
+                                <th style="width:80px;">行业/股票</th>
+                                <th style="width:44px;">状态</th>
+                            </tr>
+                        </thead>
+                        <tbody id="extract-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab: Saved Observations -->
+            <div class="obs-content" id="tab-saved" style="display:none;">
+                <div class="filter-bar">
+                    <label>行业:</label>
+                    <input id="filter-industry" placeholder="行业名" onchange="ExtractUI.refreshSaved()">
+                    <label>步骤:</label>
+                    <select id="filter-step" onchange="ExtractUI.refreshSaved()">
+                        <option value="">全部</option>
+                        <option value="step2">Step 2</option>
+                        <option value="step3">Step 3</option>
+                        <option value="step4">Step 4</option>
+                        <option value="step5">Step 5</option>
+                        <option value="step6">Step 6</option>
+                    </select>
+                    <label>状态:</label>
+                    <select id="filter-status" onchange="ExtractUI.refreshSaved()">
+                        <option value="">全部</option>
+                        <option value="active">active</option>
+                        <option value="monitoring">monitoring</option>
+                        <option value="triggered">triggered</option>
+                        <option value="confirmed">confirmed</option>
+                        <option value="invalidated">invalidated</option>
+                        <option value="expired">expired</option>
+                    </select>
+                    <label>股票:</label>
+                    <input id="filter-stock" placeholder="代码" style="width:80px;" onchange="ExtractUI.refreshSaved()">
+                    <span class="info" id="saved-count-display"></span>
+                </div>
+                <table class="obs-table" id="saved-table">
+                    <thead>
+                        <tr>
+                            <th style="width:44px;">Step</th>
+                            <th>观察标题</th>
+                            <th style="width:90px;">分类</th>
+                            <th style="width:44px;">方向</th>
+                            <th style="width:80px;">时间窗口</th>
+                            <th style="width:70px;">行业</th>
+                            <th style="width:60px;">股票</th>
+                            <th style="width:56px;">状态</th>
+                            <th style="width:50px;">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="saved-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script src="js/framework/api.js"></script>
+<script src="js/framework/modal.js"></script>
+<script src="js/framework/task_monitor.js"></script>
+<script src="js/framework/markdown.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/common.js"></script>
+<script>
+// ═══ ExtractUI — 观察提取与管理 ══════════════════════
+const ExtractUI = {
+    currentExtractData: [],       // 当前提取的全部观察
+    selectedIds: new Set(),
+
+    // ── 初始化 ───────────────────────────────────
+    async init() {
+        await this.loadRuns();
+        await this.loadStats();
+    },
+
+    async loadRuns() {
+        try {
+            const res = await API.get('/research/pipeline/runs');
+            const runs = res.data || [];
+            const sel = document.getElementById('run-selector');
+            sel.innerHTML = '<option value="">-- 选择投研项目 --</option>';
+            runs.forEach(r => {
+                const opt = document.createElement('option');
+                opt.value = r.run_id;
+                opt.textContent = r.display_name || r.run_id;
+                sel.appendChild(opt);
+            });
+        } catch (e) {
+            console.error('[ExtractUI] loadRuns failed:', e);
+        }
+    },
+
+    async loadStats() {
+        try {
+            const s = await API.get('/observations/stats/counts');
+            document.getElementById('stats-display').textContent =
+                `📊 共 ${s.total} 条 | active ${s.active} | monitoring ${s.monitoring} | expired ${s.expired}`;
+        } catch (e) {}
+    },
+
+    // ── Tab 切换 ────────────────────────────────
+    switchTab(tab) {
+        document.querySelectorAll('.tabs .tab').forEach(t => t.classList.remove('active'));
+        document.querySelector(`.tabs .tab[data-tab="${tab}"]`).classList.add('active');
+        document.getElementById('tab-extract').style.display = tab === 'extract' ? 'block' : 'none';
+        document.getElementById('tab-saved').style.display = tab === 'saved' ? 'block' : 'none';
+        if (tab === 'saved') this.refreshSaved();
+    },
+
+    // ── 提取预览 ────────────────────────────────
+    async extract() {
+        const runId = document.getElementById('run-selector').value;
+        if (!runId) { await Modal.alert('提示', '请先选择一个投研项目'); return; }
+
+        document.getElementById('btn-extract').disabled = true;
+        document.getElementById('btn-extract').innerHTML = '<i class="fas fa-spinner fa-pulse"></i> 提取中...';
+
+        try {
+            const data = await API.get(`/observations/extract-preview/${encodeURIComponent(runId)}`);
+            this.currentExtractData = data.observations || [];
+            this.renderExtractTable(data);
+        } catch (e) {
+            console.error('[ExtractUI] extract failed:', e);
+            await Modal.alert('提取失败', e.message || String(e));
+        } finally {
+            document.getElementById('btn-extract').disabled = false;
+            document.getElementById('btn-extract').innerHTML = '<i class="fas fa-search"></i> 提取观察';
+        }
+    },
+
+    renderExtractTable(data) {
+        const wrap = document.getElementById('extract-table-wrap');
+        const empty = document.getElementById('extract-empty');
+        const tbody = document.getElementById('extract-tbody');
+
+        if (!data.observations || data.observations.length === 0) {
+            wrap.style.display = 'none';
+            empty.style.display = 'block';
+            empty.innerHTML = '<i class="fas fa-inbox"></i><br>该项目的检查点中未提取到新观察事件';
+            return;
+        }
+
+        empty.style.display = 'none';
+        wrap.style.display = 'block';
+        this.selectedIds = new Set();
+        document.getElementById('select-all').checked = false;
+        this.updateSelectionInfo();
+
+        // Group by step
+        const groups = data.groups || [];
+        let html = '';
+        groups.forEach(g => {
+            if (g.total === 0) return;
+            const groupObs = data.observations.filter(o => o.source_step === g.step);
+            if (groupObs.length === 0) return;
+
+            const stepLabel = g.step.replace('step', 'Step ');
+            const badgeClass = `badge-step${g.step.replace('step','')}`;
+            html += `<tr class="group-label"><td colspan="9">
+                <span class="badge ${badgeClass}">${stepLabel}</span>
+                &nbsp;${g.total} 条 · 新 ${g.new} · 已入库 ${g.existing}
+            </td></tr>`;
+
+            groupObs.forEach((obs, idx) => {
+                const isSaved = obs.already_saved;
+                const key = obs.title + obs.source_step + (obs.industry || '');
+                const checked = !isSaved && !this.selectedIds.has(key) ? '' : 'checked';
+                const stepNum = (obs.source_step || 'step0').replace('step', '');
+                const dirClass = obs.direction === 'positive' ? 'dir-positive' :
+                    obs.direction === 'negative' ? 'dir-negative' : 'dir-neutral';
+                const dirIcon = obs.direction === 'positive' ? '↑' :
+                    obs.direction === 'negative' ? '↓' : '—';
+
+                html += `<tr>
+                    <td class="chk">
+                        <input type="checkbox" class="obs-chk" data-key="${key}"
+                            onchange="ExtractUI.toggleOne('${key}')"
+                            ${isSaved ? 'disabled' : ''}>
+                    </td>
+                    <td><span class="badge badge-step${stepNum}">Step ${stepNum}</span></td>
+                    <td style="color:var(--text-micro);font-size:10px;">${obs.level || '-'}</td>
+                    <td><div class="title-text" title="${escHtml(obs.description || obs.title)}">${escHtml((obs.title || '').substring(0, 60))}</div></td>
+                    <td><span class="category-tag">${escHtml(obs.category || '-')}</span></td>
+                    <td class="${dirClass}">${dirIcon}</td>
+                    <td style="font-size:10px;color:var(--text-micro);">${escHtml(obs.window_start || '')}~${escHtml(obs.window_end || '')}</td>
+                    <td style="font-size:10px;">${escHtml(obs.industry || '')}${obs.related_stock_code ? '<br>'+escHtml(obs.related_stock_code) : ''}</td>
+                    <td>${isSaved ? '<span class="badge badge-saved">已入库</span>' : '<span class="badge badge-new">新</span>'}</td>
+                </tr>`;
+            });
+        });
+
+        tbody.innerHTML = html;
+        document.getElementById('btn-save').disabled = true;
+    },
+
+    // ── 选择管理 ────────────────────────────────
+    toggleOne(key) {
+        if (this.selectedIds.has(key)) {
+            this.selectedIds.delete(key);
+        } else {
+            this.selectedIds.add(key);
+        }
+        this.updateSelectionInfo();
+    },
+
+    toggleAll() {
+        const checked = document.getElementById('select-all').checked;
+        document.querySelectorAll('.obs-chk:not(:disabled)').forEach(cb => {
+            cb.checked = checked;
+            const key = cb.dataset.key;
+            if (checked) this.selectedIds.add(key);
+            else this.selectedIds.delete(key);
+        });
+        this.updateSelectionInfo();
+    },
+
+    updateSelectionInfo() {
+        const n = this.selectedIds.size;
+        document.getElementById('selection-info').textContent = `已选 ${n} 条`;
+        document.getElementById('btn-save').disabled = n === 0;
+    },
+
+    // ── 批量入库 ────────────────────────────────
+    async batchSave() {
+        if (this.selectedIds.size === 0) return;
+        const ok = await Modal.confirm('确认入库', `确认将选中的 ${this.selectedIds.size} 条观察事件写入数据库？`);
+        if (!ok) return;
+
+        const selected = this.currentExtractData.filter(o => {
+            const key = o.title + o.source_step + (o.industry || '');
+            return this.selectedIds.has(key) && !o.already_saved;
+        });
+
+        if (selected.length === 0) {
+            await Modal.alert('提示', '没有可入库的新观察');
+            return;
+        }
+
+        document.getElementById('btn-save').disabled = true;
+        document.getElementById('btn-save').innerHTML = '<i class="fas fa-spinner fa-pulse"></i> 入库中...';
+
+        try {
+            const result = await API.post('/observations/batch-save', { observations: selected });
+            await Modal.alert('入库成功', `已写入 ${result.saved} 条观察事件`);
+            // Refresh: re-extract to update status
+            await this.extract();
+            await this.loadStats();
+        } catch (e) {
+            console.error('[ExtractUI] batchSave failed:', e);
+            await Modal.alert('入库失败', e.message || String(e));
+        } finally {
+            document.getElementById('btn-save').innerHTML = '<i class="fas fa-save"></i> 确认入库';
+        }
+    },
+
+    // ── 已入库观察 ──────────────────────────────
+    async refreshSaved() {
+        const tbody = document.getElementById('saved-tbody');
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:30px;color:var(--text-dim);"><i class="fas fa-spinner fa-pulse"></i> 加载中...</td></tr>';
+
+        const params = {};
+        const industry = document.getElementById('filter-industry').value.trim();
+        const step = document.getElementById('filter-step').value;
+        const status = document.getElementById('filter-status').value;
+        const stock = document.getElementById('filter-stock').value.trim();
+        if (industry) params.industry = industry;
+        if (step) params.source_step = step;
+        if (status) params.status = status;
+        if (stock) params.stock_code = stock;
+        params.limit = 500;
+
+        try {
+            const data = await API.get('/observations', params);
+            this.renderSavedTable(data.observations || []);
+            document.getElementById('saved-count-display').textContent = `共 ${data.total} 条`;
+        } catch (e) {
+            console.error('[ExtractUI] refreshSaved failed:', e);
+            tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:30px;color:#f87171;">加载失败: ${e.message}</td></tr>`;
+        }
+    },
+
+    renderSavedTable(observations) {
+        const tbody = document.getElementById('saved-tbody');
+        if (!observations.length) {
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text-dim);">暂无匹配的观察事件</td></tr>';
+            return;
+        }
+
+        let html = '';
+        observations.forEach(o => {
+            const stepNum = (o.source_step || 'step0').replace('step', '');
+            const dirIcon = o.direction === 'positive' ? '↑' :
+                o.direction === 'negative' ? '↓' : '—';
+            const dirClass = o.direction === 'positive' ? 'dir-positive' :
+                o.direction === 'negative' ? 'dir-negative' : 'dir-neutral';
+
+            html += `<tr>
+                <td><span class="badge badge-step${stepNum}">Step ${stepNum}</span></td>
+                <td><div class="title-text" style="cursor:pointer;" onclick="ExtractUI.showDetail('${o.id}')" title="${escHtml(o.description || o.title)}">${escHtml((o.title || '').substring(0, 55))}</div></td>
+                <td><span class="category-tag">${escHtml(o.category || '-')}</span></td>
+                <td class="${dirClass}">${dirIcon}</td>
+                <td style="font-size:10px;color:var(--text-micro);">${escHtml(o.window_start || '')}~${escHtml(o.window_end || '')}</td>
+                <td style="font-size:10px;">${escHtml(o.industry || '-')}</td>
+                <td style="font-size:10px;">${escHtml(o.related_stock_code || '-')}</td>
+                <td><span class="badge badge-step${stepNum}" style="font-size:9px;">${o.status || 'draft'}</span></td>
+                <td><button class="btn btn-outline" style="font-size:9px;padding:2px 6px;" onclick="ExtractUI.showDetail('${o.id}')">详情</button></td>
+            </tr>`;
+        });
+        tbody.innerHTML = html;
+    },
+
+    async showDetail(obsId) {
+        try {
+            const o = await API.get(`/observations/${obsId}`);
+            const html = `
+<h3>${escHtml(o.title)}</h3>
+<table style="font-size:11px;width:100%;border-collapse:collapse;">
+  <tr><td style="padding:3px 8px;color:var(--text-micro);width:80px;">步骤</td><td>${o.source_step}</td></tr>
+  <tr><td style="padding:3px 8px;color:var(--text-micro);">级别</td><td>${o.level}</td></tr>
+  <tr><td style="padding:3px 8px;color:var(--text-micro);">分类</td><td>${o.category || '-'}</td></tr>
+  <tr><td style="padding:3px 8px;color:var(--text-micro);">方向</td><td>${o.direction || '-'}</td></tr>
+  <tr><td style="padding:3px 8px;color:var(--text-micro);">置信度</td><td>${o.confidence || '-'}</td></tr>
+  <tr><td style="padding:3px 8px;color:var(--text-micro);">时间窗口</td><td>${o.window_description || '-'} (${o.window_start || '?'} ~ ${o.window_end || '?'})</td></tr>
+  <tr><td style="padding:3px 8px;color:var(--text-micro);">行业</td><td>${o.industry || '-'}</td></tr>
+  <tr><td style="padding:3px 8px;color:var(--text-micro);">股票</td><td>${o.related_stock_code || '-'}</td></tr>
+  <tr><td style="padding:3px 8px;color:var(--text-micro);">监控指标</td><td>${escHtml(o.monitor_metric || '-')}</td></tr>
+  <tr><td style="padding:3px 8px;color:var(--text-micro);">触发阈值</td><td>${escHtml(o.trigger_threshold || '-')}</td></tr>
+  <tr><td style="padding:3px 8px;color:var(--text-micro);">状态</td><td>${o.status} (check_count=${o.check_count})</td></tr>
+  <tr><td style="padding:3px 8px;color:var(--text-micro);">创建时间</td><td>${o.created_at}</td></tr>
+</table>
+<pre style="margin-top:8px;">${escHtml(o.description || '')}</pre>`;
+            // Use a simple overlay for the detail
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay';
+            overlay.innerHTML = `<div class="modal-box">${html}<button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">关闭</button></div>`;
+            overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+            document.body.appendChild(overlay);
+        } catch (e) {
+            console.error('[ExtractUI] showDetail failed:', e);
+        }
+    },
+};
+
+// ── 初始化 ─────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    ExtractUI.init();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,386 @@
+{
+  "step": "step3_sc_hacker",
+  "run_id": "20260529_资本流向_v1",
+  "input_hash": "continue",
+  "saved_at": "2026-05-29T22:13:43.228720",
+  "elapsed_seconds": 0,
+  "input_summary": "",
+  "output": {
+    "confidence": "medium",
+    "confidence_note": "搜索覆盖了2026年CoWoS封装、设备交期、铜/存储等关键瓶颈的现状与展望，但由于数据主要来自行业趋势类文章和研报摘要（非一手硬数据），且部分结论（如利润率定量）依赖LLM估计，对产能缺口具体数字和未来2-3年精准供需平衡表的支撑仍显不足。",
+    "supply_chain_map": [
+      {
+        "level": 1,
+        "name": "先进封装与关键芯片产能",
+        "bottleneck_narrative": "以CoWoS为代表的先进封装产能是当前AI产业链最核心的结构性瓶颈，产能已预订至2026年底，导致GPU、TPU等核心AI芯片供给严重受限，并向上游挤占铜、存储等原材料产能。",
+        "confidence": "high",
+        "supply_rigidity": {
+          "severity": "extreme",
+          "root_cause": "equipment_constraint",
+          "expand_cycle": "over_24m",
+          "substitutability": "none_short_term",
+          "concentration": "monopoly_single_supplier",
+          "alpha_narrative": "台积电的CoWoS设备交期超24个月且其市占率>90%，形成了绝对的供给刚性。这赋予了其极强的定价权，使其能在AI产业利润分配中占据最有利位置，景气窗口至少持续到2027年新产能释放。"
+        },
+        "profit_pool": {
+          "share_of_industry_profit": "dominant_30_50pct",
+          "margin_level": "very_high_above_40pct",
+          "margin_estimated": true,
+          "margin_data_source": "LLM估计, 基于搜索片段中关于台积电议价能力和先进封装价值量占比的研报引用 | 待Step 6财务验证回写",
+          "pricing_power_narrative": "由于产能完全售罄且无短期替代方案，台积电掌握了绝对的定价权，可对AI芯片订单大幅提价，其先进封装业务的毛利率显著高于公司平均水平。"
+        },
+        "value_capture": {
+          "market_attention": "very_high",
+          "attention_quality": "profit_real",
+          "gap_narrative": "市场高度聚焦AI芯片，但利润实则高度集中于上游的先进封装与关键设备环节，然而市场对这一利润结构的认知已较为充分，预期差有限。",
+          "who_captures_value": [
+            "台积电 (先进封装)",
+            "ASML (EUV)",
+            "Samsung / SK Hynix (HBM)",
+            "Disco (划片机)"
+          ]
+        },
+        "competitive_landscape": {
+          "structure": "oligopoly_CR3_above_70",
+          "global_leaders": [
+            "台积电 (TSMC)",
+            "三星 (Samsung)",
+            "英特尔 (Intel)"
+          ],
+          "china_substitution_rate": "below_5pct",
+          "china_players": {
+            "tier1": [],
+            "tier2": [
+              "长电科技",
+              "通富微电"
+            ],
+            "tier3": [
+              "华天科技"
+            ]
+          }
+        },
+        "future_outlook": {
+          "next_2_3_years": "bottleneck_persists",
+          "potential_relief": "台积电2025-2027年持续扩产，并外包部分简单工序给日月光和安靠，但核心设备交期和复杂工艺仍构成瓶颈。",
+          "emerging_bottleneck": "随着扩产推进，上游的先进封装设备和材料可能出现新的瓶颈，如高精度倒装焊接设备、ABF载板等。"
+        },
+        "assets": [],
+        "assets_note": "一级瓶颈环节（CoWoS、EUV、HBM）的核心受益方（台积电、ASML、海力士、Disco）均未在A股上市。A股仅有长电、通富等间接参与者，定位为Tier 2/3。",
+        "evidence": [
+          {
+            "fact": "产能已经售罄到 2026 年底，并持续预订到 2027 年。Google TPU的产能也未达预期，主因就是CoWoS产能不足。",
+            "from": "search[2.4]·知乎",
+            "quality": {
+              "level": "medium",
+              "source_type": "self_media"
+            }
+          },
+          {
+            "fact": "台积电已将部分简单封装工序外包给 ASE 和 Amkor 等第三方封测厂，但这只是杯水车薪。",
+            "from": "search[2.4]·知乎",
+            "quality": {
+              "level": "medium",
+              "source_type": "self_media"
+            }
+          },
+          {
+            "fact": "2026年AI数据中心正在耗尽铜和存储芯片的产能，这对供应链构成了新的成本通胀压力。",
+            "from": "search[2.2]·Supply Chain Intelligence",
+            "quality": {
+              "level": "high",
+              "source_type": "industry_data"
+            }
+          }
+        ]
+      },
+      {
+        "level": 2,
+        "name": "关键原材料（铜、高纯石英砂）",
+        "bottleneck_narrative": "AI数据中心建设和能源转型对铜的需求激增，而矿山开发周期过长，导致精炼铜和高纯度铜材的供应紧张，成为供应链新的刚性约束点。",
+        "confidence": "medium",
+        "supply_rigidity": {
+          "severity": "high",
+          "root_cause": "natural_resource",
+          "expand_cycle": "over_24m",
+          "substitutability": "partial_high_cost",
+          "concentration": "fragmented",
+          "alpha_narrative": "铜矿的开发周期长达5-10年，供给对价格信号的反应极为迟缓。虽然供应商格局分散，但资源地理分布集中和政治风险加剧了供给刚性，随着AI与电网需求共振，铜的超级周期正在形成。"
+        },
+        "profit_pool": {
+          "share_of_industry_profit": "significant_15_30pct",
+          "margin_level": "moderate_15_25pct",
+          "margin_estimated": true,
+          "margin_data_source": "LLM估计, 基于铜矿采掘业历史利润率及需求爆发逻辑 | 待Step 6财务验证回写",
+          "pricing_power_narrative": "由于供需缺口持续扩大，上游矿企对下游冶炼和线缆企业的议价能力显著增强，TC/RC费用被持续压低，矿端利润丰厚。"
+        },
+        "value_capture": {
+          "market_attention": "high",
+          "attention_quality": "profit_real",
+          "gap_narrative": "市场对铜的关注度近期因AI叙事而高涨，但焦点多在交易端，对矿山资产的核心价值认识仍不充分，存在结构性机会。",
+          "who_captures_value": [
+            "铜矿巨头（自由港、紫金矿业）",
+            "高纯石英砂垄断者（尤尼明、石英股份）"
+          ]
+        },
+        "competitive_landscape": {
+          "structure": "fragmented",
+          "global_leaders": [
+            "Freeport-McMoRan",
+            "BHP",
+            "紫金矿业"
+          ],
+          "china_substitution_rate": "20_50pct",
+          "china_players": {
+            "tier1": [
+              "紫金矿业",
+              "洛阳钼业"
+            ],
+            "tier2": [
+              "江西铜业",
+              "铜陵有色"
+            ],
+            "tier3": []
+          }
+        },
+        "future_outlook": {
+          "next_2_3_years": "bottleneck_persists",
+          "potential_relief": "部分矿山在2026-2027年启动扩产，但实质性的产量增长要到2028-2029年才能体现。",
+          "emerging_bottleneck": "采选矿所需的大型矿卡、破碎机等设备可能出现交付瓶颈。"
+        },
+        "assets": [
+          {
+            "code": "601899",
+            "name": "紫金矿业",
+            "role": "全球铜矿龙头，A股核心铜标的",
+            "market_position": "tier1"
+          },
+          {
+            "code": "603993",
+            "name": "洛阳钼业",
+            "role": "大型铜钴矿企，受益铜价上涨",
+            "market_position": "tier1"
+          }
+        ],
+        "assets_note": "",
+        "evidence": [
+          {
+            "fact": "2026年，随着AI数据中心耗尽铜和存储芯片产能，全球供应链正撞上新的稀缺性时代，采购领导者面临前所未有的成本通胀。",
+            "from": "search[2.2]·Supply Chain Intelligence",
+            "quality": {
+              "level": "high",
+              "source_type": "industry_data"
+            }
+          }
+        ]
+      },
+      {
+        "level": 3,
+        "name": "供应链韧性管理平台与软件",
+        "bottleneck_narrative": "面对全球供应链频繁中断的局势，企业对实时可视化、AI预测和自动化决策的全球供应链控制塔（如L4级GBS）需求激增，但具备此类能力的人才和成熟解决方案极度稀缺。",
+        "confidence": "medium",
+        "supply_rigidity": {
+          "severity": "moderate",
+          "root_cause": "certification_barrier",
+          "expand_cycle": "12_24m",
+          "substitutability": "partial_emerging",
+          "concentration": "oligopoly",
+          "alpha_narrative": "构建L4级全球供应链控制塔需要深度融合SAP BTP、SCOR模型与AI，复合型人才极度匮乏是核心障碍。这为少数头部工业软件和咨询公司创造了高粘性、高溢价的利基市场。"
+        },
+        "profit_pool": {
+          "share_of_industry_profit": "moderate_5_15pct",
+          "margin_level": "high_25_40pct",
+          "margin_estimated": true,
+          "margin_data_source": "LLM估计, 基于企业级SaaS和咨询业务市场规律 | 待Step 6财务验证回写",
+          "pricing_power_narrative": "鉴于解决方案的复杂性和定制化程度，供应商具备较强的议价能力，特别是在其掌握行业最佳实践和快速部署能力的情况下。"
+        },
+        "value_capture": {
+          "market_attention": "low",
+          "attention_quality": "under_the_radar",
+          "gap_narrative": "市场焦点仍在硬件‘卡脖子’上，对供应链管理软件效率提升的乘数效应关注度低，但这正是企业降本增效、应对不确定性的刚需，存在显著的预期差和Alpha机会。",
+          "who_captures_value": [
+            "SAP（ERP与平台）",
+            "Coupa（采购与供应管理）",
+            "Blue Yonder（供应链计划）",
+            "海尔COSMOPlat（工业互联网平台）"
+          ]
+        },
+        "competitive_landscape": {
+          "structure": "oligopoly_CR3_above_70",
+          "global_leaders": [
+            "SAP",
+            "Oracle",
+            "E2open"
+          ],
+          "china_substitution_rate": "20_50pct",
+          "china_players": {
+            "tier1": [],
+            "tier2": [
+              "海尔智家（COSMOPlat）",
+              "京东物流"
+            ],
+            "tier3": [
+              "准上市公司/初创公司"
+            ]
+          }
+        },
+        "future_outlook": {
+          "next_2_3_years": "bottleneck_persists",
+          "potential_relief": "AI大模型正加速降低开发门槛，但培养既懂业务又懂技术的复合型人才仍需要时间。",
+          "emerging_bottleneck": "随着AI嵌入式运营的普及，高质量供应链数据接口的治理和标准化将成为新瓶颈。"
+        },
+        "assets": [
+          {
+            "code": "600690",
+            "name": "海尔智家",
+            "role": "旗下COSMOPlat平台是L4级供应链控制的实践者，对外赋能",
+            "market_position": "tier2"
+          }
+        ],
+        "assets_note": "核心实施方多为海外软件巨头，A股标的稀缺，海尔智家旗下工业互联网平台是少数相关标的。",
+        "evidence": [
+          {
+            "fact": "全球前100强企业中，仅29%具备L4供应链能力，主要瓶颈在于跨系统API治理能力与复合型人才储备不足。",
+            "from": "search[2.1]·SCI.AI",
+            "quality": {
+              "level": "medium",
+              "source_type": "ai_summary"
+            }
+          },
+          {
+            "fact": "海尔COSMOPlat已实现L4级GBS，其青岛总部控制塔可实时调度全球24个工厂的产能余量，并向海外供应商开放预测数据接口，使JIT交付达成率提升至99.2%。",
+            "from": "search[2.1]·SCI.AI",
+            "quality": {
+              "level": "medium",
+              "source_type": "self_media"
+            }
+          }
+        ]
+      }
+    ],
+    "core_stocks": [
+      {
+        "code": "601899",
+        "name": "紫金矿业",
+        "segment": "铜矿",
+        "role": "全球铜矿龙头",
+        "moat": "成本优势 + 资源储量 + 逆周期扩张能力"
+      },
+      {
+        "code": "603993",
+        "name": "洛阳钼业",
+        "segment": "铜/钴矿",
+        "role": "核心铜钴矿企",
+        "moat": "全球顶级矿山资源 + 产量弹性"
+      },
+      {
+        "code": "600690",
+        "name": "海尔智家",
+        "segment": "供应链管理",
+        "role": "国内L4级供应链管理先行者",
+        "moat": "场景数据积累 + 制造端know-how + 平台生态"
+      },
+      {
+        "code": "688012",
+        "name": "中微公司",
+        "segment": "CoWoS间接设备",
+        "role": "国产刻蚀设备龙头，受益先进封装设备投资",
+        "moat": "技术壁垒高，已进入全球头部产线"
+      },
+      {
+        "code": "688019",
+        "name": "安集科技",
+        "segment": "先进封装材料",
+        "role": "国产CMP抛光液龙头，国产替代先锋",
+        "moat": "客户粘性强，产品验证周期长"
+      }
+    ],
+    "sales_chain": [
+      {
+        "segment": "上游矿企",
+        "companies": [
+          "601899",
+          "603993"
+        ],
+        "reason": "下游AI基建需求爆发，首先拉动的就是作为基础材料的铜、钴等矿产资源，矿企的销售和利润增长会领先中游制造数月。",
+        "lead_months": "1-3"
+      },
+      {
+        "segment": "供应链管理软件",
+        "companies": [
+          "600690"
+        ],
+        "reason": "在供应链扰动初期，企业为提升可见性和韧性，会迅速增加对供应链管理软件和平台的咨询及采购，形成早期订单。",
+        "lead_months": "1-3"
+      }
+    ],
+    "expansion_chain": [
+      {
+        "segment": "国产封测和设备",
+        "companies": [
+          "688012",
+          "688019"
+        ],
+        "reason": "当台积电等巨头扩产计划明确（资本开支上修）后，将逐步增加对封测设备、材料的采购招标，A股相关公司会在6-12个月后看到订单落地。",
+        "lag_months": "6-12"
+      },
+      {
+        "segment": "采矿服务与设备",
+        "companies": [
+          "603638"
+        ],
+        "reason": "矿价上涨和新建矿山计划在传导链条末期才会体现为对采矿服务商和设备的需求增长，滞后于矿企业绩释放。",
+        "lag_months": "6-12"
+      }
+    ],
+    "chain_timeline": {
+      "sales_lead_months": "1-3",
+      "expansion_lag_months": "6-12",
+      "rotation_strategy": "当前应超配景气传导链最上游的矿企和早期受益的供应链软件，随着时间推移，逐步将仓位向‘扩产受益链’的国产设备和材料端转移，以捕捉订单落地的二次增长。"
+    },
+    "scarcity_ranking": [
+      {
+        "rank": 1,
+        "segment": "CoWoS先进封装",
+        "rigidity_narrative": "台积电垄断，设备交期超24个月，产能已告罄至2026年底，是AI产业链绝对的物质短板。",
+        "beneficiary_stocks": []
+      },
+      {
+        "rank": 2,
+        "segment": "高品位铜矿",
+        "rigidity_narrative": "矿山开发周期超5年，供给弹性极小，面对AI和新能源带来的结构性需求爆发，将形成持续多年的供给缺口。",
+        "beneficiary_stocks": [
+          "601899",
+          "603993"
+        ]
+      },
+      {
+        "rank": 3,
+        "segment": "L4级供应链管理人才与软件",
+        "rigidity_narrative": "高层级供应链人才全球稀缺，解决方案无法简单复制，构成软性但粘性极强的供给瓶颈。",
+        "beneficiary_stocks": [
+          "600690"
+        ]
+      }
+    ],
+    "catalysts": [
+      {
+        "type": "capacity",
+        "catalyst": "台积电2025年Q4法说会上调2026年CoWoS资本开支指引",
+        "expected_date": "2026年Q1",
+        "watch_signal": "台积电资本开支/设备采购清单",
+        "affected_segment": "国产封测设备和材料"
+      },
+      {
+        "type": "policy",
+        "catalyst": "中国出台新一轮大规模设备更新或供应链数字化补贴政策",
+        "expected_date": "2026年H1",
+        "watch_signal": "国务院或工信部政策文件",
+        "affected_segment": "供应链管理软件"
+      }
+    ],
+    "findings_count": 0,
+    "agent": "SupplyChainHacker",
+    "industry": "",
+    "search_rounds": 2
+  }
+}

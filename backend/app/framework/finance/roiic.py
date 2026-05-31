@@ -19,7 +19,7 @@ from typing import List, Dict, Optional
 TAX_RATE = 0.15  # 高新技术企业通用
 
 
-def _nopat_4q(quarters: List[Dict]) -> float:
+def _nopat_4q(quarters: List[Dict], capitalize_rd: bool = False) -> float:
     """NOPAT = sum(operating_profit) * (1 - tax_rate), 最近4Q"""
     op_total = 0.0
     for q in quarters[:4]:
@@ -27,6 +27,9 @@ def _nopat_4q(quarters: List[Dict]) -> float:
         cost = float(q.get("operate_cost", 0) or 0)
         sga = float(q.get("sale_expense", 0) or 0) + float(q.get("manage_expense", 0) or 0)
         op = rev - cost - sga
+        if capitalize_rd:
+            rd = float(q.get("rd_expense", 0) or 0)
+            op += rd
         op_total += op
     return op_total * (1 - TAX_RATE)
 
@@ -52,7 +55,7 @@ def _invested_capital(q: Dict) -> float:
 
 # ═══ 公开 API ═══════════════════════════════
 
-def compute_roic(financials: List[Dict]) -> dict:
+def compute_roic(financials: List[Dict], capitalize_rd: bool = False) -> dict:
     """
     ROIC = NOPAT / InvestedCapital (静态, 基于最近4Q)
     用于成熟期公司的现有资本回报效率判断。
@@ -62,7 +65,7 @@ def compute_roic(financials: List[Dict]) -> dict:
     if not financials or len(financials) < 4:
         return {"roic": None, "error": "insufficient_data", "available_quarters": len(financials)}
 
-    nopat = _nopat_4q(financials)
+    nopat = _nopat_4q(financials, capitalize_rd)
     ic = _invested_capital(financials[0])
 
     if not ic:
@@ -80,7 +83,7 @@ def compute_roic(financials: List[Dict]) -> dict:
     }
 
 
-def compute_roiic(financials: List[Dict]) -> dict:
+def compute_roiic(financials: List[Dict], capitalize_rd: bool = False) -> dict:
     """
     ROIIC = (NOPAT_t - NOPAT_t-4) / (IC_t-1 - IC_t-5)
     衡量新增投入资本的边际回报。成长期公司的核心判断指标。
@@ -94,8 +97,8 @@ def compute_roiic(financials: List[Dict]) -> dict:
     recent_4q = financials[:4]
     prior_4q = financials[4:8]
 
-    nopat_current = _nopat_4q(recent_4q)
-    nopat_prev = _nopat_4q(prior_4q)
+    nopat_current = _nopat_4q(recent_4q, capitalize_rd)
+    nopat_prev = _nopat_4q(prior_4q, capitalize_rd)
 
     ic_current = _invested_capital(recent_4q[0])
     ic_prev = _invested_capital(prior_4q[0])

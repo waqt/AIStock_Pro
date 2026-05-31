@@ -77,9 +77,9 @@ class GrossMarginTrend(FinancialIndicator):
             cost = float(q.get("operate_cost", 0) or 0)
             gms.append((rev - cost) / rev * 100 if rev else 0)
         if len(gms) >= 3 and gms[0] > gms[1] > gms[2]:
-            return {"gross_margin_trend": "declining"}
-        if len(gms) >= 3 and gms[0] < gms[1] < gms[2]:
             return {"gross_margin_trend": "rising"}
+        if len(gms) >= 3 and gms[0] < gms[1] < gms[2]:
+            return {"gross_margin_trend": "declining"}
         return {"gross_margin_trend": "stable"}
 
 
@@ -105,12 +105,18 @@ class OperatingLeverage(FinancialIndicator):
         rev_t1 = sum(float(q.get("revenue", 0) or 0) for q in financials[4:8])
         profit_t = sum(float(q.get("profit", q.get("parent_profit", 0)) or 0) for q in financials[:4])
         profit_t1 = sum(float(q.get("profit", q.get("parent_profit", 0)) or 0) for q in financials[4:8])
-        if not rev_t1 or not profit_t1:
+        
+        # 优化: 剔除微利或极小营收基数导致的指标失真 (阈值设定为 1000 万)
+        if not rev_t1 or not profit_t1 or abs(profit_t1) < 1e7 or abs(rev_t1) < 1e7:
             return {"operating_leverage": None}
+            
         rev_growth = (rev_t - rev_t1) / abs(rev_t1)
-        profit_growth = (profit_t - profit_t1) / abs(profit_t1) if abs(profit_t1) > 0 else 0
+        profit_growth = (profit_t - profit_t1) / abs(profit_t1)
+        
+        # 营收几乎不增长时，杠杆乘数失去意义
         if abs(rev_growth) < 0.001:
             return {"operating_leverage": None}
+            
         return {"operating_leverage": round(profit_growth / rev_growth, 2)}
 
 

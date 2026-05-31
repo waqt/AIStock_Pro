@@ -58,6 +58,7 @@ DataTabs.Watchlist = {
                   <td style="text-align:right;width:60px;">${roe}%</td>
                   <td style="text-align:right;width:70px;font-size:10px;color:var(--accent-gold);">${tpStr}</td>
                   <td style="text-align:center;width:110px;" onclick="event.stopPropagation();">
+                    <span class="wl-obs-badge" data-code="${escHtml(s.stock_code)}" onclick="DataTabs.Watchlist.showStockObs('${escHtml(s.stock_code)}')" style="cursor:pointer;color:var(--text-dim);font-size:9px;" title="关联观察事件">...</span>
                     <button onclick="DataTabs.Watchlist.finDetail('${escHtml(s.stock_code)}','${escHtml(s.stock_name)}')" title="财务F10" style="background:none;border:none;color:var(--accent-gold);cursor:pointer;font-size:9px;"><i class="fas fa-file-invoice"></i></button>
                     <button onclick="DataTabs.Watchlist.syncOne('${escHtml(s.stock_code)}',this)" style="background:none;border:none;color:var(--accent-blue);cursor:pointer;font-size:9px;"><i class="fas fa-sync-alt"></i></button>
                     <button data-code="${escHtml(s.stock_code)}" onclick="DataTabs.Watchlist.edit(this.dataset.code)" title="编辑" style="background:none;border:none;color:var(--accent-gold);cursor:pointer;font-size:9px;"><i class="fas fa-edit"></i></button>
@@ -68,6 +69,23 @@ DataTabs.Watchlist = {
             </table>
           </div>
         </div>`).join('');
+
+      // 异步加载观察计数
+      const codes = items.map(i => i.stock_code).filter(Boolean);
+      setTimeout(() => {
+        codes.forEach(code => {
+          fetch(API_BASE + '/observations/stocks/' + code)
+            .then(r => r.json())
+            .then(d => {
+              const badge = document.querySelector('.wl-obs-badge[data-code="' + code + '"]');
+              if (badge) {
+                const n = d.total || 0;
+                badge.innerHTML = n > 0 ? '<span style="color:var(--accent-green);font-weight:bold;">' + n + '</span><span style="font-size:8px;">观</span>' : '<span style="color:var(--text-micro);font-size:9px;">-</span>';
+                badge.title = n > 0 ? n + ' 条观察事件' : '无观察';
+              }
+            }).catch(function() {});
+        });
+      }, 100);
     } catch (e) { el.innerHTML = '<div style="color:var(--accent-red);">加载失败</div>'; }
   },
 
@@ -78,10 +96,10 @@ DataTabs.Watchlist = {
     const notes = document.getElementById('wl-notes').value.trim();
     const tLow = document.getElementById('wl-target-low').value;
     const tHigh = document.getElementById('wl-target-high').value;
-    let url = `${API_BASE}/data/watchlist/add?stock_code=${encodeURIComponent(code)}&group_tag=${encodeURIComponent(group)}`;
-    if (notes) url += `&notes=${encodeURIComponent(notes)}`;
-    if (tLow) url += `&target_price_low=${tLow}`;
-    if (tHigh) url += `&target_price_high=${tHigh}`;
+    let url = API_BASE + '/data/watchlist/add?stock_code=' + encodeURIComponent(code) + '&group_tag=' + encodeURIComponent(group);
+    if (notes) url += '&notes=' + encodeURIComponent(notes);
+    if (tLow) url += '&target_price_low=' + tLow;
+    if (tHigh) url += '&target_price_high=' + tHigh;
     try {
       const res = await fetch(url, { method: 'POST' });
       const d = await res.json();
@@ -90,8 +108,8 @@ DataTabs.Watchlist = {
       document.getElementById('wl-target-low').value = '';
       document.getElementById('wl-target-high').value = '';
       DataTabs.Watchlist.load();
-      DataTabs.Core.addLog(`已添加 ${code} (${d.name || ''})`, 'success');
-    } catch (e) { DataTabs.Core.addLog(`添加失败: ${e.message}`, 'error'); }
+      DataTabs.Core.addLog('已添加 ' + code + ' (' + (d.name || '') + ')', 'success');
+    } catch (e) { DataTabs.Core.addLog('添加失败: ' + e.message, 'error'); }
   },
 
   async edit(code) {
@@ -129,10 +147,10 @@ DataTabs.Watchlist = {
     var n = document.getElementById('editwl-notes').value;
     var l = document.getElementById('editwl-low').value;
     var h = document.getElementById('editwl-high').value;
-    var url = `${API_BASE}/data/watchlist/${code}?group_tag=${encodeURIComponent(g)}`;
-    url += `&notes=${encodeURIComponent(n)}`;
-    if (l) url += `&target_price_low=${l}`;
-    if (h) url += `&target_price_high=${h}`;
+    var url = API_BASE + '/data/watchlist/' + code + '?group_tag=' + encodeURIComponent(g);
+    url += '&notes=' + encodeURIComponent(n);
+    if (l) url += '&target_price_low=' + l;
+    if (h) url += '&target_price_high=' + h;
     try {
       await fetch(url, { method: 'PUT' });
       Modal.close();
@@ -142,32 +160,32 @@ DataTabs.Watchlist = {
 
   async importPositions() {
     try {
-      const res = await fetch(`${API_BASE}/data/watchlist/import-positions`, { method: 'POST' });
+      const res = await fetch(API_BASE + '/data/watchlist/import-positions', { method: 'POST' });
       const d = await res.json();
       DataTabs.Watchlist.load();
-      DataTabs.Core.addLog(`导入了 ${d.imported || 0} 条持仓`, 'success');
+      DataTabs.Core.addLog('导入了 ' + (d.imported || 0) + ' 条持仓', 'success');
     } catch (e) { DataTabs.Core.addLog('导入失败', 'error'); }
   },
 
   async sync(mode) {
-    DataTabs.Core.addLog(`自选股${mode === 'daily' ? '当日' : '历史'}同步中...`, 'info');
+    DataTabs.Core.addLog('自选股' + (mode === 'daily' ? '当日' : '历史') + '同步中...', 'info');
     try {
-      const res = await fetch(`${API_BASE}/data/watchlist/sync?mode=${mode}`, { method: 'POST' });
+      const res = await fetch(API_BASE + '/data/watchlist/sync?mode=' + mode, { method: 'POST' });
       const d = await res.json();
-      DataTabs.Core.addLog(`同步完成: ${d.synced || 0} 只`, 'success');
+      DataTabs.Core.addLog('同步完成: ' + (d.synced || 0) + ' 只', 'success');
       DataTabs.Watchlist.load();
     } catch (e) { DataTabs.Core.addLog('同步失败', 'error'); }
   },
 
   async syncOne(code, btn) {
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
-    try { await fetch(`${API_BASE}/data/sync/daily/${code}`, { method: 'POST' }); }
+    try { await fetch(API_BASE + '/data/sync/daily/' + code, { method: 'POST' }); }
     catch (e) { /* ignore */ }
     DataTabs.Watchlist.load();
   },
 
   async refreshHeld() {
-    await fetch(`${API_BASE}/data/watchlist/refresh-held`, { method: 'POST' });
+    await fetch(API_BASE + '/data/watchlist/refresh-held', { method: 'POST' });
     DataTabs.Watchlist.load();
   },
 
@@ -175,19 +193,19 @@ DataTabs.Watchlist = {
 
   async remove(code) {
     if (!confirm('确认删除自选股 ' + code + '?')) return;
-    await fetch(`${API_BASE}/data/watchlist/${code}`, { method: 'DELETE' });
+    await fetch(API_BASE + '/data/watchlist/' + code, { method: 'DELETE' });
     DataTabs.Watchlist.load();
   },
 
   async showChart(code, name) {
     try {
-      const res = await fetch(`${API_BASE}/data/daily/${code}?limit=500`);
+      const res = await fetch(API_BASE + '/data/daily/' + code + '?limit=500');
       const d = await res.json();
       const data = d.data || [];
       const modal = document.createElement('div');
-      modal.innerHTML = `<div id="chart-modal-content" style="display:flex;flex-direction:column;gap:8px;">
-        <div style="font-size:12px;color:#fff;">${escHtml(code)} ${escHtml(name)}</div>
-        <div id="chart-container" style="width:750px;height:420px;"></div></div>`;
+      modal.innerHTML = '<div id="chart-modal-content" style="display:flex;flex-direction:column;gap:8px;">' +
+        '<div style="font-size:12px;color:#fff;">' + escHtml(code) + ' ' + escHtml(name) + '</div>' +
+        '<div id="chart-container" style="width:750px;height:420px;"></div></div>';
       Modal.custom({title: 'K线走势', content: modal.innerHTML});
       await new Promise(r => setTimeout(r, 100));
       const chartDom = document.getElementById('chart-container');
@@ -207,7 +225,7 @@ DataTabs.Watchlist = {
 
   async finDetail(code, name) {
     try {
-      const res = await fetch(`${API_BASE}/data/financial/${code}?periods=12`);
+      const res = await fetch(API_BASE + '/data/financial/' + code + '?periods=12');
       const d = await res.json();
       const quarters = (d.data || []);
       if (!quarters.length) { Modal.alert('提示', '暂无财务数据'); return; }
@@ -224,28 +242,55 @@ DataTabs.Watchlist = {
         const ocf = ((q.op_cashflow || 0) / 1e8).toFixed(1);
         const inv = ((q.inventory || 0) / 1e8).toFixed(1);
         const cl = ((q.contract_liability || 0) / 1e8).toFixed(1);
-        rows += `<tr>
-          <td style="font-size:10px;">${(q.report_date||'').substring(0,7)}</td>
-          <td style="text-align:right;">${rev}</td>
-          <td style="text-align:right;">${prf}</td>
-          <td style="text-align:right;">${gm}%</td>
-          <td style="text-align:right;">${nm}%</td>
-          <td style="text-align:right;">${roe}%</td>
-          <td style="text-align:right;">${ocf}</td>
-          <td style="text-align:right;">${inv}</td>
-          <td style="text-align:right;">${cl}</td>
-        </tr>`;
+        rows += '<tr>' +
+          '<td style="font-size:10px;">' + (q.report_date||'').substring(0,7) + '</td>' +
+          '<td style="text-align:right;">' + rev + '</td>' +
+          '<td style="text-align:right;">' + prf + '</td>' +
+          '<td style="text-align:right;">' + gm + '%</td>' +
+          '<td style="text-align:right;">' + nm + '%</td>' +
+          '<td style="text-align:right;">' + roe + '%</td>' +
+          '<td style="text-align:right;">' + ocf + '</td>' +
+          '<td style="text-align:right;">' + inv + '</td>' +
+          '<td style="text-align:right;">' + cl + '</td></tr>';
       }
-      const html = `<div style="max-height:55vh;overflow:auto;">
-        <table class="watchlist-table" style="font-size:10px;">
-          <thead><tr>
-            <th>报告期</th><th style="text-align:right;">营收(亿)</th><th style="text-align:right;">净利润(亿)</th>
-            <th style="text-align:right;">毛利率</th><th style="text-align:right;">净利率</th><th style="text-align:right;">ROE</th>
-            <th style="text-align:right;">CF(亿)</th><th style="text-align:right;">存货(亿)</th><th style="text-align:right;">合同负债(亿)</th>
-          </tr></thead>
-          <tbody>${rows}</tbody>
-        </table></div>`;
-      Modal.custom({title: `财务F10: ${code} ${name}`, content: html});
+      const html = '<div style="max-height:55vh;overflow:auto;">' +
+        '<table class="watchlist-table" style="font-size:10px;">' +
+        '<thead><tr>' +
+        '<th>报告期</th><th style="text-align:right;">营收(亿)</th><th style="text-align:right;">净利润(亿)</th>' +
+        '<th style="text-align:right;">毛利率</th><th style="text-align:right;">净利率</th><th style="text-align:right;">ROE</th>' +
+        '<th style="text-align:right;">CF(亿)</th><th style="text-align:right;">存货(亿)</th><th style="text-align:right;">合同负债(亿)</th>' +
+        '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+      Modal.custom({title: '财务F10: ' + code + ' ' + name, content: html});
     } catch(e) { Modal.alert('错误', '加载财务数据失败: ' + e.message); }
+  },
+
+  async showStockObs(code) {
+    try {
+      const res = await fetch(API_BASE + '/observations/stocks/' + code);
+      const data = await res.json();
+      if (!data.observations || !data.observations.length) {
+        Modal.alert('观察事件', '该股票暂无关联的观察事件');
+        return;
+      }
+      var html = '<div style="font-size:11px;color:var(--text-dim);margin-bottom:6px;">共 ' + data.total + ' 条观察事件</div>' +
+        '<table style="width:100%;font-size:11px;border-collapse:collapse;">' +
+        '<tr style="color:var(--text-micro);border-bottom:1px solid var(--border-color);">' +
+        '<th style="padding:4px 6px;text-align:left;">来源</th>' +
+        '<th style="padding:4px 6px;text-align:left;">标题</th>' +
+        '<th style="padding:4px 6px;text-align:left;">行业</th>' +
+        '<th style="padding:4px 6px;text-align:left;">方向</th>' +
+        '<th style="padding:4px 6px;text-align:left;">状态</th></tr>';
+      data.observations.forEach(function(o) {
+        var dirIcon = o.direction === 'positive' ? '↑' : o.direction === 'negative' ? '↓' : '—';
+        html += '<tr style="border-bottom:1px solid rgba(255,255,255,0.04);">' +
+          '<td style="padding:4px 6px;">' + o.source_step + '</td>' +
+          '<td style="padding:4px 6px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + escHtml(o.description||'') + '">' + escHtml((o.title||'').substring(0,30)) + '</td>' +
+          '<td style="padding:4px 6px;font-size:10px;">' + (o.industry || '-') + '</td>' +
+          '<td style="padding:4px 6px;">' + dirIcon + '</td>' +
+          '<td style="padding:4px 6px;">' + o.status + '</td></tr>';
+      });
+      html += '</table>';
+      Modal.alert('观察事件 - ' + code, html);
+    } catch(e) { Modal.alert('错误', '加载观察失败'); }
   }
 };

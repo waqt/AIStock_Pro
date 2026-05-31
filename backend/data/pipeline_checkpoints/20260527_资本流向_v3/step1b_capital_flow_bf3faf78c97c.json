@@ -1,0 +1,95 @@
+{
+  "step": "step1b_capital_flow",
+  "run_id": "20260527_资本流向_v3",
+  "input_hash": "bf3faf78c97c",
+  "saved_at": "2026-05-27T13:36:33.675064",
+  "elapsed_seconds": 0,
+  "input_summary": "",
+  "output": {
+    "capital_flow_summary": "全球资本正集中流向AI数据中心建设，但电力基础设施已成瓶颈；中国财政亦加大算力投资，散热系统承压。",
+    "pressure_vectors": [
+      {
+        "capital_source": "MAG7科技巨头资本开支",
+        "source_region": "global",
+        "system_node": "power_infrastructure",
+        "pressure_type": "infrastructure_bottleneck",
+        "pressure_signals": [
+          "2026年美国约半数数据中心项目因电力配套延迟或取消",
+          "高功率变压器及开关设备严重短缺",
+          "部分客户愿支付20%溢价抢购电力设备"
+        ],
+        "intensity": "high",
+        "duration": "3_5_years",
+        "transmission_direction": "upstream",
+        "evidence": [
+          {
+            "fact": "美国2026年计划扩展12吉瓦数据中心容量，仅约三分之一进入建设阶段",
+            "from": "search[2.2]·新浪科技转彭博社",
+            "quality": {
+              "level": "high",
+              "source_type": "financial_news"
+            }
+          },
+          {
+            "fact": "全球变压器订单已排到2026年之后，部分客户愿支付20%溢价",
+            "from": "search[2.3]·X平台",
+            "quality": {
+              "level": "medium",
+              "source_type": "social_media"
+            }
+          },
+          {
+            "fact": "Meta提升2025年资本支出至640-720亿美元用于AI数据中心",
+            "from": "search[1.1]·搜索结果",
+            "quality": {
+              "level": "high",
+              "source_type": "company_filing"
+            }
+          }
+        ]
+      },
+      {
+        "capital_source": "中国财政专项债及算力基建投资",
+        "source_region": "domestic",
+        "system_node": "thermal_management",
+        "pressure_type": "infrastructure_bottleneck",
+        "pressure_signals": [
+          "AI算力服务器高密度部署加速液冷散热需求",
+          "国内算力集群建设推动散热配套升级"
+        ],
+        "intensity": "moderate",
+        "duration": "1_3_years",
+        "transmission_direction": "bidirectional",
+        "evidence": [
+          {
+            "fact": "AI算力服务器散热、液冷等配套需求翻倍",
+            "from": "search[4.3]·新浪财经",
+            "quality": {
+              "level": "medium",
+              "source_type": "financial_news"
+            }
+          }
+        ]
+      }
+    ],
+    "constraint_vectors": [
+      {
+        "node": "power_infrastructure",
+        "constraint_type": "equipment_lead_time",
+        "severity": "extreme",
+        "lead_time": "18_24_months",
+        "trigger": "AI数据中心大规模建设导致变压器、开关设备等关键电气设备需求激增",
+        "evidence": [
+          {
+            "fact": "高功率变压器订单排到2026年以后，交期长达18-24个月",
+            "from": "search[2.2]·新浪科技转彭博社",
+            "quality": {
+              "level": "high",
+              "source_type": "financial_news"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

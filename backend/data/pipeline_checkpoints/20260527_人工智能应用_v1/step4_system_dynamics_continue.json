@@ -1,0 +1,283 @@
+{
+  "step": "step4_system_dynamics",
+  "run_id": "20260527_人工智能应用_v1",
+  "input_hash": "continue",
+  "saved_at": "2026-05-27T19:21:38.980816",
+  "elapsed_seconds": 0,
+  "input_summary": "",
+  "output": {
+    "system_dynamics": {
+      "bottleneck_migration": {
+        "current": "先进制程晶圆制造 (3nm/2nm) 与先进封装 (CoWoS/2.5D)",
+        "next_12m": "高速光互连与交换芯片 (1.6T/CPO)",
+        "next_24m": "高质量训练数据集与AI能耗/散热",
+        "next_36m": "先进封装基板 (FC-BGA/玻璃基板) 与硅光子互连界面",
+        "migration_drivers": [
+          {
+            "from": "AI算力芯片 (GPU/ASIC)",
+            "to": "高速光互连与交换芯片",
+            "trigger": "万卡级AI集群规模扩大，内部通信带宽需求呈指数增长，800G光模块供不应求，1.6T和CPO成为新瓶颈",
+            "evidence": [
+              {
+                "fact": "AI算力集群需要极高的数据传输速率。1.6T光模块、CPO等新技术的落地，让中国光通信企业在全球供应链中占据了不可替代的位置，业绩增速有望在2026年进一步提速。",
+                "from": "search[2]·腾讯新闻",
+                "quality": {
+                  "level": "medium",
+                  "source_type": "news_media"
+                }
+              }
+            ]
+          },
+          {
+            "from": "先进封装 (CoWoS)",
+            "to": "高质量训练数据集与数据标注",
+            "trigger": "原始算力堆叠效率递减，高价值行业数据成为模型升级的稀缺壁垒",
+            "evidence": [
+              {
+                "fact": "《服务业扩能提质意见》强调建设高质量行业数据集。在AI时代，数据是'石油'。拥有独特、合规、高价值数据的公司将成为AI体系的上游稀缺资源。",
+                "from": "search[2]·腾讯新闻",
+                "quality": {
+                  "level": "medium",
+                  "source_type": "official_policy"
+                }
+              }
+            ]
+          },
+          {
+            "from": "先进制程晶圆制造",
+            "to": "AI芯片散热与供电基础设施",
+            "trigger": "单芯片功耗突破1kW，风冷达到极限，液冷及高级配电成为刚性需求",
+            "evidence": [
+              {
+                "fact": "2026年中国AI发展趋势前瞻指出，AI算力建设面临严重能耗约束，散热和供电方案正从可选项变为前置条件。",
+                "from": "search[1]·清华大学",
+                "quality": {
+                  "level": "medium",
+                  "source_type": "news_media"
+                }
+              }
+            ]
+          }
+        ],
+        "evidence": [
+          {
+            "fact": "当前L1-L3瓶颈均为极端严重，尤其先进制程和先进封装受限设备与政策，扩产均需18个月以上。",
+            "from": "input·Step3瓶颈图谱",
+            "quality": {
+              "level": "high",
+              "source_type": "industry_data"
+            }
+          }
+        ]
+      },
+      "resource_crowding": [
+        {
+          "resource": "先进封装 (CoWoS/2.5D) 产能与高端FC-BGA基板",
+          "squeezed_from": "非AI高端芯片 (汽车ADAS、网络处理器、FPGA)",
+          "squeezed_by": "AI大算力芯片 (GPU/ASIC) 的爆发式需求",
+          "victim_sector": "自动驾驶芯片、工业级FPGA、高速网络芯片设计商，面临长达52周的交付周期与被迫转用次优封装方案",
+          "hidden_beneficiary": "国内可提供Chiplet/先进封装代工的二线封测厂及高端IC载板供应商，承接外溢需求",
+          "china_stocks": [
+            "002916 深南电路",
+            "002436 兴森科技",
+            "688383 新益昌"
+          ],
+          "visibility": "low",
+          "evidence": [
+            {
+              "fact": "TSMC CoWoS产能被英伟达、AMD包揽，非AI芯片被挤出，转而寻求Amkor、长电、通富等提供替代2.5D封装，带动封装基板需求飙升。",
+              "from": "search[3]·Reddit供应链热论",
+              "quality": {
+                "level": "low",
+                "source_type": "news_media"
+              }
+            },
+            {
+              "fact": "AI芯片的HBM集成使得CoWoS消耗的晶圆数量是传统逻辑芯片的3倍以上，直接压缩了其他芯片的晶圆和封装份额。",
+              "from": "input·参考案例1资源挤占模型",
+              "quality": {
+                "level": "high",
+                "source_type": "industry_data"
+              }
+            }
+          ]
+        },
+        {
+          "resource": "先进制程晶圆产能 (7nm以下)",
+          "squeezed_from": "边缘AI终端芯片、IoT SoC",
+          "squeezed_by": "云端AI训练与推理芯片 (尤其受限下的囤货与抢单)",
+          "victim_sector": "国内AIoT新兴芯片公司，产能挪用导致流片推迟，丧失上市窗口",
+          "hidden_beneficiary": "为成熟制程提供特色工艺的第二梯队代工厂，可承接部分转单及chiplet中的非核心die",
+          "china_stocks": [
+            "688981 中芯国际",
+            "688525 佰维存储"
+          ],
+          "visibility": "low",
+          "evidence": [
+            {
+              "fact": "2026年高端芯片、底层算法仍存在‘卡脖子’风险，英伟达Blackwell架构在训练芯片领域占据70%以上市场份额，国产替代抢占仅有的先进制程产能。",
+              "from": "search[4]·中国电子商会",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              }
+            },
+            {
+              "fact": "先进制程设备限制导致扩产超24个月，短期内供给恒定，需求方竞价强产能。",
+              "from": "input·Step3瓶颈图谱",
+              "quality": {
+                "level": "high",
+                "source_type": "industry_data"
+              }
+            }
+          ]
+        }
+      ],
+      "profit_pool_shift": [
+        {
+          "from_segment": "AI训练与推理芯片硬件",
+          "to_segment": "垂直行业AI应用与高质量数据服务商",
+          "trigger": "芯片国产替代竞争加剧、云巨头自研芯片，硬件利润率回归；数据集成应用壁垒，对客收溢价能力提升",
+          "timeline": "12-24个月",
+          "confidence": "medium",
+          "evidence": [
+            {
+              "fact": "《服务业扩能提质意见》明确数据为关键要素，高质量行业数据集首次纳入国家级基础设施内涵，数据服务商具备长期收费权。",
+              "from": "search[2]·腾讯新闻",
+              "quality": {
+                "level": "medium",
+                "source_type": "official_policy"
+              }
+            },
+            {
+              "fact": "AI风险从‘幻觉’升级为‘系统性欺骗’，企业级AI应用不得不引入合规与本地化数据训练，数据工程服务价值凸显。",
+              "from": "search[4]·中国电子商会",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              }
+            }
+          ]
+        },
+        {
+          "from_segment": "AI基础硬件（GPU/服务器组装）",
+          "to_segment": "AI互连解决方案（光模块/交换芯片/DAC/AEC铜缆）",
+          "trigger": "GPU供应逐步缓解后，集群扩展的通信瓶颈成为性能天花板，互联设备价值量占比从2%升至8%以上",
+          "timeline": "6-12个月",
+          "confidence": "high",
+          "evidence": [
+            {
+              "fact": "1.6T光模块、CPO（共封装光学）等新技术的落地，使中国光通信企业在全球AI供应链中占据高价值位置，2026年业绩提速。",
+              "from": "search[2]·腾讯新闻",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              }
+            }
+          ]
+        }
+      ],
+      "hidden_beneficiaries": [
+        {
+          "sector": "AI安全评估与内容合规服务商",
+          "reason": "全球AI安全事件同比增长45%，‘系统性欺骗’风险迫使金融、政务部署模型前强制进行红队测试、对齐评估，市场需求爆发而供给极少。市场仍把注意力放在算力股，未定价合规刚需",
+          "visibility": "very_low",
+          "china_stocks": [
+            "688561 奇安信",
+            "688023 安恒信息",
+            "300454 深信服"
+          ],
+          "evidence": [
+            {
+              "fact": "安全层面，AI风险从‘幻觉’升级为‘系统性欺骗’，算法偏见、数据泄露等问题凸显，2025年全球AI安全事件同比增长45%。",
+              "from": "search[4]·中国电子商会",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              }
+            },
+            {
+              "fact": "跨国家监管协同难度大，企业级应用须自建审核与合规屏障，推动第三方AI审计服务。",
+              "from": "search[4]·中国电子商会",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              }
+            }
+          ]
+        },
+        {
+          "sector": "高质量数据集持牌机构与数据标注平台",
+          "reason": "政策将高质量数据集定位为新时代‘石油’，拥有独特版权数据（学术、医疗、工业）的公司将从一次性交易转向供给侧分成，但市场目前仅关注通用语料库",
+          "visibility": "low",
+          "china_stocks": [
+            "688787 海天瑞声",
+            "601858 中国科传",
+            "603533 掌阅科技"
+          ],
+          "evidence": [
+            {
+              "fact": "《服务业扩能提质意见》强调建设高质量行业数据集，在AI时代数据是‘石油’，独特合规高价值数据的公司将成为供应链上游受益者。",
+              "from": "search[2]·腾讯新闻",
+              "quality": {
+                "level": "medium",
+                "source_type": "official_policy"
+              }
+            }
+          ]
+        },
+        {
+          "sector": "AI服务器液冷散热解决方案商",
+          "reason": "单柜功率向100kW+逼近，液冷从可选项变为必选项，科技巨头大幅加单液冷方案；市场仍将其视作普通温控设备，低估其技术粘性",
+          "visibility": "low",
+          "china_stocks": [
+            "300499 高澜股份",
+            "002837 英维克"
+          ],
+          "evidence": [
+            {
+              "fact": "AI算力基础设施面临严重能耗约束，2026年液冷渗透率被迫从30%急速推向60%以上。",
+              "from": "search[1]·清华大学",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              }
+            }
+          ]
+        }
+      ],
+      "thesis_breakers": [
+        {
+          "thesis": "AI产业链核心瓶颈将从先进制程制造向互联带宽、高质量数据和能耗管理迁移，国产数据+互连企业将成为超额利润新洼地",
+          "break_condition": "美国突然全面暂停对华AI芯片及设备限制，或中国自主28nm以下非美产线提前2年量产先进制程",
+          "watch_signal": "中芯国际N+2良率公开突破90%；美国BIS颁布新的豁免清单涵盖高端GPU/封装设备",
+          "evidence": [
+            {
+              "fact": "技术层面，高端芯片、底层算法仍存在‘卡脖子’风险，国产替代任重道远。",
+              "from": "search[4]·中国电子商会",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              }
+            }
+          ]
+        },
+        {
+          "thesis": "非AI芯片因资源挤占将出现长期缺货，IC基板与二线封测厂享受3年红利期",
+          "break_condition": "AI训练范式从大模型转向小模型+边缘协同，云端CoWoS需求断崖下降",
+          "watch_signal": "OpenAI/Google发布公开声明大幅削减下一代训练集群规模；英伟达削减台积电CoWoS订单",
+          "evidence": [
+            {
+              "fact": "目前供应链信息表明AI资本开支仍在指数增长，但若出现算法突破（如强化学习替代大规模预训练），逻辑将翻转。",
+              "from": "search[3]·Reddit供应链讨论",
+              "quality": {
+                "level": "low",
+                "source_type": "news_media"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

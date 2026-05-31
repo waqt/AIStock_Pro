@@ -1,0 +1,370 @@
+{
+  "step": "step6_core_screening",
+  "run_id": "20260530_存储产业_v1",
+  "input_hash": "continue",
+  "saved_at": "2026-05-31T00:37:05.640964",
+  "elapsed_seconds": 0,
+  "input_summary": "",
+  "output": {
+    "agent": "CoreScreeningAgent",
+    "confidence": "medium",
+    "lifecycle_gate": {
+      "cycle_position": "",
+      "gate_mode": "growth"
+    },
+    "candidate_pool": {
+      "total_collected": 8,
+      "after_prescreen": 8,
+      "ranked": 1
+    },
+    "ranked_stocks": [],
+    "future_strong_candidates": [
+      {
+        "code": "300666",
+        "name": "江丰电子",
+        "source": [
+          {
+            "step": "step6_mining",
+            "field": "tags",
+            "role": "半导体零部件国产化"
+          }
+        ],
+        "flags": [
+          "revenue_yoy_low (-21.9%)"
+        ],
+        "gate_mode": "growth",
+        "moat_profile": {
+          "position_power": "strong",
+          "position_evidence": [
+            "江丰电子是全球半导体靶材领域的第二大供应商，占据全球市场份额12%-18.6%，国内12英寸晶圆厂靶材市场占有率更是高达73%。这表明其在存储产业靶材供应链中占据核心环节，客户（如存储芯片制造商）难以绕过其供应体系。"
+          ],
+          "pricing_power": "medium",
+          "pricing_evidence": [
+            "根据搜索证据，并未提供江丰电子直接的毛利率趋势或定价能力数据，但考虑到其在国内12英寸晶圆厂靶材市场占有率达73%的垄断性地位，对国内下游客户具备较强议价能力；然而靶材在晶圆制造成本中占比较低，且面对全球第二大供应商的竞争（如日矿金属），其提价空间或受海外竞争对手制约。搜索证据未明确显示其能持续涨价，故判断为medium。"
+          ],
+          "expansion_power": "medium",
+          "expansion_evidence": [
+            "搜索证据提到公司“加大关键零部件的投入，持续完善半导体精密零部件业务布局”，表明有扩产意愿。但未提供具体在建工程金额或设备锁定等量化证据，扩张节奏与成效需进一步验证。考虑到半导体零部件扩产需通过长周期的设备采购与认证，短期内快速放量存在不确定性。"
+          ],
+          "certification_power": "strong",
+          "certification_evidence": [
+            "江丰电子已成为全球半导体靶材第二大供应商，并进入国内12英寸晶圆厂供应链（占据73%份额）。半导体靶材认证周期通常为12-24个月，切换成本极高，客户一旦认证通过后不会轻易更换，因此形成了极强的客户粘性。搜索证据支持其已通过全球主流存储芯片厂商的认证。"
+          ],
+          "resource_power": "strong",
+          "resource_evidence": [
+            "搜索证据显示江丰电子“为国家半导体零部件产业的自主可控提供重要支撑”，且其“核心技术护城河”体现在高纯金属提纯、溅射靶材制备等稀缺工艺上。公司掌握高纯铝、钛、铜等靶材的核心制造技术及产能，这些资源在国产替代背景下具备战略稀缺性。"
+          ],
+          "cognitive_power": "medium",
+          "cognitive_evidence": [
+            "搜索证据提及江丰电子“进一步提升自主可控水平”并“完善半导体精密零部件业务布局”，表明其顺应国产替代趋势提前部署。但未提供其在存储产业技术路线演进（如3D NAND层数提升对靶材的新要求）上是否比市场更早押对方向的具体证据，因此判断为medium。"
+          ]
+        },
+        "profit_capture_thesis": {
+          "why_it_captures_profit": [
+            "江丰电子占据全球靶材行业第二、国内12英寸晶圆厂靶材市场73%的份额，是存储芯片制造不可或缺的关键材料供应商。强客户认证壁垒（长周期、高切换成本）与高市场份额使其能锁定下游需求，并将国产替代的政策红利转化为营收与利润。"
+          ],
+          "future_profit_driver": [
+            "存储芯片国产化浪潮下，国内晶圆厂持续扩产（如长江存储、长鑫存储的产能爬坡），带动靶材耗材需求同步增长；同时公司向半导体精密零部件延伸，构建第二增长曲线，提升单客户价值量。"
+          ]
+        },
+        "growth_asymmetry": {
+          "growth_type": "nonlinear_breakout",
+          "triggers": [
+            "国内存储晶圆厂大规模量产与扩产（如长江存储二期、长鑫存储新增产线）；半导体零部件国产化率进一步提升的政策落地。"
+          ],
+          "current_stage": "国产替代加速期：公司已占据国内靶材主导地位，正通过零部件布局复制“国产替代”路径，处于从全球第二向更大份额突破的临界点。"
+        },
+        "thesis_breakers": [
+          "全球存储芯片行业进入严重下行周期，导致晶圆厂资本开支大幅缩减，耗材需求同步下降；",
+          "海外竞争对手（如日矿金属、霍尼韦尔）通过技术迭代或降价策略夺回市场份额；",
+          "地缘政治风险导致公司无法向特定海外客户供货，或上游高纯金属原材料被限制出口。"
+        ],
+        "risk_tags": [],
+        "audit": {
+          "verdict": "SKIP",
+          "score": 0,
+          "flags": [],
+          "beneish_m_score": null
+        },
+        "company_stage": "inflection",
+        "stage_indicators": {
+          "primary": [
+            "gross_margin",
+            "gross_margin_trend",
+            "revenue_yoy",
+            "revenue_acceleration",
+            "rd_to_revenue_trend",
+            "contract_liability_yoy",
+            "profit_turnaround",
+            "revenue_qoq"
+          ],
+          "note": "拐点期: '研发→收益'验证窗口, 4个真拐点信号(毛利率上升+合同负债爆发+研发费率下降+营收加速)"
+        },
+        "category": "future_strong"
+      }
+    ],
+    "watchlist": [
+      {
+        "code": "300470",
+        "name": "中密控股",
+        "source": [
+          {
+            "step": "step6_mining",
+            "field": "tags",
+            "role": "密封件"
+          }
+        ],
+        "flags": [
+          "revenue_yoy_low (-6.6%)"
+        ],
+        "gate_mode": "growth",
+        "risk_tags": [],
+        "audit": {
+          "verdict": "SKIP",
+          "score": 0,
+          "flags": [],
+          "beneish_m_score": null
+        },
+        "company_stage": "inflection",
+        "stage_indicators": {
+          "primary": [
+            "gross_margin",
+            "gross_margin_trend",
+            "revenue_yoy",
+            "revenue_acceleration",
+            "rd_to_revenue_trend",
+            "contract_liability_yoy",
+            "profit_turnaround",
+            "revenue_qoq"
+          ],
+          "note": "拐点期: '研发→收益'验证窗口, 4个真拐点信号(毛利率上升+合同负债爆发+研发费率下降+营收加速)"
+        },
+        "category": "watchlist"
+      },
+      {
+        "code": "688012",
+        "name": "中微公司",
+        "source": [
+          {
+            "step": "step6_mining",
+            "field": "tags",
+            "role": "刻蚀设备龙头"
+          }
+        ],
+        "flags": [
+          "revenue_yoy_low (-26.6%)"
+        ],
+        "gate_mode": "growth",
+        "risk_tags": [],
+        "audit": {
+          "verdict": "SKIP",
+          "score": 0,
+          "flags": [],
+          "beneish_m_score": null
+        },
+        "company_stage": "inflection",
+        "stage_indicators": {
+          "primary": [
+            "gross_margin",
+            "gross_margin_trend",
+            "revenue_yoy",
+            "revenue_acceleration",
+            "rd_to_revenue_trend",
+            "contract_liability_yoy",
+            "profit_turnaround",
+            "revenue_qoq"
+          ],
+          "note": "拐点期: '研发→收益'验证窗口, 4个真拐点信号(毛利率上升+合同负债爆发+研发费率下降+营收加速)"
+        },
+        "category": "watchlist"
+      },
+      {
+        "code": "002916",
+        "name": "深南电路",
+        "source": [
+          {
+            "step": "step6_mining",
+            "field": "tags",
+            "role": "封装基板供应商"
+          }
+        ],
+        "flags": [
+          "revenue_yoy_low (-26.4%)"
+        ],
+        "gate_mode": "growth",
+        "risk_tags": [],
+        "audit": {
+          "verdict": "SKIP",
+          "score": 0,
+          "flags": [],
+          "beneish_m_score": null
+        },
+        "company_stage": "inflection",
+        "stage_indicators": {
+          "primary": [
+            "gross_margin",
+            "gross_margin_trend",
+            "revenue_yoy",
+            "revenue_acceleration",
+            "rd_to_revenue_trend",
+            "contract_liability_yoy",
+            "profit_turnaround",
+            "revenue_qoq"
+          ],
+          "note": "拐点期: '研发→收益'验证窗口, 4个真拐点信号(毛利率上升+合同负债爆发+研发费率下降+营收加速)"
+        },
+        "category": "watchlist"
+      },
+      {
+        "code": "603220",
+        "name": "中贝通信",
+        "source": [
+          {
+            "step": "step6_mining",
+            "field": "tags",
+            "role": "算力租赁"
+          }
+        ],
+        "flags": [
+          "revenue_yoy_low (-11.8%)"
+        ],
+        "gate_mode": "growth",
+        "risk_tags": [],
+        "audit": {
+          "verdict": "SKIP",
+          "score": 0,
+          "flags": [],
+          "beneish_m_score": null
+        },
+        "company_stage": "inflection",
+        "stage_indicators": {
+          "primary": [
+            "gross_margin",
+            "gross_margin_trend",
+            "revenue_yoy",
+            "revenue_acceleration",
+            "rd_to_revenue_trend",
+            "contract_liability_yoy",
+            "profit_turnaround",
+            "revenue_qoq"
+          ],
+          "note": "拐点期: '研发→收益'验证窗口, 4个真拐点信号(毛利率上升+合同负债爆发+研发费率下降+营收加速)"
+        },
+        "category": "watchlist"
+      },
+      {
+        "code": "600520",
+        "name": "文一科技",
+        "source": [
+          {
+            "step": "step6_mining",
+            "field": "tags",
+            "role": "先进封装设备国产替代"
+          }
+        ],
+        "flags": [
+          "revenue_yoy_low (-25.1%)"
+        ],
+        "gate_mode": "growth",
+        "risk_tags": [],
+        "audit": {
+          "verdict": "SKIP",
+          "score": 0,
+          "flags": [],
+          "beneish_m_score": null
+        },
+        "company_stage": "inflection",
+        "stage_indicators": {
+          "primary": [
+            "gross_margin",
+            "gross_margin_trend",
+            "revenue_yoy",
+            "revenue_acceleration",
+            "rd_to_revenue_trend",
+            "contract_liability_yoy",
+            "profit_turnaround",
+            "revenue_qoq"
+          ],
+          "note": "拐点期: '研发→收益'验证窗口, 4个真拐点信号(毛利率上升+合同负债爆发+研发费率下降+营收加速)"
+        },
+        "category": "watchlist"
+      },
+      {
+        "code": "300475",
+        "name": "香农芯创",
+        "source": [
+          {
+            "step": "step6_mining",
+            "field": "tags",
+            "role": "国内存储分销商库存收益"
+          }
+        ],
+        "flags": [
+          "revenue_yoy_low (-41.5%)"
+        ],
+        "gate_mode": "growth",
+        "risk_tags": [],
+        "audit": {
+          "verdict": "SKIP",
+          "score": 0,
+          "flags": [],
+          "beneish_m_score": null
+        },
+        "company_stage": "inflection",
+        "stage_indicators": {
+          "primary": [
+            "gross_margin",
+            "gross_margin_trend",
+            "revenue_yoy",
+            "revenue_acceleration",
+            "rd_to_revenue_trend",
+            "contract_liability_yoy",
+            "profit_turnaround",
+            "revenue_qoq"
+          ],
+          "note": "拐点期: '研发→收益'验证窗口, 4个真拐点信号(毛利率上升+合同负债爆发+研发费率下降+营收加速)"
+        },
+        "category": "watchlist"
+      },
+      {
+        "code": "601138",
+        "name": "工业富联",
+        "source": [
+          {
+            "step": "step6_mining",
+            "field": "tags",
+            "role": "AI服务器代工"
+          }
+        ],
+        "flags": [
+          "revenue_yoy_low (-34.5%)"
+        ],
+        "gate_mode": "growth",
+        "risk_tags": [],
+        "audit": {
+          "verdict": "SKIP",
+          "score": 0,
+          "flags": [],
+          "beneish_m_score": null
+        },
+        "company_stage": "inflection",
+        "stage_indicators": {
+          "primary": [
+            "gross_margin",
+            "gross_margin_trend",
+            "revenue_yoy",
+            "revenue_acceleration",
+            "rd_to_revenue_trend",
+            "contract_liability_yoy",
+            "profit_turnaround",
+            "revenue_qoq"
+          ],
+          "note": "拐点期: '研发→收益'验证窗口, 4个真拐点信号(毛利率上升+合同负债爆发+研发费率下降+营收加速)"
+        },
+        "category": "watchlist"
+      }
+    ],
+    "step3_backfill": {},
+    "filter_log": []
+  }
+}

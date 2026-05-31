@@ -1,0 +1,543 @@
+{
+  "step": "step3_sc_hacker",
+  "run_id": "20260527_资本流向_v3",
+  "input_hash": "drilldown",
+  "saved_at": "2026-05-27T13:43:24.387103",
+  "elapsed_seconds": 0,
+  "input_summary": "",
+  "output": {
+    "supply_chain_map": [
+      {
+        "level": 1,
+        "name": "高等级取向硅钢片（HiB）",
+        "bottleneck_narrative": "取向硅钢片是变压器铁芯的核心材料，其磁性能直接决定变压器的空载损耗与效率。全球供应高度集中于中国宝武、首钢及日本制铁等少数企业，而AI算力及新能源带来的变压器需求暴增，导致高等级产品出现严重结构性短缺，成为变压器产能扩张的最大物理瓶颈。",
+        "supply_rigidity": {
+          "severity": "extreme",
+          "root_cause": "equipment_constraint",
+          "expand_cycle": "18_24_months",
+          "substitutability": "none_short_term",
+          "concentration": "oligopoly",
+          "alpha_narrative": "取向硅钢片扩产受限于高温退火炉等关键设备的交期（约18-24个月）及环保审批，且高牌号产品无法用低牌号替代。供给刚性赋予龙头企业极强的定价权，景气窗口至少延续至2027年。"
+        },
+        "profit_pool": {
+          "share_of_industry_profit": "significant_15_30pct",
+          "margin_level": "high_25_40pct",
+          "pricing_power_narrative": "作为核心基础材料，硅钢片厂商在产业链中拥有绝对议价权。2025-2026年，高牌号取向硅钢价格累计涨幅超过30%，且订单持续向龙头集中，利润池持续扩大。"
+        },
+        "value_capture": {
+          "market_attention": "under_the_radar",
+          "attention_quality": "profit_real",
+          "gap_narrative": "市场当前高度关注变压器整机及AI用电需求，但对上游核心材料硅钢片的稀缺性认知不足。该环节实际利润捕获极好，存在显著的预期差和alpha收益空间。",
+          "who_captures_value": [
+            "宝钢股份",
+            "首钢股份",
+            "日本制铁"
+          ]
+        },
+        "competitive_landscape": {
+          "structure": "oligopoly_CR3_above_70",
+          "global_leaders": [
+            "宝钢股份",
+            "日本制铁",
+            "首钢股份"
+          ],
+          "china_substitution_rate": "above_50pct",
+          "china_players": {
+            "tier1": [
+              "宝钢股份",
+              "首钢股份"
+            ],
+            "tier2": [
+              "鞍钢股份",
+              "太钢不锈"
+            ],
+            "tier3": []
+          }
+        },
+        "future_outlook": {
+          "next_2_3_years": "bottleneck_persists",
+          "potential_relief": "国内宝武、首钢有明确的高牌号取向硅钢扩产计划，但受限于关键设备交期，新增产能释放集中在2027年后。",
+          "emerging_bottleneck": "无取向硅钢（新能源车电机）与高等级取向硅钢（大型电力变压器）争夺产能，可能加剧结构性紧张。"
+        },
+        "assets": [],
+        "assets_note": "A股核心标的为宝钢股份(600019)、首钢股份(000959)，均为主板上市，产能与市占率居行业前列。",
+        "evidence": [
+          {
+            "fact": "全球大型电力变压器供应缺口高达30%，交货周期从2019年的7-14个月延长至24个月以上，部分特殊产品达36-48个月。",
+            "from": "search[1.1]·CWIEME柏林",
+            "quality": {
+              "level": "high",
+              "source_type": "industry_data"
+            }
+          },
+          {
+            "fact": "中国海关数据显示2025年中国变压器出口大幅增长，“中国速度”在传统制造业展现出碾压级优势，但上游高等级硅钢片供应成为瓶颈。",
+            "from": "search[1.3]·第一财经",
+            "quality": {
+              "level": "medium",
+              "source_type": "financial_media"
+            }
+          },
+          {
+            "fact": "花旗测算2025年全球高压变压器供给缺口约30%，且累积短缺将持续扩大至2028年后，显示上游材料端的供需矛盾短期无法解决。",
+            "from": "search[1.5]·新浪财经",
+            "quality": {
+              "level": "high",
+              "source_type": "sell_side_report"
+            }
+          }
+        ]
+      },
+      {
+        "level": 1,
+        "name": "特高压变压器及换流变压器",
+        "bottleneck_narrative": "特高压/换流变压器是跨区域电网输电和AI数据中心供电的核心设备，单台价值量高、制造难度大、试验周期长。受全球订单暴增及关键绝缘件、大型机加工能力制约，该环节成为全产业链中交期最长、产能约束最硬的瓶颈之一。",
+        "supply_rigidity": {
+          "severity": "extreme",
+          "root_cause": "equipment_constraint",
+          "expand_cycle": "over_24_months",
+          "substitutability": "none_short_term",
+          "concentration": "duopoly",
+          "alpha_narrative": "特高压变压器制造壁垒极高，全球仅中国西电、特变电工、保变电气及少数海外老牌企业具备规模化交付能力。扩产受制于550kV以上试验大厅建设周期（2年以上），且无法通过标准化生产替代，定价权持续增强。"
+        },
+        "profit_pool": {
+          "share_of_industry_profit": "moderate_5_15pct",
+          "margin_level": "very_high_above_40pct",
+          "pricing_power_narrative": "单台特高压变压器价值数亿元，且因为高度定制化和长交期，龙头厂商毛利率远超常规配电变压器。2026年特高压订单毛利率普遍高于40%。"
+        },
+        "value_capture": {
+          "market_attention": "very_high",
+          "attention_quality": "profit_real",
+          "gap_narrative": "市场高度关注特高压板块，尤其是AI用电预期下订单增长的确定性。利润也真实向龙头企业集中，不存在利润被上游抽走的现象，是明确的价值捕获者。",
+          "who_captures_value": [
+            "特变电工",
+            "中国西电",
+            "保变电气"
+          ]
+        },
+        "competitive_landscape": {
+          "structure": "duopoly",
+          "global_leaders": [
+            "中国西电",
+            "特变电工",
+            "保变电气"
+          ],
+          "china_substitution_rate": "above_50pct",
+          "china_players": {
+            "tier1": [
+              "中国西电",
+              "特变电工",
+              "保变电气"
+            ],
+            "tier2": [
+              "许继电气",
+              "山东电工电气"
+            ],
+            "tier3": []
+          }
+        },
+        "future_outlook": {
+          "next_2_3_years": "bottleneck_persists",
+          "potential_relief": "部分龙头上市再融资扩产，但试验大厅、大型机加工能力等硬件壁垒难以快速复制。",
+          "emerging_bottleneck": "海外电网升级与AI数据中心集中建设将导致特高压变流变压器需求超预期，原有扩产计划可能仍不足以覆盖缺口。"
+        },
+        "assets": [
+          {
+            "code": "600089",
+            "name": "特变电工",
+            "role": "全球特高压变压器龙头",
+            "market_position": "tier1"
+          },
+          {
+            "code": "601179",
+            "name": "中国西电",
+            "role": "央企核心供货商",
+            "market_position": "tier1"
+          },
+          {
+            "code": "600550",
+            "name": "保变电气",
+            "role": "特高压市场主要参与者",
+            "market_position": "tier1"
+          }
+        ],
+        "assets_note": "",
+        "evidence": [
+          {
+            "fact": "全球变压器市场2026年规模预计达690-820亿美元，并有望在2030年突破1000亿美元，特高压及大容量变压器为增长主力。",
+            "from": "search[1.4]·风闻·铁鱼",
+            "quality": {
+              "level": "medium",
+              "source_type": "self_media"
+            }
+          },
+          {
+            "fact": "IEA报告指出全球数据中心电力需求到2030年将翻番有余，特高压变压器作为跨区域输电核心，订单能见度极高。",
+            "from": "search[1.3]·第一财经",
+            "quality": {
+              "level": "high",
+              "source_type": "industry_data"
+            }
+          },
+          {
+            "fact": "伍德麦肯兹测算全球电力变压器供应缺口达30%，配电变压器缺口也达10%，特高压环节作为高压侧的代表，供需矛盾最为严重。",
+            "from": "search[1.4]·风闻·铁鱼",
+            "quality": {
+              "level": "high",
+              "source_type": "industry_data"
+            }
+          }
+        ]
+      },
+      {
+        "level": 2,
+        "name": "变压器油箱及大型铸造件",
+        "bottleneck_narrative": "特高压及大型电力变压器的油箱及结构件对大型精密铸造和焊接工艺要求极高，产能受限于大型铸造设备和熟练技工的供给。在订单暴增背景下，这一环节也出现明显的交付瓶颈。",
+        "supply_rigidity": {
+          "severity": "high",
+          "root_cause": "equipment_constraint",
+          "expand_cycle": "12_18_months",
+          "substitutability": "partial_high_cost",
+          "concentration": "oligopoly",
+          "alpha_narrative": "大型铸造件扩产需订购大型加工中心（如镗铣床），交期12-18个月。虽然理论上进口设备可替代，但成本及周期不亚于现有渠道，短期内难以形成新增产能。"
+        },
+        "profit_pool": {
+          "share_of_industry_profit": "moderate_5_15pct",
+          "margin_level": "moderate_15_25pct",
+          "pricing_power_narrative": "由于上游硅钢片、铜材价格高企，油箱环节的利润空间受到一定挤压，但凭借加工稀缺性，龙头企业仍能维持较好的利润率，且话语权在增强。"
+        },
+        "value_capture": {
+          "market_attention": "under_the_radar",
+          "attention_quality": "profit_real",
+          "gap_narrative": "市场聚焦整机变压器龙头，对油箱、大型结构件等配套环节关注度有限。但实际上，该环节因为产能紧、订单饱满，利润增长确定性高，具备预期差。",
+          "who_captures_value": [
+            "华明装备",
+            "长高电新"
+          ]
+        },
+        "competitive_landscape": {
+          "structure": "oligopoly",
+          "global_leaders": [
+            "华明装备",
+            "长高电新",
+            "平高电气"
+          ],
+          "china_substitution_rate": "above_50pct",
+          "china_players": {
+            "tier1": [
+              "华明装备",
+              "长高电新"
+            ],
+            "tier2": [
+              "平高电气",
+              "思源电气"
+            ],
+            "tier3": []
+          }
+        },
+        "future_outlook": {
+          "next_2_3_years": "bottleneck_persists",
+          "potential_relief": "龙头扩产计划逐步落地，2027年新增产能有望部分缓解紧张局面；但若AI需求超预期，仍是瓶颈。",
+          "emerging_bottleneck": ""
+        },
+        "assets": [
+          {
+            "code": "002270",
+            "name": "华明装备",
+            "role": "变压器油箱及结构件核心供应商",
+            "market_position": "tier1"
+          },
+          {
+            "code": "002452",
+            "name": "长高电新",
+            "role": "大型铸造件及分接开关制造",
+            "market_position": "tier1"
+          }
+        ],
+        "assets_note": "",
+        "evidence": [
+          {
+            "fact": "变压器行业产销两旺，2026年全球变压器市场预计增长至690-820亿美元，上游部件厂商订单饱和，加工费持续上涨。",
+            "from": "search[1.4]·风闻·铁鱼",
+            "quality": {
+              "level": "medium",
+              "source_type": "self_media"
+            }
+          },
+          {
+            "fact": "中国变压器出口快速增长，下游整机厂商满负荷运转，不断向上游输出订单压力，大型结构件加工厂产能利用率维持高位。",
+            "from": "search[1.3]·第一财经",
+            "quality": {
+              "level": "medium",
+              "source_type": "financial_media"
+            }
+          }
+        ]
+      },
+      {
+        "level": 3,
+        "name": "分接开关（On-Load Tap Changer, OLTC）",
+        "bottleneck_narrative": "分接开关是变压器进行电压调节的关键精密部件，技术壁垒极高。全球市场长期由德国MR（Maschinenfabrik Reinhausen）垄断，国内华明装备逐步突破。受下游变压器订单激增带动，高压大容量OLTC供给出现严重不足。",
+        "supply_rigidity": {
+          "severity": "high",
+          "root_cause": "certification_barrier",
+          "expand_cycle": "12_18_months",
+          "substitutability": "partial_high_cost",
+          "concentration": "duopoly",
+          "alpha_narrative": "高压分接开关需经历漫长台架试验与认证（2-3年），MR占据全球约70%份额，国内华明装备为唯一挑战者。产能扩产受制于精密加工能力和认证周期，替代方案成本高昂。"
+        },
+        "profit_pool": {
+          "share_of_industry_profit": "moderate_5_15pct",
+          "margin_level": "very_high_above_40pct",
+          "pricing_power_narrative": "分接开关单机价值虽不高，但技术门槛高，毛利率常超过50%。在行业景气期，供应商议价能力极强，可通过提价转移原材料成本。"
+        },
+        "value_capture": {
+          "market_attention": "under_the_radar",
+          "attention_quality": "profit_real",
+          "gap_narrative": "分接开关作为变压器内部核心小件，被市场归类为‘不起眼’环节。但实际上，国产化率仅约20%，而利润丰厚，华明装备持续受益于景气周期和国产替代逻辑，投资机会被低估。",
+          "who_captures_value": [
+            "华明装备",
+            "MR（德国）"
+          ]
+        },
+        "competitive_landscape": {
+          "structure": "duopoly",
+          "global_leaders": [
+            "MR（德国）",
+            "华明装备"
+          ],
+          "china_substitution_rate": "20_50pct",
+          "china_players": {
+            "tier1": [
+              "华明装备"
+            ],
+            "tier2": [
+              "上海华明（未上市）"
+            ],
+            "tier3": []
+          }
+        },
+        "future_outlook": {
+          "next_2_3_years": "new_bottleneck_emerging",
+          "potential_relief": "华明装备产能持续扩张，同时新产品认证加速，有望在未来2年内逐步缓解高压领域供给瓶颈。",
+          "emerging_bottleneck": "特高压变压器用高可靠性真空有载分接开关仍是国产空白市场，国际供应紧张可能进一步升温。"
+        },
+        "assets": [
+          {
+            "code": "002270",
+            "name": "华明装备",
+            "role": "国内唯一分接开关A股标的",
+            "market_position": "tier1"
+          }
+        ],
+        "assets_note": "",
+        "evidence": [
+          {
+            "fact": "全球变压器交货期延长至24个月以上，分接开关作为核心部件，其采购周期也在拉长，部分高压型号需提前一年以上下单。",
+            "from": "search[1.1]·CWIEME柏林",
+            "quality": {
+              "level": "high",
+              "source_type": "industry_data"
+            }
+          },
+          {
+            "fact": "华明装备是国内分接开关龙头，近年来营收持续高增，净利润率超30%，毛利率保持50%以上，充分体现高壁垒属性。",
+            "from": "search[1.2]·第一财经（综合）",
+            "quality": {
+              "level": "medium",
+              "source_type": "financial_media"
+            }
+          }
+        ]
+      }
+    ],
+    "core_stocks": [
+      {
+        "code": "600089",
+        "name": "特变电工",
+        "segment": "特高压变压器",
+        "role": "龙头",
+        "moat": "全球交付能力+规模化制造+上游硅钢片自给"
+      },
+      {
+        "code": "601179",
+        "name": "中国西电",
+        "segment": "特高压变压器",
+        "role": "龙头",
+        "moat": "央企背景+全系列高压产品线+电网内配优势"
+      },
+      {
+        "code": "600550",
+        "name": "保变电气",
+        "segment": "特高压变压器",
+        "role": "龙头",
+        "moat": "特高压市场核心供应商+深厚技术积累"
+      },
+      {
+        "code": "002270",
+        "name": "华明装备",
+        "segment": "分接开关/油箱",
+        "role": "龙头",
+        "moat": "全国唯一上市分接开关企业+油箱加工优势+国产替代领先"
+      },
+      {
+        "code": "002452",
+        "name": "长高电新",
+        "segment": "大型铸造件/开关",
+        "role": "核心配套",
+        "moat": "高压隔离开关+大型结构件加工龙头"
+      },
+      {
+        "code": "600019",
+        "name": "宝钢股份",
+        "segment": "取向硅钢",
+        "role": "龙头",
+        "moat": "全球取向硅钢产量第一+高牌号产品占比持续提升"
+      },
+      {
+        "code": "000959",
+        "name": "首钢股份",
+        "segment": "取向硅钢",
+        "role": "龙头",
+        "moat": "国内取向硅钢第二，高牌号产能扩展迅速"
+      },
+      {
+        "code": "600406",
+        "name": "许继电气",
+        "segment": "变压器/电力系统",
+        "role": "核心配套",
+        "moat": "特高压直流换流变+智能电网设备"
+      },
+      {
+        "code": "002028",
+        "name": "思源电气",
+        "segment": "变压器/电力电子",
+        "role": "核心配套",
+        "moat": "高压开关+变压器+电力电子综合布局"
+      }
+    ],
+    "sales_chain": [
+      {
+        "segment": "特高压变压器（交期最长，订单最先传导）",
+        "companies": [
+          "600089",
+          "601179",
+          "600550"
+        ],
+        "reason": "AI数据中心+跨区域输电拉动特高压大容量变压器订单最先井喷，24个月以上交期使得2026年订单锁定2028年营收，销售链条最先受益。",
+        "lead_months": "1-3个月"
+      },
+      {
+        "segment": "高等级取向硅钢（材料销售弹性最大）",
+        "companies": [
+          "600019",
+          "000959"
+        ],
+        "reason": "变压器订单暴增直接拉动高牌号取向硅钢需求，价格先行，材料企业销售订单在整机订单确认后1-2个月内即体现。",
+        "lead_months": "2-4个月"
+      },
+      {
+        "segment": "分接开关（精密部件同步受益）",
+        "companies": [
+          "002270"
+        ],
+        "reason": "分接开关随变压器订单同步配套出货，且因认证壁垒，订单传导及时且利润弹性大。",
+        "lead_months": "1-3个月"
+      }
+    ],
+    "expansion_chain": [
+      {
+        "segment": "大型铸造件/油箱（需要重资产扩产设备，滞后时间较长）",
+        "companies": [
+          "002270",
+          "002452"
+        ],
+        "reason": "该环节扩产需订购大型加工中心及锻压设备，设备交期约6-12个月，加之工艺调试，产能释放滞后于特高压订单增长约6-12个月。",
+        "lag_months": "6-12个月"
+      },
+      {
+        "segment": "配变（配电变压器）",
+        "companies": [],
+        "reason": "配电变压器市场相对分散，扩产周期短（3-6个月），且国内竞争激烈。需求爆发后跟涨，但利润最先被上游材料和特高压变压器抽走，扩产弹性有限。",
+        "lag_months": "3-6个月"
+      }
+    ],
+    "chain_timeline": {
+      "sales_lead_months": "1-3个月（特高压变压器、取向硅钢、分接开关）",
+      "expansion_lag_months": "6-12个月（大型铸造件、油箱、关键设备）",
+      "rotation_strategy": "当前（2026Q1）处于需求爆炸与瓶颈形成交点。优先布局销售链最前端的特高压变压器、取向硅钢。待2026年下半年关注设备及铸造件环节的产能释放节点，逐步将仓位向扩张链条中的结构性受益股转移。"
+    },
+    "scarcity_ranking": [
+      {
+        "rank": 1,
+        "segment": "高等级取向硅钢片（HiB）",
+        "rigidity_narrative": "扩产周期18-24个月，高牌号产能掌握于全球3-4家寡头手中，无短期替代方案，是变压器制造最底层刚性约束。",
+        "beneficiary_stocks": [
+          "600019",
+          "000959"
+        ]
+      },
+      {
+        "rank": 2,
+        "segment": "特高压变压器（超高压、换流变压器）",
+        "rigidity_narrative": "试验大厅、技术认证、制造工艺等壁垒极高，扩产周期>24个月，全球仅4-5家具备规模量产能力。",
+        "beneficiary_stocks": [
+          "600089",
+          "601179",
+          "600550"
+        ]
+      },
+      {
+        "rank": 3,
+        "segment": "分接开关（高压OLTC）",
+        "rigidity_narrative": "全球MR垄断，国产华明装备持续突破，但认证周期长（3-5年），扩产弹性有限。",
+        "beneficiary_stocks": [
+          "002270"
+        ]
+      },
+      {
+        "rank": 4,
+        "segment": "大型变压器油箱及铸造件",
+        "rigidity_narrative": "扩产受重资产设备制约，但在国产化上可快速复制，稀缺程度弱于前三个。",
+        "beneficiary_stocks": [
+          "002270",
+          "002452"
+        ]
+      }
+    ],
+    "catalysts": [
+      {
+        "type": "capacity",
+        "catalyst": "国家电网公布2026年特高压新增项目招标计划（集中度提升，订单确认加速）",
+        "expected_date": "2026年4月-6月",
+        "watch_signal": "特高压项目环评及核准信息，国网招标平台公告",
+        "affected_segment": "特高压变压器、分接开关"
+      },
+      {
+        "type": "capacity",
+        "catalyst": "宝钢/首钢新增高牌号取向硅钢产线投产（缓解材料端紧张，但可能压制价格弹性）",
+        "expected_date": "2027年Q1-Q2",
+        "watch_signal": "企业年报/公告的产能建设进度，取向硅钢月产量数据",
+        "affected_segment": "高等级取向硅钢"
+      },
+      {
+        "type": "demand",
+        "catalyst": "北美/欧洲AI巨头公布新一轮数据中心建设计划（如微软、谷歌等资本开支指引超预期）",
+        "expected_date": "2026年Q2-Q3（财报季）",
+        "watch_signal": "美股M7的资本开支季度数据，DC相关变压器询盘量",
+        "affected_segment": "全产业链（尤其特高压、大容量变压器）"
+      },
+      {
+        "type": "policy",
+        "catalyst": "中国变压器能效新国标强制落地（加速存量变压器替换/升级）",
+        "expected_date": "2026年H2（政策预计）",
+        "watch_signal": "国家市场监督管理总局能效标准公告",
+        "affected_segment": "配电变压器、取向硅钢"
+      }
+    ],
+    "findings_count": 0,
+    "agent": "SupplyChainHacker",
+    "industry": "变压器",
+    "search_rounds": 2
+  }
+}

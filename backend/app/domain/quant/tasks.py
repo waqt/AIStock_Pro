@@ -162,13 +162,27 @@ async def calculate_financial_indicators_task(
                 if i + 8 <= len(recent_first):
                     ri = compute_roiic(recent_first[i:i+8])
                     record.update({"roiic": ri.get("roiic"), "roiic_pct": ri.get("roiic_pct")})
+                    # 研发资本化调整后的 ROIC/ROIIC
+                    try:
+                        from app.framework.finance.rd_adjustment import adjust_rd_capitalization
+                        adj = adjust_rd_capitalization(recent_first[i:i+8])
+                        if adj.get("material"):
+                            adj_profit_ratio = adj["adjusted_profit_yi"] / max(adj["reported_profit_yi"], 0.01)
+                            if roic_d.get("roic_pct") is not None and adj_profit_ratio > 1.01:
+                                record["roic_adjusted"] = (roic_d.get("roic") or 0) * adj_profit_ratio
+                                record["roic_pct_adjusted"] = round((roic_d.get("roic_pct") or 0) * adj_profit_ratio, 1)
+                            if ri.get("roiic_pct") is not None and adj_profit_ratio > 1.01:
+                                record["roiic_adjusted"] = (ri.get("roiic") or 0) * adj_profit_ratio
+                                record["roiic_pct_adjusted"] = round((ri.get("roiic_pct") or 0) * adj_profit_ratio, 1)
+                    except Exception as e:
+                        logger.warning(f"[CalcFinancial] {code}: adjust_rd_capitalization failed: {e}")
                 full_window = recent_first[i:]
                 for _, cls in fin_indicators:
                     try:
                         r = cls.compute(full_window)
                         record.update(r)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.warning(f"[CalcFinancial] {code}: {cls.__name__}.compute failed: {e}")
                 record["source"] = fin.get("source", "db")
                 if store_financial_indicator(code, rpt_date, record):
                     stored += 1

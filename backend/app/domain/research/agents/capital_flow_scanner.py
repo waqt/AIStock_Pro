@@ -237,8 +237,7 @@ class CapitalFlowScanner(ResearchAgent):
 - 能源信号必须与资本信号交叉印证: 资本密集流入 + 用电量激增 = 最强景气确认"""
 
         try:
-            text = await asyncio.wait_for(
-                self.provider.chat_flash(prompt, max_tokens=4096), timeout=60)
+            text = await self.provider.chat_flash(prompt, max_tokens=4096, timeout=90)
             if trace: trace.record_llm(prompt, text, model="deepseek-v4-flash")
             result = self.parse_json(text)
             if isinstance(result, dict):

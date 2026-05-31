@@ -53,8 +53,8 @@ class RevenueAcceleration(FinancialIndicator):
         """营收同比增速的变化。正值=营收在加速, 爆发前夜"""
         if len(financials) < 12:
             return {"revenue_acceleration": None}
-        # TTM 营收 YoY: t vs t-4
-        rev = [sum(float(q.get("revenue", 0) or 0) for q in financials[i:i+4]) for i in range(0, 8, 4)]
+        # TTM 营收 YoY: t vs t-4 vs t-8
+        rev = [sum(float(q.get("revenue", 0) or 0) for q in financials[i:i+4]) for i in range(0, 12, 4)]
         if not rev[1] or not rev[2]:
             return {"revenue_acceleration": None}
         yoy_current = (rev[0] / rev[1] - 1) * 100 if rev[1] else 0

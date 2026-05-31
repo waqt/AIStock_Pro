@@ -1,9 +1,16 @@
-import json
+import json, asyncio
 from typing import List, Dict, Optional, Literal
 import httpx
 from app.framework.ai.providers.base import AIProviderProtocol
 from app.framework.config import settings
 from app.framework.logger import logger
+
+# ── LLM 超时默认值 (各 Agent 可按需传入 timeout 覆盖) ──
+# flash: 简单任务, 通常 30-90s 内返回
+# pro: 复杂推理, 通常 120-300s
+TIMEOUT_FLASH = 90   # chat_flash 默认超时 (秒)
+TIMEOUT_PRO = 240    # chat_pro 默认超时 (秒)
+TIMEOUT_VISION = 90  # vision 超时 (秒)
 
 
 class DeepSeekProvider(AIProviderProtocol):
@@ -29,15 +36,22 @@ class DeepSeekProvider(AIProviderProtocol):
     # ═══ 便捷方法 ═══════════════════════════════
 
     async def chat_pro(self, prompt: str, max_tokens: int = 4096,
-                       thinking: bool = None) -> Optional[str]:
+                       thinking: bool = None, timeout: int = None) -> Optional[str]:
         """投研分析专用: Pro模型 + 思考模式"""
         if thinking is None:
             thinking = settings.DEEPSEEK_THINKING
-        return await self.chat(prompt, max_tokens=max_tokens, model="pro", thinking=thinking)
+        t = timeout if timeout is not None else TIMEOUT_PRO
+        return await asyncio.wait_for(
+            self.chat(prompt, max_tokens=max_tokens, model="pro", thinking=thinking),
+            timeout=t)
 
-    async def chat_flash(self, prompt: str, max_tokens: int = 2048) -> Optional[str]:
+    async def chat_flash(self, prompt: str, max_tokens: int = 2048,
+                         timeout: int = None) -> Optional[str]:
         """轻量任务: Flash模型, 快速便宜"""
-        return await self.chat(prompt, max_tokens=max_tokens, model="flash", thinking=False)
+        t = timeout if timeout is not None else TIMEOUT_FLASH
+        return await asyncio.wait_for(
+            self.chat(prompt, max_tokens=max_tokens, model="flash", thinking=False),
+            timeout=t)
 
     # ═══ 核心方法 ═══════════════════════════════
 
@@ -68,10 +82,11 @@ class DeepSeekProvider(AIProviderProtocol):
 
         headers = {"Authorization": f"Bearer {settings.DEEPSEEK_API_KEY}",
                     "Content-Type": "application/json"}
-        timeout = 600 if do_thinking else 90
+        # HTTP 客户端超时设为足够大的安全网; 外层 asyncio.wait_for 是有效超时
+        http_timeout = 300 if do_thinking else 120
 
         try:
-            async with httpx.AsyncClient(proxy=None, timeout=timeout) as client:
+            async with httpx.AsyncClient(proxy=None, timeout=http_timeout) as client:
                 resp = await client.post(url, json=body, headers=headers)
                 if resp.status_code != 200:
                     logger.warning(f"[DeepSeek] {resolved_model} HTTP {resp.status_code}: {resp.text[:200]}")
@@ -81,7 +96,7 @@ class DeepSeekProvider(AIProviderProtocol):
                     return "".join(b.get("text", "") for b in data["content"] if b["type"] == "text")
                 return data["choices"][0]["message"]["content"]
         except httpx.TimeoutException:
-            logger.warning(f"[DeepSeek] {resolved_model} timeout ({timeout}s)")
+            logger.warning(f"[DeepSeek] {resolved_model} timeout ({http_timeout}s) — outer asyncio.wait_for may fire first")
             return None
         except Exception as e:
             logger.error(f"[DeepSeek] {resolved_model} error: {type(e).__name__}: {e}")
@@ -114,7 +129,7 @@ class DeepSeekProvider(AIProviderProtocol):
                 "temperature": 0.1, "max_tokens": 2048
             }
         headers = {"Authorization": f"Bearer {settings.DEEPSEEK_API_KEY}", "Content-Type": "application/json"}
-        async with httpx.AsyncClient(proxy=None, timeout=60.0) as client:
+        async with httpx.AsyncClient(proxy=None, timeout=TIMEOUT_VISION) as client:
             resp = await client.post(url, json=body, headers=headers)
             if resp.status_code != 200:
                 logger.warning(f"[DeepSeek] Vision error {resp.status_code}: {resp.text[:150]}")

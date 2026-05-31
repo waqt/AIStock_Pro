@@ -58,19 +58,13 @@ class SupplyChainHacker(ResearchAgent):
         logger.info(f"[{self.name}] Hacking: {industry} | Step2: {step2.get('cycle_phase','?')}/{step2.get('prosperity_type','?')}")
 
         research_data = await self._hack_supply_chain(industry, step2, trace=trace)
-        core_stocks = await self._extract_stocks_simple(industry, research_data)
         result = await self._structure_output(industry, research_data, step2, trace=trace)
-
-        if not result.get("core_stocks") and core_stocks:
-            result["core_stocks"] = core_stocks
-        if not result.get("core_stocks"):
-            result["core_stocks"] = core_stocks
 
         result["agent"] = self.name
         result["industry"] = industry
         result["search_rounds"] = research_data.get("search_rounds", 0)
         if trace:
-            trace.record_note("summary", f"layers={len(result.get('supply_chain_map',[]))}, stocks={len(result.get('core_stocks',[]))}")
+            trace.record_note("summary", f"layers={len(result.get('supply_chain_map',[]))}")
         return result
 
     # ═══ Phase 1: 供应链迭代深研 ═════════════════
@@ -81,31 +75,34 @@ class SupplyChainHacker(ResearchAgent):
         round_num = 0
         step2 = step2 or {}
 
+        industry_anchor = step2.get("industry_name_for_search", industry)
+        if not industry_anchor: industry_anchor = industry
+        
         for round_num in range(1, 4):
             if round_num == 1:
                 phase = step2.get("cycle_phase", "")
                 ptype = step2.get("prosperity_type", "")
                 chains = [[
-                    f"{industry} 产业链 核心瓶颈 产能 技术壁垒 龙头公司 市占率",
-                    f"{industry} 产业链 瓶颈 龙头 产能 2026",
-                    f"{industry} supply chain bottleneck key players",
+                    f"{industry_anchor} 产业链 核心瓶颈 产能 技术壁垒 龙头公司 市占率",
+                    f"{industry_anchor} 产业链 瓶颈 龙头 产能 2026",
+                    f"{industry_anchor} supply chain bottleneck key players",
                 ]]
                 if phase == "bottleneck_formation":
                     chains = [[
-                        f"{industry} 产能 交期 设备约束 瓶颈环节 扩产周期",
-                        f"{industry} 产能缺口 交期 供应链瓶颈 2026",
-                        f"{industry} capacity lead time bottleneck supply chain",
+                        f"{industry_anchor} 产能 交期 设备约束 瓶颈环节 扩产周期",
+                        f"{industry_anchor} 产能缺口 交期 供应链瓶颈 2026",
+                        f"{industry_anchor} capacity lead time bottleneck supply chain",
                     ]]
                 elif ptype == "supply_shock":
                     chains = [[
-                        f"{industry} 供给约束 资源稀缺 设备禁令 认证壁垒",
-                        f"{industry} 供给受限 原材料 设备 国产替代 2026",
-                        f"{industry} supply constraint material equipment restriction",
+                        f"{industry_anchor} 供给约束 资源稀缺 设备禁令 认证壁垒",
+                        f"{industry_anchor} 供给受限 原材料 设备 国产替代 2026",
+                        f"{industry_anchor} supply constraint material equipment restriction",
                     ]]
             elif gaps:
                 chains = [[
-                    f"{industry} {' '.join(gaps[:3])}",
-                    f"{industry} {' '.join(gaps[:2])}",
+                    f"{industry_anchor} {' '.join(gaps[:3])}",
+                    f"{industry_anchor} {' '.join(gaps[:2])}",
                 ]]
             else:
                 break
@@ -114,7 +111,13 @@ class SupplyChainHacker(ResearchAgent):
             if not search_data[0]["results"] and round_num > 1:
                 break
 
-            prompt = f"""你是全球半导体/制造业供应链研究员。分析 {industry} 产业链的瓶颈结构和国产替代机会。
+            prompt = f"""你是 {industry} 行业的产业链供给侧研究员。分析该行业实体产业链的瓶颈结构和国产替代机会。
+
+## ★ 重要约束
+- 产业链分析必须聚焦实体供给侧结构 (原材料→零部件→设备→组装→终端应用)
+- 禁止偏向软件/SaaS/咨询/管理类公司 — 除非该行业本身是软件行业
+- 禁止输出具体股票代码或公司名 — 只描述产业环节和角色
+- 每条发现必须有搜索来源引用
 
 ## 本轮搜索结果
 {_j(search_data)}
@@ -133,8 +136,7 @@ class SupplyChainHacker(ResearchAgent):
   "need_more_search": true/false}}"""
 
             try:
-                text = await asyncio.wait_for(
-                    self.provider.chat_pro(prompt, max_tokens=2048), timeout=60)
+                text = await self.provider.chat_pro(prompt, max_tokens=2048, timeout=120)
                 if trace: trace.record_llm(prompt, text, model="deepseek-v4-pro")
                 result = self.parse_json(text)
                 if isinstance(result, dict):
@@ -149,34 +151,6 @@ class SupplyChainHacker(ResearchAgent):
 
         return {"findings": all_findings, "search_rounds": round_num}
 
-    # ═══ Phase 1.5: 股票提取 ═══════════════════
-
-    async def _extract_stocks_simple(self, industry: str, research: Dict) -> list:
-        findings = research.get("findings", [])
-        if not findings: return []
-        summary = "; ".join(
-            f.get("key","") + ":" + f.get("detail","")[:100]
-            for f in findings[:10] if isinstance(f, dict))
-        if not summary.strip(): return []
-
-        codes_raw = list(set(re.findall(r'\b(60[0-4]\d{3}|688\d{3}|00[0-3]\d{3}|30[0-2]\d{3})\b', summary)))
-        if len(codes_raw) >= 3:
-            logger.info(f"[{self.name}] Regex extracted {len(codes_raw)} codes")
-            return [{"code": c, "name": c, "segment": "待确认"} for c in codes_raw[:8]]
-
-        prompt = f"列出{industry}产业链相关的5-8只A股标的(6位代码+名称)。输出纯JSON数组: [{{\"code\":\"000001\",\"name\":\"平安银行\"}}]。基于: {summary[:3000]}"
-        try:
-            text = await asyncio.wait_for(self.provider.chat_flash(prompt, max_tokens=4096), timeout=30)
-            result = self.parse_json(text)
-            if isinstance(result, list): return result
-            if isinstance(result, dict):
-                for v in result.values():
-                    if isinstance(v, list) and len(v) > 0: return v
-            fallback = list(set(re.findall(r'\b(60[0-4]\d{3}|688\d{3}|00[0-3]\d{3}|30[0-2]\d{3})\b', text)))
-            if fallback: return [{"code": c, "name": c, "segment": "待确认"} for c in fallback[:8]]
-        except Exception as e:
-            logger.warning(f"[{self.name}] Stock extract failed: {e}")
-        return []
 
     # ═══ Phase 2: 结构化输出 (V5.9.1 精简版) ═══════
 
@@ -193,12 +167,24 @@ class SupplyChainHacker(ResearchAgent):
 - 搜索聚焦: {step2.get('search_focus','')}
 """
 
+        industry_anchor = step2.get("industry_name_for_search", industry)
+        if not industry_anchor: industry_anchor = industry
+
         fresh_data = await self._search_adaptive([[
-            f"{industry} 供应链 最新 瓶颈 产能 缺口 2026",
-            f"{industry} 产业链 瓶颈 最新 2026",
+            f"{industry_anchor} 供应链 最新 瓶颈 产能 缺口 2026",
+            f"{industry_anchor} 产业链 瓶颈 最新 2026",
         ]], num=5, trace=trace)
 
-        prompt = f"""你是买方首席产业研究员。输出 {industry} 产业深度穿透 JSON。
+        prompt = f"""你是买方首席产业研究员。输出 {industry_anchor} 行业的实体产业链深度穿透 JSON。
+
+## ★ 重要约束
+- 产业链拆解的最终目标是识别“全球产业链中的绝对话语权节点”和“A股可映射的卡脖子环节”。
+- 产业链必须聚焦实体供给侧 (原材料→零部件→设备→组装→终端), 不要分析软件/SaaS/咨询公司。
+- 如果某个瓶颈环节的核心受益方全部在海外上市（如台积电、ASML），你必须追问“这个全球瓶颈如何传导到 A 股标的？”，并找到：
+  1. 国产替代受益方
+  2. 被瓶颈挤压的上游国产供应商
+  3. 瓶颈缓解后最先受益的国内下游
+- 绝对禁止输出具体股票代码！只输出“价值节点特征标签” (value_node_tags)，供后续搜索股票使用（如“取向硅钢龙头”、“先进封装设备国产替代”、“特斯拉人形机器人丝杠供应商”）。
 
 {step2_context}
 ## 研究发现 ({len(findings)} 条)
@@ -219,6 +205,17 @@ class SupplyChainHacker(ResearchAgent):
       "bottleneck_narrative": "瓶颈简述 (1-2句)",
       "confidence": "high/medium/low",
 
+      "chokepoint_checklist": {{
+        "is_sole_source": true,
+        "customer_switch_cost_months": 18,
+        "cost_share_of_downstream": 0.05,
+        "price_hike_pass_through": 0.95,
+        "capacity_util_rate": 0.95,
+        "order_backlog_months": 24,
+        "regulatory_moat": true,
+        "chokepoint_score": 87
+      }},
+
       "supply_rigidity": {{
         "severity": "extreme", "root_cause": "equipment_constraint",
         "expand_cycle": "over_24m", "substitutability": "none_short_term",
@@ -229,7 +226,7 @@ class SupplyChainHacker(ResearchAgent):
         "share_of_industry_profit": "dominant_30_50pct",
         "margin_level": "very_high_above_40pct",
         "margin_estimated": true,
-        "margin_data_source": "LLM估计, 基于搜索片段中的研报引用 | 待Step 6财务验证回写",
+        "margin_data_source": "LLM估计",
         "pricing_power_narrative": "定价权描述"
       }},
       "value_capture": {{
@@ -239,27 +236,21 @@ class SupplyChainHacker(ResearchAgent):
       }},
       "competitive_landscape": {{
         "structure": "oligopoly_CR3_above_70",
-        "global_leaders": ["龙头"], "china_substitution_rate": "below_5pct",
-        "china_players": {{"tier1":[],"tier2":[],"tier3":[]}}
+        "global_leaders": ["海外龙头"], "china_substitution_rate": "below_5pct"
       }},
-      "future_outlook": {{
-        "next_2_3_years": "bottleneck_persists",
-        "potential_relief": "缓解路径", "emerging_bottleneck": "新瓶颈"
-      }},
-      "assets": [{{"code":"688012","name":"公司","role":"角色","market_position":"tier1"}}],
-      "assets_note": "暂无A股标的时填说明",
-
+      "value_node_tags": ["标签1", "标签2"],
+      "a_stock_transmission": "全球瓶颈传导到 A 股标的逻辑",
+      
       "evidence": [
         {{"fact":"关键事实1","from":"search[1.3]·来源","quality":{{"level":"high","source_type":"industry_data"}}}},
         {{"fact":"关键事实2","from":"search[2.1]·来源","quality":{{"level":"medium","source_type":"sell_side_report"}}}}
       ]
     }}
   ],
-  "core_stocks": [{{"code":"688012","name":"公司","segment":"环节","role":"龙头","moat":"壁垒"}}],
-  "sales_chain": [{{"segment":"受益环节","companies":["688XXX"],"reason":"理由","lead_months":"1-3"}}],
-  "expansion_chain": [{{"segment":"滞后环节","companies":["688YYY"],"reason":"理由","lag_months":"6-12"}}],
+  "sales_chain": [{{"segment":"受益环节","value_node_tags":["受益标签"],"reason":"理由","lead_months":"1-3"}}],
+  "expansion_chain": [{{"segment":"滞后环节","value_node_tags":["滞后标签"],"reason":"理由","lag_months":"6-12"}}],
   "chain_timeline": {{"sales_lead_months":"1-3","expansion_lag_months":"6-12","rotation_strategy":"策略"}},
-  "scarcity_ranking": [{{"rank":1,"segment":"稀缺环节","rigidity_narrative":"刚性","beneficiary_stocks":["688012"]}}],
+  "scarcity_ranking": [{{"rank":1,"segment":"稀缺环节","rigidity_narrative":"刚性","value_node_tags":["稀缺标签"]}}],
   "catalysts": [{{"type":"capacity","catalyst":"事件","expected_date":"时间","watch_signal":"指标","affected_segment":"环节"}}]
 }}
 """
@@ -271,36 +262,31 @@ class SupplyChainHacker(ResearchAgent):
 ## 规则
 - evidence 数组在节点级别 (每节点 2-4 条), 子字段不各自带 evidence
 - from 格式: "search[轮次.序号]·来源简称", 禁止自创前缀
-- core_stocks >= 5 只, supply_chain_map >= L1-L3, sales/expansion chain >= 各 2 条
-- assets 空时用 assets_note 说明; 同公司不出现在多个 tier
+- supply_chain_map >= L1-L3, sales/expansion chain >= 各 2 条
+- chokepoint_checklist 必须根据事实估算数值，避免空谈
 - self_media/ai_summary 仅参考, 不得单独支撑关键判断
-- ★ margin_estimated=true 表示 margin_level/share_of_profit 为 LLM 基于搜索片段估计 (非硬财务数据)
+- ★ margin_estimated=true 表示 margin_level/share_of_profit 为 LLM 估计
 - ★ 3轮搜索仍无有效结果时: 不丢弃数据, 输出 confidence=insufficient_data + confidence_note 说明缺口
 - ★ expand_cycle 三档: under_12m / 12_24m / over_24m (与 Step 4/5 时间枚举对齐)"""
 
         try:
-            text = await asyncio.wait_for(
-                self.provider.chat_pro(prompt, max_tokens=8192), timeout=480)
+            text = await self.provider.chat_pro(prompt, max_tokens=8192, timeout=240)
             if trace: trace.record_llm(prompt, text, model="deepseek-v4-pro")
             result = self.parse_json(text)
             if isinstance(result, dict) and result.get("parse_error"):
                 logger.warning(f"[{self.name}] Struct parse failed, retrying...")
-                retry_prompt = f"列出 {industry} 产业链核心A股标的, 输出纯JSON: {{\"core_stocks\":[{{\"code\":\"000001\",\"name\":\"公司\",\"segment\":\"环节\"}}]}}。基于: {_j(findings[:8])}"
-                text2 = await asyncio.wait_for(self.provider.chat_flash(retry_prompt, max_tokens=2048), timeout=30)
+                text2 = await self.provider.chat_pro(prompt, max_tokens=8192, timeout=240)
                 result = self.parse_json(text2)
 
             if isinstance(result, dict):
                 result["findings_count"] = len(findings)
-                logger.info(f"[{self.name}] Structured: {len(result.get('supply_chain_map',[]))} layers, {len(result.get('core_stocks',[]))} stocks")
+                logger.info(f"[{self.name}] Structured: {len(result.get('supply_chain_map',[]))} layers")
                 return result
         except asyncio.TimeoutError:
             logger.warning(f"[{self.name}] Phase 2 timeout")
         except Exception as e:
             logger.warning(f"[{self.name}] Phase 2 failed: {e}")
 
-        codes = list(set(re.findall(r'\b(\d{6})\b', str(findings))))[:10]
-        if codes:
-            return {"core_stocks": [{"code": c, "name": c, "segment": "待确认"} for c in codes]}
         return {"raw_findings": findings, "error": "Structuring failed"}
 
     # ═══ analyze_level ═════════════════════════
@@ -322,7 +308,7 @@ class SupplyChainHacker(ResearchAgent):
 "investment_thesis":"逻辑","top_pick":{{"code":"...","name":"...","reason":"理由"}}}}
 all_assets >= 5家, moat_level: absolute_monopoly/strong/medium/weak"""
         try:
-            text = await asyncio.wait_for(self.provider.chat_flash(prompt, max_tokens=4096), timeout=60)
+            text = await self.provider.chat_flash(prompt, max_tokens=4096, timeout=120)
             result = self.parse_json(text)
             if isinstance(result, dict):
                 result["agent"] = self.name

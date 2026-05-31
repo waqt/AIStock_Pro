@@ -1,0 +1,13 @@
+{
+  "run_id": "20260527_资本流向_v1",
+  "industry": "资本流向-20260527-1053",
+  "mode": "manual",
+  "mode_id": "capital_flow",
+  "agent_id": "supply_chain",
+  "status": "completed",
+  "started_at": "2026-05-27T10:54:11.477347",
+  "completed_at": "2026-05-27T10:57:38.156341",
+  "elapsed_seconds": 206.7,
+  "step": "step2_gatekeeper",
+  "input_hash": "9bbcd925bec2"
+}

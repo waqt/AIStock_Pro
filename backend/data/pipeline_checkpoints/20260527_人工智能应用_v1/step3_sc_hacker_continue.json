@@ -1,0 +1,384 @@
+{
+  "step": "step3_sc_hacker",
+  "run_id": "20260527_人工智能应用_v1",
+  "input_hash": "continue",
+  "saved_at": "2026-05-27T19:19:31.866599",
+  "elapsed_seconds": 0,
+  "input_summary": "",
+  "output": {
+    "supply_chain_map": [
+      {
+        "level": 1,
+        "name": "AI算力芯片 (GPU/ASIC)",
+        "bottleneck_narrative": "全球AI算力需求爆发，训练与推理高度依赖英伟达GPU，其AI工厂模式加剧供应紧张，国内高性能芯片受制于出口管制，供给近乎刚性。",
+        "supply_rigidity": {
+          "severity": "extreme",
+          "root_cause": "policy_restriction",
+          "expand_cycle": "18_24_months",
+          "substitutability": "none_short_term",
+          "concentration": "duopoly",
+          "alpha_narrative": "英伟达垄断性份额叠加出口管制，定价权极强，国内AI厂商被迫高价采购或转向国产替代，但性能差距大，供给刚性创造长期景气窗口。"
+        },
+        "profit_pool": {
+          "share_of_industry_profit": "dominant_30_50pct",
+          "margin_level": "very_high_above_40pct",
+          "pricing_power_narrative": "英伟达毛利率超70%，凭借CUDA生态及唯一可用高性能芯片，具有绝对定价权，国内受制裁只能获取减弱份额。"
+        },
+        "value_capture": {
+          "market_attention": "very_high",
+          "attention_quality": "profit_real",
+          "gap_narrative": "市场高度关注，利润也确实集中在芯片端，英伟达利润高速增长，国内替代标的亦受追捧。",
+          "who_captures_value": [
+            "英伟达",
+            "AMD",
+            "国产替代寒武纪、海光信息"
+          ]
+        },
+        "competitive_landscape": {
+          "structure": "duopoly",
+          "global_leaders": [
+            "NVIDIA",
+            "AMD"
+          ],
+          "china_substitution_rate": "below_5pct",
+          "china_players": {
+            "tier1": [
+              "688256",
+              "688041"
+            ],
+            "tier2": [
+              "688008"
+            ],
+            "tier3": []
+          }
+        },
+        "future_outlook": {
+          "next_2_3_years": "bottleneck_persists",
+          "potential_relief": "国产7nm/5nm量产能力提升，但性能与生态差距仍大；国际地缘政治缓和可能性低",
+          "emerging_bottleneck": "HBM内存与先进封装产能可能成为新卡点"
+        },
+        "assets": [
+          {
+            "code": "688256",
+            "name": "寒武纪",
+            "role": "AI训练/推理芯片设计",
+            "market_position": "tier1"
+          },
+          {
+            "code": "688041",
+            "name": "海光信息",
+            "role": "GPU/DCU芯片",
+            "market_position": "tier1"
+          },
+          {
+            "code": "688008",
+            "name": "澜起科技",
+            "role": "内存接口芯片",
+            "market_position": "tier2"
+          }
+        ],
+        "evidence": [
+          {
+            "fact": "英伟达GPU仍为AI训练/推理首选芯片，其模块化系统（AI工厂）为大规模部署核心，国内算力需求持续扩张但底层高端芯片制造受制于海外。",
+            "from": "search[1.1]·AtomGit开源社区",
+            "quality": {
+              "level": "high",
+              "source_type": "industry_data"
+            }
+          },
+          {
+            "fact": "中国AI产业规模化商业化落地拐点，94%企业计划加码AI投资，但高端半导体设备、高性能GPU芯片是薄弱环节。",
+            "from": "search[1.5]·IT之家",
+            "quality": {
+              "level": "high",
+              "source_type": "industry_data"
+            }
+          },
+          {
+            "fact": "CoWoS产能奇缺导致AI算力芯片供应受限，产能已售罄至2026年底。",
+            "from": "search[2.1]·知乎",
+            "quality": {
+              "level": "high",
+              "source_type": "industry_data"
+            }
+          },
+          {
+            "fact": "Google因CoWoS产能不足导致TPU产能未达预期。",
+            "from": "search[2.1]·腾讯新闻",
+            "quality": {
+              "level": "medium",
+              "source_type": "news"
+            }
+          }
+        ]
+      },
+      {
+        "level": 2,
+        "name": "先进封装 (CoWoS/2.5D/3D)",
+        "bottleneck_narrative": "AI芯片对Chiplet异构集成需求催生CoWoS等先进封装技术的爆发式需求，产能全部由台积电把持，扩产节奏远落后于AI发展，成为全产业最硬瓶颈。",
+        "supply_rigidity": {
+          "severity": "extreme",
+          "root_cause": "equipment_constraint",
+          "expand_cycle": "18_24_months",
+          "substitutability": "none_short_term",
+          "concentration": "monopoly_single_supplier",
+          "alpha_narrative": "台积电垄断CoWoS产能，设备交期长，客户排期至2027年，产能约束下封装环节议价能力极强，相关设备、载板需求非均衡爆发。"
+        },
+        "profit_pool": {
+          "share_of_industry_profit": "significant_15_30pct",
+          "margin_level": "high_25_40pct",
+          "pricing_power_narrative": "封装产能供不应求，台积电及长电科技等具备涨价空间，毛利率有望随产能利用率提升。"
+        },
+        "value_capture": {
+          "market_attention": "very_high",
+          "attention_quality": "profit_real",
+          "gap_narrative": "封装关注度急升，利润从芯片设计向封装环节转移，国内先进封装标的进入利润兑现期。",
+          "who_captures_value": [
+            "台积电",
+            "长电科技",
+            "通富微电",
+            "华天科技"
+          ]
+        },
+        "competitive_landscape": {
+          "structure": "monopoly_single_supplier",
+          "global_leaders": [
+            "台积电"
+          ],
+          "china_substitution_rate": "20_50pct",
+          "china_players": {
+            "tier1": [
+              "600584",
+              "002156"
+            ],
+            "tier2": [
+              "002185"
+            ],
+            "tier3": []
+          }
+        },
+        "future_outlook": {
+          "next_2_3_years": "bottleneck_persists",
+          "potential_relief": "台积电、Intel、三星及国内OSAT厂加大资本开支，2027年后可能缓解，但短期设备同样受限",
+          "emerging_bottleneck": "先进封装设备（如Bonder、激光芯片贴装机）供给紧张，可能形成二次瓶颈"
+        },
+        "assets": [
+          {
+            "code": "600584",
+            "name": "长电科技",
+            "role": "先进封装龙头",
+            "market_position": "tier1"
+          },
+          {
+            "code": "002156",
+            "name": "通富微电",
+            "role": "先进封装",
+            "market_position": "tier1"
+          },
+          {
+            "code": "002185",
+            "name": "华天科技",
+            "role": "先进封装",
+            "market_position": "tier2"
+          }
+        ],
+        "evidence": [
+          {
+            "fact": "CoWoS短缺从未停歇，甚至引发相关生产设备、下游封装载板紧缺。",
+            "from": "search[2.2]·新浪财经",
+            "quality": {
+              "level": "high",
+              "source_type": "industry_data"
+            }
+          },
+          {
+            "fact": "产能已经售罄到2026年底，并持续预订到2027年，Google也因CoWoS产能不足导致TPU产能未达预期。",
+            "from": "search[2.1]·腾讯新闻",
+            "quality": {
+              "level": "high",
+              "source_type": "news"
+            }
+          },
+          {
+            "fact": "先进封装（如华为“韬定律”相关技术）被视为重大利好，但底层高端芯片制造仍受制于海外。",
+            "from": "search[1.1]·AtomGit开源社区",
+            "quality": {
+              "level": "medium",
+              "source_type": "ai_summary"
+            }
+          }
+        ]
+      },
+      {
+        "level": 3,
+        "name": "先进制程晶圆制造 (3nm/2nm)",
+        "bottleneck_narrative": "AI算力芯片升级依赖最先进制程，台积电3nm产能满负荷，三星良率仍低，全球仅两家可量产，且地缘政治导致供应链分裂，中国被限制获取。",
+        "supply_rigidity": {
+          "severity": "extreme",
+          "root_cause": "equipment_constraint",
+          "expand_cycle": "over_24_months",
+          "substitutability": "none_short_term",
+          "concentration": "duopoly",
+          "alpha_narrative": "先进制程扩产需EUV光刻机等设备，ASML产能有限且受政治影响，扩产周期超2年，供给瓶颈将长期维持，掌握制程的晶圆厂享有极高定价权。"
+        },
+        "profit_pool": {
+          "share_of_industry_profit": "significant_15_30pct",
+          "margin_level": "very_high_above_40pct",
+          "pricing_power_narrative": "台积电3nm代工价格持续上涨，毛利率维持高位，先进制程占总收入比重提升。"
+        },
+        "value_capture": {
+          "market_attention": "high",
+          "attention_quality": "profit_real",
+          "gap_narrative": "市场高度认同先进制程的价值，但国内无法直接参与3nm制造，利润流向台积电，国内只能布局成熟制程和封装，存在认知错位。",
+          "who_captures_value": [
+            "台积电",
+            "三星",
+            "中芯国际（成熟制程受益AIoT等）"
+          ]
+        },
+        "competitive_landscape": {
+          "structure": "duopoly",
+          "global_leaders": [
+            "台积电",
+            "三星"
+          ],
+          "china_substitution_rate": "below_5pct",
+          "china_players": {
+            "tier1": [],
+            "tier2": [
+              "688981"
+            ],
+            "tier3": []
+          }
+        },
+        "future_outlook": {
+          "next_2_3_years": "bottleneck_persists",
+          "potential_relief": "美国施压政策可能变化，但短期不可能突破；国内通过先进封装弥补部分性能差距",
+          "emerging_bottleneck": "随着成熟制程产能扩张，硅片、气体等可能供给紧张"
+        },
+        "assets": [
+          {
+            "code": "688981",
+            "name": "中芯国际",
+            "role": "先进制程追赶、成熟制程受益",
+            "market_position": "tier2"
+          }
+        ],
+        "evidence": [
+          {
+            "fact": "AI需求自2023年起急速成长，导致3nm至2nm晶圆、2.5D/3D封装陷入产能瓶颈。",
+            "from": "search[2.2]·新浪财经",
+            "quality": {
+              "level": "high",
+              "source_type": "industry_data"
+            }
+          },
+          {
+            "fact": "CoWoS短缺影响晶圆分配，即使拿到晶圆，也可能因封装未能及时完成。",
+            "from": "search[2.1]·知乎",
+            "quality": {
+              "level": "medium",
+              "source_type": "news"
+            }
+          },
+          {
+            "fact": "中国AI产业薄弱环节：高端半导体设备、高性能GPU芯片。",
+            "from": "search[1.5]·IT之家",
+            "quality": {
+              "level": "high",
+              "source_type": "industry_data"
+            }
+          }
+        ]
+      }
+    ],
+    "core_stocks": [
+      {
+        "code": "688256",
+        "name": "寒武纪",
+        "segment": "AI算力芯片",
+        "role": "龙头",
+        "moat": "国产独立AI芯片设计，对标英伟达，生态与客户绑定"
+      },
+      {
+        "code": "688041",
+        "name": "海光信息",
+        "segment": "AI算力芯片",
+        "role": "龙头",
+        "moat": "x86兼容国产CPU/GPU，信创与AI双主线"
+      },
+      {
+        "code": "600584",
+        "name": "长电科技",
+        "segment": "先进封装",
+        "role": "龙头",
+        "moat": "国内先进封装产能最大，客户覆盖国际大厂"
+      },
+      {
+        "code": "002156",
+        "name": "通富微电",
+        "segment": "先进封装",
+        "role": "主供",
+        "moat": "与AMD深度绑定，承接AI芯片封装"
+      },
+      {
+        "code": "688981",
+        "name": "中芯国际",
+        "segment": "晶圆制造",
+        "role": "基石",
+        "moat": "国内唯一先进制程追赶者，成熟制程国产替代首选"
+      },
+      {
+        "code": "300308",
+        "name": "中际旭创",
+        "segment": "光模块",
+        "role": "龙头",
+        "moat": "800G/1.6T光模块全球领先，受益AI数据中心建设"
+      }
+    ],
+    "sales_chain": [
+      {
+        "segment": "AI服务器/光模块",
+        "companies": [
+          "000977",
+          "300308"
+        ],
+        "reason": "算力需求直接拉动AI服务器和高速光模块订单，英伟达GPU出货量限制解除后最直接受益环节",
+        "lead_months": "1-3"
+      },
+      {
+        "segment": "AI应用软件/大模型",
+        "companies": [
+          "300033",
+          "688111"
+        ],
+        "reason": "算力基础设施瓶颈一旦缓解，应用端将迎来爆发，推理成本下降刺激B端应用普及",
+        "lead_months": "3-6"
+      }
+    ],
+    "expansion_chain": [
+      {
+        "segment": "晶圆代工与封装设备",
+        "companies": [
+          "002371",
+          "688012"
+        ],
+        "reason": "先进封装与晶圆厂扩产带动设备需求，但设备交货周期长，业绩兑现滞后于资本开支",
+        "lag_months": "6-12"
+      },
+      {
+        "segment": "数据中心液冷/电力配套",
+        "companies": [
+          "600335",
+          "002518"
+        ],
+        "reason": "算力部署加速后，数据中心散热与电力系统改造需求井喷，但建设周期较长，在芯片出货高峰后显现",
+        "lag_months": "6-12"
+      }
+    ],
+    "findings_count": 3,
+    "agent": "SupplyChainHacker",
+    "industry": "人工智能应用",
+    "search_rounds": 2
+  }
+}

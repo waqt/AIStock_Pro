@@ -144,8 +144,7 @@ class GlobalCapexScanner(ResearchAgent):
 - confidence: 搜索结果充分→HIGH, 有限→MEDIUM, 极少→LOW"""
 
         try:
-            text = await asyncio.wait_for(
-                self.provider.chat_pro(prompt, max_tokens=4096), timeout=60)
+            text = await self.provider.chat_pro(prompt, max_tokens=4096, timeout=240)
             result = self.parse_json(text)
             if isinstance(result, dict):
                 signals = result.get("capex_signals", [])
@@ -300,8 +299,7 @@ class GlobalCapexScanner(ResearchAgent):
 - macro_regime 是客观定性, 不是投资建议"""
         try:
             t0 = _time.time()
-            text = await asyncio.wait_for(
-                self.provider.chat_pro(prompt, max_tokens=4096), timeout=90)
+            text = await self.provider.chat_pro(prompt, max_tokens=4096, timeout=240)
             if not text:
                 logger.warning(f"[{self.name}] LLM returned empty text")
                 return {"error": "LLM returned empty"}

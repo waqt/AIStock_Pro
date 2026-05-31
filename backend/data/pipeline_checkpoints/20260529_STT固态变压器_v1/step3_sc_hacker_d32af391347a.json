@@ -1,0 +1,41 @@
+{
+  "step": "step3_sc_hacker",
+  "run_id": "20260529_STT固态变压器_v1",
+  "input_hash": "d32af391347a",
+  "saved_at": "2026-05-29T08:45:35.439880",
+  "elapsed_seconds": 0,
+  "input_summary": "",
+  "output": {
+    "core_stocks": [
+      {
+        "code": "600406",
+        "name": "国电南瑞",
+        "segment": "系统集成"
+      },
+      {
+        "code": "600089",
+        "name": "特变电工",
+        "segment": "变压器制造"
+      },
+      {
+        "code": "603290",
+        "name": "斯达半导",
+        "segment": "功率半导体"
+      },
+      {
+        "code": "600563",
+        "name": "法拉电子",
+        "segment": "电容器"
+      },
+      {
+        "code": "002056",
+        "name": "横店东磁",
+        "segment": "磁性材料"
+      }
+    ],
+    "findings_count": 0,
+    "agent": "SupplyChainHacker",
+    "industry": "STT固态变压器",
+    "search_rounds": 1
+  }
+}

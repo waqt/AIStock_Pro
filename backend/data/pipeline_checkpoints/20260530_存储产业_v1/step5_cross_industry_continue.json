@@ -1,0 +1,162 @@
+{
+  "step": "step5_cross_industry",
+  "run_id": "20260530_存储产业_v1",
+  "input_hash": "continue",
+  "saved_at": "2026-05-30T23:46:02.245794",
+  "elapsed_seconds": 0,
+  "input_summary": "",
+  "output": {
+    "confidence": "medium",
+    "confidence_note": "数据覆盖了HBM封装的产业格局、DRAM晶圆制造的产能挤占效应，以及半导体设备的通用性，但缺乏具体非存储行业受影响的量化数据支撑。不确定性主要来源于跨产业传导的间接性和时间滞后，以及细分行业（如独立第三方测试、特种存储）的公开数据稀缺。所有证据均基于行业分析报告和新闻报道，未获得受波及企业的直接财务确认。",
+    "step3_step4_sanity_check": {
+      "questioned": [
+        {
+          "source": "Step3",
+          "claim": "L1 HBM先进封装 (CoWoS/TSV) 的 severity 为 extreme，瓶颈迁移的 time horizon 为 12 个月缓解。",
+          "doubt": "CoWoS的瓶颈可能被高估，因为随着台积电2026年产能三倍扩张，加上日月光等OSAT厂商加速切入后端oS环节，封装瓶颈的缓解速度快于预期。真正的硬约束可能仍在更上游的EUV光刻和高深宽比刻蚀设备。此外，Step 4认为封装下游的基板（如ABF）涨价能完全传导，但若终端AI服务器厂商开始接受较低性能的封装方案（如降级混合键合前的方案），CoWoS的不可替代性将打折，severity需调降。"
+        },
+        {
+          "source": "Step4",
+          "claim": "resource_crowding 中，先进制程刻蚀、沉积设备挤占传统DRAM与NAND扩产计划，hidden_beneficiary 仅为国产设备商和翻新设备商。",
+          "doubt": "这个方向遗漏了因缺乏设备而被迫放缓2D微缩的存储原厂，它们可能将资本转向购买更多检测、量测设备来优化现有产线良率以提升产出，这将意外利好半导体检测设备供应商。同时，存储厂商也可能将更多逻辑制程产品外包，导致成熟制程晶圆代工产能进一步被挤压。"
+        }
+      ],
+      "adjustment": "基于以上质疑，在跨产业推演时，我们降低了对CoWoS瓶颈直接向非AI行业传导强度的假设，转为关注其设备采购的交叉影响；并补充了因设备短缺导致资本转向良率提升设备、以及成熟制程代工产能被意外挤占的路径。"
+    },
+    "cross_industry_linkages": [
+      {
+        "source_node": "HBM制造 (DRAM晶圆)",
+        "linkage_type": "crowding_out_victim",
+        "affected_sector": "非HBM高端内存接口芯片 (如DDR5 RCD/DB) 设计",
+        "sector_description": "专为服务器DDR5内存模组设计寄存时钟驱动器(RCD)和数据缓冲器(DB)等接口芯片的无晶圆设计公司，其产品性能直接决定内存模组的容量、速度和信号完整性。",
+        "impact_direction": "negative",
+        "impact_narrative": "HBM制造挤占了高端晶圆产能，导致DDR5内存颗粒供给紧张、价格暴涨。但这并未转化为对配套的DDR5 RCD/DB芯片的等比例需求增长，因为高昂的DDR5模组成品价格吓退了部分企业客户，迫使他们延长DDR4平台或转向降低标准配置，导致高端接口芯片的出货量不及预期，形成“价升量缩”的反直觉负面冲击。",
+        "target_profile": "主营产品为服务器DDR5 RCD/DB芯片，与该领域一两家IDM巨头或头部设计公司深度绑定，营收对DDR5渗透率极为敏感，毛利极高但出货量弹性受制于终端接受度。",
+        "linkage_method": "shared_constraint",
+        "time_to_impact": "medium_term",
+        "impact_materiality": "medium",
+        "visibility": "very_low",
+        "evidence": [
+          {
+            "fact": "HBM消耗大量DRAM晶圆，导致DDR5颗粒供给收缩并涨价，但在服务器总拥有成本(TCO)压力下，下游对高价DDR5模组的采纳意愿可能低于预期。",
+            "from": "search[1]·AI吃掉八成高端存储产能，普通DRAM涨价只是烟雾弹 - 什么值得买",
+            "quality": {
+              "level": "high",
+              "source_type": "industry_analysis"
+            },
+            "evidence_type": "hard_data_confirmation"
+          },
+          {
+            "fact": "联想、戴尔、惠普等厂商已对存储涨价发布调价函，传导压力明显，可能导致终端需求弹性显现。",
+            "from": "search[2]·国家发改委价格监测中心：存储芯片持续涨价并向下游传导 - IT之家",
+            "quality": {
+              "level": "high",
+              "source_type": "official_data"
+            },
+            "evidence_type": "hard_data_confirmation"
+          }
+        ]
+      },
+      {
+        "source_node": "HBM先进封装 (CoWoS/TSV)",
+        "linkage_type": "crowding_out_victim",
+        "affected_sector": "其他高端半导体封装基板需求",
+        "sector_description": "为数据中心交换机芯片、高端FPGA、网络处理器等非AI大芯片提供FC-BGA封装基板的PCB制造商。ABF基板是这些芯片封装的必需材料。",
+        "impact_direction": "negative",
+        "impact_narrative": "CoWoS先进封装产能的爆发式扩张，以及配套的2.5D封装需求，消耗了大量先进ABF基板产能和设备（如激光钻孔、电镀设备）。这直接挤占了原本用于网络、FPGA等其他算力基础设施关键芯片的ABF基板供给，导致交货周期延长和成本被动上涨，抑制了非AI算力基础设施的部署节奏。",
+        "target_profile": "主营IC载板业务，尤其是ABF载板，拥有大规模量产能力和高端产品（大尺寸、高层数）技术储备，客户覆盖全球主要逻辑芯片和网络芯片厂商。",
+        "linkage_method": "crowding_out_beneficiary",
+        "time_to_impact": "medium_term",
+        "impact_materiality": "medium",
+        "visibility": "low",
+        "evidence": [
+          {
+            "fact": "台积电CoWoS产能2026年将三倍扩张，已至英伟达、AMD、博通等追加订单包下产线。",
+            "from": "search[3]·台积电CoWoS封装扩产三倍！_新浪财经_新浪网",
+            "quality": {
+              "level": "high",
+              "source_type": "news_report"
+            },
+            "evidence_type": "forward_looking_rumor"
+          },
+          {
+            "fact": "过去市场对先进封装的重要性存在低估，几款AI芯片的先进制程与先进封装价值量占比已接近1:1，其中ABF基板是关键物料。",
+            "from": "search[5]·两存+国产算力催化，半导体设备观点|玻璃基板_网易订阅",
+            "quality": {
+              "level": "medium",
+              "source_type": "industry_analysis"
+            },
+            "evidence_type": "hard_data_confirmation"
+          }
+        ]
+      },
+      {
+        "source_node": "核心制造设备 (沉积/刻蚀/检测)",
+        "linkage_type": "io_spillover",
+        "affected_sector": "成熟制程逻辑芯片晶圆代工服务",
+        "sector_description": "为汽车、工业IoT、电源管理等提供28nm及以上成熟制程的晶圆代工厂，这些产能的扩张高度依赖被存储行业同步争抢的成熟设备。",
+        "impact_direction": "negative",
+        "impact_narrative": "存储产业的疯狂扩产（HBM、高端DRAM和NAND）吸走了大量原本可用于逻辑产线的成熟制造设备（如28nm兼容的部分刻蚀、薄膜沉积设备）。设备制造商优先满足存储大厂的更大批量、更高利润的订单，导致成熟制程逻辑芯片代工厂的设备获取延迟，产能扩张受阻，进一步延长了汽车、工业芯片的供给紧张局面。",
+        "target_profile": "以成熟制程晶圆代工为核心业务，正在积极扩建12英寸产线但受困于设备交期，客户集中在汽车电子和工业控制领域，对ASP提升有迫切需求但产能受限。",
+        "linkage_method": "shared_equipment",
+        "time_to_impact": "long_term",
+        "impact_materiality": "high",
+        "visibility": "low",
+        "evidence": [
+          {
+            "fact": "存储芯片扩产受晶圆厂建设周期限制，新建晶圆厂需2年以上，且设备投资占主导，海外扩产重心在HBM与高端DRAM，存储厂商资本开支创历史新高。",
+            "from": "search[6]·指数分化市如何布局？机构：紧抓半导体设备+存储芯片双主线！|半导体|存储芯片|AI_新浪科技_新浪网",
+            "quality": {
+              "level": "high",
+              "source_type": "industry_report"
+            },
+            "evidence_type": "hard_data_confirmation"
+          },
+          {
+            "fact": "由于海外设备的供应风险，国内晶圆厂将更依赖国产刻蚀设备，但整体而言，全球设备供应是先集中于有庞大订单的存储/先进逻辑头部客户。",
+            "from": "search[4]·重要性仅次于光刻机！全球半导体刻蚀设备未来市场规模超千亿，受益上市公司梳理",
+            "quality": {
+              "level": "medium",
+              "source_type": "brokerage_report"
+            },
+            "evidence_type": "hard_data_confirmation"
+          }
+        ]
+      },
+      {
+        "source_node": "HBM先进封装 (CoWoS/TSV)",
+        "linkage_type": "cobweb_oversupply",
+        "affected_sector": "第三方独立半导体测试服务",
+        "sector_description": "专门为芯片设计公司提供晶圆级和封装后测试服务的独立第三方实验室和测试厂，拥有庞大的测试机台规模，是产业链产能的'晴雨表'。",
+        "impact_direction": "positive",
+        "impact_narrative": "当前CoWoS产能瓶颈下，芯片从流片到封装的每个环节都卡死，测试服务产能利用率高但流动性差。随着2026-2027年台积电、日月光等巨量的CoWoS和配套oS产能集中释放，前期积压的海量AI芯片会如潮水般涌入测试环节。届时，先进封装堆叠和系统级测试需求（如HBM的TSV通断测试、系统级高速接口测试）将呈指数级爆发，独立第三方测试厂的先进测试产能将极度稀缺，有望迎来量价齐升。",
+        "target_profile": "拥有高端测试平台（如高速ATE机台、SLT系统级测试能力），已与头部AI芯片公司或封测厂形成紧密合作，营收弹性大，资本开支主要用于提前储备高端测试产能。",
+        "linkage_method": "cobweb_oversupply",
+        "time_to_impact": "long_term",
+        "impact_materiality": "medium",
+        "visibility": "very_low",
+        "evidence": [
+          {
+            "fact": "台积电2026年CoWoS总产能相较2025年底提升超3倍，日月光等OSAT厂深度承接后段oS封装，产能投放高峰将在25-27年。",
+            "from": "search[3]·台积电CoWoS封装扩产三倍！_新浪财经_新浪网",
+            "quality": {
+              "level": "high",
+              "source_type": "news_report"
+            },
+            "evidence_type": "forward_looking_rumor"
+          },
+          {
+            "fact": "先进封装在AI芯片价值链中的占比持续攀升，且近40%的HBM未来将依赖混合键合封装，工艺复杂度将驱动测试需求量和价值量双重提升。",
+            "from": "search[5]·国产类CoWoS封装火热，千亿资本或涌入_桂林珩源科技有限公司",
+            "quality": {
+              "level": "medium",
+              "source_type": "industry_analysis"
+            },
+            "evidence_type": "forward_looking_rumor"
+          }
+        ]
+      }
+    ],
+    "discovery_summary": "HBM引发的存储狂热正通过设备争夺间接扼住非存储先进芯片和成熟芯片的扩张咽喉，并将在CoWoS产能洪峰到来时，在不起眼的测试等配套环节制造新的稀缺性。"
+  }
+}

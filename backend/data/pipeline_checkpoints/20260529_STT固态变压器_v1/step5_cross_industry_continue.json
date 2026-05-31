@@ -1,0 +1,145 @@
+{
+  "step": "step5_cross_industry",
+  "run_id": "20260529_STT固态变压器_v1",
+  "input_hash": "continue",
+  "saved_at": "2026-05-29T09:15:41.184064",
+  "elapsed_seconds": 0,
+  "input_summary": "",
+  "output": {
+    "confidence": "medium",
+    "confidence_note": "跨产业关联主要基于公开的产业趋势推演及部分设备/材料数据，具体企业层面的营收影响时点难以精确量化。核心不确定性在于SiC衬底价格下行速度与技术替代（如GaN在部分中低压场景）的节奏可能改变传导路径。",
+    "step3_step4_sanity_check": {
+      "questioned": [
+        {
+          "source": "Step3",
+          "claim": "L1 SiC功率模块（含衬底/器件）是整个固态变压器产业链的极端瓶颈，且根因主要是设备约束。",
+          "doubt": "搜索证据显示，虽然衬底产能依然紧张，但**外延环节**（特别是外延设备供不应求）正成为产业化新瓶颈（search[0]）。此外，随着中国大量SiC衬底产能在2026年前后释放，设备约束的极端性可能从‘长晶炉短缺’向‘外延及高温离子注入机’迁移，纯粹由衬底定义的‘极端’瓶颈可能在12个月内降级为‘中等’瓶颈。"
+        },
+        {
+          "source": "Step4",
+          "claim": "资源挤占指出SiC长晶炉产能扩张挤占了硅基IGBT/MOSFET的产能。",
+          "doubt": "逻辑有误。SiC长晶炉是专门生长SiC晶锭的设备，硅基IGBT使用的是直拉法单晶硅炉，两者设备完全不同，不存在直接的‘长晶炉产能挤占’。真正的挤占发生在共享的半导体**前道制造设备**环节（如高温离子注入机、刻蚀设备），这些设备是SiC器件和硅基功率器件都需要的，但这一点在Step4中已有识别。因此需修正前提：瓶颈并非长晶炉挤占硅基，而是SiC领域的高温设备订单交付挤占了传统硅基功率器件的扩产能力。",
+          "adjustment": "降低SiC衬底本身作为唯一极端瓶颈的权重，将跨产业联想更多地聚焦于外延设备约束、高温离子注入等共享设备，以及SiC成本下降带来的正向应用溢出。"
+        }
+      ],
+      "cross_industry_linkages": [
+        {
+          "source_node": "SiC长晶炉及外延炉设备产能",
+          "linkage_type": "shared_equipment",
+          "affected_sector": "化合物半导体代工/研发（如氮化镓GaN-on-SiC、氧化镓）",
+          "sector_description": "专注于射频器件（如5G基站PA）、高端LED及下一代超宽禁带半导体材料的制造和研发机构。其中，GaN-on-SiC路线是军用雷达及高端基站射频的核心方案。",
+          "impact_direction": "negative",
+          "impact_narrative": "SiC外延和长晶设备的极端供给紧张（交期拉长至2年以上），导致设备制造商优先将产能分配给价值量高、需求量大的车规级SiC芯片厂。这无形中挤占了同样依赖高配SiC外延炉和特定长晶炉的GaN-on-SiC射频器件厂商的设备获取能力，延缓了军用及高端通信射频芯片的国产化扩产和迭代节奏。",
+          "target_profile": "主营军用氮化镓射频MMIC、射频功放模块，正在建设自主GaN-on-SiC外延产能的军工电子或通信核心器件企业。其典型特征是：毛利高但对先进设备依赖度极高，扩产计划常受制于进口设备交付周期。",
+          "linkage_method": "shared_constraint",
+          "time_to_impact": "medium_term",
+          "impact_materiality": "medium",
+          "visibility": "low",
+          "evidence": [
+            {
+              "fact": "外延设备供不应求。到目前为止，主要6寸外延设备集中在国外4家厂商手中，他们的产能有限且交期极长，而国内SiC外延设备厂商的产品还需验证。",
+              "from": "search[0]·SiC行业深度报告:SiC全产业链拆解,新能源行业下一代浪潮之基(上)",
+              "quality": {
+                "level": "medium",
+                "source_type": "industry_analysis"
+              },
+              "evidence_type": "hard_data_confirmation"
+            },
+            {
+              "fact": "SiC离子注入通常在高温下进行，这对设备提出了严格要求。",
+              "from": "search[3]·功率SIC晶圆前端设备市场将于 2026 年达到 50亿美元的峰值",
+              "quality": {
+                "level": "high",
+                "source_type": "industry_technology"
+              },
+              "evidence_type": "hard_data_confirmation"
+            }
+          ]
+        },
+        {
+          "source_node": "SiC功率模块成本下降预期与供货优先级",
+          "linkage_type": "crowding_out_victim",
+          "affected_sector": "数据中心与通信电源（不间断电源UPS/服务器电源）",
+          "sector_description": "向超大规模数据中心、AI算力中心提供高效能UPS和服务器电源模块（PSU）的制造商。其产品追求高效率、高功率密度，目前正从硅基方案向SiC混合方案演进。",
+          "impact_direction": "negative",
+          "impact_narrative": "SiC模块的出货优先级被新能源汽车主驱逆变器（价值量最高、市场最大）和光伏储能逆变器（市场增长快）占据。在SiC衬底产能仍受约束的背景下，工业级电源和UPS领域可能面临SiC器件供货被排挤或被涨价的局面（挤占效应）。这迫使数据中心电源厂商不得不推迟SiC方案的导入，继续使用传统硅基IGBT/MOS方案，从而在算力中心能效竞赛中面临技术代差风险。",
+          "target_profile": "以高功率UPS及AI服务器电源为主营业务，正在进行SiC方案改造但SiC业务营收占比低于5%的企业。其核心痛点是对SiC器件的单批次采购量远小于车厂，议价能力较弱。",
+          "linkage_method": "crowding_out",
+          "time_to_impact": "immediate",
+          "impact_materiality": "medium",
+          "visibility": "low",
+          "evidence": [
+            {
+              "fact": "UPS采用SiC可使双转换系统中的功率损失降低高达70%，并大幅降低冷却能耗和占地面积。",
+              "from": "search[0]·碳化硅（SiC）行业深度：应用范围、市场空间、国产替代...",
+              "quality": {
+                "level": "high",
+                "source_type": "application_intro"
+              },
+              "evidence_type": "hard_data_confirmation"
+            },
+            {
+              "fact": "到2026年全球SiC衬底有效产能为330万片，距同年629万片的衬底需求量仍有较大差距。",
+              "from": "search[1]·碳化硅关键环节即将放量",
+              "quality": {
+                "level": "high",
+                "source_type": "market_forecast"
+              },
+              "evidence_type": "hard_data_confirmation"
+            }
+          ]
+        },
+        {
+          "source_node": "SiC衬底/器件成本与技术成熟度",
+          "linkage_type": "cobweb_oversupply",
+          "affected_sector": "消费级快速充电与电动汽车OBC/DCDC模块",
+          "sector_description": "面向终端消费者的手机快充头、电动汽车非主驱的车内DCDC转换器及小功率车载充电机(OBC)制造领域。这些领域对成本极端敏感。",
+          "impact_direction": "positive",
+          "impact_narrative": "蛛网效应。当前全球疯狂砸入的SiC衬底CAPEX（千亿级别），在经历18-24个月的产能释放期后，如果新能源汽车需求增速放缓，大量过剩的衬底产能将以极低价格被清理库存。届时，此前因成本高昂（SiC价格是硅基IGBT的4倍）而无法渗透的消费级快充和中小功率DCDC/OBC将迎来‘SiC白菜价’时代，产品性能和体积将得到跨越式升级。这是一个典型的‘高利润吸引CAPEX→供需失衡→价格坍塌→应用端意外爆发’的长周期传导。",
+          "target_profile": "主营手机GaN快充/SiC快充、或者低功率车载电源类企业。其长期毛利率承压，期待通过SiC器件降本来实现产品差异化或价格战破局。",
+          "linkage_method": "cobweb_oversupply",
+          "time_to_impact": "long_term",
+          "impact_materiality": "high",
+          "visibility": "very_low",
+          "evidence": [
+            {
+              "fact": "同一级别下SiC MOSFET的价格比Si基IGBT高4倍。",
+              "from": "search[2]·深度 | SiC、IGBT市场发展现状解析",
+              "quality": {
+                "level": "high",
+                "source_type": "industry_data"
+              },
+              "evidence_type": "hard_data_confirmation"
+            },
+            {
+              "fact": "随着全球产能扩张逐步落地，未来3年内衬底单价将会继续下降，从而有助于加速碳化硅的渗透率整体提升。",
+              "from": "search[1]·突破性第三代半导体材料！碳化硅利好消息密集催化，产业链上市公司梳理",
+              "quality": {
+                "level": "medium",
+                "source_type": "industry_data"
+              },
+              "evidence_type": "forward_looking_rumor"
+            }
+          ]
+        }
+      ],
+      "discovery_summary": "SiC衬底的设备瓶颈实际在向外延和高温设备环节迁移，这不仅挤占了RF GaN-on-SiC等高端特种芯片的研发资源（短期内偏空），更可能在未来2-3年内因蛛网效应导致SiC产能过剩‘雪崩’，从而意外引爆对成本极度敏感的消费级快充等市场（长期偏多）。",
+      "step3_step4_sanity_check": {
+        "questioned": [
+          {
+            "source": "Step3",
+            "claim": "L1 SiC功率模块（含衬底/器件）是整个固态变压器产业链的极端瓶颈，且根因主要是设备约束。",
+            "doubt": "搜索证据显示，虽然衬底产能依然紧张，但**外延环节**（特别是外延设备供不应求）正成为产业化新瓶颈（search[0]）。此外，随着中国大量SiC衬底产能在2026年前后释放，设备约束的极端性可能从‘长晶炉短缺’向‘外延及高温离子注入机’迁移，纯粹由衬底定义的‘极端’瓶颈可能在12个月内降级为‘中等’瓶颈。"
+          },
+          {
+            "source": "Step4",
+            "claim": "资源挤占指出SiC长晶炉产能扩张挤占了硅基IGBT/MOSFET的产能。",
+            "doubt": "逻辑有误。SiC长晶炉是专门生长SiC晶锭的设备，硅基IGBT使用的是直拉法单晶硅炉，两者设备完全不同，不存在直接的‘长晶炉产能挤占’。真正的挤占发生在共享的半导体**前道制造设备**环节（如高温离子注入机、刻蚀设备），这些设备是SiC器件和硅基功率器件都需要的，但这一点在Step4中已有识别。因此需修正前提：瓶颈并非长晶炉挤占硅基，而是SiC领域的高温设备订单交付挤占了传统硅基功率器件的扩产能力。",
+            "adjustment": "降低SiC衬底本身作为唯一极端瓶颈的权重，将跨产业联想更多地聚焦于外延设备约束、高温离子注入等共享设备，以及SiC成本下降带来的正向应用溢出。"
+          }
+        ],
+        "adjustment": "降低SiC衬底本身作为唯一极端瓶颈的权重，将跨产业联想更多地聚焦于外延设备约束、高温离子注入等共享设备，以及SiC成本下降带来的正向应用溢出。"
+      }
+    }
+  }
+}
