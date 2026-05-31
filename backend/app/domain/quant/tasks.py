@@ -205,7 +205,7 @@ async def research_analyze_task(exec_id: str = None, industry: str = "", questio
                                   agent_id: str = "", mode_id: str = "", target: str = "",
                                   pre_run_id: str = ""):
     """V5.8 投研异步任务 — 兼容旧 Pipeline + 新 agent/mode 系统"""
-    import json as _json, os, time as _time
+    import json as _json, os, time as _time, traceback as _traceback
 
     # 新参数优先 (agent_id + mode_id + target) — 支持多步 Pipeline 串联
     if agent_id and mode_id:
@@ -224,7 +224,12 @@ async def research_analyze_task(exec_id: str = None, industry: str = "", questio
 
         try:
             from app.domain.research.api.routes import ScanRequest, _do_scan
-            result = await _do_scan(ScanRequest(agent_id=agent_id, mode_id=mode_id, target=target), pre_run_id=pre_run_id)
+            try:
+                result = await _do_scan(ScanRequest(agent_id=agent_id, mode_id=mode_id, target=target), pre_run_id=pre_run_id)
+            except Exception as e:
+                logger.error(f"[ResearchTask] _do_scan FAILED: {type(e).__name__}: {e}")
+                logger.error(f"[ResearchTask] _do_scan traceback:\n{_traceback.format_exc()}")
+                raise
             step2_data = result.get("data", {})
             enter_step3 = step2_data.get("verdict", {}).get("enter_step3", False)
             run_id = result.get("run_id", "")
@@ -273,15 +278,20 @@ async def research_analyze_task(exec_id: str = None, industry: str = "", questio
                             sd_trace.write("step4_system_dynamics")
                             if exec_id: await task_manager.update_progress(exec_id, 55, "Step4完成")
                         except Exception as e:
-                            logger.warning(f"[ResearchTask] Step4 failed (non-fatal): {e}")
+                            logger.warning(f"[ResearchTask] Step4 failed (non-fatal): {type(e).__name__}: {e}")
+                            logger.warning(f"[ResearchTask] Step4 traceback:\n{_traceback.format_exc()[:500]}")
 
-                        # Step 5: 跨产业关联 (V5.14 已合并入 Step 4)
-                        sd_out = step4_result.get("system_dynamics", {})
-                        cross_chain = sd_out.get("cross_chain_spillover", [])
+                        # Step 5: 跨产业关联 (V5.14 已合并入 Step 4, 仅在 Step 4 成功时执行)
+                        try:
+                            sd_out = step4_result.get("system_dynamics", {})
+                            cross_chain = sd_out.get("cross_chain_spillover", [])
+                        except UnboundLocalError:
+                            sd_out = {}; cross_chain = []
+                            logger.info(f"[ResearchTask] Step5 skipped: Step 4 failed, no result available")
                         if exec_id: await task_manager.update_progress(exec_id, 58, "Step5: 跨产业分析(已合并)...")
                         step5_result = {"cross_chain_spillover": cross_chain, "cross_industry_linkages": cross_chain}
 
-                        # Step 6: 核心资产筛选
+                        # Step 6: 核心资产筛选 (仅当有跨产业溢出且 Step 4 成功时)
                         if cross_chain:
                             if exec_id: await task_manager.update_progress(exec_id, 65, "Step6: 核心资产筛选...")
                             try:
@@ -306,8 +316,9 @@ async def research_analyze_task(exec_id: str = None, industry: str = "", questio
                     if exec_id: await task_manager.update_progress(exec_id, 98, "Step3完成, 落盘中...")
                     logger.info(f"[ResearchTask] Step3 DONE: {len(step3_result.get('supply_chain_map',[]))} layers")
                 except Exception as e:
-                    logger.warning(f"[ResearchTask] Step3 failed (non-fatal): {e}")
-                    if exec_id: await task_manager.update_progress(exec_id, 50, f"Step3失败(不阻塞): {e}")
+                    logger.warning(f"[ResearchTask] Step3 failed (non-fatal): {type(e).__name__}: {e}")
+                    logger.warning(f"[ResearchTask] Step3 traceback:\n{_traceback.format_exc()}")
+                    if exec_id: await task_manager.update_progress(exec_id, 50, f"Step3失败(不阻塞): {type(e).__name__}: {str(e)[:100]}")
 
             total_elapsed = _time.time() - t0
             # 更新 placeholder manifest 状态
@@ -326,8 +337,9 @@ async def research_analyze_task(exec_id: str = None, industry: str = "", questio
             if exec_id: await task_manager.update_progress(exec_id, 100, summary + f", {total_elapsed:.0f}s")
             logger.info(f"[ResearchTask] DONE: {summary}, {total_elapsed:.0f}s")
         except Exception as e:
-            logger.error(f"[ResearchTask] Failed: {e}")
-            if exec_id: await task_manager.update_progress(exec_id, 100, f"失败: {e}")
+            logger.error(f"[ResearchTask] Failed: {type(e).__name__}: {e}")
+            logger.error(f"[ResearchTask] Full traceback:\n{_traceback.format_exc()}")
+            if exec_id: await task_manager.update_progress(exec_id, 100, f"失败: {type(e).__name__}: {str(e)[:100]}")
             # 更新 manifest 为失败状态
             try:
                 if pre_run_id:
