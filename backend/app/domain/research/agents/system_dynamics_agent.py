@@ -1,9 +1,9 @@
 """
-SystemDynamicsAgent V5.13 — Step 4: 二层思维系统动力学推演
-定位: 消费 Step 3 的静态产业链图谱, 应用二层思维外推 + 影响力度估算
-核心问题: 瓶颈怎么迁移? 资金拥挤效应? 二阶后果在哪? 什么会打破推演?
+SystemDynamicsAgent V5.14 — Step 4: 双轨推演(链内+链外)
+定位: 同一产业链内二层思维外推 + 跨产业溢出分析 (原Step 5合并)
+核心问题: 链内怎么变形? 链外哪些产业被波及? 资金拥挤效应? 二阶后果?
+V5.14: +跨产业溢出(cross_chain_spillover) +Q3链内边界限定 +搜索链双轨合并
 V5.13: +二层思维外推框架(Q1-Q4) +影响力度估算(每节impact_assessment) +反编造(移除至少N条)
-V5.12: +Step2前置判断交叉验证 +sub_processes子工艺消费 +竞争格局搜索 +Glossary枚举注入
 """
 import asyncio, re
 from decimal import Decimal
@@ -15,7 +15,7 @@ from app.framework.pipeline.glossary import step4_glossary
 
 
 class SystemDynamicsAgent(ResearchAgent):
-    """系统动力学推演 V5.13 — 二层思维外推 + 影响力度估算 + 反编造"""
+    """系统动力学推演 V5.14 — 双轨推演: 链内二层思维 + 链外跨产业溢出"""
 
     def __init__(self, provider=None):
         super().__init__(provider=provider, data_loader=data_loader)
@@ -53,6 +53,24 @@ class SystemDynamicsAgent(ResearchAgent):
             sr = node.get("supply_rigidity", {})
             lines.append(f"- L{node.get('level','?')} {node.get('name','?')}: severity={sr.get('severity','?')}, root_cause={sr.get('root_cause','?')}, expand={sr.get('expand_cycle','?')}")
         return "\n".join(lines)
+
+    @staticmethod
+    def _extract_bottleneck_nodes(chain_map: List[Dict]) -> List[Dict]:
+        """从 supply_chain_map 提取 severity=extreme/high 的瓶颈节点 (V5.14 从 Step 5 搬移)"""
+        nodes = []
+        for node in chain_map:
+            sr = node.get("supply_rigidity", {})
+            severity = sr.get("severity", "")
+            if severity in ("extreme", "high"):
+                nodes.append({
+                    "name": node.get("name", "unknown"),
+                    "level": node.get("level", "?"),
+                    "severity": severity,
+                    "root_cause": sr.get("root_cause", ""),
+                    "bottleneck_narrative": node.get("bottleneck_narrative", ""),
+                    "profit_pool": node.get("profit_pool", {}),
+                })
+        return nodes
 
     async def _search_adaptive(self, chains: List[List[str]], num: int = 4, trace=None) -> List[Dict]:
         all_data = []
@@ -108,8 +126,29 @@ class SystemDynamicsAgent(ResearchAgent):
         ]
         search_data = await self._search_adaptive(search_chains, num=4, trace=trace)
 
+        # V5.14: 跨产业搜索 (原Step 5 的 N×3 节点搜索)
+        bn_nodes = self._extract_bottleneck_nodes(chain_map)
+        cross_search_data = []
+        for node in bn_nodes[:3]:
+            node_name = node["name"]
+            narrative = node.get("bottleneck_narrative", node_name)
+            chains = [
+                [f"{narrative} 还用于 哪些行业 下游 应用 领域",
+                 f"{node_name} 应用 领域 下游 行业",
+                 f"{node_name} industry application downstream"],
+                [f"{node_name} 产能 挤占 影响 涨价 替代 受益",
+                 f"{narrative} 供应紧张 受益 标的 营收占比",
+                 f"{node_name} crowding out beneficiary 2026"],
+                [f"{node_name} 涨价 影响 下游 产业链 传导",
+                 f"{narrative} 国产替代 受益 业绩弹性 2026",
+                 f"{node_name} supply squeeze spillover cross industry"],
+            ]
+            node_data = await self._search_adaptive(chains, num=4, trace=trace)
+            cross_search_data.append({"node": node_name, "search_data": node_data})
+        logger.info(f"[{self.name}] Cross-industry search: {len(bn_nodes)} bottleneck nodes, {sum(len(d['search_data']) for d in cross_search_data)} chains")
+
         # LLM 推演
-        prompt = self._build_prompt(industry, chain_map, scarcity, core_stocks, search_data, step2)
+        prompt = self._build_prompt(industry, chain_map, scarcity, core_stocks, search_data, step2, cross_search_data, bn_nodes)
 
         try:
             text = await self.provider.chat_pro(prompt, max_tokens=6144, timeout=300)
@@ -120,13 +159,14 @@ class SystemDynamicsAgent(ResearchAgent):
                 n_dynamics = len(sd.get("bottleneck_migration", {}).get("migration_drivers", []))
                 n_crowding = len(sd.get("resource_crowding", []))
                 n_hidden = len(sd.get("hidden_beneficiaries", []))
+                n_cross = len(sd.get("cross_chain_spillover", []))
                 n_queries = len(sd.get("asset_search_queries", []))
                 sanity = result.get("step3_sanity_check", {})
                 n_questioned = len(sanity.get("questioned", []))
                 confidence = result.get("confidence", "?")
-                logger.info(f"[{self.name}] Done: confidence={confidence}, sanity={n_questioned}, migration={n_dynamics}, crowding={n_crowding}, hidden={n_hidden}, queries={n_queries}")
+                logger.info(f"[{self.name}] Done: confidence={confidence}, sanity={n_questioned}, migration={n_dynamics}, crowding={n_crowding}, hidden={n_hidden}, cross={n_cross}, queries={n_queries}")
                 if trace:
-                    trace.record_note("summary", f"confidence={confidence}, sanity_checks={n_questioned}, crowding={n_crowding}, hidden={n_hidden}")
+                    trace.record_note("summary", f"confidence={confidence}, sanity_checks={n_questioned}, crowding={n_crowding}, hidden={n_hidden}, cross_chain={n_cross}")
                 return result
         except asyncio.TimeoutError:
             logger.warning(f"[{self.name}] Timeout: {industry}")
@@ -137,7 +177,7 @@ class SystemDynamicsAgent(ResearchAgent):
 
     # ═══ Prompt 构建 ═══════════════════════════
 
-    def _build_prompt(self, industry, chain_map, scarcity, core_stocks, search_data, step2=None) -> str:
+    def _build_prompt(self, industry, chain_map, scarcity, core_stocks, search_data, step2=None, cross_search_data=None, bn_nodes=None) -> str:
         # V5.12: 含 sub_processes 展开 + Step 2 可选输入
         chain_summary = self._format_chain_with_sub(chain_map, max_nodes=2, max_subs=5)
 
@@ -152,6 +192,17 @@ class SystemDynamicsAgent(ResearchAgent):
             search_summary += f"\n### {sd['query']}\n"
             for r in sd["results"][:3]:
                 search_summary += f"  - {r['title']}: {r['snippet'][:180]}\n"
+
+        # V5.14: 跨产业搜索结果
+        cross_search_summary = ""
+        if cross_search_data:
+            for cs in cross_search_data:
+                cross_search_summary += f"\n### Node: {cs['node']}\n"
+                for chain in cs["search_data"]:
+                    for r in chain["results"][:2]:
+                        cross_search_summary += f"  - {r['title']}: {r['snippet'][:150]}\n"
+        else:
+            cross_search_summary = "(无瓶颈节点, 跨产业搜索未执行)"
 
         # V5.12: Step 2 可选输入
         step2_available = bool(step2 and step2.get("cycle_phase"))
@@ -187,7 +238,7 @@ class SystemDynamicsAgent(ResearchAgent):
   → 例: "HBM 持续紧缺"是共识 → 但云厂自研芯片可能绕过 HBM
   → 识别未被市场质疑但值得挑战的隐含假设
 
-**Q3 二阶后果** — A→B 之后, B→C 是什么? C 才是市场真正忽略的机会。
+**Q3 二阶后果** (限定: **同一产业链内**, 跨产业的波及归到下方 `cross_chain_spillover` 节) — A→B 之后, B→C 是什么? C 才是市场真正忽略的机会。
   → 例: HBM 挤占 DDR(A→B) → DDR 涨价 → 二线 DDR 厂意外受益(C)
   → 不是找直接供应商, 而是找"因为别人都去找直接供应商而留下的空白"
 
@@ -208,15 +259,11 @@ class SystemDynamicsAgent(ResearchAgent):
 ## 参考案例 (few-shot, 标注了一阶→二阶外推)
 1. 资源挤占: HBM消耗3x晶圆 → 挤占DDR产能 → DRAM涨价 → 二线DRAM厂受益
    → 二层外推: DDR涨价 → 下游延长DDR4生命周期 → DDR4控制器/接口芯片意外需求
-2. 联产经济学: 炼油减产 → 硫磺供给收缩 → 磷肥飞涨 → 化肥企业受益
-   → 二层外推: 市场只看化肥 → 但磷矿作为副产品供给同步收缩 → 磷矿也可能受益
-3. 瓶颈迁移: GPU短缺 → 云厂自研芯片 → CoWoS成新瓶颈 → 封装设备受益
+2. 瓶颈迁移: GPU短缺 → 云厂自研芯片 → CoWoS成新瓶颈 → 封装设备受益
    → 二层外推: 全行业扩CoWoS需要大量设备 → 设备交期成为下一个瓶颈 → 比封测厂更早受益的是设备商
-4. CAPEX错配: 成熟制程CAPEX不足 → MCU缺货2年 → 成熟代工厂暴利
+3. CAPEX错配: 成熟制程CAPEX不足 → MCU缺货2年 → 成熟代工厂暴利
    → 二层外推: MCU缺货 → 下游被迫做多源供应 → 验证周期反而缩短 → 国内代工厂加速导入
-5. 利润池迁移: AI从硬件 → 软件 → 云服务 → 应用, 利润流向不同阶段
-   → 二层外推: 市场共识=AI硬件先受益 → 但硬件成熟后利润快速向应用层迁移 → 关注应用层提前布局信号
-6. 供给刚性: 高纯石英砂只有北卡矿 → 光伏扩产 → 石英砂2年涨价10倍
+4. 供给刚性: 高纯石英砂只有北卡矿 → 光伏扩产 → 石英砂2年涨价10倍
    → 二层外推: 石英砂涨价 → 坩埚成本占比大幅提升 → 坩埚厂商定价权增强(非石英砂本身)
 
 ## Step 3 产业链结构 (注意: margin_estimated=true 表示该值为 LLM 估计, 待 Step 6 修正)
@@ -239,6 +286,30 @@ class SystemDynamicsAgent(ResearchAgent):
 
 ## 补充搜索
 {search_summary}
+
+## 跨产业溢出分析 (V5.14)
+
+### 搜索输入 — 瓶颈节点跨产业波及
+{cross_search_summary}
+
+### 五种跨产业传导方法 (仅用于 cross_chain_spillover 节)
+
+1. **产能挤出 (crowding_out)**: 高利润/高优先级产品挤占别人的产能 → 受害方和受益方在别的产业
+   → 例: HBM疯狂扩产挤占DRAM晶圆产能 → DDR5涨价 → DDR5配套接口芯片意外受损
+2. **副产品经济学 (byproduct_economics)**: 主产品供给剧变 → 副产品供给同步变化 → 波及其他产业
+   → 例: 存储扩产需要大量高纯气体 → 气体供给被存储抢走 → 逻辑芯片的气体供应不足
+3. **投入产出溢出 (io_spillover)**: 扩产 → 上游设备/材料的订单外溢到其他产业的使用者
+   → 例: 存储抢刻蚀设备 → 成熟制程代工厂设备交期拉长 → 汽车/工业芯片产能释放延迟
+4. **牛鞭效应 (bullwhip_effect)**: 终端需求小波动 → 上游放大到存储原厂扩产 → 波及其他使用同一供给源的产业
+   → 例: AI推理需求增长 → HBM预期暴增 → 全行业备货 → ABF基板被各路芯片争抢
+5. **蛛网模型 (cobweb_oversupply)**: CAPEX洪峰 → 某一节点在未来某个时点突然过剩 → 冲击相关产业
+   → 例: 2026-27年CoWoS产能集中释放 → 测试环节需求脉冲式爆发 → 独立测试厂量价齐升
+
+要求:
+- 每条 spillover 必须标注所使用的方法 (linkage_type)
+- 必须有 evidence 支撑 (搜索已提供输入)
+- 如果搜索无证据支撑某个传导路径, 不在 evidence 上编造
+- 跨产业推演依赖的是本节的瓶颈节点搜索, 不使用 Q1-Q4 的补充搜索数据
 
 ## 输出纯 JSON (全定性, 不做数值评分)
 
@@ -349,6 +420,29 @@ class SystemDynamicsAgent(ResearchAgent):
       }}
     ],
 
+    "cross_chain_spillover": [
+      {{
+        "source_node": "上游瓶颈节点名称",
+        "linkage_type": "crowding_out / byproduct_economics / io_spillover / bullwhip_effect / cobweb_oversupply",
+        "affected_sector": "受波及的细分行业",
+        "sector_description": "行业描述, 用于Step 6标的识别",
+        "impact_direction": "positive / negative",
+        "impact_narrative": "完整的二阶段传导逻辑 (A→B→C 三层结构)",
+        "target_profile": "受益或受损企业的特征画像 (供Step 6圈定标的)",
+        "visibility": "very_low / low / moderate",
+        "time_horizon": "3-6个月 / 6-12个月 / 12-24个月 / 24个月以上",
+        "search_queries": ["用于下游标的映射的搜索词"],
+        "evidence": [
+          {{"fact":"事实","from":"search[N]·来源","quality":{{"level":"high","source_type":"industry_analysis"}},"evidence_type":"hard_data_confirmation"}}
+        ],
+        "impact_assessment": {{
+          "magnitude": "重大 / 中等 / 轻微",
+          "reasoning": "定性判断: 市场规模/利润弹性/A股映射明确度/时间紧迫度",
+          "time_horizon": "3-6个月 / 6-12个月 / 12-24个月 / 24个月以上"
+        }}
+      }}
+    ],
+
     "asset_search_queries": [
       {{
         "query": "用于Step 6资产标的检索的精准搜索词, 含行业+环节+A股关键词",
@@ -364,7 +458,7 @@ class SystemDynamicsAgent(ResearchAgent):
 - 瓶颈迁移: 引用具体子工艺名称 (如 "CoWoS.硅中介层制造"), 不只说 "L1 HBM先进封装"
 - 利润迁移: 参考 value_magnitude 判断绝对量级, 不只说 "利润流向X"
 - 资源挤占: 参考 pricing_behavior 判断谁有转嫁能力优势 (monopoly→能转嫁, capacity_war→不能)
-- hidden_beneficiaries: 如果 Step 3 已提供 sub_processes[].value_owners[] 和 a_stock_mapping[], 聚焦跨节点/跨产业二阶效应, 不重复子工艺级的价值捕获者
+- hidden_beneficiaries: 如果 Step 3 已提供 sub_processes[].value_owners[] 和 a_stock_mapping[], 聚焦跨节点二阶效应, 不重复子工艺级的价值捕获者
 - 如果 Step 3 未提供 sub_processes (空数组), 维持原有 L1/L2 级别推演粒度
 
 ## 枚举约束 (★ 强制)
@@ -389,6 +483,14 @@ class SystemDynamicsAgent(ResearchAgent):
 4.谁会供给下降? 5.谁会意外涨价? 6.谁拥有定价权?
 7.哪个瓶颈最难扩产? 8.利润会迁移到哪里? 9.市场还没发现谁?
 10.什么信号会证伪我?
+
+**跨产业溢出质量自检 (cross_chain_spillover 节):**
+- 每条 spillover 是否有明确的传导方向 (A→B→C)?
+- linkage_type 是否对应五种方法之一?
+- 是否与 Q3 链内内容重复? (同一件事既出现在 Q3 又出现在 cross_chain → 去重)
+- evidence 是否来自本节搜索输入, 而非编造?
+- target_profile 是否足够具体供 Step 6 做标的映射?
+
 确保你的推演尽可能回答以上问题。如果某方面搜索无结果, 对应部分可精简或为空, 不在 evidence 上编造。
 禁止 LLM 直接输出股票代码 (china_stocks 已删除, 用 search_queries 替代)。
 不做数值评分, 不做行业分类描述, 聚焦跨环节推演。
@@ -402,8 +504,7 @@ class SystemDynamicsAgent(ResearchAgent):
         return await super().load_context(ctx)
 
     @staticmethod
-    @staticmethod
-    def build_prompt(ctx): return "SystemDynamicsAgent V5.13"
+    def build_prompt(ctx): return "SystemDynamicsAgent V5.14"
 
     @staticmethod
     async def stream(ctx): yield "streaming not implemented"

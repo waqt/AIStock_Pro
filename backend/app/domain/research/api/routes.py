@@ -15,7 +15,6 @@ from app.domain.research.agents.global_capex_scanner import GlobalCapexScanner
 from app.domain.research.agents.dag_orchestrator import DAGOrchestrator
 from app.domain.research.agents.market_scanner import MarketScanner
 from app.domain.research.agents.system_dynamics_agent import SystemDynamicsAgent
-from app.domain.research.agents.cross_industry_linkage_agent import CrossIndustryLinkageAgent
 from app.domain.research.agents.core_screening_agent import CoreScreeningAgent
 from app.domain.research.pipelines import PIPELINES
 from app.domain.research.services.data_loader import data_loader
@@ -842,44 +841,30 @@ async def industry_drilldown(req: IndustryDrilldownRequest):
                 await save_step_observations(run_id, "step4_system_dynamics", step4_result, datetime.now().isoformat())
                 logger.info(f"[Drilldown] Step4 done: {req.industry_name}")
 
-                # Step 5: 跨产业关联
+                # Step 5: 跨产业关联 (V5.14 已合并入 Step 4)
                 sd_out = step4_result.get("system_dynamics", {})
-                if sd_out.get("resource_crowding"):
-                    try:
-                        cross = CrossIndustryLinkageAgent(provider=DeepSeekProvider())
-                        cross_ctx = {
-                            "industry": req.industry_name,
-                            "supply_chain_map": result.get("supply_chain_map", []),
-                            "resource_crowding": sd_out.get("resource_crowding", []),
-                            "bottleneck_migration": sd_out.get("bottleneck_migration", {}),
-                        }
-                        cross_trace = TraceContext(run_id)
-                        step5_result = await cross.analyze(cross_ctx, trace=cross_trace)
-                        save_checkpoint("step5_cross_industry", run_id, "drilldown", step5_result, {"elapsed": 0})
-                        cross_trace.write("step5_cross_industry")
-                        await save_step_observations(run_id, "step5_cross_industry", step5_result, datetime.now().isoformat())
-                        logger.info(f"[Drilldown] Step5 done: {len(step5_result.get('cross_industry_linkages',[]))} linkages")
+                cross_chain = sd_out.get("cross_chain_spillover", [])
+                logger.info(f"[Drilldown] Step5 (merged): {len(cross_chain)} cross-chain spillovers")
 
-                        # Step 6: 核心资产筛选
-                        if step5_result.get("cross_industry_linkages"):
-                            try:
-                                screener = CoreScreeningAgent(provider=DeepSeekProvider())
-                                screen_ctx = {
-                                    "industry": req.industry_name,
-                                    "step3_output": result,
-                                    "step4_output": {"system_dynamics": sd_out},
-                                    "step5_output": step5_result,
-                                }
-                                screen_trace = TraceContext(run_id)
-                                step6_result = await screener.analyze(screen_ctx, trace=screen_trace)
-                                save_checkpoint("step6_core_screening", run_id, "drilldown", step6_result, {"elapsed": 0})
-                                screen_trace.write("step6_core_screening")
-                                await save_step_observations(run_id, "step6_core_screening", step6_result, datetime.now().isoformat())
-                                logger.info(f"[Drilldown] Step6 done: {len(step6_result.get('ranked_stocks',[]))} strong + {len(step6_result.get('future_strong_candidates',[]))} future")
-                            except Exception as e:
-                                logger.warning(f"[Drilldown] Step6 failed (non-fatal): {e}")
+                # Step 6: 核心资产筛选
+                if cross_chain:
+                    try:
+                        step5_constructed = {"cross_chain_spillover": cross_chain, "cross_industry_linkages": cross_chain}
+                        screener = CoreScreeningAgent(provider=DeepSeekProvider())
+                        screen_ctx = {
+                            "industry": req.industry_name,
+                            "step3_output": result,
+                            "step4_output": {"system_dynamics": sd_out},
+                            "step5_output": step5_constructed,
+                        }
+                        screen_trace = TraceContext(run_id)
+                        step6_result = await screener.analyze(screen_ctx, trace=screen_trace)
+                        save_checkpoint("step6_core_screening", run_id, "drilldown", step6_result, {"elapsed": 0})
+                        screen_trace.write("step6_core_screening")
+                        await save_step_observations(run_id, "step6_core_screening", step6_result, datetime.now().isoformat())
+                        logger.info(f"[Drilldown] Step6 done: {len(step6_result.get('ranked_stocks',[]))} strong + {len(step6_result.get('future_strong_candidates',[]))} future")
                     except Exception as e:
-                        logger.warning(f"[Drilldown] Step5 failed (non-fatal): {e}")
+                        logger.warning(f"[Drilldown] Step6 failed (non-fatal): {e}")
             except Exception as e:
                 logger.warning(f"[Drilldown] Step4 failed (non-fatal): {e}")
 
@@ -932,44 +917,27 @@ async def system_dynamics_analysis(req: SystemDynamicsRequest = SystemDynamicsRe
         trace.write("step4_system_dynamics")
         await save_step_observations(run_id, "step4_system_dynamics", result, datetime.now().isoformat())
 
-        # ── 自动链 Step 5: 跨产业关联 + Step 6: 核心资产筛选 ──
+        # ── 自动链 Step 5+6: 跨产业关联 (V5.14 已合并入 Step 4) + 核心资产筛选 ──
         sd_out = result.get("system_dynamics", {})
-        if sd_out.get("resource_crowding") or sd_out.get("hidden_beneficiaries"):
+        cross_chain = sd_out.get("cross_chain_spillover", [])
+        if cross_chain:
             try:
-                cross = CrossIndustryLinkageAgent(provider=DeepSeekProvider())
-                cross_ctx = {
+                step5_constructed = {"cross_chain_spillover": cross_chain, "cross_industry_linkages": cross_chain}
+                screener = CoreScreeningAgent(provider=DeepSeekProvider())
+                screen_ctx = {
                     "industry": industry,
-                    "supply_chain_map": step3.get("supply_chain_map", []),
-                    "resource_crowding": sd_out.get("resource_crowding", []),
-                    "bottleneck_migration": sd_out.get("bottleneck_migration", {}),
+                    "step3_output": step3,
+                    "step4_output": {"system_dynamics": sd_out},
+                    "step5_output": step5_constructed,
                 }
-                cross_trace = TraceContext(run_id)
-                step5_result = await cross.analyze(cross_ctx, trace=cross_trace)
-                save_checkpoint("step5_cross_industry", run_id, "auto", step5_result, {"elapsed": 0})
-                cross_trace.write("step5_cross_industry")
-                await save_step_observations(run_id, "step5_cross_industry", step5_result, datetime.now().isoformat())
-                logger.info(f"[SystemDynamics] Step5 auto-chain done: {len(step5_result.get('cross_industry_linkages',[]))} linkages")
-
-                # Step 6
-                if step5_result.get("cross_industry_linkages"):
-                    try:
-                        screener = CoreScreeningAgent(provider=DeepSeekProvider())
-                        screen_ctx = {
-                            "industry": industry,
-                            "step3_output": step3,
-                            "step4_output": {"system_dynamics": sd_out},
-                            "step5_output": step5_result,
-                        }
-                        screen_trace = TraceContext(run_id)
-                        step6_result = await screener.analyze(screen_ctx, trace=screen_trace)
-                        save_checkpoint("step6_core_screening", run_id, "auto", step6_result, {"elapsed": 0})
-                        screen_trace.write("step6_core_screening")
-                        await save_step_observations(run_id, "step6_core_screening", step6_result, datetime.now().isoformat())
-                        logger.info(f"[SystemDynamics] Step6 auto-chain done: {len(step6_result.get('ranked_stocks',[]))} strong, {len(step6_result.get('future_strong_candidates',[]))} future")
-                    except Exception as e:
-                        logger.warning(f"[SystemDynamics] Step6 auto-chain failed: {e}")
+                screen_trace = TraceContext(run_id)
+                step6_result = await screener.analyze(screen_ctx, trace=screen_trace)
+                save_checkpoint("step6_core_screening", run_id, "auto", step6_result, {"elapsed": 0})
+                screen_trace.write("step6_core_screening")
+                await save_step_observations(run_id, "step6_core_screening", step6_result, datetime.now().isoformat())
+                logger.info(f"[SystemDynamics] Step6 auto-chain done: {len(step6_result.get('ranked_stocks',[]))} strong, {len(step6_result.get('future_strong_candidates',[]))} future")
             except Exception as e:
-                logger.warning(f"[SystemDynamics] Step5 auto-chain failed: {e}")
+                logger.warning(f"[SystemDynamics] Step6 auto-chain failed: {e}")
 
         return {"success": True, "data": result, "run_id": run_id}
     except HTTPException:
@@ -1036,41 +1004,26 @@ async def continue_pipeline_step(run_id: str, step: str):
                     save_checkpoint("step4_system_dynamics", run_id, "continue", step4_result, {"elapsed": 0})
                     sd_trace.write("step4_system_dynamics")
                     await save_step_observations(run_id, "step4_system_dynamics", step4_result, datetime.now().isoformat())
-                    # 链 Step 5
+                    # Step 5 (V5.14 已合并入 Step 4) → Step 6
                     sd_out = step4_result.get("system_dynamics", {})
-                    if sd_out.get("resource_crowding") or sd_out.get("hidden_beneficiaries"):
+                    cross_chain = sd_out.get("cross_chain_spillover", [])
+                    if cross_chain:
                         try:
-                            cross = CrossIndustryLinkageAgent(provider=DeepSeekProvider())
-                            cross_ctx = {
+                            step5_constructed = {"cross_chain_spillover": cross_chain, "cross_industry_linkages": cross_chain}
+                            screener = CoreScreeningAgent(provider=DeepSeekProvider())
+                            screen_ctx = {
                                 "industry": industry,
-                                "supply_chain_map": scm,
-                                "resource_crowding": sd_out.get("resource_crowding", []),
-                                "bottleneck_migration": sd_out.get("bottleneck_migration", {}),
+                                "step3_output": result,
+                                "step4_output": {"system_dynamics": sd_out},
+                                "step5_output": step5_constructed,
                             }
-                            cross_trace = TraceContext(run_id)
-                            step5_result = await cross.analyze(cross_ctx, trace=cross_trace)
-                            save_checkpoint("step5_cross_industry", run_id, "continue", step5_result, {"elapsed": 0})
-                            cross_trace.write("step5_cross_industry")
-                            await save_step_observations(run_id, "step5_cross_industry", step5_result, datetime.now().isoformat())
-                            # 链 Step 6
-                            if step5_result.get("cross_industry_linkages"):
-                                try:
-                                    screener = CoreScreeningAgent(provider=DeepSeekProvider())
-                                    screen_ctx = {
-                                        "industry": industry,
-                                        "step3_output": result,
-                                        "step4_output": {"system_dynamics": sd_out},
-                                        "step5_output": step5_result,
-                                    }
-                                    screen_trace = TraceContext(run_id)
-                                    step6_result = await screener.analyze(screen_ctx, trace=screen_trace)
-                                    save_checkpoint("step6_core_screening", run_id, "continue", step6_result, {"elapsed": 0})
-                                    screen_trace.write("step6_core_screening")
-                                    await save_step_observations(run_id, "step6_core_screening", step6_result, datetime.now().isoformat())
-                                except Exception as e:
-                                    logger.warning(f"[ContinueStep] Step6 chain failed: {e}")
+                            screen_trace = TraceContext(run_id)
+                            step6_result = await screener.analyze(screen_ctx, trace=screen_trace)
+                            save_checkpoint("step6_core_screening", run_id, "continue", step6_result, {"elapsed": 0})
+                            screen_trace.write("step6_core_screening")
+                            await save_step_observations(run_id, "step6_core_screening", step6_result, datetime.now().isoformat())
                         except Exception as e:
-                            logger.warning(f"[ContinueStep] Step5 chain failed: {e}")
+                            logger.warning(f"[ContinueStep] Step6 chain failed: {e}")
                 except Exception as e:
                     logger.warning(f"[ContinueStep] Step4 chain failed: {e}")
             return {"success": True, "data": result, "run_id": run_id,
@@ -1119,46 +1072,30 @@ async def continue_pipeline_step(run_id: str, step: str):
             save_checkpoint("step4_system_dynamics", run_id, "continue", result, {"elapsed": 0})
             trace.write("step4_system_dynamics")
             await save_step_observations(run_id, "step4_system_dynamics", result, datetime.now().isoformat())
-            # 自动链 Step 5
+            # Step 5 (V5.14 已合并入 Step 4) → Step 6
             sd_out = result.get("system_dynamics", {})
-            if sd_out.get("resource_crowding") or sd_out.get("hidden_beneficiaries"):
+            cross_chain = sd_out.get("cross_chain_spillover", [])
+            if cross_chain:
                 try:
-                    cross = CrossIndustryLinkageAgent(provider=DeepSeekProvider())
-                    cross_ctx = {
+                    step5_constructed = {"cross_chain_spillover": cross_chain, "cross_industry_linkages": cross_chain}
+                    screener = CoreScreeningAgent(provider=DeepSeekProvider())
+                    screen_ctx = {
                         "industry": s3_out.get("industry", ""),
-                        "supply_chain_map": scm,
-                        "resource_crowding": sd_out.get("resource_crowding", []),
-                        "bottleneck_migration": sd_out.get("bottleneck_migration", {}),
+                        "step3_output": s3_out,
+                        "step4_output": {"system_dynamics": sd_out},
+                        "step5_output": step5_constructed,
                     }
-                    cross_trace = TraceContext(run_id)
-                    step5_result = await cross.analyze(cross_ctx, trace=cross_trace)
-                    save_checkpoint("step5_cross_industry", run_id, "continue", step5_result, {"elapsed": 0})
-                    cross_trace.write("step5_cross_industry")
-                    await save_step_observations(run_id, "step5_cross_industry", step5_result, datetime.now().isoformat())
-                    # 链 Step 6
-                    linkages = step5_result.get("cross_industry_linkages", [])
-                    if linkages:
-                        try:
-                            screener = CoreScreeningAgent(provider=DeepSeekProvider())
-                            screen_ctx = {
-                                "industry": s3_out.get("industry", ""),
-                                "step3_output": s3_out,
-                                "step4_output": {"system_dynamics": sd_out},
-                                "step5_output": step5_result,
-                            }
-                            screen_trace = TraceContext(run_id)
-                            step6_result = await screener.analyze(screen_ctx, trace=screen_trace)
-                            save_checkpoint("step6_core_screening", run_id, "continue", step6_result, {"elapsed": 0})
-                            screen_trace.write("step6_core_screening")
-                            await save_step_observations(run_id, "step6_core_screening", step6_result, datetime.now().isoformat())
-                        except Exception as e:
-                            logger.warning(f"[ContinueStep] Step6 chain failed: {e}")
+                    screen_trace = TraceContext(run_id)
+                    step6_result = await screener.analyze(screen_ctx, trace=screen_trace)
+                    save_checkpoint("step6_core_screening", run_id, "continue", step6_result, {"elapsed": 0})
+                    screen_trace.write("step6_core_screening")
+                    await save_step_observations(run_id, "step6_core_screening", step6_result, datetime.now().isoformat())
                 except Exception as e:
-                    logger.warning(f"[ContinueStep] Step5 chain failed: {e}")
+                    logger.warning(f"[ContinueStep] Step6 chain failed: {e}")
             return {"success": True, "data": result, "run_id": run_id}
 
         elif step == "step5_cross_industry":
-            # 找 Step 3 + Step 4 checkpoint
+            # V5.14: Step 5 已合并入 Step 4, 从 Step 4 checkpoint 提取 cross_chain_spillover
             s3_file = find_checkpoint_file(run_id, "step3_sc_hacker")
             s4_file = find_checkpoint_file(run_id, "step4_system_dynamics")
             if not s3_file:
@@ -1172,26 +1109,16 @@ async def continue_pipeline_step(run_id: str, step: str):
                 s4 = _json.load(f)
             s3_out = s3.get("output", {})
             s4_out = s4.get("output", {}).get("system_dynamics", {})
+            cross_chain = s4_out.get("cross_chain_spillover", [])
 
-            cross = CrossIndustryLinkageAgent(provider=DeepSeekProvider())
-            cross_ctx = {
-                "industry": s3_out.get("industry", ""),
-                "supply_chain_map": s3_out.get("supply_chain_map", []),
-                "resource_crowding": s4_out.get("resource_crowding", []),
-                "bottleneck_migration": s4_out.get("bottleneck_migration", {}),
-            }
-            trace = TraceContext(run_id)
-            result = await cross.analyze(cross_ctx, trace=trace)
-            save_checkpoint("step5_cross_industry", run_id, "continue", result, {"elapsed": 0})
-            trace.write("step5_cross_industry")
-            await save_step_observations(run_id, "step5_cross_industry", result, datetime.now().isoformat())
+            result = {"cross_chain_spillover": cross_chain, "cross_industry_linkages": cross_chain, "discovery_summary": s4_out.get("thesis_breakers", [{}])[0].get("thesis", "") if s4_out.get("thesis_breakers") else ""}
+            logger.info(f"[ContinueStep] Step5 (merged, from Step4): {len(cross_chain)} spillovers")
+
             # 自动链 Step 6
-            linkages = result.get("cross_industry_linkages", [])
-            if linkages:
+            if cross_chain:
                 try:
                     s3_industry = s3_out.get("industry", "(not set)")
-                    s3_map = len(s3_out.get("supply_chain_map", []))
-                    logger.info(f"[ContinueStep] Chaining Step6: industry={s3_industry}, s3_map_nodes={s3_map}, linkages={len(linkages)}")
+                    logger.info(f"[ContinueStep] Chaining Step6: industry={s3_industry}, spillovers={len(cross_chain)}")
                     screener = CoreScreeningAgent(provider=DeepSeekProvider())
                     screen_ctx = {
                         "industry": s3_industry,
@@ -1336,36 +1263,13 @@ async def second_order_extrapolate(body: dict):
 
 @router.post("/cross-industry")
 async def cross_industry_analysis():
-    """Step 5: 跨产业关联分析 — 消费 Step 3+4 输出, 搜索相邻产业波及"""
-    try:
-        from app.framework.ai.providers.deepseek import DeepSeekProvider
-        from app.framework.pipeline.checkpoint import generate_run_id, hash_input, save_checkpoint
-        from app.framework.pipeline.trace import TraceContext
-
-        provider = DeepSeekProvider()
-        agent = CrossIndustryLinkageAgent(provider=provider)
-        run_id = generate_run_id("跨产业关联")
-        t0 = __import__("time").time()
-
-        ctx = {
-            "industry": "",
-            "supply_chain_map": [],
-            "resource_crowding": [],
-            "bottleneck_migration": {},
-        }
-        trace = TraceContext(run_id)
-        result = await agent.analyze(ctx, trace=trace)
-
-        input_hash = hash_input({"step": "cross_industry", "date": __import__("datetime").datetime.now().strftime("%Y%m%d")})
-        elapsed = round(__import__("time").time() - t0, 1)
-        save_checkpoint("step5_cross_industry", run_id, input_hash, result, {"elapsed": elapsed})
-        trace.write("step5_cross_industry")
-        await save_step_observations(run_id, "step5_cross_industry", result, datetime.now().isoformat())
-
-        return {"success": True, "data": result, "run_id": run_id, "elapsed": elapsed}
-    except Exception as e:
-        logger.error(f"[CrossIndustry] Failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    """Step 5: 跨产业关联分析 (DEPRECATED in V5.14 — 已合并入 Step 4 SystemDynamicsAgent)"""
+    logger.warning(f"[CrossIndustry] DEPRECATED: Step 5 merged into Step 4 (V5.14). Use /system-dynamics instead.")
+    return {"success": True, "data": {
+        "deprecated": True,
+        "message": "Step 5 已合并入 Step 4 (V5.14), cross_chain_spillover 现在作为 system_dynamics 的一部分输出。请使用 POST /api/research/system-dynamics 替代。",
+        "migration": "Step 4 输出中的 system_dynamics.cross_chain_spillover[] 替代了原 Step 5 的 cross_industry_linkages[]"
+    }}
 
 
 @router.post("/capital-flow")

@@ -3,6 +3,9 @@ CrossIndustryLinkageAgent V1.0 — Step 5: 跨产业关联分析
 定位: 发现段的终点。寻找被主流分析遗漏的跨产业意外受益方和受损方。
 区别于 Step 4: Step 4 推演同一产业链内部的变形，Step 5 搜索与主供应链共享资源/设备/工艺的相邻产业。
 V1.0: 3轮×N节点搜索 + 5种推演方法 + Step3/4反向校验
+
+⚠️ DEPRECATED in V5.14 — 已合并入 SystemDynamicsAgent (双轨推演: 链内+链外)
+保留源码供已有 checkpoint 反序列化, 不再被 routes.py 调用。
 """
 import asyncio, re
 from decimal import Decimal

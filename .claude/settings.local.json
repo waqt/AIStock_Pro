@@ -237,7 +237,9 @@
       "PowerShell(cd E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro; $env:PYTHONPATH = \"E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\backend\"; & \"D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe\" \"temp_lab\\\\test_three_layer_abstract.py\")",
       "PowerShell(cd E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro; $env:PYTHONPATH = \"E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\backend\"; & \"D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe\" \"temp_lab\\\\test_three_layer_v2.py\")",
       "PowerShell(cd E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro; $env:PYTHONIOENCODING = 'utf-8'; & \"D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe\" \"temp_lab\\\\eval_three_layer.py\")",
-      "PowerShell(cd E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro; $env:PYTHONIOENCODING = 'utf-8'; & \"D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe\" \"temp_lab\\\\eval_human_review.py\")"
+      "PowerShell(cd E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro; $env:PYTHONIOENCODING = 'utf-8'; & \"D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe\" \"temp_lab\\\\eval_human_review.py\")",
+      "Bash(curl -s \"http://127.0.0.1:8000/api/research/pipeline/20260530_%E5%AD%98%E5%82%A8%E4%BA%A7%E4%B8%9A_v1\")",
+      "Bash(curl -s \"http://127.0.0.1:8000/api/research/pipeline/20260530_%E5%AD%98%E5%82%A8%E4%BA%A7%E4%B8%9A_v1/checkpoint/step5_cross_industry\")"
     ]
   },
   "hooks": {

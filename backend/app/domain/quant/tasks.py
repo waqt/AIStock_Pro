@@ -275,51 +275,33 @@ async def research_analyze_task(exec_id: str = None, industry: str = "", questio
                         except Exception as e:
                             logger.warning(f"[ResearchTask] Step4 failed (non-fatal): {e}")
 
-                        # Step 5: 跨产业关联分析
-                        if step4_result and step4_result.get("system_dynamics", {}).get("resource_crowding"):
-                            if exec_id: await task_manager.update_progress(exec_id, 58, "Step5: 跨产业关联分析...")
-                            try:
-                                from app.domain.research.agents.cross_industry_linkage_agent import CrossIndustryLinkageAgent
-                                sd_out = step4_result.get("system_dynamics", {})
-                                cross = CrossIndustryLinkageAgent(provider=DeepSeekProvider())
-                                cross_ctx = {
-                                    "industry": target or mode_id,
-                                    "supply_chain_map": step3_result.get("supply_chain_map", []),
-                                    "resource_crowding": sd_out.get("resource_crowding", []),
-                                    "bottleneck_migration": sd_out.get("bottleneck_migration", {}),
-                                }
-                                cross_trace = TraceContext(run_id)
-                                step5_result = await cross.analyze(cross_ctx, trace=cross_trace)
-                                cross_ih = hash_input({"industry": target or mode_id,
-                                                       "date": _time.strftime("%Y%m%d"), "agent_version": "cross_industry_v1.0"})
-                                save_checkpoint("step5_cross_industry", run_id, cross_ih, step5_result, {"elapsed": 0})
-                                cross_trace.write("step5_cross_industry")
-                                if exec_id: await task_manager.update_progress(exec_id, 62, "Step5完成")
+                        # Step 5: 跨产业关联 (V5.14 已合并入 Step 4)
+                        sd_out = step4_result.get("system_dynamics", {})
+                        cross_chain = sd_out.get("cross_chain_spillover", [])
+                        if exec_id: await task_manager.update_progress(exec_id, 58, "Step5: 跨产业分析(已合并)...")
+                        step5_result = {"cross_chain_spillover": cross_chain, "cross_industry_linkages": cross_chain}
 
-                                # Step 6: 核心资产筛选
-                                linkages = step5_result.get("cross_industry_linkages", [])
-                                if linkages:
-                                    if exec_id: await task_manager.update_progress(exec_id, 65, "Step6: 核心资产筛选...")
-                                    try:
-                                        from app.domain.research.agents.core_screening_agent import CoreScreeningAgent
-                                        screener = CoreScreeningAgent(provider=DeepSeekProvider())
-                                        screen_ctx = {
-                                            "industry": target or mode_id,
-                                            "step3_output": step3_result,
-                                            "step4_output": {"system_dynamics": sd_out},
-                                            "step5_output": step5_result,
-                                        }
-                                        screen_trace = TraceContext(run_id)
-                                        step6_result = await screener.analyze(screen_ctx, trace=screen_trace)
-                                        screen_ih = hash_input({"industry": target or mode_id,
-                                                                "date": _time.strftime("%Y%m%d"), "agent_version": "core_screening_v1.0"})
-                                        save_checkpoint("step6_core_screening", run_id, screen_ih, step6_result, {"elapsed": 0})
-                                        screen_trace.write("step6_core_screening")
-                                        if exec_id: await task_manager.update_progress(exec_id, 70, "Step6完成")
-                                    except Exception as e:
-                                        logger.warning(f"[ResearchTask] Step6 failed (non-fatal): {e}")
+                        # Step 6: 核心资产筛选
+                        if cross_chain:
+                            if exec_id: await task_manager.update_progress(exec_id, 65, "Step6: 核心资产筛选...")
+                            try:
+                                from app.domain.research.agents.core_screening_agent import CoreScreeningAgent
+                                screener = CoreScreeningAgent(provider=DeepSeekProvider())
+                                screen_ctx = {
+                                    "industry": target or mode_id,
+                                    "step3_output": step3_result,
+                                    "step4_output": {"system_dynamics": sd_out},
+                                    "step5_output": step5_result,
+                                }
+                                screen_trace = TraceContext(run_id)
+                                step6_result = await screener.analyze(screen_ctx, trace=screen_trace)
+                                screen_ih = hash_input({"industry": target or mode_id,
+                                                        "date": _time.strftime("%Y%m%d"), "agent_version": "core_screening_v1.0"})
+                                save_checkpoint("step6_core_screening", run_id, screen_ih, step6_result, {"elapsed": 0})
+                                screen_trace.write("step6_core_screening")
+                                if exec_id: await task_manager.update_progress(exec_id, 70, "Step6完成")
                             except Exception as e:
-                                logger.warning(f"[ResearchTask] Step5 failed (non-fatal): {e}")
+                                logger.warning(f"[ResearchTask] Step6 failed (non-fatal): {e}")
 
                     if exec_id: await task_manager.update_progress(exec_id, 98, "Step3完成, 落盘中...")
                     logger.info(f"[ResearchTask] Step3 DONE: {len(step3_result.get('supply_chain_map',[]))} layers")
