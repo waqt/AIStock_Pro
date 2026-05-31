@@ -282,12 +282,22 @@ class MarketScanner(ResearchAgent):
     "supply_demand_mismatch": "strong",
     "timing_mismatch": "moderate",
     "expectation_gap": "weak",
-    "profit_redistribution": "strong",
+    "profit_redistribution": {
+      "strength": "strong",
+      "direction": "upstream"
+    },
     "pricing_gap": "uncertain",
     "evidence": [
       {{"fact": "支撑逐项判断的关键事实", "from": "search[X.Y]·...",
         "quality": {{"level": "medium", "source_type": "sell_side_report"}}}}
     ]
+  }},
+
+  "thesis_killers": {{
+    "substitution_risk": "low",
+    "policy_block_risk": "low",
+    "investable_exposure": "sufficient",
+    "details": "解释性文字, 说明为什么这些威胁级别低/高"
   }},
 
   "verdict": {{
@@ -345,6 +355,20 @@ class MarketScanner(ResearchAgent):
 - weak: 证据薄弱或矛盾
 - uncertain: 完全没有数据, 不确定
 
+## profit_redistribution.direction 方向枚举
+- upstream: 利润向上游迁移（资源/原材料瓶颈受益）
+- midstream: 利润在中游集中（制造/加工环节）
+- downstream: 利润向下游迁移（渠道/品牌/应用）
+- 分散: 利润分布变化不明确或全线受益
+
+## thesis_killers — 论文杀手 (独立于五错配, 评估结构性威胁)
+- substitution_risk: low/medium/high — 替代技术是否可能在3年内颠覆产业链
+- policy_block_risk: low/medium/high — 政策/地缘风险是否可能阻断投资逻辑
+- investable_exposure: sufficient/limited/none — A股是否有可投资的纯正标的
+- details: 解释性文字
+注意: thesis_killers 与 mismatch_analysis 无关。即使 S+T+E+P+$ 全 strong,
+如果 thesis_killers 有高风险, verdict 应降级。
+
 ## 避免同质化重复 (★ 强制)
 - 规则：每条 evidence 只能在整个输出中引用一次（不要用同样的事实填充不同的字段）。
 - 如果某条 evidence 需要支撑多个字段，请在 evidence 数组中用 "also_supports": ["prosperity", "payoff"] 声明适用范围，但 fact 本身只写一次。
@@ -374,6 +398,144 @@ class MarketScanner(ResearchAgent):
             logger.warning(f"[{self.name}] {industry}: {e}")
         return {}
 
+    # ═══ Step2 → 路径推荐 ═══════════════════════
+
+    @staticmethod
+    def _recommend_path(ma: dict, cycle_phase: str = "unknown",
+                        mkt_repricing: str = "unknown",
+                        thesis_killers: dict = None) -> dict:
+        """五错配 → 推荐路径 (A/B/C/KILL) 确定性映射
+
+        整合:
+          - mismatch_analysis 五维度 (S/T/E/P/$)
+          - cycle_phase 交互 (bottleneck_formation/capital_frenzy 等)
+          - market_repricing_stage (早期/中期/晚期)
+          - thesis_killers (substitution_risk/policy_block_risk/investable_exposure)
+        优先级: thesis_killers(investable) > KILL > C > A > B
+        """
+        S = ma.get("supply_demand_mismatch", "uncertain")
+        T = ma.get("timing_mismatch", "uncertain")
+        E = ma.get("expectation_gap", "uncertain")
+        P_raw = ma.get("profit_redistribution", "uncertain")
+        D = ma.get("pricing_gap", "uncertain")  # $ → D
+        tk = thesis_killers or {}
+
+        # P 兼容: 旧格式 "strong" / 新格式 {"strength":"strong","direction":"upstream"}
+        if isinstance(P_raw, str):
+            P = P_raw
+            P_dir = "unknown"
+        else:
+            P = P_raw.get("strength", "uncertain") if isinstance(P_raw, dict) else "uncertain"
+            P_dir = P_raw.get("direction", "unknown") if isinstance(P_raw, dict) else "unknown"
+
+        def _make(path, confidence, rationale, extra=None):
+            return {"path": path, "confidence": confidence, "rationale": rationale,
+                    **(extra or {})}
+
+        # ── Thesis Killer 前置检查: investable_exposure=none → 强制 KILL ──
+        inv_exp = tk.get("investable_exposure", "unknown")
+        if inv_exp == "none":
+            return _make("KILL", "high",
+                "A股无纯正可投标的(investable_exposure=none), 即使逻辑通也无法投资")
+
+        # ── 路径选择 (基础) ──────────────────────────
+
+        # Priority 1: KILL — 供需无缺口
+        if S in ("weak", "uncertain"):
+            return _make("KILL", "high",
+                f"供需错配缺失(S={S}), 无基本面分析基础, 建议跳过")
+
+        # Priority 2: Path C — 认知差强
+        if E == "strong":
+            base_conf = "high"
+            base_rationale = (
+                f"认知差强(E=strong), 供需={S}, 时间={T}, 利润迁移={P}, 定价={D}")
+
+            # cycle_phase 交互: E=strong 的含义取决于处在什么阶段
+            phase_modifier = ""
+            if cycle_phase == "theme_emergence":
+                base_conf = "high_priority"
+                phase_modifier = "主题刚浮现, 市场尚未关注, 优先深挖 ⭐⭐"
+            elif cycle_phase == "bottleneck_formation":
+                base_conf = "high"
+                phase_modifier = "瓶颈形成期+认知差, 预期差最大 ⭐"
+            elif cycle_phase == "capital_frenzy":
+                base_conf = "medium"
+                phase_modifier = "注意: 资本狂热期认知差可能为假象, 需验证真伪"
+            elif cycle_phase == "demand_explosion":
+                base_conf = "high"
+                phase_modifier = "需求爆发期+认知差, 好赛道还没人看懂 ⭐"
+
+            # market_repricing_stage 调节
+            repricing_modifier = ""
+            if mkt_repricing == "晚期":
+                base_conf = "medium" if base_conf == "high" else "low"
+                repricing_modifier = ", 市场已晚期定价, 空间有限"
+            elif mkt_repricing == "早期":
+                if base_conf not in ("high_priority",):
+                    base_conf = "high"
+                repricing_modifier = ", 市场尚未定价, 空间大"
+
+            # thesis_killers 降级
+            if tk.get("substitution_risk") == "high":
+                base_conf = "medium" if base_conf != "low" else "low"
+                phase_modifier += " [警告: 替代风险高]"
+            if tk.get("policy_block_risk") == "high":
+                base_conf = "medium" if base_conf != "low" else "low"
+                phase_modifier += " [警告: 政策阻断风险高]"
+            if inv_exp == "limited":
+                base_conf = "medium" if base_conf != "low" else "low"
+                phase_modifier += " [A股敞口有限]"
+
+            highlight = base_conf in ("high", "high_priority")
+            return _make("C", base_conf,
+                f"{phase_modifier}{repricing_modifier} | {base_rationale}".strip(" | "),
+                {"highlight": highlight, "cycle_phase_modulation": phase_modifier})
+
+        # Priority 3: Path A — 市场已定价但逻辑硬 + 利润迁移明确
+        if E == "weak" and S == "strong" and P == "strong":
+            if D == "weak":
+                return _make("A", "medium",
+                    "产业逻辑硬(S=strong+P=strong)但认知已定价+估值已反映, "
+                    "直挖标的并严格评估安全边际",
+                    {"mismatch_status": "逻辑硬但无估值空间"})
+            if D == "strong":
+                path_note = ""
+                if inv_exp == "limited":
+                    path_note = " [A股敞口有限, 需精选标的]"
+                return _make("A", "high",
+                    f"供需错配+利润迁移明确, 市场已有认知(E=weak), "
+                    f"但估值尚未完全反映($=strong), 直挖受益标的 ⭐{path_note}",
+                    {"highlight": True, "mismatch_status": "S+P+$ 三强, 快速兑现"})
+            # D=uncertain
+            path_note = ""
+            if inv_exp == "limited":
+                path_note = " [A股敞口有限, 需精选]"
+            return _make("A", "medium",
+                f"产业逻辑硬(S=strong+P=strong)但认知已定价(E=weak)+定价不确定($={D}), "
+                f"推荐直挖快速扫描, 结合实际估值判断安全边际{path_note}",
+                {"mismatch_status": "逻辑硬但估值模糊"})
+
+        # Priority 4: Path B — 二阶推演
+        if E == "weak" and D in ("weak", "uncertain"):
+            return _make("B", "medium",
+                f"认知差弱(E=weak)+定价模糊($={D}), 主产业吸引力有限, "
+                "尝试二阶推演寻找跨产业溢出机会")
+
+        if S == "strong" and P in ("weak", "moderate"):
+            return _make("B", "low",
+                f"供需缺口存在(S=strong)但利润迁移不明确(P={P}), "
+                "主产业受益标的难识别, 尝试二阶推演看跨产业受益者")
+
+        # ── Fallback ──────────────────────────────
+        if S in ("moderate", "strong"):
+            return _make("C", "low",
+                f"未完全匹配已知模式(S={S}/T={T}/E={E}/P={P}/$={D}), "
+                "推荐全链路深挖进一步验证确定性")
+
+        return _make("B", "low",
+            "各维度均不突出, 二阶推演寻找边缘机会")
+
     # ═══ Step2 → Step3 决策指引 ═════════════════
 
     @staticmethod
@@ -384,6 +546,8 @@ class MarketScanner(ResearchAgent):
         v = output.get("verdict", {})
         ma = output.get("mismatch_analysis", {})
         ig = output.get("industry_granularity", {})
+        th = output.get("time_horizon", {})
+        tk = output.get("thesis_killers", {})
 
         # 周期阶段的含义映射
         phase_meanings = {
@@ -405,6 +569,19 @@ class MarketScanner(ResearchAgent):
             "inventory_cycle": "库存周期 — 分析框架: 区分补库和终端真实需求",
         }
         ptype = pr.get("type", "unknown")
+        mkt_repricing = th.get("market_repricing_stage", "unknown")
+
+        # profit_redistribution 兼容: str → {strength, direction}
+        pr_raw = ma.get("profit_redistribution", "?")
+        if isinstance(pr_raw, str):
+            P_strength = pr_raw
+            P_direction = "unknown"
+        elif isinstance(pr_raw, dict):
+            P_strength = pr_raw.get("strength", "?")
+            P_direction = pr_raw.get("direction", "unknown")
+        else:
+            P_strength = "?"
+            P_direction = "unknown"
 
         return {
             "industry_name_for_search": output.get("industry", ""),
@@ -415,7 +592,11 @@ class MarketScanner(ResearchAgent):
             "propagation_depth": pp.get("depth", "中"),
             "enter_step3": v.get("enter_step3", False),
             "priority": v.get("priority", "低"),
-            "mismatch_summary": f"S={ma.get('supply_demand_mismatch','?')}/T={ma.get('timing_mismatch','?')}/E={ma.get('expectation_gap','?')}/P={ma.get('profit_redistribution','?')}/$={ma.get('pricing_gap','?')}",
+            "mismatch_summary": f"S={ma.get('supply_demand_mismatch','?')}/T={ma.get('timing_mismatch','?')}/E={ma.get('expectation_gap','?')}/P={P_strength}/$={ma.get('pricing_gap','?')}",
+            "recommended_path": MarketScanner._recommend_path(ma, phase, mkt_repricing, tk),
+            "profit_redistribution_detail": {"strength": P_strength, "direction": P_direction},
+            "thesis_killers": tk,
+            "market_repricing_stage": mkt_repricing,
             "industry_granularity": ig.get("type", "unknown"),
             "search_focus": (
                 f"周期阶段={phase} → {phase_meanings.get(phase, '')}; "

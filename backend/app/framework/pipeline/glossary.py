@@ -80,6 +80,21 @@ GLOSSARY: Dict[str, Dict[str, str]] = {
         "传导链<3层Alpha空间有限": "产业链太短, 轮动空间小, 不值得深度推演",
     },
 
+    # ── 利润迁移方向 (Step 2) ──
+    "profit_redistribution_direction": {
+        "upstream": "利润向上游迁移（原材料/设备/资源瓶颈受益）",
+        "midstream": "利润在中游集中（制造/加工/封装测试）",
+        "downstream": "利润向下游迁移（渠道/品牌/应用/解决方案）",
+        "分散": "利润全线受益, 无明显集中方向",
+    },
+
+    # ── 论文杀手 (Step 2) ──
+    "thesis_killers": {
+        "substitution_risk": "替代技术/商业模式在3年内颠覆该产业链的风险",
+        "policy_block_risk": "政策/地缘政治因素阻断投资逻辑的风险",
+        "investable_exposure": "A股可投资标的的敞口充足程度",
+    },
+
     # ── 供给刚性严重程度 (Step 3 → Step 4/6/8) ──
     "supply_rigidity_severity": {
         "extreme": "供给完全刚性 — 独家供应, 零替代, 扩产>18个月",
@@ -195,6 +210,7 @@ def step2_glossary() -> str:
         "cycle_phase", "prosperity_type", "demand_quality",
         "payoff_asymmetry", "propagation_depth", "market_repricing_stage",
         "priority", "kill_reason",
+        "profit_redistribution_direction", "thesis_killers",
     ])
 
 

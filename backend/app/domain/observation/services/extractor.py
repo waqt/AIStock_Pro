@@ -268,9 +268,14 @@ def extract_step2_observations(output: dict, run_id: str, run_created_at: str) -
     }
     for key, (cat, label) in mismatch_labels.items():
         val = mm.get(key)
-        if val and val not in ('uncertain', 'none'):
+        # profit_redistribution 兼容: str → 强度; dict → strength 字段
+        if key == 'profit_redistribution' and isinstance(val, dict):
+            strength_val = val.get('strength', 'uncertain')
+        else:
+            strength_val = val
+        if strength_val and strength_val not in ('uncertain', 'none'):
             strength_map = {'strong': '强', 'moderate': '中', 'weak': '弱'}
-            strength = strength_map.get(val, val)
+            strength = strength_map.get(strength_val, strength_val)
             obs = {
                 'source_step': 'step2',
                 'level': 'industry',
@@ -278,13 +283,74 @@ def extract_step2_observations(output: dict, run_id: str, run_created_at: str) -
                 'description': f"{label}强度: {strength}",
                 'category': cat,
                 'direction': 'neutral',
-                'confidence': 'high' if val == 'strong' else 'medium',
+                'confidence': 'high' if strength_val == 'strong' else 'medium',
                 'industry': industry,
-                'metadata': json.dumps({"source": "mismatch_analysis", "mismatch_type": key, "strength": val}, ensure_ascii=False),
+                'metadata': json.dumps({"source": "mismatch_analysis", "mismatch_type": key, "strength": strength_val}, ensure_ascii=False),
                 'source_info': _make_source_info('pipeline', run_id=run_id, step='step2', field='mismatch_analysis'),
                 'status': 'active',
             }
             observations.append(obs)
+
+    # 6b. profit_redistribution 方向 (新格式 dict 时)
+    pr_raw = mm.get('profit_redistribution')
+    if isinstance(pr_raw, dict):
+        direction = pr_raw.get('direction', 'unknown')
+        p_strength = pr_raw.get('strength', 'uncertain')
+        if direction and direction != 'unknown':
+            dir_map = {'upstream': '上游', 'midstream': '中游', 'downstream': '下游', '分散': '分散'}
+            observations.append({
+                'source_step': 'step2',
+                'level': 'industry',
+                'title': f"利润迁移方向: {dir_map.get(direction, direction)}",
+                'description': f"利润向{dir_map.get(direction, direction)}迁移 (强度={p_strength})",
+                'category': '利润类/利润结构',
+                'direction': 'neutral',
+                'confidence': 'high' if p_strength == 'strong' else 'medium',
+                'industry': industry,
+                'metadata': json.dumps({"source": "mismatch_analysis_detail", "direction": direction}, ensure_ascii=False),
+                'source_info': _make_source_info('pipeline', run_id=run_id, step='step2', field='mismatch_analysis'),
+                'status': 'active',
+            })
+
+    # 6c. thesis_killers (新字段, 可能不存在于旧 checkpoint)
+    tk = output.get('thesis_killers', {})
+    for key, label in [('substitution_risk', '替代威胁'), ('policy_block_risk', '政策阻断'),
+                       ('investable_exposure', '可投资敞口')]:
+        kval = tk.get(key)
+        if kval and kval not in ('uncertain', 'unknown', 'low', 'sufficient'):
+            observations.append({
+                'source_step': 'step2',
+                'level': 'industry',
+                'title': f"{label}: {kval}",
+                'description': tk.get('details', ''),
+                'category': '风险类/结构性',
+                'direction': 'negative',
+                'confidence': 'high' if kval in ('high', 'none') else 'medium',
+                'industry': industry,
+                'metadata': json.dumps({"source": "thesis_killers", "key": key, "value": kval}, ensure_ascii=False),
+                'source_info': _make_source_info('pipeline', run_id=run_id, step='step2', field='thesis_killers'),
+                'status': 'active',
+            })
+
+    # 6d. recommended_path (来自 _step3_guidance)
+    guidance = output.get('_step3_guidance', {})
+    rp = guidance.get('recommended_path', {})
+    rp_path = rp.get('path', '')
+    if rp_path:
+        path_labels = {'A': '直接资产挖掘', 'B': '二阶推演', 'C': '产业链深挖', 'KILL': '跳过'}
+        observations.append({
+            'source_step': 'step2',
+            'level': 'industry',
+            'title': f"推荐路径: {path_labels.get(rp_path, rp_path)}",
+            'description': rp.get('rationale', ''),
+            'category': '认知类/路径决策',
+            'direction': 'neutral',
+            'confidence': rp.get('confidence', 'medium'),
+            'industry': industry,
+            'metadata': json.dumps({"source": "recommended_path", "path": rp_path, "confidence": rp.get('confidence')}, ensure_ascii=False),
+            'source_info': _make_source_info('pipeline', run_id=run_id, step='step2', field='step3_guidance'),
+            'status': 'active',
+        })
 
     logger.info(f"[Extractor] Step 2: {len(observations)} observations extracted (industry={industry})")
     return observations

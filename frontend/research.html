@@ -53,6 +53,26 @@
         .btn-proj.primary:disabled { opacity: 0.5; cursor: not-allowed; }
         .btn-proj.success { border-color: var(--accent-green); color: var(--accent-green); }
         .btn-proj.success:hover { background: rgba(76,175,80,0.1); }
+
+        /* Step 2 详情面板 */
+        .step2-detail { margin-top: 6px; padding: 8px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-thin); border-radius: 4px; font-size: 11px; }
+        .step2-detail .mismatch-row { display: flex; gap: 6px; margin-bottom: 6px; flex-wrap: wrap; }
+        .step2-detail .mismatch-card { padding: 4px 8px; border-radius: 3px; font-size: 10px; text-align: center; min-width: 50px; }
+        .step2-detail .mismatch-card .val { font-weight: bold; font-size: 11px; }
+        .step2-detail .mismatch-card .label { font-size: 9px; opacity: 0.8; }
+        .step2-detail .path-badge { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 10px; font-weight: bold; margin-right: 4px; }
+        .step2-detail .path-badge.A { background: rgba(33,150,243,0.2); color: #64b5f6; }
+        .step2-detail .path-badge.B { background: rgba(156,39,176,0.2); color: #ce93d8; }
+        .step2-detail .path-badge.C { background: rgba(76,175,80,0.2); color: #81c784; }
+        .step2-detail .path-badge.KILL { background: rgba(244,67,54,0.2); color: #ef9a9a; }
+        .step2-detail .info-row { display: flex; gap: 10px; margin-bottom: 4px; font-size: 10px; color: var(--text-dim); flex-wrap: wrap; }
+        .step2-detail .info-item { }
+        .step2-detail .info-item .tag { color: var(--text-micro); }
+        .step2-detail .thesis-killer { display: inline-block; padding: 1px 5px; border-radius: 2px; font-size: 9px; margin-right: 3px; }
+        .step2-detail .thesis-killer.warn { background: rgba(244,67,54,0.15); color: #ef9a9a; }
+        .step2-detail .thesis-killer.ok { background: rgba(76,175,80,0.15); color: #81c784; }
+        .step2-detail .thesis-killer.info { background: rgba(33,150,243,0.15); color: #64b5f6; }
+        .step2-detail .rationale { font-size: 10px; color: var(--text-dim); margin-top: 4px; padding: 4px; border-left: 2px solid var(--border-thin); }
         .placeholder { color: var(--text-micro); text-align: center; padding: 40px; font-size: 12px; }
         /* Tabs */
         .detail-tab { background: none; border: none; color: var(--text-dim); cursor: pointer; padding: 6px 14px; font-size: 11px; border-bottom: 2px solid transparent; }
@@ -324,27 +344,134 @@ async function loadIndustryList() {
         if (!industries || !industries.length) return;
         var listHtml = '<div style="margin-top:8px;padding:8px;background:rgba(255,255,255,0.01);border:1px solid var(--border-thin);border-radius:6px;">' +
             '<div style="color:#fff;font-size:11px;margin-bottom:6px;">📋 候选行业 (' + industries.length + '个)</div>';
-        industries.forEach(function(ind) {
+        window._step2IndustryData = industries;
+        industries.forEach(function(ind, idx) {
             var v = ind.verdict || {};
             var enter = v.enter_step3;
             var priority = v.priority || '低';
             var icon = enter ? '🥇' : (priority === '低' ? '🥉' : '🥈');
-            listHtml += '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border-thin);font-size:11px;">' +
+            var detailId = 's2detail-' + idx;
+            listHtml += '<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--border-thin);font-size:11px;">' +
                 '<span>' + icon + '</span>' +
                 '<span style="color:#fff;flex:1;">' + escHtml(ind.industry || '?') + '</span>' +
                 '<span style="color:' + (enter ? 'var(--accent-green)' : 'var(--text-micro)') + ';font-size:10px;">' +
                 'enter=' + enter + ' · ' + priority + '</span>' +
                 '<div style="display:flex;gap:4px;flex-shrink:0;">' +
+                '<button class="btn-proj" style="font-size:10px;" onclick="event.stopPropagation();toggleStep2Detail(' + idx + ', \'' + detailId + '\')" title="查看五错配详情"><i class="fas fa-chart-bar"></i></button>' +
                 '<button class="btn-proj" style="font-size:10px;" onclick="event.stopPropagation();directAssetMine(\'' + escHtml(ind.industry || '') + '\', this)"><i class="fas fa-crosshairs"></i> 直挖</button>' +
                 '<button class="btn-proj" style="font-size:10px;" onclick="event.stopPropagation();secondOrderExtrapolate(\'' + escHtml(ind.industry || '') + '\', this)"><i class="fas fa-project-diagram"></i> 二阶</button>' +
                 '<button class="btn-proj primary" style="font-size:10px;" onclick="event.stopPropagation();drilldownIndustry(\'' + escHtml(ind.industry || '') + '\', this)"><i class="fas fa-sitemap"></i> 深挖</button>' +
-                '</div></div>';
+                '</div></div>' +
+                '<div id="' + detailId + '" style="display:none;"></div>';
         });
         listHtml += '</div>';
         var old = document.getElementById('industry-list');
         if (old) old.remove();
         document.getElementById('step-cards').insertAdjacentHTML('afterend', '<div id="industry-list">' + listHtml + '</div>');
     } catch(e) { /* 静默 */ }
+}
+
+// ═══ Step 2 详情面板 ═══════════════════════════
+function toggleStep2Detail(idx, detailId) {
+    var div = document.getElementById(detailId);
+    if (!div) return;
+    if (div.style.display !== 'none') {
+        div.style.display = 'none';
+        return;
+    }
+    // 从全局数组查找行业数据
+    var industries = window._step2IndustryData || [];
+    var ind = industries[idx];
+    if (!ind) { div.innerHTML = '<div class="step2-detail">数据不可用</div>'; div.style.display = 'block'; return; }
+    div.innerHTML = renderStep2Detail(ind, detailId);
+    div.style.display = 'block';
+}
+
+function renderStep2Detail(ind, detailId) {
+    var g = ind._step3_guidance || {};
+    var rp = g.recommended_path || {};
+    var ma = ind.mismatch_analysis || {};
+    var cp = ind.cycle_position || {};
+    var pr = ind.prosperity || {};
+    var tk = ind.thesis_killers || g.thesis_killers || {};
+
+    // 错配颜色映射
+    var mismatchColors = {strong: '#4caf50', moderate: '#ff9800', weak: '#f44336', uncertain: '#888'};
+    var mismatchLabels = {supply_demand_mismatch: '供需(S)', timing_mismatch: '时间(T)',
+        expectation_gap: '认知(E)', profit_redistribution: '利润(P)', pricing_gap: '定价($)'};
+
+    var html = '<div class="step2-detail">';
+
+    // ── 错配矩阵 ──
+    html += '<div class="mismatch-row">';
+    for (var key in mismatchLabels) {
+        var raw = ma[key];
+        // profit_redistribution 兼容 dict
+        var val = (key === 'profit_redistribution' && typeof raw === 'object') ? (raw ? (raw.strength || '?') : '?') : (raw || '?');
+        var color = mismatchColors[val] || '#888';
+        html += '<div class="mismatch-card" style="background:' + color + '22;border:1px solid ' + color + '44;">' +
+            '<div class="val" style="color:' + color + ';">' + val.toUpperCase() + '</div>' +
+            '<div class="label">' + mismatchLabels[key] + '</div></div>';
+    }
+    html += '</div>';
+
+    // ── 推荐路径徽章 ──
+    var path = rp.path || '';
+    var conf = rp.confidence || '';
+    var rationale = rp.rationale || '';
+    if (path) {
+        var pathLabels = {A: 'A·直挖', B: 'B·二阶', C: 'C·深挖', KILL: 'KILL·跳过'};
+        var pathColors = {A: 'A', B: 'B', C: 'C', KILL: 'KILL'};
+        html += '<div style="margin-bottom:6px;"><span class="path-badge ' + (pathColors[path] || '') + '">' +
+            (pathLabels[path] || path) + '</span>' +
+            '<span style="font-size:10px;color:var(--text-dim);">' +
+            (conf ? ' 置信度: ' + conf : '') + '</span></div>';
+        if (rationale) {
+            html += '<div class="rationale">📌 ' + escHtml(rationale) + '</div>';
+        }
+    }
+
+    // ── 周期 + 景气 + 方向 ──
+    var phase = cp.phase || '';
+    var nextPhase = cp.next_phase || '';
+    var prosperityType = pr.type || '';
+    var demandQuality = pr.demand_quality || '';
+    // 利润迁移方向
+    var prRaw = ma.profit_redistribution;
+    var direction = '';
+    if (typeof prRaw === 'object' && prRaw) {
+        direction = prRaw.direction || '';
+    }
+
+    html += '<div class="info-row" style="margin-top:6px;">';
+    if (phase) html += '<span class="info-item"><span class="tag">周期:</span> ' + escHtml(phase) + (nextPhase ? ' → ' + escHtml(nextPhase) : '') + '</span>';
+    if (prosperityType) html += '<span class="info-item"><span class="tag">景气:</span> ' + escHtml(prosperityType) + (demandQuality ? ' (' + escHtml(demandQuality) + ')' : '') + '</span>';
+    if (direction) {
+        var dirMap = {upstream: '⬆上游', midstream: '➡中游', downstream: '⬇下游', 分散: '🔄分散'};
+        html += '<span class="info-item"><span class="tag">利润流向:</span> ' + (dirMap[direction] || direction) + '</span>';
+    }
+    html += '</div>';
+
+    // ── thesis_killers ──
+    var tkItems = [
+        {key: 'substitution_risk', label: '替代威胁', cls: 'warn'},
+        {key: 'policy_block_risk', label: '政策阻断', cls: 'warn'},
+        {key: 'investable_exposure', label: 'A股敞口', cls: 'info'}
+    ];
+    var hasTk = false;
+    for (var i = 0; i < tkItems.length; i++) {
+        var tkVal = tk[tkItems[i].key];
+        if (tkVal && tkVal !== 'uncertain' && tkVal !== 'unknown') {
+            if (!hasTk) { html += '<div class="info-row" style="margin-top:4px;"><span class="tag">风险:</span> '; hasTk = true; }
+            var isWarn = (tkVal === 'high' || tkVal === 'limited' || tkVal === 'none');
+            html += '<span class="thesis-killer ' + (isWarn ? 'warn' : 'ok') + '">' +
+                escHtml(tkItems[i].label) + ': ' + escHtml(tkVal) + '</span>';
+        }
+    }
+    if (hasTk) html += '</div>';
+
+    html += '</div>';
+    return html;
 }
 
 async function drilldownIndustry(name, btn) {
