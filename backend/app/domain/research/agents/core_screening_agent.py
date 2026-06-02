@@ -439,7 +439,7 @@ class CoreScreeningAgent(ResearchAgent):
         moat_result = {}
         moat_status = "pending"  # ★ 三态: assessed / insufficient_data / failed
         try:
-            text = await self.provider.chat_flash(prompt, max_tokens=2048, timeout=90)
+            text = await self.provider.chat_flash(prompt, max_tokens=4096, timeout=90)
             if trace: trace.record_llm(prompt, text, model="deepseek-v4-flash")
             result = self.parse_json(text)
             if isinstance(result, dict) and result.get("moat_profile"):
@@ -459,7 +459,7 @@ class CoreScreeningAgent(ResearchAgent):
                     f"\"certification_power\":\"strong/weak/unknown\","
                     f"\"cognitive_power\":\"strong/weak/unknown\"}}}}"
                 )
-                text2 = await self.provider.chat_flash(retry_prompt, max_tokens=1024, timeout=60)
+                text2 = await self.provider.chat_flash(retry_prompt, max_tokens=2048, timeout=60)
                 result2 = self.parse_json(text2)
                 if isinstance(result2, dict) and result2.get("moat_profile"):
                     moat_result = result2
@@ -886,7 +886,7 @@ class CoreScreeningAgent(ResearchAgent):
             ]], num=3, trace=trace)
             prompt = self._build_moat_prompt(c.get("name", code), code, industry, c.get("source", []), search_data)
             try:
-                text = await self.provider.chat_flash(prompt, max_tokens=2048, timeout=90)
+                text = await self.provider.chat_flash(prompt, max_tokens=4096, timeout=90)
                 if trace: trace.record_llm(prompt, text, model="deepseek-v4-flash")
                 result = self.parse_json(text)
                 if isinstance(result, dict) and result.get("moat_profile"):

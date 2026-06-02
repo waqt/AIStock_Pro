@@ -238,7 +238,7 @@ class ValuationPricer(ResearchAgent):
 - 尽量复用 framework/finance/valuation.py 中的纯函数估值逻辑 (如有)
 - moat_window 描述护城河能维持的年限"""
         try:
-            text = await self.provider.chat_pro(prompt, max_tokens=8192, timeout=240)
+            text = await self.provider.chat_pro(prompt, max_tokens=16384, timeout=240)
             result = self.parse_json(text)
             if isinstance(result, dict):
                 # parse_json 返回 {raw_text, parse_error} 时标记补跑

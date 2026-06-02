@@ -79,7 +79,7 @@ class CandidateComparator(ResearchAgent):
         prompt = self._build_comparison_prompt(candidates, node_context, search_data, fundamentals)
         result = None
         try:
-            text = await self.provider.chat_pro(prompt, max_tokens=4096, timeout=120)
+            text = await self.provider.chat_pro(prompt, max_tokens=8192, timeout=120)
             result_parsed = self.parse_json(text)
             if isinstance(result_parsed, dict) and "ranked" in result_parsed:
                 result = result_parsed
@@ -91,7 +91,7 @@ class CandidateComparator(ResearchAgent):
             try:
                 simple_prompt = self._build_simple_comparison_prompt(
                     candidates, node_context, search_data, fundamentals)
-                text2 = await self.provider.chat_pro(simple_prompt, max_tokens=2048, timeout=90)
+                text2 = await self.provider.chat_pro(simple_prompt, max_tokens=4096, timeout=90)
                 result2 = self.parse_json(text2)
                 if isinstance(result2, dict) and result2.get("ranked"):
                     result = result2
@@ -369,7 +369,7 @@ JSON 之前的分析过程不会被丢弃，请确保 JSON 部分完整且独立
 
         prompt = self._build_global_ranking_prompt(all_candidates)
         try:
-            text = await self.provider.chat_pro(prompt, max_tokens=4096, timeout=120)
+            text = await self.provider.chat_pro(prompt, max_tokens=8192, timeout=120)
             result = self.parse_json(text)
             if isinstance(result, dict) and result.get("ranked_stocks"):
                 for i, r in enumerate(result["ranked_stocks"]):
