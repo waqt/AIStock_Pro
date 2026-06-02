@@ -7,7 +7,7 @@ class RevenueScale(FinancialIndicator):
     name = "revenue_scale"
     label = "营收规模"
     description = "TTM营收规模分类: mega/large/medium/small/micro。判定公司体量和市场地位。"
-    judgment = "mega=千亿级(大盘蓝筹); large=百亿级(中盘成长); medium=十亿级(小盘); small=亿级(微型); micro=千万级(初创)。阈值基于A股标准(RMB计价),港股/美股需按汇率换算后参考。"
+    judgment = "mega=千亿级(营收≥1000亿RMB); large=百亿级(100亿~1000亿); medium=十亿级(10亿~100亿); small=亿级(1亿~10亿); micro=千万级(<1亿)。阈值基于A股标准(RMB计价),港股/美股需按汇率换算后参考。"
     category = "profile"
     indicator_type = "both"
     applicable_stages = ["startup", "inflection", "growth", "mature"]

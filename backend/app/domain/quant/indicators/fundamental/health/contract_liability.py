@@ -7,7 +7,7 @@ class ContractLiability(FinancialIndicator):
     name = "contract_liability"
     label = "合同负债"
     description = "合同负债(预收账款)余额+同比增速。客户预先支付的款项,是未来收入的先行指标。"
-    judgment = "高增长=在手订单充沛,未来营收有保障; 下降=新订单减少,需关注景气度变化。合同负债增速>营收增速=订单加速。"
+    judgment = "正增长=合同负债同比增加(新订单增长); 负增长=同比减少。合同负债增速>营收增速=新订单增速高于营收确认速度。"
     category = "health"
     indicator_type = "prosperity"
     applicable_stages = ["inflection", "growth"]

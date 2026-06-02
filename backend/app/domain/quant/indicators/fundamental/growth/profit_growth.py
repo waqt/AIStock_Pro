@@ -7,7 +7,7 @@ class ProfitGrowth(FinancialIndicator):
     name = "profit_growth"
     label = "利润增长"
     description = "近4Q归母净利润YoY增速。衡量公司盈利能力的提升速度。"
-    judgment = ">30%=高增长; 15~30%=稳健; 5~15%=低速; 0~5%=停滞; <0=利润衰退。利润增速>营收增速=利润率扩张(好信号)。"
+    judgment = ">30%=高增速; 15~30%=中高增速; 5~15%=中低增速; 0~5%=低增速; <0=负增长。利润增速>营收增速=利润率在扩张。"
     category = "growth"
     indicator_type = "prosperity"
     applicable_stages = ["startup", "inflection", "growth"]

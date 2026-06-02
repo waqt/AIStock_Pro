@@ -7,7 +7,7 @@ class InventoryIndicator(FinancialIndicator):
     name = "inventory"
     label = "存货分析"
     description = "存货余额/TTM营收占比 + 同比增速。存货过高有跌价风险,过低可能丧失销售机会。"
-    judgment = "存货/营收<10%=轻资产高效; 10~20%=正常; 20~40%=偏重; >40%=重存货行业(需关注周转)。存货增速>营收增速=潜在滞销。"
+    judgment = "存货/营收<10%=低(存货占营收比重小); 10~20%=中等; 20~40%=较高; >40%=高(存货占比大)。存货增速>营收增速=存货累积速度快于营收确认速度。"
     category = "health"
     indicator_type = "both"
     applicable_stages = ["growth", "mature"]

@@ -7,7 +7,7 @@ class RevenueYoY(FinancialIndicator):
     name = "revenue_yoy"
     label = "营收同比(%)"
     description = "单季度营收同比增速。相比TTM更敏感的增速指标,能更快捕捉拐点。"
-    judgment = "加速增长=景气上行; 减速但正增长=景气高位; 转负=拐点信号。"
+    judgment = "同比增速上升=加速; 同比增速下降但仍为正=增速放缓; 转负=由正转负。"
     category = "growth"
     indicator_type = "prosperity"
     applicable_stages = ["inflection", "growth"]
@@ -29,7 +29,7 @@ class RDGrowth(FinancialIndicator):
     name = "rd_growth"
     label = "研发费用同比(%)"
     description = "研发费用同比增速。高研发增长预示公司在积极构建技术护城河。"
-    judgment = ">30%=激进投入; 15~30%=稳健投入; 0~15%=正常维持; <0%=削减研发(需关注原因)。"
+    judgment = ">30%=高增速; 15~30%=中高增速; 0~15%=中低增速; <0%=负增长。"
     category = "growth"
     indicator_type = "moat"
     applicable_stages = ["startup", "inflection", "growth"]

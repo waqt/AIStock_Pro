@@ -9,7 +9,7 @@ class ROIICIndicator(FinancialIndicator):
     name = "roiic"
     label = "ROIIC(%)"
     description = "增量投资资本回报率 = ΔNOPAT/ΔIC。衡量新投入资本的边际回报，判断成长质量的关键指标。"
-    judgment = ">30%=高效扩张; 15~30%=健康扩张; 8~15%=可接受; 0~8%=低效; <0=价值毁灭。ROIIC>ROIC=边际改善中。"
+    judgment = ">30%=新增资本回报率高; 15~30%=较高; 8~15%=中等; 0~8%=偏低; <0=新增资本亏损。ROIIC>ROIC表明边际回报在改善。"
     category = "profitability"
     indicator_type = "prosperity"
     applicable_stages = ["growth"]

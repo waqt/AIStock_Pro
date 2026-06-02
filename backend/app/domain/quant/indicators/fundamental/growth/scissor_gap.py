@@ -7,7 +7,7 @@ class ScissorGap(FinancialIndicator):
     name = "scissor_gap"
     label = "剪刀差"
     description = "利润YoY - 营收YoY。剪刀差为正表示利润率在扩张, 为负表示利润率在收缩。"
-    judgment = ">10=大幅扩张; 5~10=扩张; 0~5=微扩; -5~0=微缩; <-5=大幅收缩。连续3Q为正=利润率改善趋势确立。"
+    judgment = ">10=利润增速领先营收>10pp; 5~10=领先5-10pp; 0~5=小幅领先; -5~0=小幅落后; <-5=落后>5pp。连续3Q为正=利润率同比持续改善。"
     category = "growth"
     indicator_type = "prosperity"
     applicable_stages = ["inflection", "growth"]

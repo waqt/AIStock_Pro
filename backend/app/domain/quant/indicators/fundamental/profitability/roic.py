@@ -8,7 +8,7 @@ class ROICIndicator(FinancialIndicator):
     name = "roic"
     label = "ROIC(%)"
     description = "投资资本回报率 = NOPAT/IC。衡量公司占用资本的回报效率，不受资本结构影响，比ROE更纯净的护城河指标。"
-    judgment = ">20%=极强护城河; 15~20%=优秀; 10~15%=良好; 8~10%=一般; <8%=平庸。ROIC>15%且稳定是顶级资产的核心特征。"
+    judgment = ">20%=高; 15~20%=较高; 10~15%=中等; 8~10%=偏低; <8%=低。ROIC>15%且稳定通常对应较强的竞争优势。"
     category = "profitability"
     indicator_type = "moat"
     applicable_stages = ["growth", "mature"]

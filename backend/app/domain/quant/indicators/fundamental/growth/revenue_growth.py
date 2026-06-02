@@ -7,7 +7,7 @@ class RevenueGrowth(FinancialIndicator):
     name = "revenue_growth"
     label = "营收增长"
     description = "近4Q营收YoY增速 + 近4Q平均增速。衡量公司收入扩张的核心指标。"
-    judgment = ">30%=高速增长; 15~30%=稳健增长; 5~15%=低速增长; 0~5%=停滞; <0=衰退。连续4Q>20%是高成长股特征。"
+    judgment = ">30%=高增速; 15~30%=中高增速; 5~15%=中低增速; 0~5%=低增速; <0=负增长。"
     category = "growth"
     indicator_type = "prosperity"
     applicable_stages = ["startup", "inflection", "growth"]

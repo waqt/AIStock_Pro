@@ -7,7 +7,7 @@ class RevenueAcceleration(FinancialIndicator):
     name = "revenue_acceleration"
     label = "营收加速"
     description = "最新单季YoY增速相比前一季是提升(加速)还是下降(减速)。相邻两期比较,非趋势判断。"
-    judgment = "accelerating=增速提升; decelerating=增速放缓; stable=变化<2pp。加速需结合后续确认趋势,减速注意拐点风险。"
+    judgment = "accelerating=当期YoY较上期提升>2pp; decelerating=下降>2pp; stable=变化幅度≤2pp。"
     category = "growth"
     indicator_type = "prosperity"
     applicable_stages = ["inflection", "growth"]
@@ -37,7 +37,7 @@ class ProfitTurnaround(FinancialIndicator):
     name = "profit_turnaround"
     label = "利润反转"
     description = "利润从亏损到盈利的拐点信号。识别转折型投资机会。"
-    judgment = "turnaround=利润从负转正,可能处于经营拐点; sustained=持续盈利; risk=利润从正转负,需警惕; negative=持续亏损。"
+    judgment = "turnaround=近4Q利润由负转正; sustained=持续为正; risk=由正转负; negative=持续为负。"
     category = "growth"
     indicator_type = "prosperity"
     applicable_stages = ["startup", "inflection"]
@@ -68,7 +68,7 @@ class RDToRevenueTrend(FinancialIndicator):
     name = "rd_to_revenue_trend"
     label = "研发费用率趋势"
     description = "研发费用/营收的比例变化趋势: rising/stable/declining。"
-    judgment = "rising=公司在加大研发投入构建护城河; declining(营收增长快于研发)=规模化效应显现; declining(研发削减)=需关注。"
+    judgment = "rising=研发费用率持续上升; declining=持续下降(需区分:营收增长快于研发 vs 研发费用绝对值下降)。"
     category = "growth"
     indicator_type = "moat"
     applicable_stages = ["startup", "inflection", "growth"]
@@ -98,7 +98,7 @@ class RevenueQoQ(FinancialIndicator):
     name = "revenue_qoq"
     label = "营收环比(%)"
     description = "营收环比增速。比同比更敏感的短期景气指标,但受季节性影响大。"
-    judgment = ">20%=爆发式增长(需确认可持续性); 10~20%=强劲; 0~10%=正常; <0%=环比下滑。季节性强的行业需与去年同期环比对比。"
+    judgment = ">20%=高环比增长; 10~20%=中高; 0~10%=中低; <0%=环比下降。季节性强的行业建议与去年同季环比对比。"
     category = "growth"
     indicator_type = "prosperity"
     applicable_stages = ["inflection", "growth"]

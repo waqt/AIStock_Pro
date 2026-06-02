@@ -7,7 +7,7 @@ class BeneishMScoreIndicator(FinancialIndicator):
     name = "beneish_m_score"
     label = "Beneish M-Score"
     description = "M-Score = -4.84 + 0.92*DSRI + 0.528*GMI + 0.404*AQI + 0.892*SGI + 0.115*DEPI - 0.172*SGAI + 4.679*TATA - 0.327*LVGI。8因子财务造假检测模型。"
-    judgment = "<-2.22=造假概率低(安全); -2.22~-1.78=灰色区域(需关注); >-1.78=造假概率较高(危险)。M-Score不是确证,但可做排雷初筛。阈值来自Beneish(1999)原文。"
+    judgment = "<-2.22=low_risk(低于Beneish阈值); -2.22~-1.78=grey_area(介于阈值之间); >-1.78=high_risk(高于Beneish阈值)。M-Score是统计信号,非确定性结论。阈值来自Beneish(1999)原文。"
     category = "quality"
     indicator_type = "both"
     applicable_stages = ["growth", "mature"]

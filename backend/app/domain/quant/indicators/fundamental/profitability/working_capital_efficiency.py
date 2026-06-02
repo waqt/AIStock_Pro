@@ -7,7 +7,7 @@ class WorkingCapitalEfficiency(FinancialIndicator):
     name = "working_capital_efficiency"
     label = "营运资本效率(%)"
     description = "(应收账款+存货-应付账款)/TTM营收。衡量公司对上下游的议价能力和渠道控制力。"
-    judgment = "<5%=极强渠道力(占用别人资金经营); 5~10%=强势; 10~20%=正常; >30%=渠道弱势,扩张质量差。负值=完全占用上下游资金经营,但需确认非拖欠供应商。"
+    judgment = "<5%=低(营运资本需求小,占用上下游资金); 5~10%=较低; 10~20%=中等; >30%=高(扩张时资金占用大)。负值=净占用上下游资金,但需确认非拖欠供应商。"
     category = "profitability"
     indicator_type = "moat"
     applicable_stages = ["growth", "mature"]

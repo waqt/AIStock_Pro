@@ -8,7 +8,7 @@ class ROICStability(FinancialIndicator):
     name = "roic_stability"
     label = "ROIC稳定性"
     description = "ROIC的变异系数(标准差/均值)。越小越稳定,护城河越牢固。"
-    judgment = "<0.1=极稳定; 0.1~0.3=正常波动; >0.3=ROIC不稳定。高均值+低变异=最优质资产。"
+    judgment = "<0.1=低波动(变异系数小); 0.1~0.3=中等波动; >0.3=高波动(变异系数大)。高均值+低变异=ROIC高且稳定。"
     category = "quality"
     indicator_type = "moat"
     applicable_stages = ["mature"]
@@ -42,7 +42,7 @@ class OperatingMarginStability(FinancialIndicator):
     name = "operating_margin_stability"
     label = "营业利润率稳定性"
     description = "近8Q营业利润率的标准差(百分点)。衡量盈利能力稳定性。"
-    judgment = "<1pp=护城河牢固; 1~3pp=正常波动; >3pp=盈利不稳。"
+    judgment = "<1pp=低波动(标准差小); 1~3pp=中等波动; >3pp=高波动(标准差大,营业利润率变化大)。"
     category = "quality"
     indicator_type = "moat"
     applicable_stages = ["mature"]

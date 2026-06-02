@@ -7,7 +7,7 @@ class GrossMarginTrend(FinancialIndicator):
     name = "gross_margin_trend"
     label = "毛利率趋势"
     description = "判断毛利率连续3Q的变化方向: rising/stable/declining。"
-    judgment = "rising=定价权增强; stable=竞争均衡; declining=定价权削弱。连续3Q下降是预警信号。"
+    judgment = "rising=毛利率持续上升; stable=窄幅波动; declining=毛利率持续下降。"
     category = "profitability"
     indicator_type = "moat"
     applicable_stages = ["inflection", "growth", "mature"]
@@ -53,7 +53,7 @@ class RDIntensity(FinancialIndicator):
     name = "rd_intensity"
     label = "研发费用率(%)"
     description = "研发费用占营收比例。衡量公司对技术/创新的投入力度。"
-    judgment = ">15%=高强度研发(生物医药/软件行业常见); 8~15%=技术密集型; 3~8%=稳健投入型; <3%=研发投入不足。"
+    judgment = ">15%=高(生物医药/软件行业常见); 8~15%=中高; 3~8%=中等; <3%=低。高低本身无绝对好坏,需结合行业特征和研发资本化政策综合判断。"
     category = "profitability"
     indicator_type = "moat"
     applicable_stages = ["startup", "inflection"]

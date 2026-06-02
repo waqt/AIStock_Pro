@@ -7,7 +7,7 @@ class OperatingLeverage(FinancialIndicator):
     name = "operating_leverage"
     label = "经营杠杆(DOL)"
     description = "经营杠杆 = %ΔEBIT / %Δ营收。衡量营业利润对营收变化的敏感度, 反映固定成本占比。"
-    judgment = ">2.0=高经营杠杆(固定成本高); 1.5~2.0=中等; 1.0~1.5=低; 0~1.0=利润弹性不足(营收增长但利润增速落后); <0=营收增长利润反降(成本结构需警惕)。"
+    judgment = ">2.0=高(固定成本占比高,利润对营收变化敏感); 1.5~2.0=中高; 1.0~1.5=中; 0~1.0=低(利润增幅低于营收); <0=负(营收增长时利润反降,表明成本结构问题)。"
     category = "growth"
     indicator_type = "prosperity"
     applicable_stages = ["growth"]

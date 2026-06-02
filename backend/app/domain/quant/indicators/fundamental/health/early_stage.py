@@ -7,7 +7,7 @@ class BurnRateMonths(FinancialIndicator):
     name = "burn_rate_months"
     label = "现金消耗月数"
     description = "现金余额/(平均每月经营现金流消耗)。衡量早期公司在不融资情况下的生存时间。"
-    judgment = ">24个月=现金充裕; 12~24个月=安全; 6~12个月=需关注; <6个月=资金紧张,需尽快融资。"
+    judgment = ">24个月=高(现金可维持2年以上); 12~24个月=中高; 6~12个月=中等; <6个月=低(现金不足6个月)。"
     category = "health"
     indicator_type = "moat"
     applicable_stages = ["startup", "inflection"]
@@ -40,7 +40,7 @@ class RDToOpex(FinancialIndicator):
     name = "rd_to_opex"
     label = "研发/运营费用比"
     description = "研发费用/(销售费用+管理费用)。衡量公司在创新vs销售之间的资源分配倾向。"
-    judgment = ">1.0=技术驱动,重研发轻销售; 0.5~1.0=均衡; <0.5=重销售轻研发。科技公司该比率应>0.5。"
+    judgment = ">1.0=研发费用高于销售管理费用; 0.5~1.0=两者相当; <0.5=销售管理费用高于研发费用。技术密集型行业通常>0.5。"
     category = "profitability"
     indicator_type = "moat"
     applicable_stages = ["startup", "inflection", "growth"]

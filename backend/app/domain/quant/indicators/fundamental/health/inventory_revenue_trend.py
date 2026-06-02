@@ -8,7 +8,7 @@ class InventoryRevenueTrend(FinancialIndicator):
     name = "inventory_revenue_trend"
     label = "存货/营收比趋势"
     description = "存货余额/营收的连续变化趋势分类。"
-    judgment = "rising_alert=存货占比连续上升; declining_bullish=持续下降; stable=经营健康。"
+    judgment = "rising_alert=存货占比连续上升; declining_bullish=持续下降; stable=窄幅波动。"
     category = "health"
     indicator_type = "both"
     applicable_stages = ["growth", "mature"]
