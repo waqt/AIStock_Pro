@@ -7,7 +7,7 @@ class MarginIndicator(FinancialIndicator):
     name = "margin"
     label = "综合利润率"
     description = "毛利率、净利率、营业利润率。衡量公司盈利能力和定价权的核心指标。"
-    judgment = "毛利率>70%=极强定价权; 50~70%=强护城河; 30~50%=中等; <30%=竞争激烈。净利率>20%=优秀。"
+    judgment = "毛利率>70%=极强定价权; 50~70%=强护城河; 30~50%=中等; <30%=竞争激烈。净利率>20%=优秀。行业间差异大(消费品牌通常高,零售/大宗低),建议与同行横向对比。"
     category = "profitability"
     indicator_type = "moat"
     applicable_stages = ["inflection", "growth", "mature"]
@@ -38,7 +38,7 @@ class ROEIndicator(FinancialIndicator):
     name = "roe"
     label = "ROE(%)"
     description = "净资产收益率 = 归母净利润/净资产。巴菲特的选股金标准，衡量股东权益的回报效率。"
-    judgment = ">20%=优秀(10年长牛股门槛); 15~20%=良好; 10~15%=一般; 5~10%=偏低; <5%=资本利用效率差。连续5年>15%是优质白马特征。"
+    judgment = ">20%=优秀(10年长牛股门槛); 15~20%=良好; 10~15%=一般; 5~10%=偏低; <5%=资本利用效率差。连续5年>15%是优质白马特征。注意金融/地产等高杠杆行业ROE天然偏高,需结合ROIC判断。"
     category = "profitability"
     indicator_type = "moat"
     applicable_stages = ["mature"]

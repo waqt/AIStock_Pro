@@ -61,8 +61,10 @@ class FinancialIndicator:
         if field.endswith("_months"):
             return "月"
         if field in ("roe", "rd_intensity", "gross_margin_pct", "net_margin_pct", "operating_margin_pct",
-	                     "working_capital_efficiency"):
+	                     "working_capital_efficiency", "inventory_revenue_ratio"):
             return "%"
+        if field in ("operating_leverage",):
+            return "倍"
         if field in ("m_score",):
             return "分"
         if field in ("scissor_gap", "operating_margin_stability"):

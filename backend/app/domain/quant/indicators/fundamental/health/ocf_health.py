@@ -7,7 +7,7 @@ class OCFHealth(FinancialIndicator):
     name = "ocf_health"
     label = "OCF健康度"
     description = "近4Q经营现金流/近4Q净利润。衡量利润是否真实转化为现金,是识别纸面利润的核心指标。"
-    judgment = ">1.0=健康; 0.7~1.0=正常; 0.5~0.7=偏低; <0.5=利润质量差; loss_making=亏损(OCF为正说明经营能产生现金); loss_making_negative_ocf=亏损且现金流为负(双重危险)。"
+    judgment = ">1.0=健康; 0.7~1.0=正常; 0.5~0.7=偏低; <0.5=利润质量差; loss_making_but_cash_positive=亏损但经营仍能产生现金; loss_making_with_negative_ocf=亏损且现金流为负(双重危险)。"
     category = "health"
     indicator_type = "moat"
     applicable_stages = ["growth", "mature"]

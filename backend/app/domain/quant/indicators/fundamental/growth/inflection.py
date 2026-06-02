@@ -6,8 +6,8 @@ from ..base import FinancialIndicator, register, _pct
 class RevenueAcceleration(FinancialIndicator):
     name = "revenue_acceleration"
     label = "营收加速"
-    description = "营收增速在提升(加速)还是下降(减速)。加速=景气上行初期,减速=景气高位或衰退前兆。"
-    judgment = "加速=营收YoY持续上升,景气上行; 减速=营收增速放缓,需关注拐点。加速第1-2季度是最好买入窗口。"
+    description = "最新单季YoY增速相比前一季是提升(加速)还是下降(减速)。相邻两期比较,非趋势判断。"
+    judgment = "accelerating=增速提升; decelerating=增速放缓; stable=变化<2pp。加速需结合后续确认趋势,减速注意拐点风险。"
     category = "growth"
     indicator_type = "prosperity"
     applicable_stages = ["inflection", "growth"]

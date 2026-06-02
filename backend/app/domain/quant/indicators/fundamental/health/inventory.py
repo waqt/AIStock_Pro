@@ -23,6 +23,6 @@ class InventoryIndicator(FinancialIndicator):
         rev_ttm = sum(float(q.get("revenue", 0) or 0) for q in financials[:4])
         inv_4q = float(financials[4].get("inventory", 0) or 0)
         return {
-            "inventory_revenue_ratio": round(inv / rev_ttm, 2) if rev_ttm else None,
+            "inventory_revenue_ratio": round(inv / rev_ttm * 100, 1) if rev_ttm else None,
             "inventory_yoy": _pct(inv, inv_4q),
         }
