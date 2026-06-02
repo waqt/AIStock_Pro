@@ -215,41 +215,41 @@ class CoreScreeningAgent(ResearchAgent):
     # ═══ Phase 2: 搜索 ═════════════════════════════
 
     async def _execute_search_clues(self, search_clues: List[Dict], trace=None) -> List[Dict]:
-        """对 search_clues 逐条执行 web search → LLM 提取股票代码"""
+        """对 search_clues 并发执行 web search → LLM 提取股票代码 (最多 4 条并发)"""
         if not search_clues:
             return []
 
-        new_candidates = []
-        seen_here = set()
+        sem = asyncio.Semaphore(4)
 
-        # 按类型分组，每批最多 4 条
-        for i, clue in enumerate(search_clues):
-            st = clue.get("_source_type", "unknown")
-            query = clue.get("query", "")
-            if not query:
-                continue
+        async def _process_one(clue: Dict, idx: int) -> List[Dict]:
+            """处理单条搜索线索，返回提取到的候选列表"""
+            async with sem:
+                st = clue.get("_source_type", "unknown")
+                query = clue.get("query", "")
+                if not query:
+                    return []
 
-            logger.info(f"[{self.name}] Search clue [{i+1}/{len(search_clues)}]: type={st} q={query[:80]}")
+                logger.info(f"[{self.name}] Search clue [{idx+1}/{len(search_clues)}]: type={st} q={query[:80]}")
 
-            # 搜索
-            results = []
-            try:
-                raw = await self.data_loader.search_web(query, num=5)
-                for r in raw:
-                    snippet = self._clean_snippet(r.get("snippet", ""))
-                    if snippet:
-                        results.append({"title": r.get("title", ""), "snippet": snippet})
-            except Exception:
-                pass
+                # 搜索
+                results = []
+                try:
+                    raw = await self.data_loader.search_web(query, num=5)
+                    for r in raw:
+                        snippet = self._clean_snippet(r.get("snippet", ""))
+                        if snippet:
+                            results.append({"title": r.get("title", ""), "snippet": snippet})
+                except Exception:
+                    pass
 
-            if trace:
-                trace.record_search(query, results)
+                if trace:
+                    trace.record_search(query, results)
 
-            if not results:
-                continue
+                if not results:
+                    return []
 
-            # LLM 提取
-            prompt = f"""从以下搜索结果中，找出明确提到的 A 股上市公司。
+                # LLM 提取
+                prompt = f"""从以下搜索结果中，找出明确提到的 A 股上市公司。
 每家公司输出: code(股票代码), name(公司名), relevance(与搜索目标的相关性说明)
 
 搜索目标: {query}
@@ -260,33 +260,48 @@ class CoreScreeningAgent(ResearchAgent):
 输出JSON数组: [{{"code":"688012","name":"中微公司","relevance":"..."}}]
 最多 5 家。只输出JSON数组。"""
 
-            try:
-                text = await self.provider.chat_flash(prompt, max_tokens=1024, timeout=60)
-                if trace: trace.record_llm(prompt, text, model="deepseek-v4-flash")
-                parsed = self.parse_json(text)
-                raw_list = []
-                if isinstance(parsed, list):
-                    raw_list = parsed
-                elif isinstance(parsed, dict):
-                    for k in ("stocks", "candidates", "companies", "results", "data"):
-                        raw_list = parsed.get(k, [])
-                        if raw_list:
-                            break
-                for r in raw_list:
-                    if isinstance(r, dict) and r.get("code") and r["code"] not in seen_here:
-                        seen_here.add(r["code"])
-                        new_candidates.append({
-                            "code": r["code"],
-                            "name": r.get("name", r["code"]),
-                            "_source_type": st,
-                            "source_node": clue.get("source_node", "") or st,
-                            "source_node_info": {},
-                            "investment_logic": r.get("relevance", clue.get("rationale", clue.get("reason", ""))),
-                            "source": [{"step": f"step6_{st}", "field": clue.get("source_node", query[:40]),
-                                        "role": r.get("relevance", "")}],
-                        })
-            except Exception as e:
-                logger.warning(f"[{self.name}] Extract failed for clue {i}: {e}")
+                try:
+                    text = await self.provider.chat_flash(prompt, max_tokens=1024, timeout=60)
+                    if trace: trace.record_llm(prompt, text, model="deepseek-v4-flash")
+                    parsed = self.parse_json(text)
+                    raw_list = []
+                    if isinstance(parsed, list):
+                        raw_list = parsed
+                    elif isinstance(parsed, dict):
+                        for k in ("stocks", "candidates", "companies", "results", "data"):
+                            raw_list = parsed.get(k, [])
+                            if raw_list:
+                                break
+                    batch = []
+                    for r in raw_list:
+                        if isinstance(r, dict) and r.get("code"):
+                            batch.append({
+                                "code": r["code"],
+                                "name": r.get("name", r["code"]),
+                                "_source_type": st,
+                                "source_node": clue.get("source_node", "") or st,
+                                "source_node_info": {},
+                                "investment_logic": r.get("relevance", clue.get("rationale", clue.get("reason", ""))),
+                                "source": [{"step": f"step6_{st}", "field": clue.get("source_node", query[:40]),
+                                            "role": r.get("relevance", "")}],
+                            })
+                    return batch
+                except Exception as e:
+                    logger.warning(f"[{self.name}] Extract failed for clue {idx}: {e}")
+                    return []
+
+        # 并发执行所有线索
+        tasks = [_process_one(clue, i) for i, clue in enumerate(search_clues)]
+        results = await asyncio.gather(*tasks)
+
+        # 去重合并
+        new_candidates = []
+        seen_here = set()
+        for batch in results:
+            for c in batch:
+                if c["code"] not in seen_here:
+                    seen_here.add(c["code"])
+                    new_candidates.append(c)
 
         logger.info(f"[{self.name}] Search done: {len(new_candidates)} new candidates from {len(search_clues)} clues")
         return new_candidates
