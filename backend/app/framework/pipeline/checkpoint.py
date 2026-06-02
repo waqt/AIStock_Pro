@@ -177,6 +177,69 @@ def update_checkpoint_output(run_id: str, step: str, new_output: dict) -> str | 
     return cp_file
 
 
+# ═══ Patch Status (补跑状态) ═══════════════════════
+
+def _patch_path(run_id: str) -> str:
+    """_patch_status.json 路径"""
+    return os.path.join(CHECKPOINT_DIR, run_id, "_patch_status.json")
+
+
+def load_patches(run_id: str) -> list:
+    """读取补跑状态列表"""
+    path = _patch_path(run_id)
+    if not os.path.exists(path):
+        return []
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return []
+
+
+def save_patches(run_id: str, patches: list) -> str:
+    """保存补跑状态列表"""
+    path = _patch_path(run_id)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(patches, f, ensure_ascii=False, indent=2, default=str)
+    return path
+
+
+def add_patch(run_id: str, stock_code: str, step: str, error: str = "") -> dict:
+    """添加补跑记录"""
+    patches = load_patches(run_id)
+    # 去重: 相同 stock_code+step+pending 不重复添加
+    existing = [p for p in patches
+                if p.get("stock_code") == stock_code
+                and p.get("step") == step
+                and p.get("status") in ("pending", "running")]
+    if existing:
+        return existing[0]
+    patch = {
+        "id": f"p_{stock_code}_{step}_{int(time.time())}",
+        "stock_code": stock_code,
+        "step": step,
+        "error": error,
+        "status": "pending",
+        "created_at": datetime.now().isoformat(),
+    }
+    patches.append(patch)
+    save_patches(run_id, patches)
+    return patch
+
+
+def update_patch(run_id: str, patch_id: str, updates: dict) -> bool:
+    """更新补跑记录状态"""
+    patches = load_patches(run_id)
+    for p in patches:
+        if p.get("id") == patch_id:
+            p.update(updates)
+            p["updated_at"] = datetime.now().isoformat()
+            save_patches(run_id, patches)
+            return True
+    return False
+
+
 def make_display_name(run_id: str, industry: str = "") -> str:
     """run_id → 项目显示名: {industry}-{YYYYMMDD}-#{n}"""
     # run_id 格式: 20260525_SOFC_v2

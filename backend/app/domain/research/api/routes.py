@@ -1518,6 +1518,125 @@ async def toggle_star(run_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ═══ Patch 补跑 API ═════════════════════════════════
+
+class PatchRequest(BaseModel):
+    stock_codes: List[str]  # 待补跑股票代码
+    steps: List[str] = ["valuation"]  # 补跑环节: valuation | moat | audit
+
+@router.get("/pipeline/{run_id}/patches")
+async def list_patches(run_id: str):
+    """列出指定 run 的所有补跑状态"""
+    from app.framework.pipeline.checkpoint import load_patches
+    patches = load_patches(run_id)
+    return {"success": True, "data": patches, "total": len(patches)}
+
+
+@router.post("/pipeline/{run_id}/patch")
+async def trigger_patch(run_id: str, req: PatchRequest):
+    """触发补跑: 对指定股票的指定环节重跑 Verification
+
+    Body: {"stock_codes": ["688072","002916"], "steps": ["valuation","moat"]}
+
+    流程:
+    1. 读取已有 step6 checkpoint
+    2. 对每只股票执行 patch_verify_single (只重跑 verification)
+    3. 合并回 checkpoint
+    4. 重新执行 global_ranking
+    5. 更新 patch_status
+    """
+    import json as _json
+    from app.framework.pipeline.checkpoint import (
+        find_checkpoint_file, save_checkpoint, add_patch, update_patch, load_manifest
+    )
+    from app.framework.ai.providers.deepseek import DeepSeekProvider
+    from app.framework.pipeline.trace import TraceContext
+
+    # 1. 找 step6 checkpoint
+    cp_file = find_checkpoint_file(run_id, "step6_core_screening")
+    if not cp_file:
+        raise HTTPException(status_code=404, detail=f"Step 6 checkpoint not found for {run_id}")
+
+    with open(cp_file, "r", encoding="utf-8") as f:
+        record = _json.load(f)
+    step6_output = record.get("output", {})
+
+    manifest = load_manifest(run_id) or {}
+    industry = manifest.get("industry", "") or step6_output.get("industry", "")
+
+    # 2. 逐只补跑
+    provider = DeepSeekProvider()
+    screener = CoreScreeningAgent(provider=provider)
+    trace = TraceContext(run_id)
+
+    updated = []
+    for code in req.stock_codes:
+        patch_id = ""
+        try:
+            patch = add_patch(run_id, code, "step6_core_screening", "")
+            patch_id = patch.get("id", "")
+            update_patch(run_id, patch_id, {"status": "running"})
+
+            result = await screener.patch_verify_single(code, step6_output, industry, trace)
+            if result.get("error"):
+                logger.warning(f"[Patch] {code}: {result['error']}")
+                update_patch(run_id, patch_id, {"status": "failed", "error": result["error"]})
+                continue
+
+            updated.append(result)
+            update_patch(run_id, patch_id, {"status": "completed"})
+            logger.info(f"[Patch] {code}: verification patched")
+
+        except Exception as e:
+            logger.warning(f"[Patch] {code} failed: {e}")
+            if patch_id:
+                update_patch(run_id, patch_id, {"status": "failed", "error": str(e)[:200]})
+
+    if not updated:
+        return {"success": True, "data": {"run_id": run_id, "patched": 0, "updated": []}}
+
+    # 3. 合并回 checkpoint — 更新所有候选列表
+    def _replace_in_list(lst, cand):
+        for i, c in enumerate(lst):
+            if c.get("code") == cand.get("code"):
+                lst[i] = cand
+                return True
+        return False
+
+    for cand in updated:
+        code = cand["code"]
+        for key in ("future_strong_candidates", "watchlist", "eliminated"):
+            if _replace_in_list(step6_output.get(key, []), cand):
+                break
+
+    # 4. 重新全局排名
+    try:
+        from app.domain.research.agents.candidate_comparator import CandidateComparator
+        comparator = CandidateComparator(provider=provider)
+        verified = (
+            step6_output.get("future_strong_candidates", []) +
+            step6_output.get("watchlist", []) +
+            step6_output.get("eliminated", [])
+        )
+        ranking = await comparator.global_ranking(verified)
+        step6_output["ranked_stocks"] = ranking.get("ranked_stocks", [])
+        step6_output["runner_ups"] = ranking.get("runner_ups", [])
+    except Exception as e:
+        logger.warning(f"[Patch] Global ranking re-run failed: {e}")
+
+    # 5. 保存更新后的 checkpoint (hash="patch" 区分于原版)
+    save_checkpoint("step6_core_screening", run_id, "patch", step6_output, {"elapsed": 0})
+    trace.write("step6_core_screening_patch")
+
+    logger.info(f"[Patch] Done: {len(updated)}/{len(req.stock_codes)} patched")
+    return {"success": True, "data": {
+        "run_id": run_id,
+        "patched": len(updated),
+        "requested": len(req.stock_codes),
+        "stock_codes": [c["code"] for c in updated],
+    }}
+
+
 @router.delete("/pipeline/{run_id}")
 async def delete_pipeline_run(run_id: str):
     """删除项目及其所有检查点文件"""

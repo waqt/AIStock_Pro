@@ -72,17 +72,25 @@ class ValuationPricer(ResearchAgent):
         self.name = "ValuationPricer"
 
     async def analyze(self, ctx: Dict[str, Any]) -> Dict[str, Any]:
-        stock = ctx.get("stock", {})
-        financial = ctx.get("financial", {})
-        human = ctx.get("human_capital", {})
+        # ★ 关键修复: 显式从 ctx 构建 stock 字典, 不再依赖调用方传 "stock" 键
+        code = ctx.get("stock_code", "")
+        name = ctx.get("stock_name", "")
+        industry = ctx.get("industry", "")
+        stage = ctx.get("stage", "")
 
-        code = stock.get("code", ctx.get("stock_code", ""))
-        name = stock.get("name", ctx.get("stock_name", ""))
+        stock = {
+            "code": code,
+            "name": name,
+            "industry": industry,
+            "stage": stage,
+        }
+        financial = ctx.get("financial", ctx.get("financial_data", {}))
+        human = ctx.get("human_capital", {})
 
         if not code:
             return {"agent": self.name, "error": "No stock_code"}
 
-        logger.info(f"[{self.name}] Pricing {code} {name}")
+        logger.info(f"[{self.name}] Pricing {code} {name} industry={industry}")
 
         peers_data = await self._search_global_peers(name, code)
 
@@ -95,15 +103,39 @@ class ValuationPricer(ResearchAgent):
             "roe": db_metrics.get("roe"),
             "dividend_yield": db_metrics.get("dividend_yield"),
             "eps_growth_3y": db_metrics.get("eps_growth_3y"),
+            # ★ 新增: industry 为 LLM 提供明确的行业上下文
+            "industry": db_metrics.get("industry", industry),
         }
 
         if not self.provider:
             return {"agent": self.name, "error": "No AI provider", "code": code}
 
-        result = await self._price_target(stock, financial, human, peers_data, hard_anchor)
+        # ★ 新增: 使用 framework/finance/model_map 预判 asset_type, 作为 LLM 的参考建议
+        suggested_type = None
+        try:
+            from app.framework.finance.model_map import match_asset_type
+            suggested_type = match_asset_type(code, name, industry or hard_anchor.get("industry", ""))
+        except Exception:
+            pass
+
+        result = await self._price_target(
+            stock, financial, human, peers_data, hard_anchor,
+            suggested_asset_type=suggested_type)
         result["agent"] = self.name
         result["code"] = code
         result["name"] = name
+
+        # ★ 校验必填字段, 缺失时标记 parse_error
+        if not result.get("parse_error"):
+            required_fields = ["valuation_summary", "asset_type", "target_valuation", "verdict"]
+            missing = [f for f in required_fields if not result.get(f) and
+                       f not in result.get("target_valuation", {}) and
+                       f not in result.get("valuation_method", {})]
+            if missing:
+                result["parse_error"] = True
+                result["_patch_required"] = ["valuation"]
+                result["_missing_fields"] = missing
+
         return result
 
     async def _search_global_peers(self, name: str, code: str) -> List:
@@ -118,20 +150,28 @@ class ValuationPricer(ResearchAgent):
         return items
 
     async def _price_target(self, stock: Dict, financial: Dict,
-                            human: Dict, peers: List, hard_anchor: Dict) -> Dict:
-        # 构建估值模型匹配指南
-        guide = "## 估值模型匹配规则 (必须遵守)\n\n"
-        guide += "先判定标的资产类型, 再选择主估值模型:\n\n"
-        guide += "| 资产类型 | 主估值模型 | 关键指标 | 适用逻辑 |\n"
-        guide += "|---------|-----------|---------|--------|\n"
+                            human: Dict, peers: List, hard_anchor: Dict,
+                            suggested_asset_type: str = None) -> Dict:
+        # ★ 精简版估值模型匹配指南 (原版40行→10行, 减少tokens)
+        guide = "## 估值模型匹配指南\n\n"
+        guide += "根据标的行业判定 asset_type, 选择主估值模型:\n"
         for k, v in self.VALUATION_MODEL_MAP.items():
-            kw = "/".join(v["keywords"][:3])
-            guide += f"| {k} ({kw}...) | {v['primary']} | {v['key_metrics']} | {v['rationale']} |\n"
-        guide += "\n步骤: ① 根据标的行业+财务特征判定 asset_type → ② 选对应的 model_primary → ③ 用该模型核心指标定价\n"
+            kw = ", ".join(v["keywords"][:4])
+            guide += f"- {k}({kw}...) → {v['primary']}\n"
+
+        # ★ 注入 model_map 预判建议
+        type_hint = ""
+        if suggested_asset_type:
+            type_hint = (
+                f"\n【系统预判】根据金融工具包 model_map 自动判定, 建议 asset_type = "
+                f"「{suggested_asset_type}」"
+                f"\n若无明显相反证据(行业/财务特征明显不匹配), 优先采用此判定。\n"
+            )
 
         prompt = f"""你是买方首席估值分析师。基于多维度数据, 对标的进行综合估值定价。
 
 {guide}
+{type_hint}
 
 ## 标的基本信息
 {_j(stock)}
@@ -141,9 +181,6 @@ class ValuationPricer(ResearchAgent):
 
 ## 财务审计结果 (FinancialAuditor)
 {_j(financial)}
-
-## 人力资本审计 (HumanCapitalDetective)
-{_j(human)}
 
 ## 全球对标搜索
 {_j(peers)}
@@ -160,61 +197,61 @@ class ValuationPricer(ResearchAgent):
   "valuation_summary": "估值核心结论 (1-2句中文)",
   "asset_type": "stable_consumer/cyclical/heavy_manufacturing/saas_startup/financial/cash_cow",
   "asset_type_reasoning": "判定依据 (行业+财务特征)",
-  "moat_window": {{
-    "years": 5,
-    "barrier_type": "技术专利/客户认证/产能规模/政策壁垒",
-    "threat_level": "LOW/MEDIUM/HIGH",
-    "reasoning": "时间窗量化依据"
-  }},
+  "moat_window": {{ "years": 5, "barrier_type": "...", "threat_level": "LOW/MEDIUM/HIGH", "reasoning": "..." }},
   "target_valuation": {{
     "base_case_mcap": 500, "unit": "亿元",
     "bull_case_mcap": 700, "bear_case_mcap": 350,
     "upside_pct": 30, "downside_pct": -15
   }},
   "valuation_method": {{
-    "primary": "PE+PEG/PB+EV-EBITDA/PS+单位经济/EV-EBITDA+PEG/PB+ROE/FCF+股息率",
-    "pe_current": 45.0, "pe_target": 55.0,
-    "pb_current": 5.0, "pb_target": 6.5,
-    "peg_ratio": 0.8,
-    "ps_current": 8.0, "ps_target": 10.0,
-    "ev_ebitda_current": 15.0, "ev_ebitda_target": 18.0,
-    "fcf_yield_pct": 3.5, "dividend_yield_pct": 2.1,
+    "primary": "PE+PEG/PB+EV-EBITDA/EV-EBITDA+PEG/PS+FCF/PB+ROE/FCF+股息率",
+    "pe_current": null, "pe_target": null,
+    "pb_current": null, "pb_target": null,
+    "peg_ratio": null,
+    "ps_current": null, "ps_target": null,
+    "ev_ebitda_current": null, "ev_ebitda_target": null,
+    "fcf_yield_pct": null, "dividend_yield_pct": null,
     "growth_rate_est": "未来3年利润CAGR%",
     "reasoning": "为什么选这个模型及其估值逻辑"
   }},
   "scenarios": {{
-    "bull": {{ "target_price": 120.0, "upside_pct": 50, "assumptions": "市占率达15%, 毛利率升至45%, 新产线满产" }},
-    "base": {{ "target_price": 90.0, "upside_pct": 12, "assumptions": "行业增速维持, 份额稳定, 估值回归中位数" }},
-    "bear": {{ "target_price": 55.0, "downside_pct": -30, "assumptions": "竞争加剧毛利率降10%, 下游需求萎缩15%" }}
+    "bull": {{ "target_price": null, "upside_pct": null, "assumptions": "..." }},
+    "base": {{ "target_price": null, "upside_pct": null, "assumptions": "..." }},
+    "bear": {{ "target_price": null, "downside_pct": null, "assumptions": "..." }}
   }},
   "quality_check": {{
-    "roe_pct": 18.5, "dividend_yield_pct": 1.8, "eps_growth_3y_pct": 15.2,
-    "quality_verdict": "高质/一般/低质 — ROE>15%+股息>2%+增速>10%为高质"
+    "roe_pct": null, "dividend_yield_pct": null, "eps_growth_3y_pct": null,
+    "quality_verdict": "高质/一般/低质"
   }},
   "global_peer_comparison": [
-    {{ "name": "对标公司", "code": "NVDA.US", "pe": 55, "ps": 20, "ev_ebitda": 25, "premium_discount": "溢价/折价原因" }}
+    {{ "name": "对标公司", "code": "NVDA.US", "pe": null, "ps": null, "ev_ebitda": null, "premium_discount": "溢价/折价原因" }}
   ],
   "position_suggest": {{
-    "allocation_pct": 10,
-    "time_horizon": "6-12个月/1-3年",
-    "entry_strategy": "现价建仓/等回调/分步建仓",
-    "exit_trigger": "什么情况下该卖出"
+    "allocation_pct": null, "time_horizon": "...", "entry_strategy": "...", "exit_trigger": "..."
   }},
   "verdict": "BUY/HOLD/SELL",
   "risk_reward_ratio": "1:3 — 解释"
 }}
 
 定价规则:
-- moat_window: 护城河能量化到多少年
-- peg_ratio: PE/利润增速%, <1=低估, >2=泡沫
-- fcf_yield: 自由现金流/市值, >5%为高现金回报
 - 综合 FinancialAuditor 的 verdict 调整风险溢价 (FAIL加30%, CAUTION加15%)
-- 综合 HumanCapitalDetective 的 score 调整管理层折价/溢价"""
-
+- 尽量复用 framework/finance/valuation.py 中的纯函数估值逻辑 (如有)
+- moat_window 描述护城河能维持的年限"""
         try:
-            text = await self.provider.chat_pro(prompt, max_tokens=4096, timeout=240)
+            text = await self.provider.chat_pro(prompt, max_tokens=8192, timeout=240)
             result = self.parse_json(text)
             if isinstance(result, dict):
+                # parse_json 返回 {raw_text, parse_error} 时标记补跑
+                if result.get("parse_error"):
+                    result["_patch_required"] = ["valuation"]
+                    result["agent"] = self.name
+                    result["code"] = stock.get("code", "?")
+                    result["name"] = stock.get("name", "?")
+                    logger.warning(
+                        f"[{self.name}] {stock.get('code','?')} "
+                        f"parse_error saved, raw_text length={len(result.get('raw_text',''))}")
+                    return result
+
                 logger.info(
                     f"[{self.name}] {stock.get('code', '?')} "
                     f"verdict: {result.get('verdict')}, "
@@ -227,7 +264,8 @@ class ValuationPricer(ResearchAgent):
         except Exception as e:
             logger.warning(f"[{self.name}] Pricing failed: {e}")
 
-        return {"error": "LLM pricing failed", "verdict": "UNKNOWN"}
+        return {"error": "LLM pricing failed", "verdict": "UNKNOWN",
+                "_patch_required": ["valuation"]}
 
     async def load_context(self, ctx: Dict[str, Any]) -> Dict[str, Any]:
         return await super().load_context(ctx)
