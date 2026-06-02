@@ -59,7 +59,13 @@ class CoreScreeningAgent(ResearchAgent):
     # ═══ Phase 1: 线索汇总 ═════════════════════════
 
     async def _collect_all_clues(self, industry: str, step3: Dict, step4: Dict, step5: Dict) -> Dict:
-        """汇聚全部线索源。
+        """汇聚全部线索源 (V5.16: 源4-7合并移除, 统一走 asset_search_queries)。
+
+        线索源:
+          1. a_stock_mapping (Step3)       → direct_candidates
+          2. bottleneck_inversions (Step3)  → direct_candidates
+          3. asset_search_queries (Step3+4) → search_clues (Step4 已含 spillover)
+          4. human_capital (Step3)         → search_clues
 
         Returns:
             {"direct_candidates": [...], "search_clues": [...], "seen_codes": set()}
@@ -120,7 +126,7 @@ class CoreScreeningAgent(ResearchAgent):
                         }
                         direct.append(cl)
 
-        # ── 源3: asset_search_queries (Step 3 + Step 4) ──
+        # ── 源3: asset_search_queries (Step 3 + Step 4, 已含 spillover 搜索项) ──
         for q in step3.get("asset_search_queries", []):
             qry = q.get("query", "")
             if qry:
@@ -129,73 +135,21 @@ class CoreScreeningAgent(ResearchAgent):
                     "query": f"A股 {qry} 上市公司 2026",
                     "priority": q.get("priority", "medium"),
                     "rationale": q.get("rationale", ""),
+                    "mapping_type": q.get("mapping_type", "direct"),
                 })
         for q in sd_out.get("asset_search_queries", []):
             qry = q.get("query", "")
             if qry:
                 search_clues.append({
                     "_source_type": "asset_search_query",
-                    "query": f"A股 {qry} 上市公司 2026",
+                    "query": qry,  # Step 4 已经拼好了 query 前缀
                     "source": q.get("source", "step4"),
+                    "source_node": q.get("source_node", ""),
                     "priority": q.get("priority", "medium"),
+                    "mapping_type": q.get("mapping_type", "direct"),
                 })
 
-        # ── 源4: cross_chain_spillover[].target_profile (Step 4) ──
-        for spill in sd_out.get("cross_chain_spillover", []):
-            if spill.get("impact_direction") == "positive":
-                profile = spill.get("target_profile", "") or spill.get("sector_description", "")
-                if profile:
-                    search_clues.append({
-                        "_source_type": "target_profile",
-                        "query": f"A股 {profile} 龙头 受益 上市公司 2026",
-                        "profile": profile,
-                        "source_node": spill.get("source_node", ""),
-                    })
-
-        # ── 源5: hidden_beneficiaries[].sector (Step 4) ──
-        for hb in sd_out.get("hidden_beneficiaries", []):
-            sector = hb.get("sector", "") or hb.get("sector_name", "")
-            if sector:
-                search_clues.append({
-                    "_source_type": "hidden_beneficiary",
-                    "query": f"A股 {sector} 龙头 受益 上市公司 2026",
-                    "sector": sector,
-                    "reason": hb.get("reason", ""),
-                })
-
-        # ── 源6: profit_pool_shift[].to_segment (Step 4) ──
-        for shift in sd_out.get("profit_pool_shift", []):
-            to_seg = shift.get("to_segment", "")
-            if to_seg:
-                search_clues.append({
-                    "_source_type": "profit_pool_shift",
-                    "query": f"A股 {to_seg} 龙头 上市公司 2026",
-                    "to_segment": to_seg,
-                    "trigger": shift.get("trigger", ""),
-                })
-
-        # ── 源7: value_node_tags (Step 3, 补充) ──
-        tags_seen = set()
-        for node in step3.get("supply_chain_map", []):
-            for t in node.get("value_node_tags", []):
-                if t and t not in tags_seen:
-                    tags_seen.add(t)
-        for item in step3.get("sales_chain", []):
-            for t in item.get("value_node_tags", []):
-                if t and t not in tags_seen:
-                    tags_seen.add(t)
-        for item in step3.get("expansion_chain", []):
-            for t in item.get("value_node_tags", []):
-                if t and t not in tags_seen:
-                    tags_seen.add(t)
-        if tags_seen:
-            search_clues.append({
-                "_source_type": "tag",
-                "tags": list(tags_seen)[:8],
-                "query": f"A股 {' '.join(list(tags_seen)[:3])} 龙头企业 核心标的 2026",
-            })
-
-        # ── 源8: 人力资本线索 (对低国产化率节点) ──
+        # ── 源4: 人力资本线索 (对低国产化率节点) ──
         for node in step3.get("supply_chain_map", []):
             subst = node.get("competitive_landscape", {}).get("china_substitution_rate", "")
             if subst in ("below_5pct", "5_20pct"):
@@ -204,7 +158,7 @@ class CoreScreeningAgent(ResearchAgent):
                 for leader in leaders[:2]:
                     search_clues.append({
                         "_source_type": "human_capital",
-                        "query": f"前{leader} 团队 创业 A股 {node_name} 芯片 半导体 2026",
+                        "query": f"前{leader} 团队 创业 A股 {node_name} 2026",
                         "leader": leader,
                         "source_node": node_name,
                     })
@@ -226,30 +180,77 @@ class CoreScreeningAgent(ResearchAgent):
             async with sem:
                 st = clue.get("_source_type", "unknown")
                 query = clue.get("query", "")
+                mapping_type = clue.get("mapping_type", "direct")
                 if not query:
                     return []
 
-                logger.info(f"[{self.name}] Search clue [{idx+1}/{len(search_clues)}]: type={st} q={query[:80]}")
+                logger.info(f"[{self.name}] Search clue [{idx+1}/{len(search_clues)}]: type={st} mapping={mapping_type} q={query[:80]}")
 
-                # 搜索
-                results = []
-                try:
-                    raw = await self.data_loader.search_web(query, num=5)
-                    for r in raw:
-                        snippet = self._clean_snippet(r.get("snippet", ""))
-                        if snippet:
-                            results.append({"title": r.get("title", ""), "snippet": snippet})
-                except Exception:
-                    pass
+                # ── a_share_equivalent: 多角度深度搜索 ──
+                if mapping_type == "a_share_equivalent":
+                    # 从 query 中提取海外公司名 (A股 {name} ... → name)
+                    import re
+                    m = re.match(r'A股\s+(.+?)\s+(?:供应商|竞争对手|国产替代|上市公司|合作伙伴)', query)
+                    foreign_company = m.group(1) if m else ""
+                    if not foreign_company:
+                        # 回退: 取第一个非中文词段
+                        parts = re.split(r'[一-鿿\s]+', query.replace('A股', '').strip())
+                        foreign_company = parts[0] if parts else ""
 
-                if trace:
-                    trace.record_search(query, results)
+                    deep_queries = [
+                        f"A股 {foreign_company} 供应商 合作伙伴 供货 上市公司 2026",
+                        f"A股 {foreign_company} 竞争对手 国产替代 对标 上市公司 2026",
+                        f"{foreign_company} 中国 供应链 合作 A股 供应商 2026",
+                    ]
+                    logger.info(f"[{self.name}] Deep search for '{foreign_company}': {len(deep_queries)} queries")
 
-                if not results:
-                    return []
+                    all_results = []
+                    for dq in deep_queries:
+                        try:
+                            raw = await self.data_loader.search_web(dq, num=5)
+                            for r in raw:
+                                snippet = self._clean_snippet(r.get("snippet", ""))
+                                if snippet:
+                                    all_results.append({"title": r.get("title", ""), "snippet": snippet})
+                            if trace: trace.record_search(dq, [])
+                        except Exception:
+                            pass
 
-                # LLM 提取
-                prompt = f"""从以下搜索结果中，找出明确提到的 A 股上市公司。
+                    if not all_results:
+                        return []
+
+                    prompt = f"""你正在找A股中与海外公司"{foreign_company}"有关联的上市公司。
+关联关系包括: 供应链供货、竞争对手、国产替代、技术合作、零部件供应。
+
+从以下搜索结果中，找出所有明确提到的 A 股上市公司。
+输出JSON数组: [{{"code":"688012","name":"中微公司","relevance":"为该公司的刻蚀设备供应商"}}]
+
+搜索结果:
+{_j(all_results)}
+
+要求:
+1. 每家公司输出 code + name + relevance (具体说明与{foreign_company}的关联)
+2. 最多 8 家, 按关联紧密度排序
+3. 只输出JSON数组"""
+                else:
+                    # ── 标准搜索路径 ──
+                    results = []
+                    try:
+                        raw = await self.data_loader.search_web(query, num=5)
+                        for r in raw:
+                            snippet = self._clean_snippet(r.get("snippet", ""))
+                            if snippet:
+                                results.append({"title": r.get("title", ""), "snippet": snippet})
+                    except Exception:
+                        pass
+
+                    if trace:
+                        trace.record_search(query, results)
+
+                    if not results:
+                        return []
+
+                    prompt = f"""从以下搜索结果中，找出明确提到的 A 股上市公司。
 每家公司输出: code(股票代码), name(公司名), relevance(与搜索目标的相关性说明)
 
 搜索目标: {query}
@@ -512,6 +513,28 @@ class CoreScreeningAgent(ResearchAgent):
                 "pe_ttm": stock_info.get("pe_ttm") or stock_info.get("pe"),
                 "pb": stock_info.get("pb"),
             })
+            # ★ 标准化估值字段, 补 LLM 可能缺失的嵌套结构
+            if isinstance(valuation, dict) and not valuation.get("parse_error"):
+                if "target_valuation" not in valuation or not valuation.get("target_valuation"):
+                    valuation["target_valuation"] = {}
+                tv = valuation["target_valuation"]
+                tv.setdefault("base_case_mcap", None)
+                tv.setdefault("bull_case_mcap", None)
+                tv.setdefault("bear_case_mcap", None)
+                tv.setdefault("upside_pct", None)
+                tv.setdefault("downside_pct", None)
+
+                if "position_suggest" not in valuation or not valuation.get("position_suggest"):
+                    valuation["position_suggest"] = {}
+                ps = valuation["position_suggest"]
+                ps.setdefault("allocation_pct", None)
+                ps.setdefault("entry_strategy", "")
+                ps.setdefault("exit_trigger", "")
+
+                if "scenarios" not in valuation or not valuation.get("scenarios"):
+                    valuation["scenarios"] = {}
+                if "quality_check" not in valuation or not valuation.get("quality_check"):
+                    valuation["quality_check"] = {}
         except Exception as e:
             logger.warning(f"[{self.name}] Valuation failed for {code}: {e}")
 
@@ -696,11 +719,15 @@ class CoreScreeningAgent(ResearchAgent):
         clues = await self._collect_all_clues(industry, step3, step4, step5)
 
         # ═══ Phase 2: 搜索 ═══════════════════════════
-        # 取前12条 search_clues (按优先级: asset_search_query > target_profile > 其他)
-        priority_map = {"asset_search_query": 0, "target_profile": 1,
-                        "hidden_beneficiary": 2, "profit_pool_shift": 3, "human_capital": 4, "tag": 5}
-        search_clues = sorted(clues["search_clues"],
-                              key=lambda c: priority_map.get(c.get("_source_type", ""), 99))[:12]
+        # 取前12条 search_clues (按优先级: a_share_equivalent > asset_search_query > human_capital > tag)
+        priority_map = {"asset_search_query": 0, "human_capital": 1}
+        def _sort_key(c):
+            base = priority_map.get(c.get("_source_type", ""), 99)
+            mt = c.get("mapping_type", "direct")
+            # a_share_equivalent 需要深度搜索, 排在最前面
+            mapping_bonus = -1 if mt == "a_share_equivalent" else 0
+            return (base + mapping_bonus)
+        search_clues = sorted(clues["search_clues"], key=_sort_key)[:12]
         search_candidates = await self._execute_search_clues(search_clues, trace)
         all_candidates = clues["direct_candidates"] + search_candidates
 
@@ -718,12 +745,15 @@ class CoreScreeningAgent(ResearchAgent):
         if not deduped:
             return self._empty_result(industry)
 
-        # ── 加载财务数据 (所有候选, DB操作快) ──
+        # ── 加载财务数据 + 硬过滤器 + LLM 生命周期分类 ──
         from app.domain.research.services.financial_data_loader import load_financials as _load_fin
-        from app.domain.research.services.screening_gate import get_gate_mode, gate_prescreen
+        from app.domain.research.services.screening_gate import hard_filter
+        from app.framework.finance.financial_data_view import build_financial_data_view
+        from app.framework.finance.stage_classifier import StageClassifier
 
         codes = [c["code"] for c in deduped[:20]]
         stock_info_map = await data_loader.load_fundamentals(codes) if codes else {}
+        cycle_position = (step3 if isinstance(step3, dict) else {}).get("cycle_position", "")
         fin_map = {}
         for code in codes[:10]:
             try:
@@ -733,18 +763,32 @@ class CoreScreeningAgent(ResearchAgent):
             except Exception:
                 pass
 
-        # 阶段判定 + prescreen (所有候选)
-        cycle_position = (step3 if isinstance(step3, dict) else {}).get("cycle_position", "")
-        gate_mode = get_gate_mode(cycle_position)
-        stage_map = {}
-        for c in deduped:
-            fin = fin_map.get(c["code"], {}).get("quarters", [])
-            stage_map[c["code"]] = _classify_company_stage(fin, stock_info_map.get(c["code"], {}))
-
-        passed, filtered = gate_prescreen(deduped, gate_mode, stock_info_map, fin_map)
+        # 硬过滤器: 只排除 ST / 低流动性
+        passed, filtered = hard_filter(deduped, stock_info_map)
         if not passed:
-            logger.warning(f"[{self.name}] All {len(deduped)} candidates filtered by prescreen")
-            return self._empty_result(industry, filtered=filtered, cycle_position=cycle_position, gate_mode=gate_mode)
+            logger.warning(f"[{self.name}] All {len(deduped)} candidates filtered by hard_filter")
+            return self._empty_result(industry, filtered=filtered, cycle_position=cycle_position)
+
+        # LLM 生命周期分类 (每个候选独立判定)
+        classifier = StageClassifier(provider=self.provider)
+        stage_map = {}
+        for c in passed:
+            code = c["code"]
+            quarters = fin_map.get(code, {}).get("quarters", [])
+            if quarters:
+                try:
+                    fv = build_financial_data_view(quarters)
+                    result = await classifier.classify(fv, {
+                        "stock_code": code,
+                        "stock_name": c.get("name", ""),
+                        "industry": industry,
+                        "cycle_position": cycle_position,
+                    })
+                    stage_map[code] = result.get("stage", "startup")
+                except Exception:
+                    stage_map[code] = "startup"
+            else:
+                stage_map[code] = "startup"
 
         # ═══ Phase 3a: 分组 → Phase A筛选 → Phase B比较 ════
         from app.domain.research.agents.candidate_comparator import CandidateComparator
@@ -832,6 +876,21 @@ class CoreScreeningAgent(ResearchAgent):
         ranking = await comparator.global_ranking(verified)
         ranked_stocks = ranking.get("ranked_stocks", [])
 
+        # ★ V5.16: ranked_stocks 是轻量摘要 (rank/code/name/why),
+        #          从 verified 中补全 verification/category 等字段
+        verified_map = {c["code"]: c for c in verified if c.get("code")}
+        enriched_ranked = []
+        for r in ranked_stocks:
+            code = r.get("code", "")
+            v = verified_map.get(code, {})
+            enriched = dict(r)
+            if v.get("verification"):
+                enriched["verification"] = v.get("verification")
+            if v.get("category"):
+                enriched["category"] = v.get("category")
+            enriched_ranked.append(enriched)
+        ranked_stocks = enriched_ranked
+
         # ── 输出构建 ──
         future_strong = [
             c for c in verified
@@ -864,7 +923,7 @@ class CoreScreeningAgent(ResearchAgent):
         return {
             "agent": self.name,
             "confidence": "high" if ranked_stocks else "medium",
-            "lifecycle_gate": {"cycle_position": cycle_position, "gate_mode": gate_mode},
+            "lifecycle_gate": {"cycle_position": cycle_position, "gate_mode": "auto"},
             "candidate_pool": {
                 "total_collected": len(deduped),
                 "after_prescreen": len(passed),
@@ -874,6 +933,7 @@ class CoreScreeningAgent(ResearchAgent):
             "future_strong_candidates": future_strong,
             "watchlist": watchlist_out,
             "eliminated": eliminated,
+            "candidates_map": verified_map,  # ★ V5.16: code→全量数据映射, 方便消费者按 code 查找
             "comparisons": all_comparisons,
             "source_detail": source_counts,
             "step3_backfill": backfill,
@@ -887,9 +947,10 @@ class CoreScreeningAgent(ResearchAgent):
         if not candidates:
             return self._empty_result(industry)
 
-        from app.domain.research.services.screening_gate import get_gate_mode, gate_prescreen
+        from app.domain.research.services.screening_gate import hard_filter
+        from app.framework.finance.financial_data_view import build_financial_data_view
+        from app.framework.finance.stage_classifier import StageClassifier
         cycle_position = ""
-        gate_mode = get_gate_mode(cycle_position)
 
         codes = [c["code"] for c in candidates[:20]]
         stock_info_map = await data_loader.load_fundamentals(codes) if codes else {}
@@ -903,14 +964,29 @@ class CoreScreeningAgent(ResearchAgent):
             except Exception:
                 pass
 
-        stage_map = {}
-        for c in candidates:
-            fin = fin_map.get(c["code"], {}).get("quarters", [])
-            stage_map[c["code"]] = _classify_company_stage(fin, stock_info_map.get(c.get("code", ""), {}))
-
-        passed, filtered = gate_prescreen(candidates, gate_mode, stock_info_map, fin_map)
+        # 硬过滤器 + LLM 生命周期分类
+        passed, filtered = hard_filter(candidates, stock_info_map)
         if not passed:
             return self._empty_result(industry, filtered=filtered)
+
+        classifier = StageClassifier(provider=self.provider)
+        stage_map = {}
+        for c in passed:
+            code = c.get("code", "")
+            quarters = fin_map.get(code, {}).get("quarters", [])
+            if quarters:
+                try:
+                    fv = build_financial_data_view(quarters)
+                    result = await classifier.classify(fv, {
+                        "stock_code": code,
+                        "stock_name": c.get("name", ""),
+                        "industry": industry,
+                    })
+                    stage_map[code] = result.get("stage", "startup")
+                except Exception:
+                    stage_map[code] = "startup"
+            else:
+                stage_map[code] = "startup"
 
         from app.domain.research.agents.financial_auditor import FinancialAuditor
         auditor = FinancialAuditor(provider=self.provider)
@@ -944,7 +1020,7 @@ class CoreScreeningAgent(ResearchAgent):
         return {
             "agent": self.name,
             "confidence": "medium",
-            "lifecycle_gate": {"cycle_position": "", "gate_mode": gate_mode},
+            "lifecycle_gate": {"cycle_position": "", "gate_mode": "auto"},
             "candidate_pool": {"total_collected": len(candidates), "after_prescreen": len(passed), "ranked": len(future_strong)},
             "ranked_stocks": [],
             "future_strong_candidates": future_strong,
@@ -1218,35 +1294,3 @@ def _extract_node_context(node: Dict) -> Dict:
         "value_magnitude": "",
         "bottleneck_severity": node.get("supply_rigidity", {}).get("severity", ""),
     }
-
-
-def _classify_company_stage(quarters: list, stock_info: dict) -> str:
-    """基于公司自身财务数据判定生命周期阶段"""
-    if not quarters or len(quarters) < 4:
-        return "startup"
-
-    rev_4q = sum(float(q.get("revenue", 0) or 0) for q in quarters[:4]) / 1e8
-    profit_4q = sum(float(q.get("profit", q.get("parent_profit", 0)) or 0) for q in quarters[:4])
-    if len(quarters) >= 8:
-        rev_prior = sum(float(q.get("revenue", 0) or 0) for q in quarters[4:8])
-        rev_yoy = (rev_4q - rev_prior) / abs(rev_prior) * 100 if rev_prior else 0
-    else:
-        rev_yoy = 0
-    rd_4q = sum(float(q.get("rd_expense", 0) or 0) for q in quarters[:4])
-    rd_intensity = (rd_4q / max(rev_4q, 0.01)) * 100 if rev_4q > 0.01 else 100
-    cost_4q = sum(float(q.get("operate_cost", 0) or 0) for q in quarters[:4])
-    gm = (rev_4q - cost_4q) / max(rev_4q, 0.01) * 100 if rev_4q > 0.01 else 0
-
-    if rev_yoy < -10:
-        if gm > 20 or rd_intensity > 10:
-            return "inflection"
-        return "cyclical_bottom"
-    if rev_yoy > 20 and profit_4q > 0 and gm > 15:
-        return "growth"
-    if rev_yoy > 40 and rd_intensity > 15:
-        return "inflection"
-    if 0 <= rev_yoy <= 20 and profit_4q > 0:
-        if gm > 20:
-            return "mature"
-        return "growth"
-    return "startup"

@@ -93,8 +93,18 @@ class DeepSeekProvider(AIProviderProtocol):
                     return None
                 data = resp.json()
                 if is_anthropic:
-                    return "".join(b.get("text", "") for b in data["content"] if b["type"] == "text")
-                return data["choices"][0]["message"]["content"]
+                    text = "".join(b.get("text", "") for b in data["content"] if b["type"] == "text")
+                else:
+                    text = data["choices"][0]["message"]["content"]
+                # ★ 修复 charset 探测错误导致的 mojibake (UTF-8 bytes→Latin-1 解码)
+                if text:
+                    try:
+                        fixed = text.encode('latin-1').decode('utf-8')
+                        if any('一' <= c <= '鿿' for c in fixed[:100]):
+                            text = fixed
+                    except (UnicodeEncodeError, UnicodeDecodeError):
+                        pass
+                return text
         except httpx.TimeoutException:
             logger.warning(f"[DeepSeek] {resolved_model} timeout ({http_timeout}s) — outer asyncio.wait_for may fire first")
             return None

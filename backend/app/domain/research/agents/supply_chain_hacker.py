@@ -297,7 +297,18 @@ class SupplyChainHacker(ResearchAgent):
   "expansion_chain": [{{"segment":"滞后环节","value_node_tags":["滞后标签"],"reason":"理由","lag_months":"6-12"}}],
   "chain_timeline": {{"sales_lead_months":"1-3","expansion_lag_months":"6-12","rotation_strategy":"策略"}},
   "scarcity_ranking": [{{"rank":1,"segment":"稀缺环节","rigidity_narrative":"刚性","value_node_tags":["稀缺标签"]}}],
-  "catalysts": [{{"type":"capacity","catalyst":"事件","expected_date":"时间","watch_signal":"指标","affected_segment":"环节"}}]
+  "catalysts": [{{"type":"capacity","catalyst":"事件","expected_date":"时间","watch_signal":"指标","affected_segment":"环节"}}],
+
+  // ═══ V5.16: 供 Step 6 使用的资产搜索指引 ═══
+  "asset_search_queries": [
+    {{
+      "query": "A股 HBM先进封装 设备 材料 上市公司 龙头",
+      "source": "step3_L2_HBM先进封装",
+      "priority": "high",
+      "rationale": "HBM封装国产化率<5%, 需找到已进入供应链的设备/材料商",
+      "mapping_type": "direct"
+    }}
+  ]
 }}
 """
         # 注入枚举约束 glossary
@@ -324,15 +335,30 @@ class SupplyChainHacker(ResearchAgent):
 - 每个子工艺必须标注 pricing_behavior, 且不能与 competitive_landscape.structure 自动关联 — 基于搜索中的实际定价行为独立推断
 - 每个子工艺的 evidence 至少 1 条支撑 rigidity/value_magnitude 判断
 - 零 A 股映射的子工艺标注 a_stock_mapping: [] (不要省略)
-- pricing_behavior 定义见 glossary, 特别注意: collusive_oligopoly 和 capacity_war 同属 oligopoly 结构但投资含义完全不同"""
+- pricing_behavior 定义见 glossary, 特别注意: collusive_oligopoly 和 capacity_war 同属 oligopoly 结构但投资含义完全不同
+
+## asset_search_queries 生成规则 (V5.16)
+- 每个 supply_chain_map 节点至少生成 1-2 条, 覆盖国产替代/设备/材料/间接参与各维度
+- priority 判定: severity=extreme+国产替代率<5% → high, 其余 medium
+- source 格式: "step3_L{level}_{节点名前4字}"
+- ★ mapping_type 字段: "direct"=标准A股映射 / "a_share_equivalent"=海外龙头→A股间接参与映射
+- 对 a_stock_mapping 有空缺的环节 (investable_in_a_share=false), 生成指引让 Step 6 搜索"间接参与"逻辑
+- 对供应瓶颈明确且有 A 股映射的环节 (如中微/北方华创), 生成指引让 Step 6 验证护城河深度
+- ★ 新增映射类查询规则 (瓶颈环节 global_leaders 全部海外上市且无可投 A 股标的时):
+  1. 生成 mapping_type="a_share_equivalent" 的查询
+  2. 查询方向覆盖: (a) 为海外龙头供货的 A 股供应商 (b) 海外龙头的 A 股竞争对手/国产替代 (c) 通过供应链间接参与的 A 股公司
+  3. 示例: {"query":"A股 Tokyo Electron 供应商 合作伙伴 上市公司 2026","mapping_type":"a_share_equivalent","priority":"high","rationale":"TEL垄断涂胶显影设备, 寻找间接供应链参与者"}"""
 
         try:
-            text = await self.provider.chat_pro(prompt, max_tokens=8192, timeout=240)
+            text = await self.provider.chat_pro(prompt, max_tokens=16000, timeout=300)
             if trace: trace.record_llm(prompt, text, model="deepseek-v4-pro")
+            # ★ 修复 LLM 响应中的 mojibake 编码 (UTF-8 被当作 Latin-1 解码)
+            text = self._fix_mojibake(text)
             result = self.parse_json(text)
             if isinstance(result, dict) and result.get("parse_error"):
                 logger.warning(f"[{self.name}] Struct parse failed, retrying...")
-                text2 = await self.provider.chat_pro(prompt, max_tokens=8192, timeout=240)
+                text2 = await self.provider.chat_pro(prompt, max_tokens=16000, timeout=300)
+                text2 = self._fix_mojibake(text2)
                 result = self.parse_json(text2)
 
             if isinstance(result, dict):
@@ -355,6 +381,7 @@ class SupplyChainHacker(ResearchAgent):
         """标准化 Step 3 输出:
         - 旧 checkpoint: chokepoint_score → bottleneck_severity
         - 旧 checkpoint: 补 sub_processes: []
+        - ★ V5.16: 确保 asset_search_queries 不缺位
         """
         for node in result.get("supply_chain_map", []):
             if "sub_processes" not in node:
@@ -362,7 +389,126 @@ class SupplyChainHacker(ResearchAgent):
             cl = node.get("chokepoint_checklist", {})
             if cl and "bottleneck_severity" not in cl and "chokepoint_score" in cl:
                 cl["bottleneck_severity"] = SupplyChainHacker._old_score_to_severity(cl["chokepoint_score"])
+
+        # ★ V5.16: LLM 经常省略 asset_search_queries, 后处理兜底生成
+        existing = result.get("asset_search_queries")
+        if not isinstance(existing, list):
+            existing = []
+        if len(existing) >= len(result.get("supply_chain_map", [])):
+            return result  # LLM 已生成足够数量, 无需干预
+
+        fallback = []
+        seen_queries = set()
+        if existing:
+            for q in existing:
+                qry = q.get("query", "")
+                if qry:
+                    seen_queries.add(qry)
+                    fallback.append(q)
+
+        for node in result.get("supply_chain_map", []):
+            node_name = node.get("name", "")
+            if not node_name:
+                continue
+            severity = node.get("supply_rigidity", {}).get("severity", "")
+            is_severe = severity in ("extreme", "very_high")
+
+            # 检查该节点的子工艺中哪些没有 A 股映射
+            sub_without_code = []
+            for sp in node.get("sub_processes", []):
+                has_code = any(
+                    m.get("code") for m in sp.get("a_stock_mapping", [])
+                )
+                if not has_code:
+                    sub_without_code.append(sp.get("name", ""))
+
+            # 对每个节点至少生成 1 条通用查询
+            q1 = f"A股 {node_name} 龙头企业 上市公司 2026"
+            if q1 not in seen_queries:
+                fallback.append({
+                    "query": q1,
+                    "source": f"step3_{node_name[:6]}",
+                    "priority": "high" if is_severe else "medium",
+                    "rationale": f"{node_name}环节供应商搜索",
+                })
+                seen_queries.add(q1)
+
+            # 瓶颈严重 + 高国产替代率节点, 加 1 条国产替代查询
+            if is_severe:
+                q2 = f"A股 {node_name} 国产替代 设备 材料 2026"
+                if q2 not in seen_queries:
+                    fallback.append({
+                        "query": q2,
+                        "source": f"step3_{node_name[:6]}",
+                        "priority": "high",
+                        "rationale": f"{node_name}国产替代机会",
+                    })
+                    seen_queries.add(q2)
+
+            # 有空缺子工艺 → 间接参与查询
+            if sub_without_code:
+                gap_names = " ".join(sub_without_code[:3])
+                q3 = f"A股 {node_name} {gap_names} 供应链 间接参与 上市公司 2026"
+                if q3 not in seen_queries:
+                    fallback.append({
+                        "query": q3,
+                        "source": f"step3_{node_name[:6]}_gap",
+                        "priority": "medium",
+                        "rationale": f"{node_name}子工艺无直接A股映射, 搜索间接参与机会",
+                    })
+                    seen_queries.add(q3)
+
+            # ★ V5.16: 海外龙头主导节点 → mapping_type=a_share_equivalent 映射查询
+            leaders = node.get("competitive_landscape", {}).get("global_leaders", [])
+            subst_rate = node.get("competitive_landscape", {}).get("china_substitution_rate", "")
+            is_foreign_dominated = (
+                bool(leaders) and subst_rate in ("below_5pct", "5_20pct", "")
+                and sub_without_code
+            )
+            if is_foreign_dominated:
+                for leader in leaders[:2]:
+                    q_supplier = f"A股 {leader} 供应商 合作伙伴 上市公司 2026"
+                    if q_supplier not in seen_queries:
+                        fallback.append({
+                            "query": q_supplier,
+                            "source": f"step3_{node_name[:6]}_map",
+                            "priority": "high" if is_severe else "medium",
+                            "mapping_type": "a_share_equivalent",
+                            "rationale": f"{leader}是{node_name}海外龙头, 寻找为其供货的A股供应商",
+                        })
+                        seen_queries.add(q_supplier)
+                    q_compete = f"A股 {leader} 竞争对手 国产替代 上市公司 2026"
+                    if q_compete not in seen_queries:
+                        fallback.append({
+                            "query": q_compete,
+                            "source": f"step3_{node_name[:6]}_map",
+                            "priority": "high" if is_severe else "medium",
+                            "mapping_type": "a_share_equivalent",
+                            "rationale": f"{leader}是{node_name}海外龙头, 寻找A股竞争对手/替代方",
+                        })
+                        seen_queries.add(q_compete)
+
+        result["asset_search_queries"] = fallback
+        n_missing = max(0, len(result.get("supply_chain_map", [])) - (len(existing) if existing else 0))
+        if n_missing > 0:
+            logger.info(f"[SupplyChainHacker] asset_search_queries fallback: generated {len(fallback)} queries "
+                        f"(LLM had {len(existing) if existing else 0}, {n_missing} nodes missing)")
         return result
+
+    @staticmethod
+    def _fix_mojibake(text: str) -> str:
+        """修复 UTF-8 字节被当作 Latin-1 解码导致的乱码 (mojibake)"""
+        if not text:
+            return text
+        try:
+            fixed = text.encode('latin-1').decode('utf-8')
+            # 如果修复后的前 100 个字符中有 CJK 汉字, 说明是乱码后修复成功
+            if any('一' <= c <= '鿿' for c in fixed[:100]):
+                logger.info(f"[SupplyChainHacker] Fixed mojibake: {len(text)}→{len(fixed)} chars")
+                return fixed
+        except (UnicodeEncodeError, UnicodeDecodeError):
+            pass
+        return text
 
     @staticmethod
     def _old_score_to_severity(score: int) -> str:
