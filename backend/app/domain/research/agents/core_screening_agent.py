@@ -621,6 +621,54 @@ class CoreScreeningAgent(ResearchAgent):
         final_result["_tournament"] = True
         return final_result
 
+    # ═══ Phase A: LLM 快速筛选 ═════════════════
+
+    async def _llm_screen_group(self, candidates: List[Dict],
+                                 node_context: Dict) -> List[Dict]:
+        """零搜索, 纯 LLM 快速筛掉明显不相关的候选。
+
+        只筛明显不相关的, 边界情况全保留。失败时全保留。
+        """
+        if len(candidates) <= 3:
+            return candidates
+
+        node_name = node_context.get("name", "")
+        cand_lines = [f"{c.get('name','?')}({c.get('code','?')})" for c in candidates]
+
+        prompt = (
+            f"快速筛选以下候选在\"{node_name}\"环节的相关性。\n\n"
+            f"环节背景: {node_name}\n"
+            f"利润池: {node_context.get('profit_pool','?')}\n"
+            f"供给刚性: {node_context.get('supply_rigidity','?')}\n"
+            f"瓶颈描述: {node_context.get('bottleneck_narrative','')[:300]}\n\n"
+            f"候选:\n{chr(10).join(cand_lines)}\n\n"
+            f"哪些候选明显不具备参与该环节的资格？例如：行业完全不相关、产品不覆盖该环节。\n"
+            f"边界情况不排除。宁可多留，不要误杀。\n"
+            f"输出JSON: {{\"remove\": [\"code1\", \"code2\"]}}\n"
+            f"只输出JSON。"
+        )
+        try:
+            text = await self.provider.chat_flash(prompt, max_tokens=1024, timeout=60)
+            parsed = self.parse_json(text)
+            remove_codes = set()
+            if isinstance(parsed, dict):
+                rc = parsed.get("remove", [])
+                if isinstance(rc, list):
+                    remove_codes = set(rc)
+            elif isinstance(parsed, list):
+                remove_codes = set(parsed)
+
+            if remove_codes:
+                survivors = [c for c in candidates if c.get("code") not in remove_codes]
+                removed = [c for c in candidates if c.get("code") in remove_codes]
+                logger.info(f"[{self.name}] Phase A screen '{node_name}': "
+                            f"{len(candidates)}->{len(survivors)} (removed: {[r.get('code') for r in removed]})")
+                return survivors if survivors else candidates
+            return candidates
+        except Exception as e:
+            logger.warning(f"[{self.name}] Phase A screen failed for '{node_name}': {e}, keeping all")
+            return candidates
+
     # ═══ 主入口 (V5.15 四阶段) ═════════════════════
 
     async def analyze(self, ctx: Dict[str, Any] = None, trace=None) -> Dict[str, Any]:
@@ -698,65 +746,45 @@ class CoreScreeningAgent(ResearchAgent):
             logger.warning(f"[{self.name}] All {len(deduped)} candidates filtered by prescreen")
             return self._empty_result(industry, filtered=filtered, cycle_position=cycle_position, gate_mode=gate_mode)
 
-        # ═══ Phase 3a: 分组 → 同源比较 ═════════════
+        # ═══ Phase 3a: 分组 → Phase A筛选 → Phase B比较 ════
         from app.domain.research.agents.candidate_comparator import CandidateComparator
         comparator = CandidateComparator(provider=self.provider)
         groups = self._group_by_source(passed, step3)
         all_comparisons = []
-
-        MAX_GROUP_SIZE = 8  # ★ 可配置阈值 (由魔法数字5→模块常量)
         to_verify = []  # (candidate, is_winner, eliminated_by, eliminated_reason)
+
         for group in groups:
             cands = group["candidates"]
-            # 限制: 每组最多比较 MAX_GROUP_SIZE 个候选
-            if len(cands) > MAX_GROUP_SIZE:
-                excess = cands[MAX_GROUP_SIZE:]
-                cands = cands[:MAX_GROUP_SIZE]
-                for ec in excess:
-                    # ★ 溢出候选至少执行快速审计, 不放空
-                    quick_audit = None
-                    try:
-                        from app.domain.research.agents.financial_auditor import FinancialAuditor
-                        fa = FinancialAuditor(provider=self.provider)
-                        quick_audit = await fa.analyze({
-                            "stock_code": ec["code"], "stock_name": ec.get("name", ""),
-                            "industry": industry})
-                    except Exception:
-                        pass
-                    if quick_audit and quick_audit.get("verdict") == "PASS":
-                        # 审计通过 → 进 watchlist 而非直接淘汰
-                        ec["_audit_pass_no_compare"] = True
-                        to_verify.append((ec, True, None, None))
-                    else:
-                        to_verify.append((ec, False, "group_overflow",
-                                          "该组候选过多, 未参与同源比较"))
+            node_name = group["node"]
+            node_ctx = group["node_context"]
 
-            # ★ 分批赛制: 3家以上用多轮淘汰赛
+            # Phase A: 候选太多则 LLM 快速筛 (>=4家)
+            if len(cands) >= 4:
+                cands = await self._llm_screen_group(cands, node_ctx)
+
+            # Phase B: 同源比较 (搜索+LLM, 不排名, 只排除)
             if len(cands) >= 2:
-                if len(cands) <= 3:
-                    # 2-3家: 一次比较
-                    result = await comparator.compare_within_source(cands, group["node_context"])
-                else:
-                    # 4+家: 多轮淘汰 (pairwise → final)
-                    result = await self._pairwise_tournament(comparator, cands, group)
-
+                result = await comparator.compare_within_source(cands, node_ctx)
                 all_comparisons.append(result)
-                ranked = result.get("ranked", [])
-                for i, r in enumerate(ranked):
-                    cand = next((c for c in cands if c.get("code") == r.get("code")), None)
-                    if cand:
-                        if i == 0:
-                            to_verify.append((cand, True, None, None))
-                        else:
-                            to_verify.append((cand, False,
-                                              ranked[0].get("code", "?"),
-                                              r.get("why", "同源比较排名靠后")))
-            else:
+
+                excluded_codes = {s["code"] for s in result.get("exclusion_suggestions", [])}
+                for c in cands:
+                    if c["code"] in excluded_codes:
+                        reason = next(
+                            (s.get("reason", "比较排除") for s in result.get("exclusion_suggestions", [])
+                             if s.get("code") == c["code"]),
+                            "同源比较中竞争力不足")
+                        to_verify.append((c, False, "comparison_excluded", reason))
+                    else:
+                        to_verify.append((c, True, None, None))
+            elif len(cands) == 1:
                 all_comparisons.append({
-                    "source": group["node"],
-                    "ranked": [{"code": cands[0]["code"], "rank": 1, "why": "该节点唯 一候选"}],
+                    "source": node_name,
+                    "observations": [{"code": cands[0]["code"], "name": cands[0].get("name", "")}],
+                    "exclusion_suggestions": [],
                 })
                 to_verify.append((cands[0], True, None, None))
+            # len(cands)==0: 全部被Phase A筛掉
 
         # ═══ Phase 3b: 逐只验证 (仅胜出者) ════════
         verified = []
