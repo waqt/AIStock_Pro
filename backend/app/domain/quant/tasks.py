@@ -119,10 +119,7 @@ async def calculate_financial_indicators_task(
     target_codes=None → 全部持仓+自选股(仅A股)
     """
     from app.models.models import Position, WatchlistItem
-    from app.framework.finance.roiic import compute_roic, compute_roiic
-    from app.domain.quant.engine.indicator_store import store_financial_indicator
-    from app.domain.research.services.financial_data_loader import load_financials
-    from app.domain.quant.indicators.fundamental import FINANCIAL_REGISTRY
+    from app.domain.quant.engine.financial_compute import compute_financial_for_codes, filter_a_share_codes
     from sqlalchemy import select
     import time as _time
 
@@ -133,8 +130,7 @@ async def calculate_financial_indicators_task(
             pos = await db.execute(select(Position.stock_code))
             wl = await db.execute(select(WatchlistItem.stock_code))
             codes = list(set([r[0] for r in pos.all()] + [r[0] for r in wl.all()]))
-    # 过滤 ETF + 港股
-    codes = [c for c in codes if len(str(c)) == 6 and not str(c).startswith(('159','510','512','513','560','588'))]
+    codes = filter_a_share_codes(codes)
 
     if not codes:
         if exec_id: await task_manager.update_progress(exec_id, 100, "无待计算股票")
@@ -142,59 +138,18 @@ async def calculate_financial_indicators_task(
 
     t0 = _time.time()
     logger.info(f"[CalcFinancial] START | stocks={len(codes)} mode={mode}")
-    fin_indicators = [(n, cls) for n, cls in FINANCIAL_REGISTRY.items() if n not in ("roic","roiic")]
 
-    ok, fail = 0, 0
-    for idx, code in enumerate(codes):
-        try:
-            fin = await load_financials(code, periods=20, mode=mode)
-            quarters = fin.get("quarters", [])
-            if len(quarters) < 4:
-                fail += 1; continue
-            recent_first = list(reversed(quarters))
-            stored = 0
-            for i in range(len(recent_first) - 3):
-                window_4q = recent_first[i:i+4]
-                rpt_date = window_4q[0].get("report_date", "")[:10]
-                record = {}
-                roic_d = compute_roic(window_4q)
-                record.update({"roic": roic_d.get("roic"), "roic_pct": roic_d.get("roic_pct")})
-                if i + 8 <= len(recent_first):
-                    ri = compute_roiic(recent_first[i:i+8])
-                    record.update({"roiic": ri.get("roiic"), "roiic_pct": ri.get("roiic_pct")})
-                    # 研发资本化调整后的 ROIC/ROIIC
-                    try:
-                        from app.framework.finance.rd_adjustment import adjust_rd_capitalization
-                        adj = adjust_rd_capitalization(recent_first[i:i+8])
-                        if adj.get("material"):
-                            adj_profit_ratio = adj["adjusted_profit_yi"] / max(adj["reported_profit_yi"], 0.01)
-                            if roic_d.get("roic_pct") is not None and adj_profit_ratio > 1.01:
-                                record["roic_adjusted"] = (roic_d.get("roic") or 0) * adj_profit_ratio
-                                record["roic_pct_adjusted"] = round((roic_d.get("roic_pct") or 0) * adj_profit_ratio, 1)
-                            if ri.get("roiic_pct") is not None and adj_profit_ratio > 1.01:
-                                record["roiic_adjusted"] = (ri.get("roiic") or 0) * adj_profit_ratio
-                                record["roiic_pct_adjusted"] = round((ri.get("roiic_pct") or 0) * adj_profit_ratio, 1)
-                    except Exception as e:
-                        logger.warning(f"[CalcFinancial] {code}: adjust_rd_capitalization failed: {e}")
-                full_window = recent_first[i:]
-                for _, cls in fin_indicators:
-                    try:
-                        r = cls.compute(full_window)
-                        record.update(r)
-                    except Exception as e:
-                        logger.warning(f"[CalcFinancial] {code}: {cls.__name__}.compute failed: {e}")
-                record["source"] = fin.get("source", "db")
-                if store_financial_indicator(code, rpt_date, record):
-                    stored += 1
-            ok += 1
-        except Exception as e:
-            fail += 1
-            logger.warning(f"[CalcFinancial] {code} failed: {e}")
+    # 进度回调: 桥接到 TaskManager
+    async def _progress(pct, msg):
         if exec_id:
-            await task_manager.update_progress(exec_id, int((idx+1)/len(codes)*100),
-                f"{idx+1}/{len(codes)} OK:{ok} FAIL:{fail}")
+            await task_manager.update_progress(exec_id, pct, msg)
 
-    summary = f"完成 OK:{ok} FAIL:{fail}/{len(codes)} {_time.time()-t0:.0f}s"
+    result = await compute_financial_for_codes(codes, mode=mode, progress_callback=_progress)
+
+    ok = result["computed"]
+    total = result["total"]
+    fail = total - ok
+    summary = f"完成 OK:{ok} FAIL:{fail}/{total} {_time.time()-t0:.0f}s"
     if exec_id: await task_manager.update_progress(exec_id, 100, summary)
     logger.info(f"[CalcFinancial] DONE | {summary}")
 

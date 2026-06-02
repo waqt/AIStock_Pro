@@ -9,11 +9,18 @@ const Modal = {
 		overlay.id = 'dark-modal-overlay';
 		overlay.innerHTML = `
 			<div id="dark-modal-box">
-				<div id="dark-modal-title"></div>
+				<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+					<div id="dark-modal-title" style="margin-bottom:0;"></div>
+					<button id="dark-modal-close-icon" style="background:none;border:none;color:var(--text-dim,#888);cursor:pointer;font-size:18px;line-height:1;padding:0;">&times;</button>
+				</div>
 				<div id="dark-modal-body"></div>
 				<div id="dark-modal-actions"></div>
 			</div>`;
 		document.body.appendChild(overlay);
+		document.getElementById('dark-modal-close-icon').onclick = () => Modal.close();
+		overlay.onclick = (e) => {
+			if (e.target === overlay) Modal.close();
+		};
 		var style = document.createElement('style');
 		style.textContent = `
 			#dark-modal-overlay {
@@ -28,7 +35,7 @@ const Modal = {
 				border-radius: 8px; min-width: 360px; max-width: 560px;
 				position: relative;
 			}
-			#dark-modal-title { color: #fff; font-size: 13px; margin-bottom: 12px; }
+			#dark-modal-title { color: #fff; font-size: 13px; font-weight:bold; }
 			#dark-modal-body { color: var(--text-dim, #888); }
 			#dark-modal-actions { margin-top: 12px; display: flex; justify-content: flex-end; gap: 6px; }
 		`;
@@ -100,7 +107,9 @@ const Modal = {
 		box.style.minHeight = wide ? '75vh' : '';
 		document.getElementById('dark-modal-title').textContent = title;
 		document.getElementById('dark-modal-body').innerHTML = content;
-		document.getElementById('dark-modal-actions').innerHTML = '';
+		document.getElementById('dark-modal-actions').innerHTML = `
+			<button onclick="Modal.close()" style="background:var(--accent-blue,#4e9eff);color:#fff;border:none;padding:4px 18px;border-radius:4px;cursor:pointer;font-size:11px;">关闭</button>
+		`;
 		document.getElementById('dark-modal-overlay').classList.add('open');
 	},
 

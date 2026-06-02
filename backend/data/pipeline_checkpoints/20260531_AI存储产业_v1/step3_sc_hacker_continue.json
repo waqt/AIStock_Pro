@@ -1,0 +1,963 @@
+{
+  "step": "step3_sc_hacker",
+  "run_id": "20260531_AI存储产业_v1",
+  "input_hash": "continue",
+  "saved_at": "2026-05-31T23:15:18.373051",
+  "elapsed_seconds": 0,
+  "input_summary": "",
+  "output": {
+    "confidence": "high",
+    "confidence_note": "搜索覆盖了全球存储芯片供需缺口、HBM垄断格局、原材料国产化率、设备交期瓶颈及A股部分标的映射，但缺乏具体产能利用率、订单积压月份等精确产业数据，部分毛利率和利润分配为LLM估计。国产量检测设备、临时键合设备等仅在少量来源提及，数据完整性中等。",
+    "supply_chain_map": [
+      {
+        "level": 1,
+        "name": "AI存储晶圆制造（DRAM/NAND）",
+        "bottleneck_narrative": "全球DRAM/NAND产能由三星、SK海力士、美光三巨头垄断，2026年供应缺口为2011年以来最高，扩产周期超24个月且受光刻机等设备交期延长严重制约，国产长鑫、长江存储仍处产能爬坡与技术追赶阶段，无法缓解全球短缺。",
+        "confidence": "high",
+        "chokepoint_checklist": {
+          "is_sole_source": false,
+          "customer_switch_cost_months": 6,
+          "cost_share_of_downstream": 0.12,
+          "price_hike_pass_through": 0.9,
+          "capacity_util_rate": 0.97,
+          "order_backlog_months": 12,
+          "regulatory_moat": true,
+          "bottleneck_severity": "very_high"
+        },
+        "supply_rigidity": {
+          "severity": "extreme",
+          "root_cause": "equipment_constraint",
+          "expand_cycle": "over_24m",
+          "substitutability": "none_short_term",
+          "concentration": "oligopoly",
+          "alpha_narrative": "供给刚性→定价权→景气窗口：三星、海力士控产提价，存储芯片价格大幅上行，设备交期延长导致新增产能2026年前无法释放，供需缺口持续扩大"
+        },
+        "profit_pool": {
+          "share_of_industry_profit": "dominant_30_50pct",
+          "margin_level": "very_high_above_40pct",
+          "margin_estimated": true,
+          "margin_data_source": "LLM估计",
+          "pricing_power_narrative": "三巨头默契控产，叠加AI服务器需求爆发，DRAM/NAND价格年涨幅超200%，存储制造环节攫取产业链大量利润"
+        },
+        "value_capture": {
+          "market_attention": "very_high",
+          "attention_quality": "profit_real",
+          "gap_narrative": "市场高度聚焦存储涨价，利润确实集中在制造端，但A股无直接晶圆制造映射标的，内地投资者被迫通过设备/材料间接参与",
+          "who_captures_value": [
+            "三星电子",
+            "SK海力士",
+            "美光科技"
+          ]
+        },
+        "competitive_landscape": {
+          "structure": "oligopoly_CR3_above_70",
+          "global_leaders": [
+            "三星电子",
+            "SK海力士",
+            "美光科技"
+          ],
+          "china_substitution_rate": "below_5pct"
+        },
+        "value_node_tags": [
+          "DRAM制造全球垄断",
+          "AI存储晶圆核心瓶颈",
+          "长鑫存储替代预期",
+          "半导体周期涨价龙头"
+        ],
+        "a_stock_transmission": "海外巨头垄断晶圆制造，国内下游模组厂（佰维存储、江波龙）面临高价存储颗粒挤压毛利率；长鑫/长江存储加速扩产拉动国产设备与材料需求，北方华创、中微公司等设备商受益订单增长；光刻胶、靶材等关键材料国产替代紧迫，彤程新材、南大光电直接映射。",
+        "sub_processes": [
+          {
+            "name": "光刻工艺",
+            "confidence": "high",
+            "supply_rigidity": {
+              "severity": "extreme",
+              "root_cause": "equipment_constraint",
+              "expand_cycle": "over_24m",
+              "substitutability": "none_short_term",
+              "concentration": "monopoly_single_supplier"
+            },
+            "value_magnitude": {
+              "order_of_magnitude": "10B_100B",
+              "unit_economics_hint": "全球半导体光刻胶市场超50亿美元，光刻机市场ASML独占EUV，单台售价超2亿欧元，占晶圆制造设备支出约25%"
+            },
+            "value_owners": [
+              {
+                "name": "ASML",
+                "public_market": "NASDAQ:ASML",
+                "value_share": "dominant",
+                "investable_in_a_share": false,
+                "investment_logic": "EUV光刻机独家供应，技术壁垒极高，订单积压至2027年，是存储制造扩产最大瓶颈"
+              }
+            ],
+            "profit_pool": {
+              "share_of_industry_profit": "significant_15_30pct",
+              "margin_level": "very_high_above_40pct",
+              "margin_estimated": true,
+              "margin_data_source": "LLM估计"
+            },
+            "competitive_landscape": {
+              "structure": "monopoly_single_supplier",
+              "pricing_behavior": "monopoly",
+              "global_leaders": [
+                "ASML"
+              ],
+              "china_substitution_rate": "below_5pct"
+            },
+            "a_stock_mapping": [],
+            "value_node_tags": [
+              "EUV光刻机独家垄断",
+              "晶圆扩产最核心瓶颈"
+            ],
+            "evidence": [
+              {
+                "fact": "ASML先进光刻机交期延长至18个月以上，成为全球DRAM/NAND新产能释放的核心瓶颈",
+                "from": "search[1.2]·新浪财经",
+                "quality": {
+                  "level": "high",
+                  "source_type": "industry_data"
+                }
+              }
+            ]
+          },
+          {
+            "name": "高深宽比刻蚀与薄膜沉积",
+            "confidence": "high",
+            "supply_rigidity": {
+              "severity": "moderate",
+              "root_cause": "equipment_constraint",
+              "expand_cycle": "12_24m",
+              "substitutability": "partial_emerging",
+              "concentration": "oligopoly"
+            },
+            "value_magnitude": {
+              "order_of_magnitude": "10B_100B",
+              "unit_economics_hint": "半导体刻蚀设备全球市场超230亿美元，薄膜沉积设备超200亿美元，3D NAND高深宽比刻蚀需求激增"
+            },
+            "value_owners": [
+              {
+                "name": "Lam Research",
+                "public_market": "NASDAQ:LRCX",
+                "value_share": "major",
+                "investable_in_a_share": false,
+                "investment_logic": "全球刻蚀设备龙头，寡头份额，受益产能扩张"
+              },
+              {
+                "name": "中微公司",
+                "public_market": "688012.SH",
+                "value_share": "challenger",
+                "investable_in_a_share": true,
+                "investment_logic": "国产刻蚀设备龙头，TSV深孔刻蚀已打入长江存储、长鑫供应链，国产替代直接受益"
+              }
+            ],
+            "profit_pool": {
+              "share_of_industry_profit": "significant_15_30pct",
+              "margin_level": "high_25_40pct",
+              "margin_estimated": true,
+              "margin_data_source": "LLM估计"
+            },
+            "competitive_landscape": {
+              "structure": "oligopoly_CR3_above_70",
+              "pricing_behavior": "collusive_oligopoly",
+              "global_leaders": [
+                "Lam Research",
+                "TEL",
+                "应用材料"
+              ],
+              "china_substitution_rate": "20_50pct"
+            },
+            "a_stock_mapping": [
+              {
+                "code": "688012",
+                "name": "中微公司",
+                "investment_logic": "国产5nm/3D NAND高深宽比刻蚀设备供应商，已批量交付，受益长存/长鑫扩产"
+              },
+              {
+                "code": "002371",
+                "name": "北方华创",
+                "investment_logic": "薄膜沉积、刻蚀全平台设备商，广泛覆盖存储、逻辑客户"
+              }
+            ],
+            "value_node_tags": [
+              "高深宽比刻蚀设备国产替代",
+              "3D NAND工艺关键设备"
+            ],
+            "evidence": [
+              {
+                "fact": "长江存储在被列入实体清单后，大量采用国产刻蚀机、薄膜沉积设备、清洗机，成功构建‘去美化’产线",
+                "from": "search[1.2]·电子工程专辑",
+                "quality": {
+                  "level": "high",
+                  "source_type": "industry_data"
+                }
+              },
+              {
+                "fact": "3D NAND层数增加使得高深宽比刻蚀和沉积设备需求激增，国产设备在此环节已具替代能力",
+                "from": "search[1.1]·电子工程专辑",
+                "quality": {
+                  "level": "medium",
+                  "source_type": "industry_data"
+                }
+              }
+            ]
+          },
+          {
+            "name": "CMP设备",
+            "confidence": "medium",
+            "supply_rigidity": {
+              "severity": "moderate",
+              "root_cause": "equipment_constraint",
+              "expand_cycle": "12_24m",
+              "substitutability": "partial_emerging",
+              "concentration": "oligopoly"
+            },
+            "value_magnitude": {
+              "order_of_magnitude": "1B_10B",
+              "unit_economics_hint": "全球CMP设备市场约70亿美元，美企应用材料、日本荏原占主导，国产华海清科已实现12英寸量产"
+            },
+            "value_owners": [
+              {
+                "name": "应用材料",
+                "public_market": "NASDAQ:AMAT",
+                "value_share": "dominant",
+                "investable_in_a_share": false,
+                "investment_logic": "全球CMP设备龙头，份额超50%"
+              },
+              {
+                "name": "华海清科",
+                "public_market": "688120.SH",
+                "value_share": "challenger",
+                "investable_in_a_share": true,
+                "investment_logic": "国内唯一实现12英寸CMP设备批量出货的供应商，受益存储厂扩产与国产化"
+              }
+            ],
+            "profit_pool": {
+              "share_of_industry_profit": "moderate_5_15pct",
+              "margin_level": "high_25_40pct",
+              "margin_estimated": true,
+              "margin_data_source": "LLM估计"
+            },
+            "competitive_landscape": {
+              "structure": "oligopoly_CR3_above_70",
+              "pricing_behavior": "collusive_oligopoly",
+              "global_leaders": [
+                "应用材料",
+                "荏原制作所"
+              ],
+              "china_substitution_rate": "5_20pct"
+            },
+            "a_stock_mapping": [
+              {
+                "code": "688120",
+                "name": "华海清科",
+                "investment_logic": "CMP设备国产唯一规模化供货，在长江存储、长鑫存储均有订单"
+              }
+            ],
+            "value_node_tags": [
+              "CMP国产替代主供",
+              "晶圆平坦化工艺"
+            ],
+            "evidence": [
+              {
+                "fact": "华海清科12英寸CMP设备已进入国内主要存储产线，2025年订单创新高",
+                "from": "search[5]·搜狐网",
+                "quality": {
+                  "level": "medium",
+                  "source_type": "company_news"
+                }
+              }
+            ]
+          },
+          {
+            "name": "半导体光刻胶",
+            "confidence": "high",
+            "supply_rigidity": {
+              "severity": "extreme",
+              "root_cause": "policy_restriction",
+              "expand_cycle": "over_24m",
+              "substitutability": "partial_emerging",
+              "concentration": "monopoly_single_supplier"
+            },
+            "value_magnitude": {
+              "order_of_magnitude": "1B_10B",
+              "unit_economics_hint": "全球半导体光刻胶市场超50亿美元，日本企业垄断，KrF/ArF光刻胶占主要份额"
+            },
+            "value_owners": [
+              {
+                "name": "日本JSR",
+                "public_market": "TSE:4185",
+                "value_share": "major",
+                "investable_in_a_share": false,
+                "investment_logic": "全球光刻胶垄断企业之一"
+              },
+              {
+                "name": "彤程新材",
+                "public_market": "603650.SH",
+                "value_share": "challenger",
+                "investable_in_a_share": true,
+                "investment_logic": "国内唯一KrF光刻胶量产供应商，受益国产替代与‘十五五’关键材料自给率目标"
+              }
+            ],
+            "profit_pool": {
+              "share_of_industry_profit": "significant_15_30pct",
+              "margin_level": "very_high_above_40pct",
+              "margin_estimated": true,
+              "margin_data_source": "LLM估计"
+            },
+            "competitive_landscape": {
+              "structure": "oligopoly_CR3_above_70",
+              "pricing_behavior": "monopoly",
+              "global_leaders": [
+                "JSR",
+                "东京应化",
+                "信越化学"
+              ],
+              "china_substitution_rate": "below_5pct"
+            },
+            "a_stock_mapping": [
+              {
+                "code": "603650",
+                "name": "彤程新材",
+                "investment_logic": "国内唯一量产KrF光刻胶，多条ArF产线建设中，直接受益存储扩产材料国产化"
+              },
+              {
+                "code": "300346",
+                "name": "南大光电",
+                "investment_logic": "ArF光刻胶通过客户验证，先进制程材料国产替代核心标的"
+              }
+            ],
+            "value_node_tags": [
+              "KrF/ArF光刻胶国产化",
+              "日本断供风险映射"
+            ],
+            "evidence": [
+              {
+                "fact": "高端光刻胶几乎全依赖日本，国内自给率极低，彤程新材是国内唯一KrF光刻胶量产供应商",
+                "from": "search[3.4]·彤程新材报告",
+                "quality": {
+                  "level": "high",
+                  "source_type": "company_report"
+                }
+              }
+            ]
+          },
+          {
+            "name": "高纯溅射靶材",
+            "confidence": "medium",
+            "supply_rigidity": {
+              "severity": "high",
+              "root_cause": "policy_restriction",
+              "expand_cycle": "12_24m",
+              "substitutability": "partial_high_cost",
+              "concentration": "oligopoly"
+            },
+            "value_magnitude": {
+              "order_of_magnitude": "1B_10B",
+              "unit_economics_hint": "全球半导体靶材市场约100亿美元，日本日矿金属、美国霍尼韦尔主导，中国钨资源管制后国产替代机会增大"
+            },
+            "value_owners": [
+              {
+                "name": "日矿金属",
+                "public_market": "TSE:5726",
+                "value_share": "major",
+                "investable_in_a_share": false,
+                "investment_logic": "全球靶材龙头"
+              },
+              {
+                "name": "江丰电子",
+                "public_market": "300666.SZ",
+                "value_share": "challenger",
+                "investable_in_a_share": true,
+                "investment_logic": "国内溅射靶材领先企业，钨靶等产品已进入主流存储客户"
+              }
+            ],
+            "profit_pool": {
+              "share_of_industry_profit": "moderate_5_15pct",
+              "margin_level": "high_25_40pct",
+              "margin_estimated": true,
+              "margin_data_source": "LLM估计"
+            },
+            "competitive_landscape": {
+              "structure": "oligopoly_CR3_above_70",
+              "pricing_behavior": "collusive_oligopoly",
+              "global_leaders": [
+                "日矿金属",
+                "霍尼韦尔"
+              ],
+              "china_substitution_rate": "5_20pct"
+            },
+            "a_stock_mapping": [
+              {
+                "code": "300666",
+                "name": "江丰电子",
+                "investment_logic": "国内高纯靶材龙头，受益中国钨出口管制后日企供应受制，加速国产替代"
+              }
+            ],
+            "value_node_tags": [
+              "钨靶材国产替代",
+              "资源管制反制链条"
+            ],
+            "evidence": [
+              {
+                "fact": "中国对钨实施出口管制后，日本钨靶出货受限，为国内高纯靶材企业打开窗口",
+                "from": "search[3.3]·新浪财经",
+                "quality": {
+                  "level": "medium",
+                  "source_type": "industry_news"
+                }
+              }
+            ]
+          }
+        ],
+        "evidence": [
+          {
+            "fact": "2026年全球DRAM、NAND闪存、HBM的市场供需缺口分别达到4.9%、4.2%和5.1%，均为2011年以来最高水平。核心原因是AI服务器需求爆发与产能建设周期错配",
+            "from": "补充搜索·新浪财经",
+            "quality": {
+              "level": "high",
+              "source_type": "industry_data"
+            }
+          },
+          {
+            "fact": "三星LPDDR4X价格一年内从6美元飙升至28.5美元，涨幅近4倍，反映AI存储芯片供给严重不足",
+            "from": "search[3]·21经济网",
+            "quality": {
+              "level": "high",
+              "source_type": "industry_news"
+            }
+          },
+          {
+            "fact": "存储芯片的产能建设周期长达两三年，2026年几乎无新增产能释放，设备交付延期加剧短缺",
+            "from": "补充搜索·知乎",
+            "quality": {
+              "level": "medium",
+              "source_type": "industry_analysis"
+            }
+          }
+        ]
+      },
+      {
+        "level": 2,
+        "name": "HBM先进封装",
+        "bottleneck_narrative": "HBM市场由SK海力士、三星、美光绝对垄断，TSV、混合键合等核心封装工艺被海外设备商把控，国产化率不足5%，CoWoS封装产能已成为整个AI算力供给的瓶颈，且扩产周期超24个月。",
+        "confidence": "high",
+        "chokepoint_checklist": {
+          "is_sole_source": false,
+          "customer_switch_cost_months": 18,
+          "cost_share_of_downstream": 0.08,
+          "price_hike_pass_through": 0.9,
+          "capacity_util_rate": 0.98,
+          "order_backlog_months": 24,
+          "regulatory_moat": false,
+          "bottleneck_severity": "very_high"
+        },
+        "supply_rigidity": {
+          "severity": "extreme",
+          "root_cause": "equipment_constraint",
+          "expand_cycle": "over_24m",
+          "substitutability": "none_short_term",
+          "concentration": "oligopoly",
+          "alpha_narrative": "极度设备约束→HBM供给刚性→单价指数级增长，封装设备（键合机等）成为全球半导体最稀缺产能"
+        },
+        "profit_pool": {
+          "share_of_industry_profit": "significant_15_30pct",
+          "margin_level": "very_high_above_40pct",
+          "margin_estimated": true,
+          "margin_data_source": "LLM估计",
+          "pricing_power_narrative": "三家存储原厂将HBM封装自有完成，技术与产能壁垒使得价格年涨幅超100%，封装环节利润被原厂牢牢锁定"
+        },
+        "value_capture": {
+          "market_attention": "very_high",
+          "attention_quality": "profit_real",
+          "gap_narrative": "市场充分认知HBM瓶颈，但利润归海外原厂，A股仅能映射设备与材料，且设备国产化率极低",
+          "who_captures_value": [
+            "SK海力士",
+            "三星",
+            "美光"
+          ]
+        },
+        "competitive_landscape": {
+          "structure": "oligopoly_CR3_above_70",
+          "global_leaders": [
+            "SK海力士",
+            "三星",
+            "美光"
+          ],
+          "china_substitution_rate": "below_5pct"
+        },
+        "value_node_tags": [
+          "HBM封装全球垄断",
+          "CoWoS产能瓶颈",
+          "先进封装设备极度短缺"
+        ],
+        "a_stock_transmission": "HBM封装设备几乎被海外垄断，国内先进封装设备商（中微刻蚀、北方华创沉积、华卓精科键合等）处于验证导入阶段，订单弹性巨大；下游封测厂（长电科技、通富微电）若突破HBM封装将价值重估；磷化铟衬底等特种材料间接映射（云南锗业）。",
+        "sub_processes": [
+          {
+            "name": "TSV通孔制造（深硅刻蚀+气相沉积+铜填充）",
+            "confidence": "high",
+            "supply_rigidity": {
+              "severity": "high",
+              "root_cause": "equipment_constraint",
+              "expand_cycle": "12_24m",
+              "substitutability": "partial_emerging",
+              "concentration": "oligopoly"
+            },
+            "value_magnitude": {
+              "order_of_magnitude": "1B_10B",
+              "unit_economics_hint": "TSV设备市场约25亿美元，占HBM封装成本15%-20%，刻蚀与气相沉积为核心工序"
+            },
+            "value_owners": [
+              {
+                "name": "Lam Research",
+                "public_market": "NASDAQ:LRCX",
+                "value_share": "dominant",
+                "investable_in_a_share": false,
+                "investment_logic": "TSV深硅刻蚀全球份额超50%"
+              },
+              {
+                "name": "中微公司",
+                "public_market": "688012.SH",
+                "value_share": "challenger",
+                "investable_in_a_share": true,
+                "investment_logic": "TSV刻蚀设备国产龙头，已进入HBM产业链验证"
+              }
+            ],
+            "profit_pool": {
+              "share_of_industry_profit": "significant_15_30pct",
+              "margin_level": "very_high_above_40pct",
+              "margin_estimated": true,
+              "margin_data_source": "LLM估计"
+            },
+            "competitive_landscape": {
+              "structure": "oligopoly_CR3_above_70",
+              "pricing_behavior": "collusive_oligopoly",
+              "global_leaders": [
+                "Lam Research",
+                "应用材料",
+                "TEL"
+              ],
+              "china_substitution_rate": "below_5pct"
+            },
+            "a_stock_mapping": [
+              {
+                "code": "688012",
+                "name": "中微公司",
+                "investment_logic": "国内唯一能提供TSV深硅刻蚀的厂商，订单已经开始导入HBM封装线"
+              },
+              {
+                "code": "002371",
+                "name": "北方华创",
+                "investment_logic": "深孔气相沉积与铜填充PVD设备，受益HBM扩产"
+              }
+            ],
+            "value_node_tags": [
+              "TSV深硅刻蚀国产替代",
+              "HBM封装前道设备"
+            ],
+            "evidence": [
+              {
+                "fact": "HBM制造中TSV等先进封装环节的设备国产化率极低（<5%），尤其是键合机、刻蚀设备",
+                "from": "search[1]·新浪财经",
+                "quality": {
+                  "level": "high",
+                  "source_type": "industry_data"
+                }
+              }
+            ]
+          },
+          {
+            "name": "临时键合/解键合",
+            "confidence": "medium",
+            "supply_rigidity": {
+              "severity": "high",
+              "root_cause": "equipment_constraint",
+              "expand_cycle": "12_24m",
+              "substitutability": "partial_high_cost",
+              "concentration": "duopoly"
+            },
+            "value_magnitude": {
+              "order_of_magnitude": "<1B",
+              "unit_economics_hint": "临时键合设备市场约5亿美元，EVG和SUSS领先，国内逐步突破"
+            },
+            "value_owners": [
+              {
+                "name": "EV Group",
+                "public_market": "private",
+                "value_share": "major",
+                "investable_in_a_share": false,
+                "investment_logic": "全球临时键合龙头"
+              },
+              {
+                "name": "芯源微",
+                "public_market": "688037.SH",
+                "value_share": "niche",
+                "investable_in_a_share": true,
+                "investment_logic": "涂胶显影设备向临时键合延伸，研发导入中"
+              }
+            ],
+            "profit_pool": {
+              "share_of_industry_profit": "moderate_5_15pct",
+              "margin_level": "high_25_40pct",
+              "margin_estimated": true,
+              "margin_data_source": "LLM估计"
+            },
+            "competitive_landscape": {
+              "structure": "duopoly",
+              "pricing_behavior": "collusive_oligopoly",
+              "global_leaders": [
+                "EV Group",
+                "SUSS"
+              ],
+              "china_substitution_rate": "below_5pct"
+            },
+            "a_stock_mapping": [
+              {
+                "code": "688037",
+                "name": "芯源微",
+                "investment_logic": "先进封装设备平台公司，临时键合领域有望切入"
+              }
+            ],
+            "value_node_tags": [
+              "临时键合/解键合设备",
+              "先进封装卡脖子环节"
+            ],
+            "evidence": [
+              {
+                "fact": "临时键合/解键合设备高度依赖进口，国产厂商未见批量供应",
+                "from": "search[1]·腾讯新闻",
+                "quality": {
+                  "level": "medium",
+                  "source_type": "industry_news"
+                }
+              }
+            ]
+          },
+          {
+            "name": "晶圆减薄（CMP）",
+            "confidence": "medium",
+            "supply_rigidity": {
+              "severity": "moderate",
+              "root_cause": "equipment_constraint",
+              "expand_cycle": "12_24m",
+              "substitutability": "partial_emerging",
+              "concentration": "oligopoly"
+            },
+            "value_magnitude": {
+              "order_of_magnitude": "1B_10B",
+              "unit_economics_hint": "CMP减薄设备市场约25亿美元，华海清科已突破晶圆减薄设备"
+            },
+            "value_owners": [
+              {
+                "name": "应用材料",
+                "public_market": "NASDAQ:AMAT",
+                "value_share": "major",
+                "investable_in_a_share": false,
+                "investment_logic": "全球CMP减薄龙头"
+              },
+              {
+                "name": "华海清科",
+                "public_market": "688120.SH",
+                "value_share": "challenger",
+                "investable_in_a_share": true,
+                "investment_logic": "12英寸减薄设备量产，率先进入国内存储及封装客户"
+              }
+            ],
+            "profit_pool": {
+              "share_of_industry_profit": "moderate_5_15pct",
+              "margin_level": "high_25_40pct",
+              "margin_estimated": true,
+              "margin_data_source": "LLM估计"
+            },
+            "competitive_landscape": {
+              "structure": "oligopoly_CR3_above_70",
+              "pricing_behavior": "collusive_oligopoly",
+              "global_leaders": [
+                "应用材料",
+                "荏原"
+              ],
+              "china_substitution_rate": "5_20pct"
+            },
+            "a_stock_mapping": [
+              {
+                "code": "688120",
+                "name": "华海清科",
+                "investment_logic": "晶圆减薄CMP设备国产唯一，受益HBM先进封装及3D IC趋势"
+              }
+            ],
+            "value_node_tags": [
+              "晶圆减薄国产替代",
+              "先进封装后道CMP"
+            ],
+            "evidence": [
+              {
+                "fact": "HBM堆叠需要极薄晶圆减薄，华海清科减薄设备已交付存储客户",
+                "from": "search[5]·搜狐网",
+                "quality": {
+                  "level": "medium",
+                  "source_type": "company_news"
+                }
+              }
+            ]
+          },
+          {
+            "name": "混合键合/TCB键合",
+            "confidence": "medium",
+            "supply_rigidity": {
+              "severity": "extreme",
+              "root_cause": "equipment_constraint",
+              "expand_cycle": "over_24m",
+              "substitutability": "none_short_term",
+              "concentration": "duopoly"
+            },
+            "value_magnitude": {
+              "order_of_magnitude": "1B_10B",
+              "unit_economics_hint": "混合键合+TCB设备市场约30亿美元，HBM3E及未来HBM4必备，Besi、韩美主导"
+            },
+            "value_owners": [
+              {
+                "name": "Besi",
+                "public_market": "AMS:BESI",
+                "value_share": "dominant",
+                "investable_in_a_share": false,
+                "investment_logic": "全球最大TCB/混合键合设备商，HBM核心供应商"
+              },
+              {
+                "name": "华卓精科（未上市）",
+                "public_market": "private",
+                "value_share": "niche",
+                "investable_in_a_share": false,
+                "investment_logic": "已推出混合键合、熔融键合等设备，仍处于导入验证"
+              }
+            ],
+            "profit_pool": {
+              "share_of_industry_profit": "significant_15_30pct",
+              "margin_level": "very_high_above_40pct",
+              "margin_estimated": true,
+              "margin_data_source": "LLM估计"
+            },
+            "competitive_landscape": {
+              "structure": "duopoly",
+              "pricing_behavior": "monopoly",
+              "global_leaders": [
+                "Besi",
+                "韩美半导体"
+              ],
+              "china_substitution_rate": "below_5pct"
+            },
+            "a_stock_mapping": [],
+            "value_node_tags": [
+              "混合键合设备极度稀缺",
+              "HBM3E+核心瓶颈"
+            ],
+            "evidence": [
+              {
+                "fact": "华卓精科已推出混合键合、熔融键合等全系列设备，但整体仍处于验证导入阶段，批量供应能力弱",
+                "from": "search[1]·新浪财经",
+                "quality": {
+                  "level": "high",
+                  "source_type": "industry_news"
+                }
+              }
+            ]
+          }
+        ],
+        "evidence": [
+          {
+            "fact": "HBM市场由SK海力士（54%）、三星（39%）、美光（7%）垄断，技术迭代围绕带宽、堆叠层数",
+            "from": "search[2.3]·CSDN博客",
+            "quality": {
+              "level": "high",
+              "source_type": "industry_data"
+            }
+          },
+          {
+            "fact": "Hybrid bonding是HBM3E及未来的核心封装工艺，中国大陆厂商虽在扩充先进封装产能，但TSV、减薄、键合等关键环节的设备和工艺仍落后于国际领先水平",
+            "from": "search[2.2]·中信证券",
+            "quality": {
+              "level": "high",
+              "source_type": "sell_side_report"
+            }
+          },
+          {
+            "fact": "CoWoS封装产能已售罄到2026年底，并持续预订到2027年，成为整体AI算力供给的瓶颈",
+            "from": "补充搜索·知乎",
+            "quality": {
+              "level": "high",
+              "source_type": "industry_analysis"
+            }
+          }
+        ]
+      },
+      {
+        "level": 3,
+        "name": "企业级SSD主控芯片",
+        "bottleneck_narrative": "企业级SSD主控曾为海外垄断，现大普微实现全栈国产替代且性能对标三星，但整体国产化率仍低，DRAM原料受制于长鑫产能，主控大规模推广仍需上游晶圆制造瓶颈缓解。",
+        "confidence": "medium",
+        "chokepoint_checklist": {
+          "is_sole_source": false,
+          "customer_switch_cost_months": 3,
+          "cost_share_of_downstream": 0.03,
+          "price_hike_pass_through": 0.6,
+          "capacity_util_rate": 0.85,
+          "order_backlog_months": 6,
+          "regulatory_moat": false,
+          "bottleneck_severity": "moderate"
+        },
+        "supply_rigidity": {
+          "severity": "moderate",
+          "root_cause": "capital_scale",
+          "expand_cycle": "under_12m",
+          "substitutability": "partial_emerging",
+          "concentration": "oligopoly",
+          "alpha_narrative": "国内SSD主控芯片设计已突破，但晶圆代工产能约束，量产规模受制于上游制造"
+        },
+        "profit_pool": {
+          "share_of_industry_profit": "moderate_5_15pct",
+          "margin_level": "high_25_40pct",
+          "margin_estimated": true,
+          "margin_data_source": "LLM估计",
+          "pricing_power_narrative": "主控芯片差异化竞争，价格受DRAM/NAND市场波动影响，国产替代初期具有溢价"
+        },
+        "value_capture": {
+          "market_attention": "medium",
+          "attention_quality": "under_the_radar",
+          "gap_narrative": "市场对SSD主控关注度低于存储制造，但全栈替代能力将获得重估，大普微未上市使得A股缺乏直接标的，相关映射稀薄",
+          "who_captures_value": [
+            "大普微",
+            "国科微",
+            "德明利"
+          ]
+        },
+        "competitive_landscape": {
+          "structure": "oligopoly_CR3_above_70",
+          "global_leaders": [
+            "三星",
+            "慧荣科技",
+            "联芸科技"
+          ],
+          "china_substitution_rate": "5_20pct"
+        },
+        "value_node_tags": [
+          "企业级SSD主控国产替代",
+          "大普微领先",
+          "A股映射稀缺"
+        ],
+        "a_stock_transmission": "企业级SSD主控技术已突破，但核心标的大普微未上市，A股可关注其潜在供应链伙伴（如晶圆代工、封装测试）或间接映射国科微、德明利，但纯正度低。",
+        "evidence": [
+          {
+            "fact": "大普微是国内唯一‘主控+固件+模组’全栈自研并大规模出货的企业级SSD公司，其PCIe 5.0产品良率达85%、性能对标三星",
+            "from": "search[2]·财富号",
+            "quality": {
+              "level": "medium",
+              "source_type": "self_media"
+            }
+          }
+        ],
+        "sub_processes": []
+      }
+    ],
+    "sales_chain": [
+      {
+        "segment": "AI服务器/存储模组组装",
+        "value_node_tags": [
+          "存储模组",
+          "服务器组装",
+          "需求爆发第一站"
+        ],
+        "reason": "AI服务器订单暴增直接拉动企业级SSD、HBM模组需求，佰维存储、江波龙等模组厂业绩创历史新高，且库存价值重估",
+        "lead_months": "0-3"
+      },
+      {
+        "segment": "存储芯片制造",
+        "value_node_tags": [
+          "DRAM/NAND制造",
+          "涨价核心"
+        ],
+        "reason": "模组厂拉货带动存储芯片订单量价齐升，三星等制造商掌握涨价主导权，利润快速释放",
+        "lead_months": "1-3"
+      }
+    ],
+    "expansion_chain": [
+      {
+        "segment": "半导体设备",
+        "value_node_tags": [
+          "刻蚀/沉积",
+          "CMP",
+          "封装设备"
+        ],
+        "reason": "存储厂扩产计划需提前1年以上订购设备，设备商最先看到订单增长，北方华创、中微公司等合同负债已先行反应",
+        "lag_months": "6-12"
+      },
+      {
+        "segment": "半导体材料",
+        "value_node_tags": [
+          "光刻胶",
+          "靶材",
+          "特气"
+        ],
+        "reason": "晶圆制造产能爬坡后，硅片、光刻胶等材料消耗量持续增加，且国产替代窗口打开，订单增速滞后设备约两个季度",
+        "lag_months": "12-24"
+      }
+    ],
+    "chain_timeline": {
+      "sales_lead_months": "1-3",
+      "expansion_lag_months": "6-12",
+      "rotation_strategy": "当前存储芯片制造与设备处于bottleneck_formation，利润最丰厚；应超配HBM封装设备替代链和紧缺材料（光刻胶）；关注存储模组受高价挤压后的毛利率拐点，逢低布局后续缓解受益标的"
+    },
+    "scarcity_ranking": [
+      {
+        "rank": 1,
+        "segment": "EUV光刻机",
+        "rigidity_narrative": "ASML独家供应，2027年前产能已全部分配，新订单交付超24个月，存储扩产无法绕开",
+        "value_node_tags": [
+          "EUV光刻机",
+          "极度稀缺"
+        ]
+      },
+      {
+        "rank": 2,
+        "segment": "混合键合/TCB键合设备",
+        "rigidity_narrative": "HBM3E/4必备，全球仅Besi、韩美半导体规模供货，国产几乎空白，交付延后严重",
+        "value_node_tags": [
+          "混合键合设备",
+          "HBM封装核心"
+        ]
+      },
+      {
+        "rank": 3,
+        "segment": "高端半导体光刻胶",
+        "rigidity_narrative": "日本无限期垄断，国内仅彤程新材KrF量产，ArF/EUV完全依赖进口，地缘政治风险极大",
+        "value_node_tags": [
+          "KrF/ArF光刻胶",
+          "日本卡脖子"
+        ]
+      }
+    ],
+    "catalysts": [
+      {
+        "type": "capacity",
+        "catalyst": "长鑫存储二期产能爬坡至10万片/月",
+        "expected_date": "2026H1",
+        "watch_signal": "长鑫IPO进展；设备搬入公告",
+        "affected_segment": "国产设备/材料供应商"
+      },
+      {
+        "type": "policy",
+        "catalyst": "美国对华半导体设备出口管控进一步收紧",
+        "expected_date": "随时可能",
+        "watch_signal": "BIS新增实体清单",
+        "affected_segment": "国产设备替代标的；存储芯片进口替代"
+      },
+      {
+        "type": "capacity",
+        "catalyst": "华卓精科混合键合设备通过头部存储客户验证",
+        "expected_date": "2026Q4",
+        "wait_signal": "公司公告或产业调研",
+        "affected_segment": "先进封装设备"
+      }
+    ],
+    "findings_count": 16,
+    "agent": "SupplyChainHacker",
+    "industry": "AI存储产业",
+    "search_rounds": 3
+  }
+}

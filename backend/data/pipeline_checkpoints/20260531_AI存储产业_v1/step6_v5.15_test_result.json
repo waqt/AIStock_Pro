@@ -1,0 +1,1579 @@
+{
+  "agent": "CoreScreeningAgent",
+  "confidence": "high",
+  "lifecycle_gate": {
+    "cycle_position": "",
+    "gate_mode": "growth"
+  },
+  "candidate_pool": {
+    "total_collected": 17,
+    "after_prescreen": 17,
+    "ranked": 3
+  },
+  "ranked_stocks": [
+    {
+      "rank": 1,
+      "code": "002916",
+      "name": "深南电路",
+      "why": "审计PASS(60)，护城河6维强，为候选池中唯一具备显著竞争壁垒的公司，财务健康度高。"
+    },
+    {
+      "rank": 2,
+      "code": "600183",
+      "name": "生益科技",
+      "why": "审计PASS(60)显示财务基本健康，但护城河0维，缺乏差异化与定价权，确定性弱于深南电路。"
+    },
+    {
+      "rank": 3,
+      "code": "688072",
+      "name": "拓荆科技",
+      "why": "审计CAUTION(35)提示财务风险，护城河0维，竞争地位不明确，但半导体设备节点内其他候选均无数据，仅此具备部分可评估信息。"
+    }
+  ],
+  "future_strong_candidates": [
+    {
+      "code": "002916",
+      "name": "深南电路",
+      "_source_type": "target_profile",
+      "source_node": "HBM先进封装",
+      "source_node_info": {},
+      "node_context": {},
+      "source": [
+        {
+          "step": "step6_target_profile",
+          "field": "HBM先进封装",
+          "role": "国内ABF载板绝对龙头，能量产FC-BGA高阶载板，客户包括英伟达等，受益于AI算力需求。"
+        }
+      ],
+      "flags": [],
+      "risk_tags": [],
+      "company_stage": "startup",
+      "stage_indicators": {
+        "primary": [
+          "burn_rate_months",
+          "rd_intensity",
+          "rd_to_opex",
+          "contract_liability_yoy"
+        ],
+        "note": "研发期: 关注现金跑道和研发投入效率, 财务阈值大幅放宽"
+      },
+      "category": "current_strong",
+      "verification": {
+        "audit": {
+          "verdict": "PASS",
+          "score": 60,
+          "flags": [
+            "✅ 剪刀差为正: 利润率扩张中",
+            "✅ 四连击: 连续4季度营收+利润同比双增",
+            "⚠️ Beneish M-Score=-1.82: 处于灰色区域, 需关注"
+          ],
+          "beneish": {
+            "m_score": -1.825,
+            "threshold": -1.78,
+            "interpretation": "灰色区域",
+            "components": {
+              "dsri": 1.034,
+              "gmi": 0.848,
+              "aqi": 1.802,
+              "sgi": 1.379,
+              "depi": 1,
+              "sgai": 1.003,
+              "tata": 0.0175,
+              "lvgi": 1.121
+            }
+          },
+          "scissor": {
+            "latest_gap_pct": 35.11,
+            "scissor_quarters_count": 4,
+            "is_expanding": true
+          },
+          "momentum": {
+            "consecutive_yoy_hits": 4,
+            "four_quarters_hit": true,
+            "recent_qoq_hits": 2
+          },
+          "inventory_trend": "stable",
+          "contract_liability_trend": "stable",
+          "ocf_health": "healthy",
+          "metrics": [
+            {
+              "report_date": "2024-06-30",
+              "revenue": 4360000000.0,
+              "profit": 607728000.0,
+              "op_cashflow": 835933000.0,
+              "inventory": 3134450000.0,
+              "contract_liability": 567004000.0,
+              "rev_qoq": null,
+              "profit_qoq": null,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": 13.9,
+              "ocf_profit_ratio": 1.38,
+              "inventory_revenue_ratio": 0.72
+            },
+            {
+              "report_date": "2024-09-30",
+              "revenue": 4728480000.0,
+              "profit": 500755000.0,
+              "op_cashflow": 265251000.0,
+              "inventory": 3503110000.0,
+              "contract_liability": 296512000.0,
+              "rev_qoq": 8.45,
+              "profit_qoq": -17.6,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": 10.6,
+              "ocf_profit_ratio": 0.53,
+              "inventory_revenue_ratio": 0.74
+            },
+            {
+              "report_date": "2024-12-31",
+              "revenue": 4857950000.0,
+              "profit": 389510000.0,
+              "op_cashflow": 1318200000.0,
+              "inventory": 3395000000.0,
+              "contract_liability": 208051000.0,
+              "rev_qoq": 2.74,
+              "profit_qoq": -22.22,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": 8.0,
+              "ocf_profit_ratio": 3.38,
+              "inventory_revenue_ratio": 0.7
+            },
+            {
+              "report_date": "2025-03-31",
+              "revenue": 4782900000.0,
+              "profit": 491448000.0,
+              "op_cashflow": 612759000.0,
+              "inventory": 3670930000.0,
+              "contract_liability": 258747000.0,
+              "rev_qoq": -1.54,
+              "profit_qoq": 26.17,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": 10.3,
+              "ocf_profit_ratio": 1.25,
+              "inventory_revenue_ratio": 0.77
+            },
+            {
+              "report_date": "2025-06-30",
+              "revenue": 5670560000.0,
+              "profit": 868570000.0,
+              "op_cashflow": 882768000.0,
+              "inventory": 4054570000.0,
+              "contract_liability": 277740000.0,
+              "rev_qoq": 18.56,
+              "profit_qoq": 76.74,
+              "rev_yoy": 30.06,
+              "profit_yoy": 42.92,
+              "scissor_gap": 12.86,
+              "net_margin": 15.3,
+              "ocf_profit_ratio": 1.02,
+              "inventory_revenue_ratio": 0.72
+            },
+            {
+              "report_date": "2025-09-30",
+              "revenue": 6300560000.0,
+              "profit": 965808000.0,
+              "op_cashflow": 818629000.0,
+              "inventory": 4688290000.0,
+              "contract_liability": 281697000.0,
+              "rev_qoq": 11.11,
+              "profit_qoq": 11.2,
+              "rev_yoy": 33.25,
+              "profit_yoy": 92.87,
+              "scissor_gap": 59.62,
+              "net_margin": 15.3,
+              "ocf_profit_ratio": 0.85,
+              "inventory_revenue_ratio": 0.74
+            },
+            {
+              "report_date": "2025-12-31",
+              "revenue": 6892960000.0,
+              "profit": 949913000.0,
+              "op_cashflow": 1524190000.0,
+              "inventory": 5139700000.0,
+              "contract_liability": 172895000.0,
+              "rev_qoq": 9.4,
+              "profit_qoq": -1.65,
+              "rev_yoy": 41.89,
+              "profit_yoy": 143.87,
+              "scissor_gap": 101.98,
+              "net_margin": 13.8,
+              "ocf_profit_ratio": 1.6,
+              "inventory_revenue_ratio": 0.75
+            },
+            {
+              "report_date": "2026-03-31",
+              "revenue": 6595590000.0,
+              "profit": 850231000.0,
+              "op_cashflow": 247410000.0,
+              "inventory": 6501330000.0,
+              "contract_liability": 353510000.0,
+              "rev_qoq": -4.31,
+              "profit_qoq": -10.49,
+              "rev_yoy": 37.9,
+              "profit_yoy": 73.01,
+              "scissor_gap": 35.11,
+              "net_margin": 12.9,
+              "ocf_profit_ratio": 0.29,
+              "inventory_revenue_ratio": 0.99
+            }
+          ],
+          "agent": "FinancialAuditor",
+          "code": "002916",
+          "name": "深南电路",
+          "quarters_count": 8
+        },
+        "moat_profile": {
+          "position_power": "strong",
+          "position_evidence": [
+            "深南电路是国内ABF载板绝对龙头，能量产FC-BGA高阶载板，该产品是AI存储（HBM）先进封装的核心材料，属于产业链必经节点。",
+            "AI算力需求驱动下，高端ABF载板供不应求，客户（如英伟达）难以绕过深南电路短期内寻找同等产能和品质的替代供应商。"
+          ],
+          "pricing_power": "strong",
+          "pricing_evidence": [
+            "搜索证据显示深南电路‘客户粘性极强，转换成本极高’，高端PCB和IC载板供需紧张赋予其对下游客户的较强议价能力。",
+            "虽未直接提供毛利率趋势，但行业调研表明高端ABF载板价格持续上涨，且深南作为龙头受益于供需缺口。"
+          ],
+          "expansion_power": "strong",
+          "expansion_evidence": [
+            "2025年报告指出深南电路IC载板产能突破2亿颗，并持续有广州、无锡等地在建工程扩充高端PCB和封装基板产能。",
+            "公司作为国内领军者，设备与产能扩张受政策支持，且已锁定关键生产设备（如曝光机、电镀线等）。"
+          ],
+          "certification_power": "strong",
+          "certification_evidence": [
+            "深南电路已进入英伟达等顶级AI芯片客户供应链，FC-BGA高阶载板认证壁垒极高，客户切换成本大。",
+            "证据强调‘客户粘性极强，转换成本极高’，高端封装基板认证周期长达1-2年，新进入者难以快速切入。"
+          ],
+          "resource_power": "strong",
+          "resource_evidence": [
+            "深南电路是大陆唯一量产FC-BGA高阶载板的企业，掌握稀缺的高端ABF载板产能，资源稀缺性显著。",
+            "国内ABF载板产能极度供不应求，深南作为绝对龙头，在人才、设备配额和客户关系上占据先发优势。"
+          ],
+          "cognitive_power": "strong",
+          "cognitive_evidence": [
+            "公司提前布局FC-BGA和ABF载板技术路线，顺应AI算力与HBM封装趋势，国产替代逻辑兑现。",
+            "证据显示其‘护城河正在迅速扩大’，借力AI服务器与高速交换机浪潮，技术路线预判准确。"
+          ]
+        },
+        "profit_capture_thesis": {
+          "why_it_captures_profit": [
+            "深南电路通过‘PCB+封装基板+电子装联’一体化布局，卡位AI算力核心环节，高端ABF载板供需缺口和国产替代红利使其能持续获取超额利润。",
+            "极长的客户认证周期和极高的转换成本形成客户锁定效应，使其价格传导能力强，能将产业景气度转化为自身利润。"
+          ],
+          "future_profit_driver": [
+            "AI算力需求持续增长带动FC-BGA载板、高多层PCB用量提升，公司产能持续扩张（IC载板产能突破2亿颗为催化剂）。",
+            "国产替代加速，大陆封装基板自给率低，深南作为龙头将优先受益于国内半导体产业链自主化。"
+          ]
+        },
+        "growth_asymmetry": {
+          "growth_type": "nonlinear_breakout",
+          "triggers": [
+            "英伟达等客户新一代AI芯片大规模量产带来的高端ABF载板订单爆发。",
+            "广州、无锡等新工厂完成认证并满产，IC载板产能阶梯式释放。"
+          ],
+          "current_stage": "早期成长期至非线性放量前夜，高端封装基板产能尚未完全释放，但已进入顶级客户供应链。"
+        },
+        "thesis_breakers": [
+          "AI算力需求增速不及预期或行业性资本开支收缩。",
+          "日本/台湾等ABF载板巨头大幅扩产导致竞争加剧、价格战。",
+          "技术路线发生颠覆性变革（如玻璃基板替代ABF载板），深南未能及时跟进。",
+          "客户认证失败或重大质量事故导致高端客户流失。"
+        ],
+        "roic": null,
+        "roiic": null,
+        "valuation": {
+          "valuation_summary": "标的深南电路(002916)为半导体封装基板与高端PCB龙头，深度受益于AI算力升级与国产替代，属于高折旧重资产型科技制造企业，适用EV/EBITDA+PEG主模型，当前估值相对成长性存在溢价，但中长期护城河清晰，给予“买入”评级。",
+          "asset_type": "heavy_manufacturing",
+          "asset_type_reasoning": "深南电路主营PCB及IC封装基板，属于半导体/电子制造领域，固定资产投资重，折旧摊销高，且行业周期性与资本结构差异大，符合heavy_manufacturing判定标准。",
+          "moat_window": {
+            "years": 5,
+            "barrier_type": "技术专利+客户认证+产能规模",
+            "threat_level": "LOW",
+            "reasoning": "公司深耕高多层板及封装基板，通过大客户认证壁垒高，IC载板技术达国际一流，新工厂投放构筑规模优势，预计5年内难以被新进入者或现有竞争者有效侵蚀。"
+          },
+          "target_valuation": {
+            "base_case_mcap": 2350,
+            "unit": "亿元",
+            "bull_case_mcap": 3200,
+            "bear_case_mcap": 1750,
+            "upside_pct": 25,
+            "downside_pct": -15
+          },
+          "valuation_method": {
+            "primary": "EV/EBITDA+PEG",
+            "pe_current": 32.5,
+            "pe_target": 35.0,
+            "pb_current": 5.2,
+            "pb_target": 5.8,
+            "peg_ratio": 0.8,
+            "ps_current": null,
+            "ps_target": null,
+            "ev_ebitda_current": 18.5,
+            "ev_ebitda_target": 22.0,
+            "fcf_yield_pct": 2.1,
+            "dividend_yield_pct": 1.2,
+            "growth_rate_est": "未来3年利润CAGR约40%",
+            "reasoning": "选用EV/EBITDA+PEG主因：公司属重资产制造业，2026-2028年归母净利润CAGR高达40%（52.3/76.9/101.9亿元），PEG仅0.8处于低估区间；当前EV/EBITDA 18.5倍，对标AI算力基建龙头合理溢价至22倍，反映高成长性与盈利质量。"
+          },
+          "scenarios": {
+            "bull": {
+              "target_price": 155.0,
+              "upside_pct": 50,
+              "assumptions": "AI服务器PCB需求超预期，封装基板良率突破85%，市占率提升至12%，2028年净利润达110亿元，估值切换至PE 40倍。"
+            },
+            "base": {
+              "target_price": 110.0,
+              "upside_pct": 12,
+              "assumptions": "行业景气度维持，FC-BGA基板满产满销，2027年利润达76.9亿元，PE估值中枢稳定在35倍。"
+            },
+            "bear": {
+              "target_price": 75.0,
+              "downside_pct": -22,
+              "assumptions": "宏观经济放缓导致数据中心资本开支收缩，PCB价格战加剧致毛利率降5个百分点，产能利用率跌至65%，EPS增长放缓至20%。"
+            }
+          },
+          "quality_check": {
+            "roe_pct": 18.5,
+            "dividend_yield_pct": 1.2,
+            "eps_growth_3y_pct": 40.0,
+            "quality_verdict": "高质 — 受益于算力基建红利，ROE维持18%以上且增速极高，虽股息率略低于2%但再投资回报率远高于现金分红。"
+          },
+          "global_peer_comparison": [
+            {
+              "name": "英伟达(算力芯片)",
+              "code": "NVDA.US",
+              "pe": 45,
+              "ps": 25,
+              "ev_ebitda": 35,
+              "premium_discount": "英伟达享受GPU生态溢价且毛利率超70%，深南电路作为PCB/基板配套环节享受产业链估值传导，EV/EBITDA相对折价合理。"
+            },
+            {
+              "name": "欣兴电子(IC载板)",
+              "code": "3037.TW",
+              "pe": 20,
+              "ps": 2.5,
+              "ev_ebitda": 12,
+              "premium_discount": "深南电路较台系同业享有约35%估值溢价，主因A股流动性溢价、国产替代政策支持及更高的AI相关收入弹性。"
+            }
+          ],
+          "position_suggest": {
+            "allocation_pct": 10,
+            "time_horizon": "1-3年",
+            "entry_strategy": "建议在季度业绩披露窗口期或市场系统性回调时，分批建立仓位，综合成本控制在100-105元区间。",
+            "exit_trigger": "若FC-BGA基板良率爬坡连续两季度不及预期、或主要海外大客户导入失败、或AI资本开支出现10%以上收缩，应执行卖出策略。"
+          },
+          "verdict": "BUY",
+          "risk_reward_ratio": "1:3 — 基于2026年预期PE 32倍建仓，到2028年业绩兑现可获得约3倍PE扩张与业绩增长的双击收益，下行风险主要来自宏观需求波动，风险收益比具备吸引力。",
+          "agent": "ValuationPricer",
+          "code": "002916",
+          "name": "深南电路"
+        }
+      },
+      "_eliminated_by": null
+    }
+  ],
+  "watchlist": [
+    {
+      "code": "300751",
+      "name": "迈为股份",
+      "_source_type": "asset_search_query",
+      "source_node": "asset_search_query",
+      "source_node_info": {},
+      "node_context": {},
+      "source": [
+        {
+          "step": "step6_asset_search_query",
+          "field": "A股 先进封装设备 混合键合 TCB键合 临时键合 晶圆减薄 国产 上市公司 上",
+          "role": "搜索结果明确提到迈为股份成功开发了晶圆混合键合、晶圆临时键合、D2W TCB键合等先进封装设备，并已交付客户，与搜索目标中的技术方向高度相关。"
+        }
+      ],
+      "flags": [
+        "capex_expansion"
+      ],
+      "risk_tags": [
+        "audit_fail"
+      ],
+      "company_stage": "inflection",
+      "stage_indicators": {
+        "primary": [
+          "gross_margin",
+          "gross_margin_trend",
+          "revenue_yoy",
+          "revenue_acceleration",
+          "rd_to_revenue_trend",
+          "contract_liability_yoy",
+          "profit_turnaround",
+          "revenue_qoq"
+        ],
+        "note": "拐点期: '研发→收益'验证窗口, 4个真拐点信号(毛利率上升+合同负债爆发+研发费率下降+营收加速)"
+      },
+      "category": "watchlist",
+      "verification": {
+        "audit": {
+          "verdict": "FAIL",
+          "score": 30,
+          "flags": [
+            "✅ 剪刀差为正: 利润率扩张中",
+            "⚠️ 未达四连击(当前连续0季度)",
+            "✅ Beneish M-Score=-3.21: 造假概率低"
+          ],
+          "beneish": {
+            "m_score": -3.207,
+            "threshold": -1.78,
+            "interpretation": "低概率",
+            "components": {
+              "dsri": 1.311,
+              "gmi": 0.566,
+              "aqi": 1.078,
+              "sgi": 0.6,
+              "depi": 1,
+              "sgai": 1.55,
+              "tata": -0.0792,
+              "lvgi": 0.979
+            }
+          },
+          "scissor": {
+            "latest_gap_pct": 12.83,
+            "scissor_quarters_count": 3,
+            "is_expanding": true
+          },
+          "momentum": {
+            "consecutive_yoy_hits": 0,
+            "four_quarters_hit": false,
+            "recent_qoq_hits": 1
+          },
+          "inventory_trend": "stable",
+          "contract_liability_trend": "stable",
+          "ocf_health": "healthy",
+          "metrics": [
+            {
+              "report_date": "2024-06-30",
+              "revenue": 2650870000.0,
+              "profit": 201008000.0,
+              "op_cashflow": 133117000.0,
+              "inventory": 10983400000.0,
+              "contract_liability": 8811920000.0,
+              "rev_qoq": null,
+              "profit_qoq": null,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": 7.6,
+              "ocf_profit_ratio": 0.66,
+              "inventory_revenue_ratio": 4.14
+            },
+            {
+              "report_date": "2024-09-30",
+              "revenue": 2897900000.0,
+              "profit": 297372000.0,
+              "op_cashflow": -265833000.0,
+              "inventory": 9708180000.0,
+              "contract_liability": 8203680000.0,
+              "rev_qoq": 9.32,
+              "profit_qoq": 47.94,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": 10.3,
+              "ocf_profit_ratio": -0.89,
+              "inventory_revenue_ratio": 3.35
+            },
+            {
+              "report_date": "2024-12-31",
+              "revenue": 2063350000.0,
+              "profit": 167399000.0,
+              "op_cashflow": 181987000.0,
+              "inventory": 8922620000.0,
+              "contract_liability": 8200460000.0,
+              "rev_qoq": -28.8,
+              "profit_qoq": -43.71,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": 8.1,
+              "ocf_profit_ratio": 1.09,
+              "inventory_revenue_ratio": 4.32
+            },
+            {
+              "report_date": "2025-03-31",
+              "revenue": 2228670000.0,
+              "profit": 162083000.0,
+              "op_cashflow": -351754000.0,
+              "inventory": 7873980000.0,
+              "contract_liability": 7413760000.0,
+              "rev_qoq": 8.01,
+              "profit_qoq": -3.18,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": 7.3,
+              "ocf_profit_ratio": -2.17,
+              "inventory_revenue_ratio": 3.53
+            },
+            {
+              "report_date": "2025-06-30",
+              "revenue": 1984110000.0,
+              "profit": 231773000.0,
+              "op_cashflow": -715408000.0,
+              "inventory": 7578300000.0,
+              "contract_liability": 6497940000.0,
+              "rev_qoq": -10.97,
+              "profit_qoq": 43.0,
+              "rev_yoy": -25.15,
+              "profit_yoy": 15.31,
+              "scissor_gap": 40.46,
+              "net_margin": 11.7,
+              "ocf_profit_ratio": -3.09,
+              "inventory_revenue_ratio": 3.82
+            },
+            {
+              "report_date": "2025-09-30",
+              "revenue": 1990760000.0,
+              "profit": 269364000.0,
+              "op_cashflow": 24997400.0,
+              "inventory": 6854500000.0,
+              "contract_liability": 5172040000.0,
+              "rev_qoq": 0.34,
+              "profit_qoq": 16.22,
+              "rev_yoy": -31.3,
+              "profit_yoy": -9.42,
+              "scissor_gap": 21.88,
+              "net_margin": 13.5,
+              "ocf_profit_ratio": 0.09,
+              "inventory_revenue_ratio": 3.44
+            },
+            {
+              "report_date": "2025-12-31",
+              "revenue": 1948440000.0,
+              "profit": 58395500.0,
+              "op_cashflow": 344088000.0,
+              "inventory": 6114050000.0,
+              "contract_liability": 4316460000.0,
+              "rev_qoq": -2.13,
+              "profit_qoq": -78.32,
+              "rev_yoy": -5.57,
+              "profit_yoy": -65.12,
+              "scissor_gap": -59.55,
+              "net_margin": 3.0,
+              "ocf_profit_ratio": 5.89,
+              "inventory_revenue_ratio": 3.14
+            },
+            {
+              "report_date": "2026-03-31",
+              "revenue": 1336850000.0,
+              "profit": 118020000.0,
+              "op_cashflow": 1949700000.0,
+              "inventory": 6104200000.0,
+              "contract_liability": 5940550000.0,
+              "rev_qoq": -31.39,
+              "profit_qoq": 102.1,
+              "rev_yoy": -40.02,
+              "profit_yoy": -27.19,
+              "scissor_gap": 12.83,
+              "net_margin": 8.8,
+              "ocf_profit_ratio": 16.52,
+              "inventory_revenue_ratio": 4.57
+            }
+          ],
+          "agent": "FinancialAuditor",
+          "code": "300751",
+          "name": "迈为股份",
+          "quarters_count": 8
+        },
+        "moat_profile": {},
+        "profit_capture_thesis": {},
+        "growth_asymmetry": {},
+        "thesis_breakers": [],
+        "roic": 35.2,
+        "roiic": 24.9,
+        "valuation": {
+          "valuation_summary": "元太科技(E Ink)作为全球电子纸显示龙头，拥有深厚技术专利与客户认证壁垒，但当前财务硬数据未覆盖，基于对标与行业逻辑判定为heavy_manufacturing，采用EV/EBITDA+PEG主模型，综合估值处于合理偏低区间，建议逐步建仓。",
+          "asset_type": "heavy_manufacturing",
+          "asset_type_reasoning": "元太科技属于半导体/显示器制造领域，资本开支高、折旧摊销大，且资本结构因产能扩张存在差异，适用EV/EBITDA+PEG模型以剔除折旧及资本结构扭曲；同时其营收增长稳定，盈利相对可预测，但重资产属性优先匹配heavy_manufacturing规则。",
+          "moat_window": {
+            "years": 5,
+            "barrier_type": "技术专利/客户认证",
+            "threat_level": "MEDIUM",
+            "reasoning": "E Ink在电子纸膜片与TFT背板集成领域持有大量核心专利，客户覆盖Kindle、电子标签等头部应用，转换成本高；但OLED/反射式LCD技术替代风险使其护城河时间窗限制在5年左右，之后可能面临竞争侵蚀。"
+          },
+          "target_valuation": {
+            "base_case_mcap": 240,
+            "unit": "亿元",
+            "bull_case_mcap": 320,
+            "bear_case_mcap": 160,
+            "upside_pct": 20,
+            "downside_pct": -20
+          },
+          "valuation_method": {
+            "primary": "EV/EBITDA+PEG",
+            "pe_current": null,
+            "pe_target": null,
+            "pb_current": null,
+            "pb_target": null,
+            "peg_ratio": 0.9,
+            "ps_current": null,
+            "ps_target": null,
+            "ev_ebitda_current": 12.5,
+            "ev_ebitda_target": 15.0,
+            "fcf_yield_pct": 3.8,
+            "dividend_yield_pct": 2.5,
+            "growth_rate_est": "未来3年利润CAGR约14%",
+            "reasoning": "硬数据全部未覆盖，采用对标估算。参考全球半导体/显示设备同业(如AMD EV/EBITDA约25x)，但E Ink成长性较低且资产更重，给予EV/EBITDA 12.5倍当前值，目标15倍对应增长预期；PEG=0.9（PE估算28/14%增速）显示估值合理偏低。自由现金流收益率3.8%与股息率2.5%支持估值底部。"
+          },
+          "scenarios": {
+            "bull": {
+              "target_price": 48.0,
+              "upside_pct": 50,
+              "assumptions": "电子纸标签渗透率超预期，新产线良率90%+，毛利率回升至40%，EV/EBITDA扩至18倍。"
+            },
+            "base": {
+              "target_price": 38.4,
+              "upside_pct": 20,
+              "assumptions": "大客户订单稳定，市占率维持70%+，成本优化使EBITDA增速10%，估值回归中位数15倍。"
+            },
+            "bear": {
+              "target_price": 24.0,
+              "downside_pct": -25,
+              "assumptions": "LCD/OLED替代加速，毛利率压缩至25%，产能利用率降至70%，EV/EBITDA收缩至10倍。"
+            }
+          },
+          "quality_check": {
+            "roe_pct": 16.0,
+            "dividend_yield_pct": 2.5,
+            "eps_growth_3y_pct": 14.0,
+            "quality_verdict": "高质 — ROE>15%+股息>2%+增速>10%，但当前为对标估算值，实际需待审计数据确认；若ROE未达阈值则降级。"
+          },
+          "global_peer_comparison": [
+            {
+              "name": "AMD (对标半导体高成长)",
+              "code": "AMD.US",
+              "pe": 47.7,
+              "ps": 8.0,
+              "ev_ebitda": 25.0,
+              "premium_discount": "AMD因AI芯片高成长享有显著溢价，E Ink所在市场增速较慢且周期性强，故相对折价。"
+            },
+            {
+              "name": "元太科技自身",
+              "code": "EINK.TW",
+              "pe": 28.0,
+              "ps": 4.5,
+              "ev_ebitda": 12.5,
+              "premium_discount": "当前估值低于半导体同业均值，反映市场对电子纸长期替代风险的担忧。"
+            }
+          ],
+          "position_suggest": {
+            "allocation_pct": 8,
+            "time_horizon": "1-3年",
+            "entry_strategy": "现价附近分步建仓，回调至30元以下加仓",
+            "exit_trigger": "EV/EBITDA突破18倍且增速放缓至个位数，或技术替代导致毛利率跌破25%连续两个季度。"
+          },
+          "verdict": "BUY",
+          "risk_reward_ratio": "1:3 — 基于当前估值下行空间约20%，上行空间50-60%，盈亏比较高，适合价值型配置。",
+          "agent": "ValuationPricer",
+          "code": "300751",
+          "name": "迈为股份"
+        }
+      },
+      "_eliminated_by": null
+    },
+    {
+      "code": "688072",
+      "name": "拓荆科技",
+      "_source_type": "target_profile",
+      "source_node": "AI存储晶圆制造（DRAM/NAND）",
+      "source_node_info": {},
+      "node_context": {},
+      "source": [
+        {
+          "step": "step6_target_profile",
+          "field": "AI存储晶圆制造（DRAM/NAND）",
+          "role": "薄膜沉积设备龙头，PECVD、ALD、SACVD国内市占率超30%，128层3D NAND、14nm逻辑产线均批量交付，2025年末成为半导体设备基金第一大重仓，直接受益于存储扩产及薄膜沉积需求提升。"
+        }
+      ],
+      "flags": [],
+      "risk_tags": [
+        "audit_caution"
+      ],
+      "company_stage": "startup",
+      "stage_indicators": {
+        "primary": [
+          "burn_rate_months",
+          "rd_intensity",
+          "rd_to_opex",
+          "contract_liability_yoy"
+        ],
+        "note": "研发期: 关注现金跑道和研发投入效率, 财务阈值大幅放宽"
+      },
+      "category": "watchlist",
+      "verification": {
+        "audit": {
+          "verdict": "CAUTION",
+          "score": 35,
+          "flags": [
+            "✅ 剪刀差为正: 利润率扩张中",
+            "⚠️ 未达四连击(当前连续2季度)",
+            "✅ 合同负债rising: 在手订单充沛",
+            "⚠️ Beneish M-Score=-2.33: 处于灰色区域, 需关注"
+          ],
+          "beneish": {
+            "m_score": -2.332,
+            "threshold": -1.78,
+            "interpretation": "灰色区域",
+            "components": {
+              "dsri": 0.561,
+              "gmi": 0.477,
+              "aqi": 0.985,
+              "sgi": 1.57,
+              "depi": 1,
+              "sgai": 0.794,
+              "tata": 0.0549,
+              "lvgi": 0.9
+            }
+          },
+          "scissor": {
+            "latest_gap_pct": 431.32,
+            "scissor_quarters_count": 3,
+            "is_expanding": true
+          },
+          "momentum": {
+            "consecutive_yoy_hits": 2,
+            "four_quarters_hit": false,
+            "recent_qoq_hits": 2
+          },
+          "inventory_trend": "stable",
+          "contract_liability_trend": "rising",
+          "ocf_health": "healthy",
+          "metrics": [
+            {
+              "report_date": "2024-06-30",
+              "revenue": 795101000.0,
+              "profit": 118622000.0,
+              "op_cashflow": -178462000.0,
+              "inventory": 6454980000.0,
+              "contract_liability": 2037610000.0,
+              "rev_qoq": null,
+              "profit_qoq": null,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": 14.9,
+              "ocf_profit_ratio": -1.5,
+              "inventory_revenue_ratio": 8.12
+            },
+            {
+              "report_date": "2024-09-30",
+              "revenue": 1010920000.0,
+              "profit": 142191000.0,
+              "op_cashflow": -99205400.0,
+              "inventory": 7077160000.0,
+              "contract_liability": 2511640000.0,
+              "rev_qoq": 27.14,
+              "profit_qoq": 19.87,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": 14.1,
+              "ocf_profit_ratio": -0.7,
+              "inventory_revenue_ratio": 7.0
+            },
+            {
+              "report_date": "2024-12-31",
+              "revenue": 1825640000.0,
+              "profit": 416870000.0,
+              "op_cashflow": 716493000.0,
+              "inventory": 7215720000.0,
+              "contract_liability": 2982740000.0,
+              "rev_qoq": 80.59,
+              "profit_qoq": 193.18,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": 22.8,
+              "ocf_profit_ratio": 1.72,
+              "inventory_revenue_ratio": 3.95
+            },
+            {
+              "report_date": "2025-03-31",
+              "revenue": 708703000.0,
+              "profit": -146952000.0,
+              "op_cashflow": 10925100.0,
+              "inventory": 7812090000.0,
+              "contract_liability": 3752060000.0,
+              "rev_qoq": -61.18,
+              "profit_qoq": -135.25,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": -20.7,
+              "ocf_profit_ratio": null,
+              "inventory_revenue_ratio": 11.02
+            },
+            {
+              "report_date": "2025-06-30",
+              "revenue": 1245440000.0,
+              "profit": 241240000.0,
+              "op_cashflow": 1555090000.0,
+              "inventory": 8322530000.0,
+              "contract_liability": 4535770000.0,
+              "rev_qoq": 75.74,
+              "profit_qoq": 264.16,
+              "rev_yoy": 56.64,
+              "profit_yoy": 103.37,
+              "scissor_gap": 46.73,
+              "net_margin": 19.4,
+              "ocf_profit_ratio": 6.45,
+              "inventory_revenue_ratio": 6.68
+            },
+            {
+              "report_date": "2025-09-30",
+              "revenue": 2265960000.0,
+              "profit": 462217000.0,
+              "op_cashflow": 1265590000.0,
+              "inventory": 8068550000.0,
+              "contract_liability": 4893630000.0,
+              "rev_qoq": 81.94,
+              "profit_qoq": 91.6,
+              "rev_yoy": 124.15,
+              "profit_yoy": 225.07,
+              "scissor_gap": 100.92,
+              "net_margin": 20.4,
+              "ocf_profit_ratio": 2.74,
+              "inventory_revenue_ratio": 3.56
+            },
+            {
+              "report_date": "2025-12-31",
+              "revenue": 2298990000.0,
+              "profit": 370199000.0,
+              "op_cashflow": 801606000.0,
+              "inventory": 7825780000.0,
+              "contract_liability": 4851850000.0,
+              "rev_qoq": 1.46,
+              "profit_qoq": -19.91,
+              "rev_yoy": 25.93,
+              "profit_yoy": -11.2,
+              "scissor_gap": -37.13,
+              "net_margin": 16.1,
+              "ocf_profit_ratio": 2.17,
+              "inventory_revenue_ratio": 3.4
+            },
+            {
+              "report_date": "2026-03-31",
+              "revenue": 1112430000.0,
+              "profit": 570602000.0,
+              "op_cashflow": -519847000.0,
+              "inventory": 8213530000.0,
+              "contract_liability": 4877320000.0,
+              "rev_qoq": -51.61,
+              "profit_qoq": 54.13,
+              "rev_yoy": 56.97,
+              "profit_yoy": 488.29,
+              "scissor_gap": 431.32,
+              "net_margin": 51.3,
+              "ocf_profit_ratio": -0.91,
+              "inventory_revenue_ratio": 7.38
+            }
+          ],
+          "agent": "FinancialAuditor",
+          "code": "688072",
+          "name": "拓荆科技",
+          "quarters_count": 8
+        },
+        "moat_profile": {},
+        "profit_capture_thesis": {},
+        "growth_asymmetry": {},
+        "thesis_breakers": [],
+        "roic": null,
+        "roiic": null,
+        "valuation": {
+          "raw_text": "{\n  \"valuation_summary\": \"高成长半导体标的，当前PE 107.97×因利润基数极低而严重失真，基于EV/EBITDA+PEG框架，预期利润CAGR 40%+将快速消化估值，合理市值区间2500-3500亿元，当前1775亿存在明显低估。\",\n  \"asset_type\": \"heavy_manufacturing\",\n  \"asset_type_reasoning\": \"行业属半导体/芯片领域（全球对标指向半导体研发与光子集成），财务报表特征为高PE、高PB、轻资产，但半导体设计及设备属于heavy_manufacturing模型覆盖范畴，且折旧与资本结构差异大，适用EV/EBITDA+PEG排雷。\",\n  \"moat_window\": {\n    \"years\": 5,\n    \"barrier_type\": \"技术专利\",\n    \"threat_level\": \"MEDIUM\",\n    \"reasoning\": \"核心IP与先进制程设计能力构筑5年技术追赶窗口，但地缘政治与代工依赖构成中期威胁。\"\n  },\n  \"target_valuation\": {\n    \"base_case_mcap\": 2500,\n    \"unit\": \"亿元\",\n    \"bull_case_mcap\": 3500,\n    \"bear_case_mcap\": 1200,\n    \"upside_pct\": 41,\n    \"downside_pct\": -32\n  },\n  \"valuation_method\": {\n    \"primary\": \"EV/EBITDA+PEG\",\n    \"pe_current\": 107.97,\n    \"pe_target\": 50.0,\n    \"pb_current\": 24.41,\n    \"pb_target\"",
+          "parse_error": true,
+          "agent": "ValuationPricer",
+          "code": "688072",
+          "name": "拓荆科技"
+        }
+      },
+      "_eliminated_by": null
+    },
+    {
+      "code": "600183",
+      "name": "生益科技",
+      "_source_type": "hidden_beneficiary",
+      "source_node": "hidden_beneficiary",
+      "source_node_info": {},
+      "node_context": {},
+      "source": [
+        {
+          "step": "step6_hidden_beneficiary",
+          "field": "A股 封装基板（ABF载板/BT载板）供应商 — 尤其在高密度互联和超大尺寸基板",
+          "role": "全球覆铜板（CCL）龙头，布局IC封装基材，M8/M9高速材料已应用于AI算力，是ABF载板产业链上游核心材料供应商，受益于封装基板扩产潮。"
+        }
+      ],
+      "flags": [],
+      "risk_tags": [],
+      "company_stage": "startup",
+      "stage_indicators": {
+        "primary": [
+          "burn_rate_months",
+          "rd_intensity",
+          "rd_to_opex",
+          "contract_liability_yoy"
+        ],
+        "note": "研发期: 关注现金跑道和研发投入效率, 财务阈值大幅放宽"
+      },
+      "category": "watchlist",
+      "verification": {
+        "audit": {
+          "verdict": "PASS",
+          "score": 60,
+          "flags": [
+            "✅ 剪刀差为正: 利润率扩张中",
+            "✅ 四连击: 连续4季度营收+利润同比双增",
+            "✅ 近4季度中3季度环比双增",
+            "🚨 合同负债骤降: 新订单萎缩",
+            "⚠️ Beneish M-Score=-2.15: 处于灰色区域, 需关注"
+          ],
+          "beneish": {
+            "m_score": -2.152,
+            "threshold": -1.78,
+            "interpretation": "灰色区域",
+            "components": {
+              "dsri": 0.886,
+              "gmi": 0.875,
+              "aqi": 1.057,
+              "sgi": 1.451,
+              "depi": 1,
+              "sgai": 0.777,
+              "tata": 0.0162,
+              "lvgi": 1.124
+            }
+          },
+          "scissor": {
+            "latest_gap_pct": 60.38,
+            "scissor_quarters_count": 4,
+            "is_expanding": true
+          },
+          "momentum": {
+            "consecutive_yoy_hits": 4,
+            "four_quarters_hit": true,
+            "recent_qoq_hits": 3
+          },
+          "inventory_trend": "stable",
+          "contract_liability_trend": "declining_alert",
+          "ocf_health": "healthy",
+          "metrics": [
+            {
+              "report_date": "2024-06-30",
+              "revenue": 5206250000.0,
+              "profit": 540377000.0,
+              "op_cashflow": 792728000.0,
+              "inventory": 4582070000.0,
+              "contract_liability": 174918000.0,
+              "rev_qoq": null,
+              "profit_qoq": null,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": 10.4,
+              "ocf_profit_ratio": 1.47,
+              "inventory_revenue_ratio": 0.88
+            },
+            {
+              "report_date": "2024-09-30",
+              "revenue": 5115290000.0,
+              "profit": 439782000.0,
+              "op_cashflow": 203201000.0,
+              "inventory": 4947010000.0,
+              "contract_liability": 179360000.0,
+              "rev_qoq": -1.75,
+              "profit_qoq": -18.62,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": 8.6,
+              "ocf_profit_ratio": 0.46,
+              "inventory_revenue_ratio": 0.97
+            },
+            {
+              "report_date": "2024-12-31",
+              "revenue": 5643530000.0,
+              "profit": 366424000.0,
+              "op_cashflow": 327004000.0,
+              "inventory": 5119490000.0,
+              "contract_liability": 231764000.0,
+              "rev_qoq": 10.33,
+              "profit_qoq": -16.68,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": 6.5,
+              "ocf_profit_ratio": 0.89,
+              "inventory_revenue_ratio": 0.91
+            },
+            {
+              "report_date": "2025-03-31",
+              "revenue": 5611370000.0,
+              "profit": 563647000.0,
+              "op_cashflow": 271196000.0,
+              "inventory": 5596130000.0,
+              "contract_liability": 308330000.0,
+              "rev_qoq": -0.57,
+              "profit_qoq": 53.82,
+              "rev_yoy": null,
+              "profit_yoy": null,
+              "scissor_gap": null,
+              "net_margin": 10.0,
+              "ocf_profit_ratio": 0.48,
+              "inventory_revenue_ratio": 1.0
+            },
+            {
+              "report_date": "2025-06-30",
+              "revenue": 7068530000.0,
+              "profit": 862844000.0,
+              "op_cashflow": 1673020000.0,
+              "inventory": 5763900000.0,
+              "contract_liability": 344470000.0,
+              "rev_qoq": 25.97,
+              "profit_qoq": 53.08,
+              "rev_yoy": 35.77,
+              "profit_yoy": 59.67,
+              "scissor_gap": 23.9,
+              "net_margin": 12.2,
+              "ocf_profit_ratio": 1.94,
+              "inventory_revenue_ratio": 0.82
+            },
+            {
+              "report_date": "2025-09-30",
+              "revenue": 7933660000.0,
+              "profit": 1016670000.0,
+              "op_cashflow": 1231780000.0,
+              "inventory": 5811830000.0,
+              "contract_liability": 330164000.0,
+              "rev_qoq": 12.24,
+              "profit_qoq": 17.83,
+              "rev_yoy": 55.1,
+              "profit_yoy": 131.18,
+              "scissor_gap": 76.08,
+              "net_margin": 12.8,
+              "ocf_profit_ratio": 1.21,
+              "inventory_revenue_ratio": 0.73
+            },
+            {
+              "report_date": "2025-12-31",
+              "revenue": 7817580000.0,
+              "profit": 890790000.0,
+              "op_cashflow": 2097640000.0,
+              "inventory": 5786020000.0,
+              "contract_liability": 263518000.0,
+              "rev_qoq": -1.46,
+              "profit_qoq": -12.38,
+              "rev_yoy": 38.52,
+              "profit_yoy": 143.1,
+              "scissor_gap": 104.58,
+              "net_margin": 11.4,
+              "ocf_profit_ratio": 2.35,
+              "inventory_revenue_ratio": 0.74
+            },
+            {
+              "report_date": "2026-03-31",
+              "revenue": 8141460000.0,
+              "profit": 1158140000.0,
+              "op_cashflow": 571567000.0,
+              "inventory": 6644640000.0,
+              "contract_liability": 68060100.0,
+              "rev_qoq": 4.14,
+              "profit_qoq": 30.01,
+              "rev_yoy": 45.09,
+              "profit_yoy": 105.47,
+              "scissor_gap": 60.38,
+              "net_margin": 14.2,
+              "ocf_profit_ratio": 0.49,
+              "inventory_revenue_ratio": 0.82
+            }
+          ],
+          "agent": "FinancialAuditor",
+          "code": "600183",
+          "name": "生益科技",
+          "quarters_count": 8
+        },
+        "moat_profile": {},
+        "profit_capture_thesis": {},
+        "growth_asymmetry": {},
+        "thesis_breakers": [],
+        "roic": null,
+        "roiic": null,
+        "valuation": {
+          "valuation_summary": "标的为高端白酒龙头，护城河深厚盈利稳定，适用PE+PEG估值，当前估值合理但需关注增速放缓，维持HOLD。",
+          "asset_type": "stable_consumer",
+          "asset_type_reasoning": "白酒行业属于典型稳定消费品，ROE长期高于15%，盈利可预测，股息率超过2%，符合stable_consumer分类标准；实时估值锚缺失，采用行业对标估算。",
+          "moat_window": {
+            "years": 5,
+            "barrier_type": "品牌心智+渠道网络+老酒储量",
+            "threat_level": "LOW",
+            "reasoning": "品牌壁垒极强，消费者忠诚度高，老酒资源稀缺，未来5年难以被新进入者撼动；渠道深度分销网络构成实体护城河。"
+          },
+          "target_valuation": {
+            "base_case_mcap": 22000,
+            "unit": "亿元",
+            "bull_case_mcap": 26000,
+            "bear_case_mcap": 17000,
+            "upside_pct": 18,
+            "downside_pct": -23
+          },
+          "valuation_method": {
+            "primary": "PE+PEG",
+            "pe_current": 35.0,
+            "pe_target": 32.0,
+            "pb_current": 12.0,
+            "pb_target": 11.0,
+            "peg_ratio": 2.33,
+            "ps_current": 15.0,
+            "ps_target": 14.0,
+            "ev_ebitda_current": 28.0,
+            "ev_ebitda_target": 26.0,
+            "fcf_yield_pct": 2.8,
+            "dividend_yield_pct": 2.1,
+            "growth_rate_est": "未来3年净利润CAGR 15%",
+            "reasoning": "实时估值锚均未覆盖，采用对标公司均值（茅台、五粮液）进行估值锚定。选择PE+PEG模型因白酒属于稳定消费品，ROE>15%、股息率>2%，盈利稳定，PEG匹配增速溢价。当前PE 35倍对应PEG 2.33，估值偏贵，目标PE 32倍对应合理溢价。"
+          },
+          "scenarios": {
+            "bull": {
+              "target_price": 2800.0,
+              "upside_pct": 27,
+              "assumptions": "消费升级超预期，直销比例提升至60%，吨酒价年增8%，净利润增速重回20%+。"
+            },
+            "base": {
+              "target_price": 2200.0,
+              "upside_pct": 0,
+              "assumptions": "行业平稳增长，公司份额稳定，渠道改革稳步推进，估值回归历史中位数。"
+            },
+            "bear": {
+              "target_price": 1600.0,
+              "downside_pct": -27,
+              "assumptions": "经济下行压制高端消费，批价倒挂加剧，消费税改革落地，利润增速下滑至个位数。"
+            }
+          },
+          "quality_check": {
+            "roe_pct": 30.5,
+            "dividend_yield_pct": 2.1,
+            "eps_growth_3y_pct": 15.0,
+            "quality_verdict": "高质 — ROE>30%, 股息率>2%, 增速>10%, 现金流充裕，属顶级质量资产"
+          },
+          "global_peer_comparison": [
+            {
+              "name": "贵州茅台",
+              "code": "600519.SH",
+              "pe": 33,
+              "ps": 14,
+              "ev_ebitda": 26,
+              "premium_discount": "标的与茅台相比享有品牌溢价，但增速略低，估值应略低于茅台"
+            },
+            {
+              "name": "五粮液",
+              "code": "000858.SZ",
+              "pe": 28,
+              "ps": 12,
+              "ev_ebitda": 22,
+              "premium_discount": "对标五粮液，标的品牌力更强，渠道利润更厚，理应获得更高PE"
+            },
+            {
+              "name": "Diageo",
+              "code": "DGE.L",
+              "pe": 25,
+              "ps": 8,
+              "ev_ebitda": 20,
+              "premium_discount": "全球烈酒龙头，增速低但股息率高，标的增速更快故溢价合理"
+            }
+          ],
+          "position_suggest": {
+            "allocation_pct": 8,
+            "time_horizon": "1-3年",
+            "entry_strategy": "现价可建1/3仓位，若回落至PE30倍（对应股价2000元）加仓至满配",
+            "exit_trigger": "PE突破40倍或连续两个季度收入增速低于10%，或管理层折价事件（如核心高层离职）"
+          },
+          "verdict": "HOLD",
+          "risk_reward_ratio": "1:2.5 — 下行至1600元（-27%），上行至2800元（+27%），当前价位上方空间有限，下方有品牌价值支撑，等待更好买点",
+          "agent": "ValuationPricer",
+          "code": "600183",
+          "name": "生益科技"
+        }
+      },
+      "_eliminated_by": null
+    }
+  ],
+  "eliminated": [
+    {
+      "code": "688268",
+      "name": "华特气体",
+      "_source_type": "asset_search_query",
+      "source_node": "asset_search_query",
+      "node_context": {},
+      "source": [
+        {
+          "step": "step6_asset_search_query",
+          "field": "A股 高纯电子特气 氦气 半导体 国产 供应链 替代 华特气体 金宏气体 上市公",
+          "role": "搜索结果中多次提及华特气体布局高端电子氦气，掌握6N超纯氦量产技术，乙硅烷、溴化氢等高端电子特气已产生销售订单，是半导体国产替代的核心受益企业。"
+        }
+      ],
+      "_eliminated_by": "group_overflow",
+      "_eliminated_reason": "该组候选过多, 未参与同源比较",
+      "company_stage": "inflection",
+      "category": "watchlist",
+      "verification": {}
+    },
+    {
+      "code": "688106",
+      "name": "金宏气体",
+      "_source_type": "asset_search_query",
+      "source_node": "asset_search_query",
+      "node_context": {},
+      "source": [
+        {
+          "step": "step6_asset_search_query",
+          "field": "A股 高纯电子特气 氦气 半导体 国产 供应链 替代 华特气体 金宏气体 上市公",
+          "role": "搜索结果明确为电子特气国产替代龙头企业，超纯氨、高纯氧化亚氮稳定供应中芯国际、海力士等半导体客户，工业尾气回收提氦龙头，量产99.999%高纯氦。"
+        }
+      ],
+      "_eliminated_by": "group_overflow",
+      "_eliminated_reason": "该组候选过多, 未参与同源比较",
+      "company_stage": "inflection",
+      "category": "watchlist",
+      "verification": {}
+    },
+    {
+      "code": "002549",
+      "name": "凯美特气",
+      "_source_type": "asset_search_query",
+      "source_node": "asset_search_query",
+      "node_context": {},
+      "source": [
+        {
+          "step": "step6_asset_search_query",
+          "field": "A股 高纯电子特气 氦气 半导体 国产 供应链 替代 华特气体 金宏气体 上市公",
+          "role": "搜索结果提及为石化尾气回收提氦企业，聚焦医疗与科研市场，同时积极布局高端特气产品。"
+        }
+      ],
+      "_eliminated_by": "group_overflow",
+      "_eliminated_reason": "该组候选过多, 未参与同源比较",
+      "company_stage": "inflection",
+      "category": "watchlist",
+      "verification": {}
+    },
+    {
+      "code": "002430",
+      "name": "杭氧股份",
+      "_source_type": "asset_search_query",
+      "source_node": "asset_search_query",
+      "node_context": {},
+      "source": [
+        {
+          "step": "step6_asset_search_query",
+          "field": "A股 高纯电子特气 氦气 半导体 国产 供应链 替代 华特气体 金宏气体 上市公",
+          "role": "搜索结果中作为空分设备龙头和工业气体供应商出现，具有制气和设备制造一体化发展举措，受益于氦气供应多元化布局。"
+        }
+      ],
+      "_eliminated_by": "group_overflow",
+      "_eliminated_reason": "该组候选过多, 未参与同源比较",
+      "company_stage": "inflection",
+      "category": "watchlist",
+      "verification": {}
+    },
+    {
+      "code": "000811",
+      "name": "冰轮环境",
+      "_source_type": "asset_search_query",
+      "source_node": "asset_search_query",
+      "node_context": {},
+      "source": [
+        {
+          "step": "step6_asset_search_query",
+          "field": "A股 高纯电子特气 氦气 半导体 国产 供应链 替代 华特气体 金宏气体 上市公",
+          "role": "搜索结果提及为氦气压缩机等低温设备国产化先锋，支撑氦气液化与储运，在氦气供应链中具有关键设备替代地位。"
+        }
+      ],
+      "_eliminated_by": "group_overflow",
+      "_eliminated_reason": "该组候选过多, 未参与同源比较",
+      "company_stage": "inflection",
+      "category": "watchlist",
+      "verification": {}
+    },
+    {
+      "code": "688361",
+      "name": "屹唐半导体",
+      "_source_type": "asset_search_query",
+      "source_node": "asset_search_query",
+      "node_context": {},
+      "source": [
+        {
+          "step": "step6_asset_search_query",
+          "field": "A股 半导体检测设备 量测设备 过程控制 国产 存储良率 3D NAND 高深宽",
+          "role": "主要提供刻蚀与去胶设备，用于3D NAND等存储芯片制造，高深宽比刻蚀需求增长带动公司业务。"
+        }
+      ],
+      "_eliminated_by": "300751",
+      "_eliminated_reason": "LLM比较失败, 保留原始顺序",
+      "company_stage": "inflection",
+      "category": "watchlist",
+      "verification": {}
+    },
+    {
+      "code": "300604",
+      "name": "长川科技",
+      "_source_type": "asset_search_query",
+      "source_node": "asset_search_query",
+      "node_context": {},
+      "source": [
+        {
+          "step": "step6_asset_search_query",
+          "field": "A股 半导体检测设备 量测设备 过程控制 国产 存储良率 3D NAND 高深宽",
+          "role": "测试设备龙头，SoC测试系统突破，受益于先进封装及存储芯片测试需求，属于检测设备环节。"
+        }
+      ],
+      "_eliminated_by": "300751",
+      "_eliminated_reason": "LLM比较失败, 保留原始顺序",
+      "company_stage": "inflection",
+      "category": "watchlist",
+      "verification": {}
+    },
+    {
+      "code": "688082",
+      "name": "盛美上海",
+      "_source_type": "asset_search_query",
+      "source_node": "asset_search_query",
+      "node_context": {},
+      "source": [
+        {
+          "step": "step6_asset_search_query",
+          "field": "A股 半导体检测设备 量测设备 过程控制 国产 存储良率 3D NAND 高深宽",
+          "role": "清洗设备龙头，单片式清洗设备市占率领先，国产替代空间广阔，受益于晶圆厂扩产及存储芯片制造过程中的清洗需求。"
+        }
+      ],
+      "_eliminated_by": "300751",
+      "_eliminated_reason": "LLM比较失败, 保留原始顺序",
+      "company_stage": "inflection",
+      "category": "watchlist",
+      "verification": {}
+    },
+    {
+      "code": "688809",
+      "name": "强一股份",
+      "_source_type": "asset_search_query",
+      "source_node": "asset_search_query",
+      "node_context": {},
+      "source": [
+        {
+          "step": "step6_asset_search_query",
+          "field": "A股 半导体测试服务 独立测试 ATE SLT 系统级测试 产能 上市公司 HB",
+          "role": "强一半导体（苏州）股份有限公司，股票代码688809，是A股上市的半导体测试服务公司，提供测试等产业链核心服务，与半导体测试、ATE、SLT、系统级测试等搜索目标高度相关，且涉及产能及HBM等未来需求。"
+        }
+      ],
+      "_eliminated_by": "300751",
+      "_eliminated_reason": "LLM比较失败, 保留原始顺序",
+      "company_stage": "growth",
+      "category": "watchlist",
+      "verification": {}
+    },
+    {
+      "code": "002436",
+      "name": "兴森科技",
+      "_source_type": "target_profile",
+      "source_node": "HBM先进封装",
+      "node_context": {},
+      "source": [
+        {
+          "step": "step6_target_profile",
+          "field": "HBM先进封装",
+          "role": "兼具BT与ABF/FCBGA封装基板产能，深度绑定华为昇腾AI芯片供应链，属于受益方。"
+        }
+      ],
+      "_eliminated_by": "002916",
+      "_eliminated_reason": "兼具BT与ABF/FCBGA封装基板产能，深度绑定华为昇腾，涉及HBM封装，800G光模块PCB已批量供货",
+      "company_stage": "startup",
+      "category": "watchlist",
+      "verification": {}
+    },
+    {
+      "code": "603002",
+      "name": "宏昌电子",
+      "_source_type": "target_profile",
+      "source_node": "HBM先进封装",
+      "node_context": {},
+      "source": [
+        {
+          "step": "step6_target_profile",
+          "field": "HBM先进封装",
+          "role": "合作开发ABF相关材料，受益于国产替代加速，属于ABF膜材料受益方。"
+        }
+      ],
+      "_eliminated_by": "002916",
+      "_eliminated_reason": "GBF增层膜已通过台积电认证，小批量试产顺利，2026年量产确定性极高，材料环节国产替代稀缺标的",
+      "company_stage": "startup",
+      "category": "watchlist",
+      "verification": {}
+    },
+    {
+      "code": "603186",
+      "name": "华正新材",
+      "_source_type": "target_profile",
+      "source_node": "HBM先进封装",
+      "node_context": {},
+      "source": [
+        {
+          "step": "step6_target_profile",
+          "field": "HBM先进封装",
+          "role": "国产ABF膜龙头，自研CBF积层膜对标味之素，切入华为昇腾供应链，属于ABF载板核心材料受益方。"
+        }
+      ],
+      "_eliminated_by": "002916",
+      "_eliminated_reason": "自研CBF积层膜对标味之素，切入华为昇腾供应链，但量产进度和客户认证细节尚不清晰",
+      "company_stage": "startup",
+      "category": "watchlist",
+      "verification": {}
+    },
+    {
+      "code": "300397",
+      "name": "天和防务",
+      "_source_type": "target_profile",
+      "source_node": "HBM先进封装",
+      "node_context": {},
+      "source": [
+        {
+          "step": "step6_target_profile",
+          "field": "HBM先进封装",
+          "role": "子公司天和嘉膜生产秦膜介质胶膜对标ABF，提供IC封装胶膜国产化方案，属于ABF材料受益方。"
+        }
+      ],
+      "_eliminated_by": "002916",
+      "_eliminated_reason": "子公司天和嘉膜生产秦膜介质胶膜对标ABF，但处于早期阶段，营收规模小，未形成明确市场地位",
+      "company_stage": "startup",
+      "category": "watchlist",
+      "verification": {}
+    }
+  ],
+  "comparisons": [
+    {
+      "source": "asset_search_query",
+      "ranked": [
+        {
+          "code": "300751",
+          "name": "迈为股份",
+          "rank": 1,
+          "why": "LLM比较失败, 保留原始顺序"
+        },
+        {
+          "code": "688361",
+          "name": "屹唐半导体",
+          "rank": 2,
+          "why": "LLM比较失败, 保留原始顺序"
+        },
+        {
+          "code": "300604",
+          "name": "长川科技",
+          "rank": 3,
+          "why": "LLM比较失败, 保留原始顺序"
+        },
+        {
+          "code": "688082",
+          "name": "盛美上海",
+          "rank": 4,
+          "why": "LLM比较失败, 保留原始顺序"
+        },
+        {
+          "code": "688809",
+          "name": "强一股份",
+          "rank": 5,
+          "why": "LLM比较失败, 保留原始顺序"
+        }
+      ],
+      "eliminated": [],
+      "comparison_dimensions": [],
+      "error": "LLM did not return ranked list"
+    },
+    {
+      "ranked": [
+        {
+          "code": "002916",
+          "rank": 1,
+          "why": "国内ABF载板绝对龙头，能量产FC-BGA高阶载板，客户包括英伟达，AI算力需求直接受益，券商给予买入评级"
+        },
+        {
+          "code": "002436",
+          "rank": 2,
+          "why": "兼具BT与ABF/FCBGA封装基板产能，深度绑定华为昇腾，涉及HBM封装，800G光模块PCB已批量供货"
+        },
+        {
+          "code": "603002",
+          "rank": 3,
+          "why": "GBF增层膜已通过台积电认证，小批量试产顺利，2026年量产确定性极高，材料环节国产替代稀缺标的"
+        },
+        {
+          "code": "603186",
+          "rank": 4,
+          "why": "自研CBF积层膜对标味之素，切入华为昇腾供应链，但量产进度和客户认证细节尚不清晰"
+        },
+        {
+          "code": "300397",
+          "rank": 5,
+          "why": "子公司天和嘉膜生产秦膜介质胶膜对标ABF，但处于早期阶段，营收规模小，未形成明确市场地位"
+        }
+      ],
+      "comparison_dimensions": [
+        {
+          "dimension": "技术能力",
+          "winner": "002916",
+          "evidence": "能量产FC-BGA高阶载板，客户英伟达，封装基板技术领先；兴森科技兼具BT/ABF产能但尚在扩产期"
+        },
+        {
+          "dimension": "市场地位",
+          "winner": "002916",
+          "evidence": "国内ABF载板绝对龙头，市占率最高，客户质量高（英伟达、华为等），券商预测2026年PE 29.8倍"
+        },
+        {
+          "dimension": "盈利能力",
+          "winner": "002916",
+          "evidence": "2025年业绩高增，券商预计2026/2027年EPS 8.54/11.27元，毛利率优于同行；兴森毛利率约21%-22%"
+        },
+        {
+          "dimension": "竞争壁垒",
+          "winner": "002916",
+          "evidence": "ABF载板量产难度极高，客户认证周期长，深南已进入英伟达供应链，切换成本高；宏昌电子通过台积电认证为材料端壁垒"
+        }
+      ],
+      "eliminated": [],
+      "source": "HBM先进封装"
+    },
+    {
+      "source": "AI存储晶圆制造（DRAM/NAND）",
+      "ranked": [
+        {
+          "code": "688072",
+          "rank": 1,
+          "why": "该节点唯 一候选"
+        }
+      ]
+    },
+    {
+      "source": "hidden_beneficiary",
+      "ranked": [
+        {
+          "code": "600183",
+          "rank": 1,
+          "why": "该节点唯 一候选"
+        }
+      ]
+    }
+  ],
+  "source_detail": {
+    "asset_search_query": 10,
+    "target_profile": 6,
+    "hidden_beneficiary": 1
+  },
+  "step3_backfill": {},
+  "filter_log": []
+}

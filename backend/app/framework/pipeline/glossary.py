@@ -279,3 +279,9 @@ def step4_glossary() -> str:
         "margin_level",
         "china_substitution_rate",
     ])
+
+
+def financial_glossary() -> str:
+    """财务数据字典 — 供 Step 6/CoreScreening Agent 等需要财务分析的步骤注入"""
+    from app.domain.quant.engine.financial_query_service import FinancialQueryService
+    return FinancialQueryService.format_catalog_for_prompt()

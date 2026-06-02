@@ -13,6 +13,7 @@ class RevenueScale(FinancialIndicator):
     applicable_stages = ["startup", "inflection", "growth", "mature"]
     params = {}
     output = ["revenue_scale"]
+    text_output = ["revenue_scale"]
     requires = ["revenue"]
 
     @classmethod

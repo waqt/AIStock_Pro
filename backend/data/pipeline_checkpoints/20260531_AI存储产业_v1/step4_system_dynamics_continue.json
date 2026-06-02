@@ -1,0 +1,729 @@
+{
+  "step": "step4_system_dynamics",
+  "run_id": "20260531_AI存储产业_v1",
+  "input_hash": "continue",
+  "saved_at": "2026-06-01T00:53:59.986787",
+  "elapsed_seconds": 0,
+  "input_summary": "",
+  "output": {
+    "confidence": "high",
+    "confidence_note": "Step 3 数据质量高，补充搜索覆盖了瓶颈迁移的核心环节，验证了二层推演的关键假设，但部分二阶效应属于前瞻性逻辑推演，缺乏直接搜索证据。",
+    "step3_sanity_check": {
+      "questioned": [
+        {
+          "claim": "L2 HBM先进封装瓶颈集中在混合键合/TCB键合，其他子工艺标记为 partial_emerging",
+          "doubt": "临时键合/解键合在HBM3E/4的薄晶圆处理中可能比市场认知更紧缺。由于晶圆减薄后厚度仅数十微米，临时键合材料和解键合工艺是良率关键，其供给约束可能被低估。"
+        }
+      ],
+      "adjustment": "推演中将 L2 HBM先进封装的瓶颈范围从纯键合设备扩展至包括键合设备+临时键合材料+高精度减薄设备，提升临时键合材料所属节点（半导体高纯化学品）的推演关注度。"
+    },
+    "system_dynamics": {
+      "bottleneck_migration": {
+        "current": "EUV光刻机（L1 AI存储晶圆制造）",
+        "next_12m": "高端半导体光刻胶（L1 材料）",
+        "next_24m": "混合键合/TCB键合设备（L2 HBM先进封装）",
+        "next_36m": "中国DRAM/NAND产能过剩 — 蛛网模型下的周期反转但结构性分化",
+        "migration_drivers": [
+          {
+            "from": "EUV光刻机",
+            "to": "高端半导体光刻胶（ArF/EUV光刻胶）",
+            "trigger": "全行业在2026-2027年集中扩产存储和逻辑芯片，对日本信越、JSR等光刻胶供应商的原材料和产能形成极限压力。光刻机虽缺但已分配，光刻胶作为耗材成为使用阶段的新瓶颈。",
+            "monitoring_metric": "ArF/EUV光刻胶交期（周）",
+            "trigger_threshold": "交期从当前8-12周延长至20周以上时，确认光刻胶成为新瓶颈",
+            "evidence": [
+              {
+                "fact": "EUV光刻机的技术壁垒极高，国内短期内无法实现量产，ASML产能已锁定至2027年后",
+                "from": "search[1]·腾讯新闻",
+                "quality": {
+                  "level": "medium",
+                  "source_type": "news_media"
+                },
+                "evidence_type": "hard_data_confirmation"
+              },
+              {
+                "fact": "存储大厂疯抢EUV光刻机，ASML客户正在加速扩张2026年及以后的产能",
+                "from": "search[2]·36氪",
+                "quality": {
+                  "level": "medium",
+                  "source_type": "news_media"
+                },
+                "evidence_type": "hard_data_confirmation"
+              },
+              {
+                "fact": "高端半导体光刻胶由日本无限期垄断，国内ArF/EUV完全依赖进口",
+                "from": "Step 3 稀缺排序",
+                "quality": {
+                  "level": "high",
+                  "source_type": "industry_data"
+                },
+                "evidence_type": "hard_data_confirmation"
+              }
+            ]
+          },
+          {
+            "from": "高端半导体光刻胶",
+            "to": "混合键合/TCB键合设备",
+            "trigger": "三星、SK海力士、美光HBM4量产在2027-2028年进入高峰期，对Besi、韩美半导体的键合设备需求呈指数级增长，设备交期决定HBM扩产节奏。",
+            "monitoring_metric": "TCB键合设备交期（月）",
+            "trigger_threshold": "交期突破18个月时，确认键合设备成为HBM扩产的终极硬瓶颈",
+            "evidence": [
+              {
+                "fact": "混合键合/TCB键合设备是HBM3E/4必备，全球仅Besi、韩美半导体规模供货，国产几乎空白",
+                "from": "Step 3 稀缺排序",
+                "quality": {
+                  "level": "high",
+                  "source_type": "industry_data"
+                },
+                "evidence_type": "hard_data_confirmation"
+              },
+              {
+                "fact": "台积电CoWoS产能持续紧缺，2.5D/3D先进封装供不应求将延续至2027年下半年",
+                "from": "search[8]·上海证券报",
+                "quality": {
+                  "level": "high",
+                  "source_type": "industry_data"
+                },
+                "evidence_type": "forward_looking_rumor"
+              }
+            ]
+          },
+          {
+            "from": "混合键合/TCB键合设备",
+            "to": "中国DRAM产能结构性过剩",
+            "trigger": "长鑫存储、长江存储在DUV/SAQP路径上实现大规模扩产，叠加全球HBM产能集中释放后传统DRAM供给过剩，形成高端紧缺、低端过剩的结构。",
+            "monitoring_metric": "中国DRAM/NAND产能占全球比例（%）",
+            "trigger_threshold": "中国DRAM产能占全球突破25%时，警惕国内低端存储价格战",
+            "evidence": [
+              {
+                "fact": "SAQP工艺已在中芯国际28nm产线完成验证，为去EUV化设计提供技术基础",
+                "from": "search[1]·腾讯新闻",
+                "quality": {
+                  "level": "medium",
+                  "source_type": "news_media"
+                },
+                "evidence_type": "hard_data_confirmation"
+              },
+              {
+                "fact": "AI芯片设计企业已形成去EUV化的设计趋势",
+                "from": "search[1]·腾讯新闻",
+                "quality": {
+                  "level": "medium",
+                  "source_type": "news_media"
+                },
+                "evidence_type": "forward_looking_rumor"
+              }
+            ]
+          }
+        ],
+        "evidence": [
+          {
+            "fact": "2026年存储芯片全球供需缺口创近15年新高（DRAM缺口4.9%/NAND缺口4.2%/HBM缺口5.1%），涨价贯穿全年",
+            "from": "search[5]·网易订阅",
+            "quality": {
+              "level": "medium",
+              "source_type": "news_media"
+            },
+            "evidence_type": "hard_data_confirmation"
+          },
+          {
+            "fact": "三星电子在1c DRAM制程上遭遇良率问题，HBM5E量产计划被迫推迟",
+            "from": "search[10]·网易订阅",
+            "quality": {
+              "level": "medium",
+              "source_type": "news_media"
+            },
+            "evidence_type": "hard_data_confirmation"
+          }
+        ],
+        "impact_assessment": {
+          "magnitude": "重大",
+          "reasoning": "瓶颈迁移从设备→材料→设备→产能，覆盖3轮轮动机会。每一轮瓶颈都对应不同的价值捕获者，A股映射链路清晰且标的丰富（设备商→材料商→封测设备商→成本优势产能）。时间跨度覆盖整个AI存储超级周期。",
+          "time_horizon": "24个月以上"
+        }
+      },
+      "resource_crowding": [
+        {
+          "resource": "EUV光刻机产能",
+          "squeezed_from": "传统DRAM/NAND扩产",
+          "squeezed_by": "HBM/高端DRAM",
+          "victim_sector": "传统消费级DRAM供给持续收缩，低端存储价格被动上涨",
+          "hidden_beneficiary": "二线DRAM厂商（如南亚科、华邦电）及DDR4/LPDDR4配套芯片厂商 — 低价产能退出后，幸存者享受量价齐升",
+          "visibility": "low",
+          "time_to_impact": "medium_term",
+          "monitoring_metric": "HBM占总DRAM晶圆投片量比例（%）",
+          "trigger_threshold": "HBM投片量占比突破20%时，传统DRAM供给将出现结构性缺口",
+          "search_queries": [
+            "传统DRAM DDR4 涨价 南亚科 华邦电 受益",
+            "利基型存储 涨价 2026"
+          ],
+          "evidence": [
+            {
+              "fact": "DRAM原厂更愿意将产能投入HBM、GDDR7等高附加价值产品，传统DRAM（含DDR4/DDR5）产能更容易被挤压",
+              "from": "search[9]·知乎",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              },
+              "evidence_type": "hard_data_confirmation"
+            },
+            {
+              "fact": "三星、SK海力士、美光三大存储巨头将70%-80%的先进产能转向HBM、DDR5、企业级SSD",
+              "from": "search[7]·OFweek云计算网",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              },
+              "evidence_type": "hard_data_confirmation"
+            }
+          ],
+          "impact_assessment": {
+            "magnitude": "重大",
+            "reasoning": "HBM对传统DRAM的产能挤出是全球性的，但市场关注度集中在HBM本身，忽视了被挤出部分的涨价弹性和幸存者红利。DDR4生命周期延长，相关控制器、接口芯片需求超预期。",
+            "time_horizon": "12-24个月"
+          }
+        },
+        {
+          "resource": "半导体高纯化学品（光刻胶、特种气体）",
+          "squeezed_from": "成熟制程逻辑芯片（汽车/工业MCU）制造",
+          "squeezed_by": "存储芯片大规模扩产",
+          "victim_sector": "汽车MCU、工业芯片等成熟制程产品 — 化学品/气体供给被存储厂以更高价格抢走",
+          "hidden_beneficiary": "国产半导体化学品供应商（光刻胶、高纯气体、湿化学品）— 在供不应求中加速验证导入",
+          "visibility": "moderate",
+          "time_to_impact": "medium_term",
+          "monitoring_metric": "国内半导体级氦气价格（元/立方米）",
+          "trigger_threshold": "氦气价格单季度涨幅超30%时，触发化学品替代和国产导入加速预期",
+          "search_queries": [
+            "半导体光刻胶 国产供应商 光刻胶进口替代 ArF 验证导入",
+            "高纯氦气 半导体 供应链 国产替代"
+          ],
+          "evidence": [
+            {
+              "fact": "中东局势引发氦气供应链隐忧，可能对全球存储产业造成系统性冲击",
+              "from": "search[4]·知乎",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              },
+              "evidence_type": "forward_looking_rumor"
+            },
+            {
+              "fact": "国内仅彤程新材KrF量产，ArF/EUV完全依赖进口",
+              "from": "Step 3 稀缺排序",
+              "quality": {
+                "level": "high",
+                "source_type": "industry_data"
+              },
+              "evidence_type": "hard_data_confirmation"
+            }
+          ],
+          "impact_assessment": {
+            "magnitude": "中等",
+            "reasoning": "光刻胶和特种气体的国产化是确定性方向，但导入周期长（验证需12-18个月），短期受益有限。然而一旦通过验证，将开启长达5年以上的替代周期，长期弹性大。",
+            "time_horizon": "12-24个月"
+          }
+        },
+        {
+          "resource": "HBM先进封装产能（CoWoS/TCB键合）",
+          "squeezed_from": "非AI逻辑芯片先进封装（如AMD MI300X已受影响）",
+          "squeezed_by": "英伟达GPU的HBM封装需求",
+          "victim_sector": "非AI的GPU/FPGA/ASIC设计公司 — 封装交期拉长，新品推迟上市",
+          "hidden_beneficiary": "先进封装设备商（Besi替代者、临时键合材料商）— 全行业扩产拉动设备需求，设备商比封测厂更早享受红利",
+          "visibility": "very_low",
+          "time_to_impact": "immediate",
+          "monitoring_metric": "台积电CoWoS月产能（万片）及设备交期（月）",
+          "trigger_threshold": "CoWoS设备交期突破15个月时，设备商定价权爆发",
+          "search_queries": [
+            "混合键合 设备 国产替代 TCB键合 临时键合 材料",
+            "先进封装设备 上市公司 晶圆减薄 CMP"
+          ],
+          "evidence": [
+            {
+              "fact": "AMD MI300X因封装资源不足被迫延迟",
+              "from": "search[11]·知乎",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              },
+              "evidence_type": "hard_data_confirmation"
+            },
+            {
+              "fact": "半导体设备厂商芯源微的订单情况印证先进封装扩产持续",
+              "from": "search[10]·21财经",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              },
+              "evidence_type": "forward_looking_rumor"
+            }
+          ],
+          "impact_assessment": {
+            "magnitude": "重大",
+            "reasoning": "全行业扩产HBM封装是确定趋势，设备是最上游的铲子。拥挤效应使设备交期不降反升，设备商利润弹性甚至超越封测厂。国内键合设备国产化率极低，一旦突破想象空间巨大。",
+            "time_horizon": "6-12个月"
+          }
+        }
+      ],
+      "profit_pool_shift": [
+        {
+          "from_segment": "AI存储原厂（三星、SK海力士、美光）",
+          "to_segment": "半导体设备商（ASML、Besi、国产替代设备商）",
+          "trigger": "存储原厂CAPEX大规模扩张（2026-2028年），设备需求暴增，设备商在供不应求中获得超额利润。ASML的EUV和Besi的TCB键合设备毛利率将突破50%。国内设备商将在成熟制程设备（刻蚀、CMP、封装设备）上加速导入。",
+          "timeline": "12-24个月",
+          "confidence": "high",
+          "monitoring_metric": "ASML/北方华创/中微公司存储业务收入占比（%）及毛利率（%）",
+          "trigger_threshold": "ASML存储相关EUV订单占比超40%，或北方华创存储客户收入占比超50%时，确认利润大规模迁移",
+          "evidence": [
+            {
+              "fact": "ASML正处于幸福的烦恼：光刻机订单持续强劲，受交付周期限制无法快速兑现",
+              "from": "search[2]·36氪",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              },
+              "evidence_type": "hard_data_confirmation"
+            },
+            {
+              "fact": "2026-2031年迎扩产周期，存储芯片龙头计划扩产",
+              "from": "search[3]·新浪新闻",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              },
+              "evidence_type": "hard_data_confirmation"
+            },
+            {
+              "fact": "先进封装叠加扩产持续，半导体设备迎来增量+替代双重机遇",
+              "from": "search[8]·上海证券报",
+              "quality": {
+                "level": "high",
+                "source_type": "industry_data"
+              },
+              "evidence_type": "forward_looking_rumor"
+            }
+          ],
+          "impact_assessment": {
+            "magnitude": "重大",
+            "reasoning": "设备是本次AI存储超级周期的最大卖铲人。原厂利润虽好但CAPEX巨大，现金流再投资率极高。设备商以轻资产享受全行业扩产红利，且技术迭代（EUV High-NA、Hybrid Bonding）带来ASP持续提升。",
+            "time_horizon": "12-24个月"
+          }
+        },
+        {
+          "from_segment": "日本光刻胶寡头（JSR、信越化学）",
+          "to_segment": "国产半导体光刻胶/化学品龙头（彤程新材、上海新阳等）",
+          "trigger": "地缘政治风险加剧或日本限制出口，迫使中国存储厂加速光刻胶/化学品国产验证导入。存储厂在扩产压力下降低验证门槛。",
+          "timeline": "24-36个月",
+          "confidence": "speculative",
+          "monitoring_metric": "国内存储厂商ArF光刻胶国产化率（%）",
+          "trigger_threshold": "长鑫存储或长江存储宣布ArF光刻胶通过验证并进入量产采购阶段",
+          "evidence": [
+            {
+              "fact": "地缘政治因素加速中国存储产业国产替代进程，为国内厂商提供难得历史机遇",
+              "from": "search[6]·知乎",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              },
+              "evidence_type": "forward_looking_rumor"
+            },
+            {
+              "fact": "广东、江苏两个经济大省均已提出优先采购、补贴国产GPU和国产存储",
+              "from": "search[14]·36氪",
+              "quality": {
+                "level": "medium",
+                "source_type": "official_policy"
+              },
+              "evidence_type": "hard_data_confirmation"
+            }
+          ],
+          "impact_assessment": {
+            "magnitude": "中等",
+            "reasoning": "光刻胶国产化是长期战略方向，但技术壁垒极高，短期难以大规模放量。然而政策驱动和市场推力叠加，一旦突破将带来巨大估值重塑。时间不确定性强，需跟踪验证节点。",
+            "time_horizon": "24个月以上"
+          }
+        },
+        {
+          "from_segment": "传统消费级存储模组厂",
+          "to_segment": "存储原厂（三星、SK海力士、美光、长鑫）",
+          "trigger": "买贵卖贵的刚性涨价阶段到来 — 模组厂低价库存耗尽，原厂凭借产能控制权持续提价，模组厂从受益转向受损。",
+          "timeline": "6-12个月",
+          "confidence": "medium",
+          "monitoring_metric": "模组厂毛利率（%）环比变化",
+          "trigger_threshold": "模组厂毛利率连续两个季度下滑，确认利润向上游迁移",
+          "evidence": [
+            {
+              "fact": "模组公司有库存很好，但库存用完之后，买贵卖贵的时候怎么办？",
+              "from": "search[5]·九方智投",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              },
+              "evidence_type": "forward_looking_rumor"
+            },
+            {
+              "fact": "当前产业链依赖低价库存获利，一旦库存耗尽，将进入买贵卖贵的刚性涨价阶段",
+              "from": "search[5]·九方智投",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              },
+              "evidence_type": "hard_data_confirmation"
+            }
+          ],
+          "impact_assessment": {
+            "magnitude": "中等",
+            "reasoning": "这是典型的周期品涨价中后段利润迁移规律。对模组厂是短多长空，市场可能尚未充分定价此转变。原厂通过产能纪律控制供给，议价权进一步增强。",
+            "time_horizon": "6-12个月"
+          }
+        }
+      ],
+      "hidden_beneficiaries": [
+        {
+          "sector": "封装基板（ABF载板/BT载板）供应商 — 尤其在高密度互联和超大尺寸基板领域",
+          "reason": "HBM/先进封装对基板层数、尺寸和精度要求急剧提升，叠加HBM挤占DRAM产能导致传统封装基板供给被挤压。市场聚焦于设备和材料，较少人关注基板在先进封装中的价值量跃升。三星1c DRAM良率问题进一步推迟供给释放，基板成为确定性增量环节。",
+          "visibility": "low",
+          "time_to_impact": "medium_term",
+          "search_queries": [
+            "ABF载板 先进封装 基板 需求爆发 叠层数增加",
+            "封装基板 上市公司 存储 HBM"
+          ],
+          "evidence": [
+            {
+              "fact": "全球头部存储厂商将大量产能转向AI相关产品，普通消费级存储供给持续减少",
+              "from": "search[4]·新浪财经",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              },
+              "evidence_type": "hard_data_confirmation"
+            },
+            {
+              "fact": "封装环节价值占比从28nm时代的7%飙升至3nm时代的25%",
+              "from": "search[11]·知乎",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              },
+              "evidence_type": "hard_data_confirmation"
+            }
+          ],
+          "impact_assessment": {
+            "magnitude": "中等",
+            "reasoning": "基板在先进封装中的价值占比提升是确定性趋势，但市场对这一环节的认知不足。国内基板厂商正加速追赶，虽然技术差距仍存，但存存储扩产的大背景下，二线厂商可能获得导入机会。",
+            "time_horizon": "12-24个月"
+          }
+        },
+        {
+          "sector": "半导体检测与量测设备（过程控制设备）",
+          "reason": "存储工艺复杂度大幅提升（3D NAND层数增加、HBM堆叠层数增加、1c DRAM难度提升），每一次工艺复杂度跃升都意味着良率挑战增大，对检测和量测的需求随之爆发。但市场在扩产期通常先关注制造设备（光刻/刻蚀/沉积），检测设备作为后周期品种被低估。",
+          "visibility": "very_low",
+          "time_to_impact": "long_term",
+          "search_queries": [
+            "半导体检测设备 良率管理 过程控制 存储 3D NAND",
+            "量测设备 晶圆检测 国产替代"
+          ],
+          "evidence": [
+            {
+              "fact": "三星电子在1c DRAM制程上遭遇良率问题，HBM5E量产计划被迫推迟",
+              "from": "search[10]·网易订阅",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              },
+              "evidence_type": "hard_data_confirmation"
+            },
+            {
+              "fact": "先进节点迁移自身的摩擦（产能损失、良率波动）是供给端束手无策的核心原因之一",
+              "from": "search[7]·钛媒体",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              },
+              "evidence_type": "hard_data_confirmation"
+            }
+          ],
+          "impact_assessment": {
+            "magnitude": "中等",
+            "reasoning": "良率问题是推演中反复出现的关键词（三星1c DRAM、先进节点迁移摩擦）。检测设备是良率提升的必需品，在产能扩张后期（CAPEX大规模落地后）将进入需求高峰。当前市场热度集中在制造设备，检测设备存在预期差。",
+            "time_horizon": "24个月以上"
+          }
+        },
+        {
+          "sector": "半导体高纯化学品/特种气体供应商",
+          "reason": "存储扩产是化学品和气体消耗大户。氦气供应链隐忧、光刻胶日本垄断、高纯气体供给刚性，三重因素叠加在存储扩产潮中，化学品成为被忽视的隐形瓶颈。能够通过验证导入的国产供应商，将享受量（存储扩产用量）和价（供不应求涨价）的双击。",
+          "visibility": "very_low",
+          "time_to_impact": "long_term",
+          "search_queries": [
+            "半导体光刻胶 ArF 国产 验证 导入 长鑫 长江存储",
+            "电子特气 高纯气体 存储芯片 国产替代"
+          ],
+          "evidence": [
+            {
+              "fact": "中东局势引发氦气供应链隐忧，可能对全球存储产业造成系统性冲击",
+              "from": "search[4]·知乎",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              },
+              "evidence_type": "forward_looking_rumor"
+            },
+            {
+              "fact": "原材料涨价成为封测涨价另一大驱动力，以引线框架、金银铜等原材料价格飙升",
+              "from": "search[10]·21财经",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              },
+              "evidence_type": "hard_data_confirmation"
+            }
+          ],
+          "impact_assessment": {
+            "magnitude": "中等",
+            "reasoning": "化学品/气体国产化是长逻辑，短期业绩弹性可能不如此前的设备商，但一旦进入供应链，客户粘性极强，将开启长达5-10年的稳健增长期。地缘政治风险提供了持续的催化剂。",
+            "time_horizon": "24个月以上"
+          }
+        }
+      ],
+      "thesis_breakers": [
+        {
+          "thesis": "全行业扩产推动设备商成为最大赢家，ASML/Besi及其国产替代者享受超额利润",
+          "break_condition": "全球AI推理成本因DeepSeek等降本技术骤降90%以上，导致AI训练芯片需求预期逆转，存储原厂CAPEX计划在2027年后大规模削减。",
+          "watch_signal": "英伟达H100等效租赁价格趋势（月环比降幅超过20%持续3个月），或云厂CAPEX指引下调",
+          "evidence": [],
+          "impact_assessment": {
+            "magnitude": "重大",
+            "reasoning": "这是本推演的核心底层假设——AI需求指数级增长。如果AI算力商品化速度快于预期，存储扩产的长期逻辑将受到根本性动摇。",
+            "time_horizon": "24个月以上"
+          }
+        },
+        {
+          "thesis": "混合键合/TCB键合设备将成为HBM扩产的终极瓶颈，国产设备商有望突破",
+          "break_condition": "台积电或三星开发出绕过TCB键合的新封装技术（如晶圆级混合键合降本方案），或Besi大幅扩产成功将交期缩短至6个月以内，瓶颈提前解除。",
+          "watch_signal": "Besi季度新增订单环比增速是否见顶回落，或台积电CoWoS月产能突破400K wpm",
+          "evidence": [],
+          "impact_assessment": {
+            "magnitude": "重大",
+            "reasoning": "键合设备瓶颈是本推演的关键二阶拐点。如果瓶颈被技术迭代或扩产解除，封装设备商的超额利润窗口将显著收窄，利润迁移方向将发生改变。",
+            "time_horizon": "12-24个月"
+          }
+        },
+        {
+          "thesis": "存储涨价将贯穿2026全年，传统DRAM/NAND跟涨，产业链利润向上游集中",
+          "break_condition": "美国经济衰退导致消费电子需求大幅萎缩，或中国房地产市场二次探底引发系统性需求崩塌，存储需求从供给缺口急转为需求崩塌。",
+          "watch_signal": "美国零售销售数据连续3个月环比负增长，或中国制造业PMI连续3个月处于收缩区间",
+          "evidence": [],
+          "impact_assessment": {
+            "magnitude": "重大",
+            "reasoning": "需求是供给瓶颈能够获取超额利润的前提。宏观需求崩塌将使所有产能缺口瞬间消失，行业从涨价周期切换为量价齐杀，推演完全反转。",
+            "time_horizon": "3-6个月"
+          }
+        },
+        {
+          "thesis": "封装基板因先进封装价值量跃升成为隐形赢家",
+          "break_condition": "1c DRAM良率在2026年内取得突破，HBM供给大幅增加，传统DRAM被挤压效应减弱，基板需求回归平稳增长轨道。",
+          "watch_signal": "三星电子1c DRAM良率公开披露数据突破80%以上",
+          "evidence": [],
+          "impact_assessment": {
+            "magnitude": "中等",
+            "reasoning": "基板受益逻辑建立在供给持续紧张之上。如果良率快速突破，供给释放加速，基板虽然仍受益于HBM本身增长但弹性将大幅降低。",
+            "time_horizon": "6-12个月"
+          }
+        }
+      ],
+      "cross_chain_spillover": [
+        {
+          "source_node": "AI存储晶圆制造（DRAM/NAND）",
+          "linkage_type": "crowding_out",
+          "affected_sector": "汽车/工业MCU芯片制造",
+          "sector_description": "汽车和工业级MCU芯片主要使用成熟制程（28nm及以上），与部分NAND/DRAM产线共享8英寸/12英寸晶圆厂资源和部分前道设备。在存储厂利润丰厚的情况下，存储厂愿意以更高价格锁定产能和设备。",
+          "impact_direction": "negative",
+          "impact_narrative": "AI存储爆发 → 存储厂疯狂扩产并高价锁定晶圆厂产能 → 成熟制程代工厂（台积电、联电、中芯国际）将更多产能分配给利润更高的存储客户 → 汽车/工业MCU产能被挤压 → MCU交期拉长、涨价 → 汽车Tier1和工业自动化企业成本上升。这也是2020-2022年缺芯潮的重演路径，但本次挤压力度来自更强大的存储产业。",
+          "target_profile": "受害方：需采购海外MCU的汽车/工业制造商。受益方：国产MCU公司（车规级MCU加速替代）、国内成熟制程代工厂（产能利用率满载且议价权提升）。",
+          "visibility": "low",
+          "time_horizon": "12-24个月",
+          "search_queries": [
+            "汽车MCU 缺货 涨价 2026 成熟制程 产能 挤压",
+            "车规级MCU 国产替代 导入"
+          ],
+          "evidence": [
+            {
+              "fact": "EUV/AI逻辑芯片挤占成熟制程产能。资金和产能向先进制程集中，成熟制程CAPEX不足，导致汽车/工业芯片供给受限",
+              "from": "推演逻辑推理（2020-2022年缺芯潮历史参照）",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              },
+              "evidence_type": "forward_looking_rumor"
+            },
+            {
+              "fact": "DRAM原厂更愿意将产能投入HBM、GDDR7等高附加价值产品",
+              "from": "search[9]·知乎",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              },
+              "evidence_type": "hard_data_confirmation"
+            }
+          ],
+          "impact_assessment": {
+            "magnitude": "中等",
+            "reasoning": "这是典型的产能挤出逻辑，历史已有验证。本次存储扩产力度超过2020年，挤出效应可能更显著。汽车MCU国产化率仍低（<10%），一旦供给紧张，国产替代将大幅加速。",
+            "time_horizon": "12-24个月"
+          }
+        },
+        {
+          "source_node": "AI存储晶圆制造（DRAM/NAND）",
+          "linkage_type": "io_spillover",
+          "affected_sector": "成熟制程半导体设备（国产刻蚀/CVD/PVD/CMP设备）",
+          "sector_description": "存储扩产需要大量刻蚀、薄膜沉积、CMP设备。国内存储厂（长鑫、长江存储）在去EUV化技术路径下，对国产设备的采购力度显著提升，尤其在中微公司、北方华创、盛美上海的刻蚀/薄膜/CMP设备。这些设备商产能被存储厂大量锁定，导致向逻辑芯片代工厂的交货延后。",
+          "impact_direction": "positive",
+          "impact_narrative": "AI存储扩产 → 存储厂向国产设备商下巨量订单（尤其3D NAND高深宽比刻蚀、多层薄膜沉积） → 设备商产能被锁定 → 成熟制程逻辑芯片代工厂（如中芯国际成熟产线、华虹）设备交期拉长 → 延缓成熟制程扩产计划 → 进一步加剧成熟制程芯片供给紧张。设备商在此过程中享受量（订单暴增）和结构（高端产品占比提升带来的毛利改善）的双击。",
+          "target_profile": "受益方：国产半导体设备龙头（尤其刻蚀、薄膜沉积、CMP设备商）。特征：在存储领域已有验证实绩，且具备大规模交付能力的设备公司。",
+          "visibility": "moderate",
+          "time_horizon": "6-12个月",
+          "search_queries": [
+            "北方华创 中微公司 盛美上海 存储 订单 2026",
+            "国产刻蚀设备 3D NAND 高深宽比 长江存储"
+          ],
+          "evidence": [
+            {
+              "fact": "广东、江苏两省提出优先采购、补贴国产GPU和国产存储",
+              "from": "search[14]·36氪",
+              "quality": {
+                "level": "medium",
+                "source_type": "official_policy"
+              },
+              "evidence_type": "hard_data_confirmation"
+            },
+            {
+              "fact": "国家大基金大比例增持国产晶圆代工龙头",
+              "from": "search[14]·36氪",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              },
+              "evidence_type": "hard_data_confirmation"
+            },
+            {
+              "fact": "SAQP工艺在中芯国际完成验证，去EUV化路径进一步明确，国产设备需求逻辑强化",
+              "from": "search[1]·腾讯新闻",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              },
+              "evidence_type": "forward_looking_rumor"
+            }
+          ],
+          "impact_assessment": {
+            "magnitude": "重大",
+            "reasoning": "国产设备导入是本次存储扩产周期中最确定的结构性机会。去EUV化技术路径意味着DUV+先进刻蚀/薄膜的组合要求更高的设备数量和精度，国产设备商订单能见度已延伸至2027年。设备交期拉长本身强化设备商议价权。",
+            "time_horizon": "6-12个月"
+          }
+        },
+        {
+          "source_node": "HBM先进封装",
+          "linkage_type": "bullwhip_effect",
+          "affected_sector": "ABF载板与先进封装基板",
+          "sector_description": "HBM采用堆叠封装，对基板的层数、尺寸、精细度要求极高。AI服务器预期增长被存储原厂、GPU厂商、云厂多重叠加放大，形成牛鞭效应——最终端是AI推理/训练需求小幅增长，但上游基板供应商收到的订单指引以指数级放大。",
+          "impact_direction": "positive",
+          "impact_narrative": "AI需求预期 → 云厂大规模订购GPU → GPU厂商锁HBM产能 → 存储原厂扩产预期上调 → 基板厂收到来自封测厂和存储厂的同步暴增订单 → 基板交期从4-6周延长至20周以上 → 基板厂进入暴利周期。这与2020-2021年ABF载板大缺货的传导路径高度一致，但本轮驱动力的持续性更强（AI而非远程办公）。",
+          "target_profile": "受益方：ABF/BT载板供应商，尤其在超大尺寸、高层数化技术上领先的企业。受害方：需要基板的非存储封装厂（基板被存储/GPU挤占）。",
+          "visibility": "low",
+          "time_horizon": "12-24个月",
+          "search_queries": [
+            "ABF载板 交期 延长 涨价 存储 封装 基板 供应商",
+            "IC载板 上市公司 先进封装"
+          ],
+          "evidence": [
+            {
+              "fact": "封装环节价值占比从7%飙升至25%，HBM堆叠对基板需求呈指数级增长",
+              "from": "search[11]·知乎",
+              "quality": {
+                "level": "medium",
+                "source_type": "news_media"
+              },
+              "evidence_type": "hard_data_confirmation"
+            }
+          ],
+          "impact_assessment": {
+            "magnitude": "中等",
+            "reasoning": "牛鞭效应在半导体产业链中反复出现。基板是容易被忽视的价值量跃升环节。虽然国内基板厂商技术与全球龙头尚有差距，但在供不应求的极端环境下，二线厂商可能获得以前无法进入的客户认证和订单。",
+            "time_horizon": "12-24个月"
+          }
+        },
+        {
+          "source_node": "HBM先进封装",
+          "linkage_type": "cobweb_oversupply",
+          "affected_sector": "独立半导体测试服务（ATE测试、SLT系统级测试）",
+          "sector_description": "HBM和3D封装的测试复杂度指数级上升，测试时间大幅延长。当前所有产能都聚焦于制造和封装前道，测试环节尚未被充分投资。当2028-2029年HBM/CoWoS产能集中释放时，测试能力将成为最终出货的卡口。",
+          "impact_direction": "positive",
+          "impact_narrative": "全行业扩CoWoS/混合键合产能 → 2027-2028年HBM封装产线大量建成，进入产能爬坡期 → 大量待测HBM/3D封装芯片涌入测试环节 → 独立测试厂产能瞬间被塞满 → 测试报价大幅上涨 → 测试厂量价齐升，成为CAPEX洪峰后的意外受益者。",
+          "target_profile": "受益方：独立第三方半导体测试服务公司，尤其具备高端ATE测试平台和SLT系统级测试能力的公司。特征：在存储和逻辑芯片测试均有布局，拥有高密度测试机台的企业。",
+          "visibility": "very_low",
+          "time_horizon": "24个月以上",
+          "search_queries": [
+            "半导体测试服务 独立测试厂 HBM 先进封装 测试需求 产能瓶颈",
+            "半导体检测 ATE  SLT 系统级测试 上市公司"
+          ],
+          "evidence": [
+            {
+              "fact": "2026-27年CoWoS产能集中释放，新增产能集中投产",
+              "from": "推演逻辑推理（蛛网模型典型特征）",
+              "quality": {
+                "level": "low",
+                "source_type": "sell_side_report"
+              },
+              "evidence_type": "forward_looking_rumor"
+            }
+          ],
+          "impact_assessment": {
+            "magnitude": "中等",
+            "reasoning": "蛛网模型在重资产制造业中反复验证。产能洪峰从制造→封装→测试传导，测试是最后受益环节，市场目前关注度极低（都在制造和封装设备），预期差大。但时间偏后（2028+），短期缺乏催化剂，适合前瞻布局。",
+            "time_horizon": "24个月以上"
+          }
+        }
+      ],
+      "asset_search_queries": [
+        {
+          "query": "国产半导体刻蚀设备 薄膜沉积设备 存储客户 订单 2026 2027 营收占比",
+          "source": "bottleneck_migration → 设备瓶颈 → 国产设备商受益",
+          "priority": "high"
+        },
+        {
+          "query": "ArF光刻胶 国产 供应商 彤程新材 上海新阳 验证 导入 存储厂 长鑫 长江存储",
+          "source": "bottleneck_migration → 光刻胶瓶颈 → 国产材料商突破",
+          "priority": "high"
+        },
+        {
+          "query": "先进封装设备 混合键合 TCB键合 临时键合 晶圆减薄 国产 上市公司",
+          "source": "resource_crowding → 封装设备交期拉长 → 国产设备替代机会",
+          "priority": "high"
+        },
+        {
+          "query": "ABF载板 IC载板 封装基板 存储 HBM 需求 涨价 上市公司",
+          "source": "hidden_beneficiaries → 封装基板价值跃升",
+          "priority": "medium"
+        },
+        {
+          "query": "车规级MCU 国产替代 缺货 涨价 成熟制程 产能挤压 2026",
+          "source": "cross_chain_spillover → 存储挤出成熟制程 → 汽车MCU国产化加速",
+          "priority": "medium"
+        },
+        {
+          "query": "半导体检测设备 量测设备 过程控制 国产 存储良率 3D NAND 高深宽比",
+          "source": "hidden_beneficiaries → 良率挑战 → 检测设备后周期爆发",
+          "priority": "medium"
+        },
+        {
+          "query": "半导体测试服务 独立测试 ATE SLT 系统级测试 产能 上市公司 HBM",
+          "source": "cross_chain_spillover → 蛛网模型 → 测试环节后周期受益",
+          "priority": "low"
+        },
+        {
+          "query": "高纯电子特气 氦气 半导体 国产 供应链 替代 华特气体 金宏气体",
+          "source": "resource_crowding → 氦气供应链危机 → 国产气体导入",
+          "priority": "medium"
+        }
+      ]
+    }
+  }
+}

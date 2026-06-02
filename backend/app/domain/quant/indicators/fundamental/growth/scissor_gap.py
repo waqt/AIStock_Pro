@@ -13,6 +13,7 @@ class ScissorGap(FinancialIndicator):
     applicable_stages = ["inflection", "growth"]
     params = {}
     output = ["scissor_gap", "scissor_is_expanding", "scissor_quarters_count"]
+    text_output = ["scissor_is_expanding"]
     requires = ["revenue", "profit"]
 
     @classmethod

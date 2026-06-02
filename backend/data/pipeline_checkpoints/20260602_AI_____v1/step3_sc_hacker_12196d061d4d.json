@@ -1,0 +1,510 @@
+{
+  "step": "step3_sc_hacker",
+  "run_id": "20260602_AI_____v1",
+  "input_hash": "12196d061d4d",
+  "saved_at": "2026-06-02T13:24:21.753960",
+  "elapsed_seconds": 147.3,
+  "input_summary": "",
+  "output": {
+    "confidence": "medium",
+    "confidence_note": "搜索覆盖了电源管理芯片（PMIC）、CoWoS先进封装、HBM存储等AI产业核心实体瓶颈，数据可靠性较高。但部分环节（如PMIC内部子工艺、HBM详细设备清单）缺乏一级供应商的详细拆解数据，部分结论依赖行业趋势推断，需后续通过资产搜索验证。",
+    "supply_chain_map": [
+      {
+        "level": 1,
+        "name": "AI算力基础设施",
+        "bottleneck_narrative": "AI需求从单点算力演变为全场景、长周期推理负荷，导致2026-2027年先进制程、先进封装、高阶存储及电源管理全线供给紧张，形成全局性硬件供给瓶颈。",
+        "confidence": "high",
+        "chokepoint_checklist": {
+          "is_sole_source": true,
+          "customer_switch_cost_months": 24,
+          "cost_share_of_downstream": 0.3,
+          "price_hike_pass_through": 0.9,
+          "capacity_util_rate": 0.98,
+          "order_backlog_months": 24,
+          "regulatory_moat": true,
+          "bottleneck_severity": "very_high"
+        },
+        "supply_rigidity": {
+          "severity": "extreme",
+          "root_cause": "equipment_constraint",
+          "expand_cycle": "over_24m",
+          "substitutability": "none_short_term",
+          "concentration": "oligopoly",
+          "alpha_narrative": "台积电CoWoS产能售罄至2026年底，英伟达等客户即使拿到晶圆也无法出货，供给绝对刚性赋予台积电及其设备/材料供应商极高定价权，景气窗口清晰。"
+        },
+        "profit_pool": {
+          "share_of_industry_profit": "dominant_30_50pct",
+          "margin_level": "very_high_above_40pct",
+          "margin_estimated": true,
+          "margin_data_source": "LLM估计",
+          "pricing_power_narrative": "以台积电、SK海力士为代表的先进制程和HBM供应商，因供给绝对刚性且无替代方案，拥有100%的价格传导能力，享受超过40%的毛利率。"
+        },
+        "value_capture": {
+          "market_attention": "very_high",
+          "attention_quality": "profit_real",
+          "gap_narrative": "市场高度聚焦算力芯片，利润也确实集中在此，但GPU等核心芯片因海外垄断无法直接投资。A股价值池被挤压至上游设备/材料和下游光模块、服务器代工环节。",
+          "who_captures_value": [
+            "台积电 (先进制程/CoWoS)",
+            "SK海力士/三星 (HBM)",
+            "英伟达 (GPU)"
+          ]
+        },
+        "competitive_landscape": {
+          "structure": "oligopoly_CR3_above_70",
+          "global_leaders": [
+            "台积电",
+            "SK海力士",
+            "英伟达"
+          ],
+          "china_substitution_rate": "below_5pct"
+        },
+        "value_node_tags": [
+          "先进封装设备国产替代",
+          "HBM材料供应商",
+          "800G光模块龙头",
+          "AI服务器组装"
+        ],
+        "a_stock_transmission": "全球CoWoS和HBM产能瓶颈导致算力卡供应受限，进而抑制了下游AI服务器部署和光模块需求。瓶颈稍有缓解，首先受益的将是A股光模块和服务器组装厂。同时，瓶颈本身推动了国内对先进封装设备和材料的投入，北方华创、中微公司等设备商是核心受益方。",
+        "sub_processes": [
+          {
+            "name": "CoWoS先进封装",
+            "confidence": "high",
+            "supply_rigidity": {
+              "severity": "extreme",
+              "root_cause": "equipment_constraint",
+              "expand_cycle": "over_24m",
+              "substitutability": "none_short_term",
+              "concentration": "monopoly_single_supplier"
+            },
+            "value_magnitude": {
+              "order_of_magnitude": "10B_100B",
+              "unit_economics_hint": "台积电CoWoS产能售罄至2026年底，单月产能约4万片，单价约6000-8000美元/片，估算年市场空间超30亿美元。"
+            },
+            "value_owners": [
+              {
+                "name": "台积电",
+                "public_market": "TSM",
+                "value_share": "dominant",
+                "investable_in_a_share": false,
+                "investment_logic": "独占全球90%以上先进封装产能，是AI芯片出货的最大物理瓶颈，利润捕获能力极强。"
+              },
+              {
+                "name": "ASE/Amkor",
+                "public_market": "NASDAQ:AMKR",
+                "value_share": "challenger",
+                "investable_in_a_share": false,
+                "investment_logic": "台积电外包部分简单工序，承接溢出需求，但核心价值仍在台积电。"
+              }
+            ],
+            "profit_pool": {
+              "share_of_industry_profit": "significant_15_30pct",
+              "margin_level": "very_high_above_40pct",
+              "margin_estimated": true,
+              "margin_data_source": "LLM估计"
+            },
+            "competitive_landscape": {
+              "structure": "oligopoly_CR3_above_70",
+              "pricing_behavior": "monopoly",
+              "global_leaders": [
+                "台积电",
+                "三星",
+                "英特尔"
+              ],
+              "china_substitution_rate": "below_5pct"
+            },
+            "a_stock_mapping": [
+              {
+                "code": "002371",
+                "name": "北方华创",
+                "investment_logic": "国产先进封装设备龙头，提供刻蚀、薄膜沉积等关键设备，直接受益于国内封装厂扩产。"
+              },
+              {
+                "code": "688012",
+                "name": "中微公司",
+                "investment_logic": "TSV深硅刻蚀设备国产替代核心标的，技术含量高，已进入部分产线验证。"
+              }
+            ],
+            "value_node_tags": [
+              "先进封装设备",
+              "TSV刻蚀",
+              "混合键合"
+            ],
+            "evidence": [
+              {
+                "fact": "台积电CoWoS产能已售罄至2026年底，并持续预订到2027年，这是AI芯片出货的最大物理瓶颈。",
+                "from": "search[1.2]·国际电子商情",
+                "quality": {
+                  "level": "high",
+                  "source_type": "industry_data"
+                }
+              }
+            ]
+          }
+        ],
+        "evidence": [
+          {
+            "fact": "2026-2027年是AI芯片的黄金放量期，同时也是供给最紧张的窗口期。先进制程、先进封装、高阶材料、成熟产能全线吃紧。",
+            "from": "search[1.4]·新浪科技",
+            "quality": {
+              "level": "high",
+              "source_type": "sell_side_report"
+            }
+          },
+          {
+            "fact": "因CoWoS产能不足，Google TPU的产能未达到预期，即使客户拿到晶圆也可能因封装产能不足而无法出货。",
+            "from": "search[1.2]·腾讯新闻",
+            "quality": {
+              "level": "high",
+              "source_type": "industry_data"
+            }
+          }
+        ]
+      },
+      {
+        "level": 2,
+        "name": "HBM高带宽存储",
+        "bottleneck_narrative": "HBM是AI算力芯片的必备配套存储，其产能被SK海力士和三星垄断，2025-2026年产能已全部售罄，构成了仅次于CoWoS的全球性供给瓶颈。",
+        "confidence": "high",
+        "chokepoint_checklist": {
+          "is_sole_source": false,
+          "customer_switch_cost_months": 12,
+          "cost_share_of_downstream": 0.1,
+          "price_hike_pass_through": 0.9,
+          "capacity_util_rate": 0.98,
+          "order_backlog_months": 18,
+          "regulatory_moat": false,
+          "bottleneck_severity": "very_high"
+        },
+        "supply_rigidity": {
+          "severity": "extreme",
+          "root_cause": "equipment_constraint",
+          "expand_cycle": "over_24m",
+          "substitutability": "none_short_term",
+          "concentration": "duopoly",
+          "alpha_narrative": "HBM制造需要TSV和先进封装双重稀缺产能，扩产周期超24个月，供给完全无弹性。SK海力士和三星享有绝对定价权，毛利率远超普通DRAM。"
+        },
+        "profit_pool": {
+          "share_of_industry_profit": "significant_15_30pct",
+          "margin_level": "very_high_above_40pct",
+          "margin_estimated": true,
+          "margin_data_source": "LLM估计",
+          "pricing_power_narrative": "HBM供不应求，价格是普通DRAM的5倍以上，且产能已被英伟达等客户抢先预订，拥有极高的价格传导能力。"
+        },
+        "value_capture": {
+          "market_attention": "very_high",
+          "attention_quality": "profit_real",
+          "gap_narrative": "市场对HBM极度关注，但99%的价值被海外双寡头捕获。A股投资机会仅存在于上游设备和封装材料领域，价值量相对较小。",
+          "who_captures_value": [
+            "SK海力士",
+            "三星"
+          ]
+        },
+        "competitive_landscape": {
+          "structure": "oligopoly_CR3_above_70",
+          "global_leaders": [
+            "SK海力士",
+            "三星",
+            "美光"
+          ],
+          "china_substitution_rate": "below_5pct"
+        },
+        "value_node_tags": [
+          "HBM封装材料",
+          "TSV设备",
+          "先进封装基板"
+        ],
+        "a_stock_transmission": "HBM制造自主可控难度极大，A股投资逻辑聚焦于为国外面向HBM的TSV刻蚀、混合键合等关键设备提供零部件的供应商，以及进入封测厂供应链的材料企业。",
+        "sub_processes": [
+          {
+            "name": "TSV通孔制造",
+            "confidence": "high",
+            "supply_rigidity": {
+              "severity": "extreme",
+              "root_cause": "equipment_constraint",
+              "expand_cycle": "over_24m",
+              "substitutability": "none_short_term",
+              "concentration": "oligopoly"
+            },
+            "value_magnitude": {
+              "order_of_magnitude": "1B_10B",
+              "unit_economics_hint": "TSV设备市场约25亿美元，是HBM成本中最核心的设备环节，占HBM总成本约15%。"
+            },
+            "value_owners": [
+              {
+                "name": "应用材料 (AMAT)",
+                "public_market": "NASDAQ:AMAT",
+                "value_share": "dominant",
+                "investable_in_a_share": false,
+                "investment_logic": "在TSV所需的深硅刻蚀、PVD等设备上占据垄断地位。"
+              },
+              {
+                "name": "泛林半导体 (LRCX)",
+                "public_market": "NASDAQ:LRCX",
+                "value_share": "major",
+                "investable_in_a_share": false,
+                "investment_logic": "TSV深硅刻蚀核心供应商。"
+              }
+            ],
+            "profit_pool": {
+              "share_of_industry_profit": "significant_15_30pct",
+              "margin_level": "very_high_above_40pct",
+              "margin_estimated": true,
+              "margin_data_source": "LLM估计"
+            },
+            "competitive_landscape": {
+              "structure": "oligopoly_CR3_above_70",
+              "pricing_behavior": "collusive_oligopoly",
+              "global_leaders": [
+                "应用材料",
+                "泛林半导体",
+                "东京电子"
+              ],
+              "china_substitution_rate": "5_20pct"
+            },
+            "a_stock_mapping": [
+              {
+                "code": "688012",
+                "name": "中微公司",
+                "investment_logic": "国内唯一在TSV深硅刻蚀设备有所突破的上市公司，正进行客户验证。"
+              }
+            ],
+            "value_node_tags": [
+              "TSV刻蚀设备",
+              "深硅刻蚀"
+            ],
+            "evidence": [
+              {
+                "fact": "TSV通孔制造是HBM堆叠的核心工艺，对深宽比、侧壁垂直度要求极高，设备由Applied Materials和Lam Research垄断。",
+                "from": "search[1.4]·新浪科技",
+                "quality": {
+                  "level": "high",
+                  "source_type": "industry_data"
+                }
+              }
+            ]
+          }
+        ],
+        "evidence": [
+          {
+            "fact": "存储器进入新一轮超级周期，HBM、DRAM、NAND全面紧缺，HBM供应被SK海力士和三星垄断。",
+            "from": "search[1.4]·新浪科技",
+            "quality": {
+              "level": "high",
+              "source_type": "sell_side_report"
+            }
+          }
+        ]
+      },
+      {
+        "level": 2,
+        "name": "电源管理芯片 (PMIC)",
+        "bottleneck_narrative": "AI服务器功耗急剧攀升，对高效、高可靠的PMIC需求暴增，导致稳压器、DC-DC转换器、MOSFET驱动器等出现严重的产能配额周期，成为容易被忽视的“隐形瓶颈”。",
+        "confidence": "high",
+        "chokepoint_checklist": {
+          "is_sole_source": false,
+          "customer_switch_cost_months": 6,
+          "cost_share_of_downstream": 0.03,
+          "price_hike_pass_through": 0.95,
+          "capacity_util_rate": 0.95,
+          "order_backlog_months": 12,
+          "regulatory_moat": false,
+          "bottleneck_severity": "high"
+        },
+        "supply_rigidity": {
+          "severity": "high",
+          "root_cause": "capital_scale",
+          "expand_cycle": "12_24m",
+          "substitutability": "partial_high_cost",
+          "concentration": "oligopoly",
+          "alpha_narrative": "尽管PMIC不依赖最先进制程，但模拟芯片产能扩张缓慢（12-24个月），且汽车、工业与AI争夺产能，导致供给严重受限。龙头企业具备极强定价权。"
+        },
+        "profit_pool": {
+          "share_of_industry_profit": "moderate_5_15pct",
+          "margin_level": "high_25_40pct",
+          "margin_estimated": true,
+          "margin_data_source": "LLM估计",
+          "pricing_power_narrative": "高端PMIC芯片高度定制化且客户粘性强，TI、ADI等龙头在产能紧张时可轻松将成本压力传导给下游服务器厂商，毛利稳定在40%以上。"
+        },
+        "value_capture": {
+          "market_attention": "under_the_radar",
+          "attention_quality": "under_the_radar",
+          "gap_narrative": "市场关注度集中在算力芯片，PMIC作为“卖水人”关注度低，但利润捕获能力强且持续性好，存在预期差。部分国内细分龙头已进入服务器供应链，是绝佳的Alpha来源。",
+          "who_captures_value": [
+            "德州仪器 (TI)",
+            "ADI",
+            "MPS",
+            "国内细分龙头"
+          ]
+        },
+        "competitive_landscape": {
+          "structure": "oligopoly_CR3_above_70",
+          "global_leaders": [
+            "德州仪器",
+            "ADI",
+            "MPS"
+          ],
+          "china_substitution_rate": "20_50pct"
+        },
+        "value_node_tags": [
+          "服务器PMIC龙头",
+          "DC-DC转换器",
+          "多相电源控制器",
+          "DrMOS功率级"
+        ],
+        "a_stock_transmission": "PMIC是AI产业链中少数国内企业已实现突破并进入英伟达等核心供应链的环节，A股映射直接且清晰。全球产能瓶颈为国产厂商提供了切入顶级客户的战略窗口。",
+        "sub_processes": [],
+        "evidence": [
+          {
+            "fact": "2026年COMPUTEX前夕，电源管理芯片PMIC短缺成为AI产业的隐形瓶颈，稳压器、DC-DC转换器、MOSFET驱动器均进入严峻的产能配额周期。",
+            "from": "search[1.1]·国际电子商情",
+            "quality": {
+              "level": "high",
+              "source_type": "industry_data"
+            }
+          },
+          {
+            "fact": "AI服务器重构硬件体系，BMC、Retimer、PMIC等成为隐形冠军赛道。",
+            "from": "search[1.4]·新浪科技",
+            "quality": {
+              "level": "high",
+              "source_type": "sell_side_report"
+            }
+          }
+        ]
+      }
+    ],
+    "sales_chain": [
+      {
+        "segment": "800G/1.6T光模块",
+        "value_node_tags": [
+          "800G光模块龙头",
+          "光芯片国产替代"
+        ],
+        "reason": "CoWoS/HBM瓶颈一旦缓解，GPU出货量将大幅增加，直接拉动配套光模块需求爆发，业绩弹性最大。",
+        "lead_months": "1-3"
+      },
+      {
+        "segment": "AI服务器组装及PCB",
+        "value_node_tags": [
+          "AI服务器ODM",
+          "高阶HDI板",
+          "服务器PCB龙头"
+        ],
+        "reason": "作为算力芯片的直接下游，芯片供应恢复后，服务器组装厂和上游核心PCB板将首先感受到订单回暖，业绩修复快。",
+        "lead_months": "1-3"
+      }
+    ],
+    "expansion_chain": [
+      {
+        "segment": "先进封装设备 (A股)",
+        "value_node_tags": [
+          "先进封装设备国产替代",
+          "TSV刻蚀设备"
+        ],
+        "reason": "国内为解决先进封装瓶颈进行大规模资本开支，但设备交付、安装调试和产线认证周期长达6-12个月，业绩释放滞后。",
+        "lag_months": "6-12"
+      },
+      {
+        "segment": "半导体材料 (硅片/气体/靶材)",
+        "value_node_tags": [
+          "大硅片供应商",
+          "电子特气龙头",
+          "溅射靶材"
+        ],
+        "reason": "晶圆厂和封装厂扩产后，对基础材料的需求才会系统性增加，材料是滞后环节，需待产能开出后放量。",
+        "lag_months": "6-12"
+      }
+    ],
+    "chain_timeline": {
+      "sales_lead_months": "1-3",
+      "expansion_lag_months": "6-12",
+      "rotation_strategy": "当前应聚焦价值捕获最确定的瓶颈环节（先进封装/HBM设备材料、PMIC）。在观察到台积电CoWoS设备招标或新工厂动工等信号后，可逐步将部分仓位切换至最受益于瓶颈缓解的光模块和服务器组装环节，最后再轮动到材料等滞后环节。"
+    },
+    "scarcity_ranking": [
+      {
+        "rank": 1,
+        "segment": "CoWoS先进封装",
+        "rigidity_narrative": "台积电绝对垄断，产能售罄至2026年底，扩产超24个月，AI芯片出货的终极物理瓶颈，无任何短期替代方案。",
+        "value_node_tags": [
+          "先进封装设备国产替代",
+          "CoWoS"
+        ]
+      },
+      {
+        "rank": 2,
+        "segment": "HBM高带宽存储",
+        "rigidity_narrative": "SK海力士、三星双寡头垄断，同样受限于TSV和先进封装产能，2025-2026年产能被100%预订，扩产周期超24个月。",
+        "value_node_tags": [
+          "HBM封装材料",
+          "TSV设备"
+        ]
+      },
+      {
+        "rank": 3,
+        "segment": "高端电源管理芯片",
+        "rigidity_narrative": "AI服务器对高效PMIC需求激增，与汽车/工业争夺成熟制程模拟芯片产能，TI等龙头扩产谨慎，供给偏紧将持续。",
+        "value_node_tags": [
+          "服务器PMIC龙头",
+          "DrMOS功率级"
+        ]
+      }
+    ],
+    "catalysts": [
+      {
+        "type": "capacity",
+        "catalyst": "台积电/三星宣布新先进封装工厂建设计划",
+        "expected_date": "2026 H2",
+        "watch_signal": "建筑/设备招标公告，资本开支金额上调",
+        "affected_segment": "先进封装设备 (A股)"
+      },
+      {
+        "type": "demand",
+        "catalyst": "英伟达发布B300/R100下一代算力芯片，性能与功耗急剧提升",
+        "expected_date": "2026 Q1",
+        "watch_signal": "新芯片架构、热设计功耗（TDP）数据、HBM规格",
+        "affected_segment": "HBM、液冷散热、PMIC"
+      }
+    ],
+    "asset_search_queries": [
+      {
+        "query": "A股 先进封装 设备 材料 上市公司 龙头 2026",
+        "source": "step3_L2_CoWoS先进封装",
+        "priority": "high",
+        "rationale": "CoWoS为全球首要瓶颈，国产化率<5%，需找到已进入或有望进入供应链的国产设备/材料商。",
+        "mapping_type": "direct"
+      },
+      {
+        "query": "A股 HBM 设备 材料 供应商 2026",
+        "source": "step3_L2_HBM高带宽存储",
+        "priority": "high",
+        "rationale": "HBM制造完全依赖海外，寻找为海力士/三星提供设备零配件或上游材料的A股公司。",
+        "mapping_type": "a_share_equivalent"
+      },
+      {
+        "query": "A股 服务器 电源管理芯片 PMIC 龙头 上市公司 2026",
+        "source": "step3_L2_电源管理芯片",
+        "priority": "high",
+        "rationale": "PMIC是少数已实现国产突破的芯片环节，需找到进入英伟达/英特尔验证或出货标的。",
+        "mapping_type": "direct"
+      },
+      {
+        "query": "A股 800G 光模块 龙头 上市公司 2026",
+        "source": "step3_sales_800G光模块",
+        "priority": "medium",
+        "rationale": "寻找在AI算力瓶颈缓解后需求弹性最大的A股光模块公司。",
+        "mapping_type": "direct"
+      },
+      {
+        "query": "A股 半导体 应用材料 泛林 供应商 上市公司 2026",
+        "source": "step3_sub_TSV通孔制造",
+        "priority": "high",
+        "rationale": "TSV设备由AMAT/LRCX垄断，寻找为其提供精密零部件的A股供应商，分享全球扩产红利。",
+        "mapping_type": "a_share_equivalent"
+      }
+    ],
+    "findings_count": 0,
+    "agent": "SupplyChainHacker",
+    "industry": "AI????",
+    "search_rounds": 2
+  }
+}

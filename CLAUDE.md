@@ -24,7 +24,7 @@ AIStock Pro 是一套 AI 驱动的量化分析与投资研究系统，面向 A �
 | AI 提供者 | DeepSeek (Anthropic兼容, 主) / 豆包 Seed / Gemini Vision |
 | 任务调度 | TaskEngine (自研, 注册式装饰器) |
 | 数据源 | httpx → 新浪/东方财富/腾讯; akshare (财报+港股) |
-| 指标存储 | SQLite 宽表 (每字段一列) + numba JIT 加速 |
+| 指标存储 | SQLite 宽表 — `indicators`(技术指标) + `financial_indicators`(财务指标) |
 | Web 搜索 | Brave Search (主), 通过 Clash 代理 127.0.0.1:7890 |
 
 ## 目录结构 (核心变更)
@@ -115,6 +115,42 @@ backend/data/                      # ★ 数据文件 (单目录统一管理)
 
 ## V5.10 投研 Pipeline 架构
 
+### Pipeline 三层设计纲领 (V5.16)
+
+Pipeline 整体定位为**三层递进式研究**，每层职责明确，不可越界：
+
+```
+第一层: 趋势发现                       Step 1a + 1b
+  ├─ 宏观周期分析 (GlobalCapexScanner)
+  └─ 资本流向扫描 (CapitalFlowScanner)
+  职责: 判断产业宏观趋势, 发现值得深入的方向。
+  输出: 宏观周期结论 + 资本流向图谱, 供用户决定是否继续。
+
+第二层: 产业链剖析                      Step 2 → 3 → 4 → 5
+  ├─ 行业看门人   (MarketScanner)       — 定性筛选产业赛道
+  ├─ 产业链拆解   (SupplyChainHacker)   — 瓶颈图谱+利润池+竞争格局
+  ├─ 系统动力学   (SystemDynamicsAgent) — 产业链演化与外溢效应
+  └─ 跨产业关联   (CrossIndustryLinkage) — 跨产业传导路径
+  职责: 剖析产业链结构与外溢效应, 为后续选股提供线索。
+  核心: 聚焦"产业逻辑"而非"个股研究", 产出供给刚性/利润分配/瓶颈节点。
+  线索: output.asset_search_queries 是传递给 Step 6 的唯一搜索接口。
+
+第三层: 资产筛选与验证                   Step 6 + 7 + 8
+  ├─ 核心资产筛选 (CoreScreeningAgent)  — 线索汇总→搜索→比较→验证→排名
+  ├─ 财务审计     (FinancialAuditor)    — 8Q剪刀差+Beneish M-Score
+  ├─ 人力资本审计 (HumanCapitalDetective) — 创始人/CTO/专利审计
+  └─ 估值定价     (ValuationPricer)     — 估值定价
+  职责: 在前道(第二层)提供的产业线索基础上, 挖掘具体资产标的,
+       进行定性(护城河)与定量(财务/估值)分析, 通过比较淘汰选出最优解。
+  输入: 唯一来源是 Step 2-5 的 asset_search_queries + 结构化产出。
+  方法: 搜索→LLM提取→分组比较→逐只验证→全局排名的四阶段流程。
+```
+
+**层间接口规范:**
+- 第二层→第三层: `asset_search_queries` 是**唯一的搜索线索传递通道**（不得跨层直接读取 spillover/瓶颈等内部结构）
+- 第三层自身发现的线索（如 `human_capital` 源）仅作为补充，不得覆盖或替代第二层的结构化结论
+- 每层不得越界做不属于自己职责的事情（如第二层不做个股验证，第三层不做产业链分析）
+
 ### 12 步分析链路
 
 ```
@@ -185,6 +221,7 @@ V3.0 遗留 (向后兼容): SupplyChainAnalyst, IndustryAnalyst, ResearchCoordin
 
 ### 量化模块架构
 
+#### 技术指标 (日线)
 ```
 指标库 (16算子) → 策略库 (8策略) → 决策中心 (加权投票) → 信号持久化
                    ├─ 6传统 (代码逻辑)
@@ -193,6 +230,20 @@ V3.0 遗留 (向后兼容): SupplyChainAnalyst, IndustryAnalyst, ResearchCoordin
 
 新增算子: 继承 `BaseIndicator`, 加 `@register` 装饰器, 放在对应分类目录, `__init__.py` 自动发现。详见 `.claude/rules/quant-indicator-standards.md`。
 新增策略: 继承 `TimingStrategy`, 加 `@register_strategy` 装饰器。AI链策略编辑 YAML 文件即可热更新。
+
+#### 财务指标 (季度)
+```
+FINANCIAL_REGISTRY (27算子) → financial_compute.py (滑动窗口) → financial_indicators (SQLite)
+  ├─ profitability (7): roe, margin, roic, roiic, rd_intensity, gross_margin_trend, working_capital...
+  ├─ growth (9): revenue_growth, profit_growth, scissor_gap, inflection, operating_leverage...
+  ├─ health (5): contract_liability, inventory, ocf_health, burn_rate_months, rd_to_opex
+  ├─ quality (3): beneish_m_score, roic_stability, operating_margin_stability
+  └─ profile (1): revenue_scale
+```
+
+存储列自动从 FINANCIAL_REGISTRY 推导 (35 数值列 + 15 文本列)，新增指标无需手动 DDL。
+查询层: `FinancialQueryService` (catalog + on-demand query + SQLite 缓存)。
+详见 `.claude/rules/financial-indicator-standards.md`。
 
 ### 指标存储 schema (SQLite wide table)
 
@@ -217,7 +268,8 @@ V3.0 遗留 (向后兼容): SupplyChainAnalyst, IndustryAnalyst, ResearchCoordin
 | positions | MySQL | 持仓明细 |
 | watchlist | MySQL | 自选股 |
 | market_data | MySQL | 日K线 (UNIQUE: stock_code+trade_date) |
-| indicators | **SQLite** | ★ 指标宽表 (52列, 每字段一列) |
+| indicators | **SQLite** | ★ 技术指标宽表 (52列, 每字段一列) |
+| financial_indicators | **SQLite** | ★ 财务指标宽表 (50列, 自动推导自 FINANCIAL_REGISTRY) |
 | stock_info | MySQL | 股票基础信息 + PE/PB/市值 |
 | financial_statements | MySQL | 季度财报 |
 | portfolio_snapshots | MySQL | 持仓每日切片 |
@@ -272,6 +324,32 @@ cov = indicator_store.get_coverage(all_codes)           # 覆盖检测
 from app.domain.quant.decision.center import DecisionCenter
 center = DecisionCenter(provider=deepseek_provider)
 reports = await center.decide(["688012", "002409"])
+
+# 财务指标 — 注册/查询/计算
+from app.domain.quant.indicators.fundamental import FINANCIAL_REGISTRY
+len(FINANCIAL_REGISTRY)                                    # 已注册指标数
+from app.domain.quant.indicators.fundamental.base import build_financial_field_registry
+build_financial_field_registry()                           # 全字段元数据 (unit/meaning/is_text)
+
+from app.domain.quant.engine.financial_query_service import FinancialQueryService
+svc = FinancialQueryService()
+catalog = svc.get_catalog()                                # 数据字典 (已缓存)
+data = await svc.query("688012", indicators=["roic_pct", "revenue_yoy"], raw_fields=["revenue"])
+prompt = svc.format_catalog_for_prompt()                   # LLM prompt 注入
+
+from app.domain.quant.engine.financial_compute import compute_financial_for_codes, filter_a_share_codes
+result = await compute_financial_for_codes(codes, mode="local")  # 批量计算
+
+from app.domain.quant.engine import indicator_store
+row = indicator_store.get_financial_latest("688012")       # 最新财务指标快照
+hist = indicator_store.get_financial_history("688012")     # 财务指标历史序列
+
+# 财务API:
+# GET  /api/quant/financial-indicators/registry  — 注册表 (meta())
+# GET  /api/quant/financial-indicators/catalog   — 数据字典 (含 unit/meaning)
+# POST /api/quant/financial-indicators/query     — Agent 按需组装
+# POST /api/quant/financial-indicators/compute   — 批量计算落库
+# GET  /api/quant/financial-indicators/{stock_code}[?fields=...]
 
 # 自选股
 from app.models.models import WatchlistItem
@@ -388,7 +466,9 @@ python temp_lab/regenerate_report.py SOFC
 1. 查 `docs/03_API_Specifications/System_Feature_Inventory.md` 做关联影响分析
 2. 确认需求归属领域 (research/quant/market_data/portfolio)
 3. 如需新表 → 修改 `models/models.py` → 启动时 `create_all` 自动建表
-4. Agent/策略/算子 → 遵循对应 domain 的装饰器注册范式 (见 `.claude/rules/`)
+4. Agent/策略/算子/财务指标 → 遵循对应 domain 的装饰器注册范式（见 `.claude/rules/`）
+   - 技术指标/策略 → `.claude/rules/quant-indicator-standards.md` / `.claude/rules/quant-module.md`
+   - 财务指标 → `.claude/rules/financial-indicator-standards.md`
 5. 暴露接口 → `domain/<领域>/api/` → `main.py` 注册路由
 6. 前端页面 → `<body data-page-id>` + sidebar + topbar + workspace
 7. 端到端验证: curl API → 前端按钮 → 页面渲染

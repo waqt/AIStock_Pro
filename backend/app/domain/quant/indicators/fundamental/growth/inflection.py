@@ -13,6 +13,7 @@ class RevenueAcceleration(FinancialIndicator):
     applicable_stages = ["inflection", "growth"]
     params = {}
     output = ["revenue_acceleration"]
+    text_output = ["revenue_acceleration"]
     requires = ["revenue"]
 
     @classmethod
@@ -23,9 +24,10 @@ class RevenueAcceleration(FinancialIndicator):
         prev_yoy = _pct(float(financials[1].get("revenue", 0) or 0), float(financials[5].get("revenue", 0) or 0))
         if latest_yoy is None or prev_yoy is None:
             return {"revenue_acceleration": None}
-        if latest_yoy > prev_yoy * 1.05:
+        # 使用绝对百分点变化: 对大小基数都公平
+        if latest_yoy > prev_yoy + 2.0:
             return {"revenue_acceleration": "accelerating"}
-        elif latest_yoy < prev_yoy * 0.95:
+        elif latest_yoy < prev_yoy - 2.0:
             return {"revenue_acceleration": "decelerating"}
         return {"revenue_acceleration": "stable"}
 
@@ -41,6 +43,7 @@ class ProfitTurnaround(FinancialIndicator):
     applicable_stages = ["startup", "inflection"]
     params = {}
     output = ["profit_turnaround"]
+    text_output = ["profit_turnaround"]
     requires = ["profit"]
 
     @classmethod
@@ -71,6 +74,7 @@ class RDToRevenueTrend(FinancialIndicator):
     applicable_stages = ["startup", "inflection", "growth"]
     params = {}
     output = ["rd_to_revenue_trend"]
+    text_output = ["rd_to_revenue_trend"]
     requires = ["rd_expense", "revenue"]
 
     @classmethod

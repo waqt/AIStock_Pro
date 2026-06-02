@@ -238,59 +238,118 @@ def get_counts() -> int:
 
 # ═══ 财务指标存储 (独立表, 不在 Indicators 宽表中) ═══════════════════
 
-FINANCIAL_NUMERIC_COLS = [
-    "roic", "roic_pct", "roiic", "roiic_pct",
-    "roic_adjusted", "roic_pct_adjusted", "roiic_adjusted", "roiic_pct_adjusted",
-    "contract_liability_yoy", "inventory_yoy", "revenue_yoy", "rd_growth",
-    "rd_intensity", "operating_leverage",
-    "roic_stability",
-    "burn_rate_months", "rd_to_opex",
-    "rd_to_revenue_trend", "revenue_acceleration", "profit_turnaround", "revenue_qoq",
-    "working_capital_efficiency",
-    "operating_margin_stability",
-]
-FINANCIAL_TEXT_COLS = ["gross_margin_trend", "inventory_revenue_ratio", "source"]
-FINANCIAL_ALL_COLS = FINANCIAL_NUMERIC_COLS + FINANCIAL_TEXT_COLS
+# 静态基础字段 (非指标产出, 由计算引擎直接写入)
+FINANCIAL_BASE_NUMERIC_COLS = []  # 目前没有引擎直接写入的数字元字段
+FINANCIAL_BASE_TEXT_COLS = ["source"]  # 数据来源标记 (db/web)
+
+
+def _get_dynamic_financial_cols() -> tuple:
+    """从 FINANCIAL_REGISTRY 自动推导数值列和文本列清单。
+    避免手写 FINANCIAL_NUMERIC_COLS 与注册表脱节的问题。
+    """
+    from app.domain.quant.indicators.fundamental import FINANCIAL_REGISTRY
+    if not FINANCIAL_REGISTRY:
+        # 模块首次加载时注册表可能尚未填充, 返回空种子
+        # 实际调用 _init_financial_table 时会二次检查
+        return FINANCIAL_BASE_NUMERIC_COLS[:], FINANCIAL_BASE_TEXT_COLS[:]
+
+    numeric = set(FINANCIAL_BASE_NUMERIC_COLS)
+    text = set(FINANCIAL_BASE_TEXT_COLS)
+    for cls in FINANCIAL_REGISTRY.values():
+        text_set = set(cls.text_output)
+        for f in cls.output:
+            if f in text_set:
+                text.add(f)
+            else:
+                numeric.add(f)
+    return sorted(numeric), sorted(text)
+
+
+def FINANCIAL_NUMERIC_COLS() -> list:
+    """动态属性 — 每次调用从注册表推导 (lazy, 注册表加载后生效)"""
+    num, _ = _get_dynamic_financial_cols()
+    return num
+
+
+def FINANCIAL_TEXT_COLS() -> list:
+    """动态属性"""
+    _, txt = _get_dynamic_financial_cols()
+    return txt
+
+
+def FINANCIAL_ALL_COLS() -> list:
+    return FINANCIAL_NUMERIC_COLS() + FINANCIAL_TEXT_COLS()
+
+
+# 缓存: 避免每次写操作都重新推导
+_fin_cols_cache = None
+
+
+def _get_financial_cols_cached() -> tuple:
+    global _fin_cols_cache
+    if _fin_cols_cache is None:
+        _fin_cols_cache = _get_dynamic_financial_cols()
+    return _fin_cols_cache
+
+
+def _reset_financial_cols_cache():
+    """测试/热加载时清空缓存"""
+    global _fin_cols_cache
+    _fin_cols_cache = None
 
 def _fin_col_defs():
+    num, txt = _get_financial_cols_cached()
     defs = []
-    for c in FINANCIAL_NUMERIC_COLS:
+    for c in num:
         defs.append(f"{c} REAL DEFAULT NULL")
-    for c in FINANCIAL_TEXT_COLS:
+    for c in txt:
         defs.append(f"{c} TEXT DEFAULT NULL")
     return ", ".join(defs)
 
-CREATE_FINANCIAL_TABLE_SQL = f"""
-CREATE TABLE IF NOT EXISTS financial_indicators (
-    stock_code TEXT NOT NULL,
-    report_date TEXT NOT NULL,
-    {_fin_col_defs()},
-    PRIMARY KEY (stock_code, report_date)
-)
-"""
 
 def _init_financial_table():
     conn = _get_conn()
-    # Check if existing table has expected schema
+    # 先确保表存在 (初始创建, 无字段约束)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS financial_indicators (
+            stock_code TEXT NOT NULL,
+            report_date TEXT NOT NULL,
+            PRIMARY KEY (stock_code, report_date)
+        )
+    """)
+    conn.commit()
+
+    # 自动推导所有需要的列
+    num, txt = _get_financial_cols_cached()
+    all_expected = set(num + txt)
+
+    # 检查现有列
     existing_cols = set()
     try:
         rows = conn.execute("PRAGMA table_info(financial_indicators)").fetchall()
-        existing_cols = {r[1] for r in rows}  # col name at index 1
+        existing_cols = {r[1] for r in rows}
     except Exception:
         pass
-    expected_cols = set(FINANCIAL_NUMERIC_COLS + FINANCIAL_TEXT_COLS + ["stock_code", "report_date"])
-    if existing_cols and not expected_cols.issubset(existing_cols):
-        conn.execute("DROP TABLE IF EXISTS financial_indicators")
+
+    # 只补充缺少的列 (ALTER TABLE ADD COLUMN), 不 DROP 表
+    missing = sorted(all_expected - existing_cols)
+    if missing:
+        for col in missing:
+            col_type = "TEXT" if col in txt else "REAL"
+            try:
+                conn.execute(f"ALTER TABLE financial_indicators ADD COLUMN {col} {col_type} DEFAULT NULL")
+                logger.info(f"[IndicatorStore] Added financial column: {col} ({col_type})")
+            except Exception as e:
+                logger.warning(f"[IndicatorStore] Failed to add column {col}: {e}")
         conn.commit()
-    conn.execute(CREATE_FINANCIAL_TABLE_SQL)
-    conn.commit()
 
 
 def store_financial_indicator(code: str, report_date: str, data: dict) -> bool:
     """存储单只股票的财务指标快照 (upsert by stock_code+report_date)"""
     conn = _get_conn()
     _init_financial_table()
-    all_cols = FINANCIAL_NUMERIC_COLS + FINANCIAL_TEXT_COLS
+    num, txt = _get_financial_cols_cached()
+    all_cols = num + txt
     try:
         existing = conn.execute(
             "SELECT 1 FROM financial_indicators WHERE stock_code=? AND report_date=?",
@@ -329,9 +388,13 @@ def get_financial_history(code: str, fields: List[str] = None) -> List[dict]:
     """获取单只股票财务指标历史序列"""
     conn = _get_conn()
     _init_financial_table()
-    cols = ",".join(fields if fields else FINANCIAL_NUMERIC_COLS)
-    safe_cols = "stock_code,report_date," + ",".join(
-        c for c in (fields or FINANCIAL_NUMERIC_COLS) if c in cols.split(","))
+    num, txt = _get_financial_cols_cached()
+    all_cols = num + txt
+    safe_fields = fields if fields else all_cols
+    safe_fields = [f for f in safe_fields if f in all_cols and f not in ("stock_code", "report_date")]
+    if not safe_fields:
+        return []
+    cols = ", ".join(safe_fields)
     rows = conn.execute(
         f"SELECT stock_code, report_date, {cols} FROM financial_indicators "
         f"WHERE stock_code=? ORDER BY report_date DESC",
@@ -341,7 +404,8 @@ def get_financial_history(code: str, fields: List[str] = None) -> List[dict]:
 
 def get_financial_field_latest(field_name: str) -> List[dict]:
     """获取全股票某财务指标字段的最新排名"""
-    if field_name not in FINANCIAL_NUMERIC_COLS:
+    num, txt = _get_financial_cols_cached()
+    if field_name not in (num + txt):
         return []
     conn = _get_conn()
     _init_financial_table()

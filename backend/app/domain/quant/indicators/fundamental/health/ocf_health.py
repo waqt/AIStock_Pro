@@ -1,5 +1,5 @@
 """OCF健康度 — OCF/净利润 + OCF趋势"""
-from ..base import FinancialIndicator, register
+from ..base import FinancialIndicator, register, _safe_div
 
 
 @register
@@ -7,12 +7,13 @@ class OCFHealth(FinancialIndicator):
     name = "ocf_health"
     label = "OCF健康度"
     description = "近4Q经营现金流/近4Q净利润。衡量利润是否真实转化为现金,是识别纸面利润的核心指标。"
-    judgment = ">1.0=健康,利润是真金白银; 0.7~1.0=正常; 0.5~0.7=偏低; <0.5=利润质量差。持续<0.5需警惕财务操纵。"
+    judgment = ">1.0=健康; 0.7~1.0=正常; 0.5~0.7=偏低; <0.5=利润质量差; loss_making=亏损(OCF为正说明经营能产生现金); loss_making_negative_ocf=亏损且现金流为负(双重危险)。"
     category = "health"
     indicator_type = "moat"
     applicable_stages = ["growth", "mature"]
     params = {}
     output = ["ocf_health"]
+    text_output = ["ocf_health"]
     requires = ["op_cashflow", "profit"]
 
     @classmethod
@@ -21,13 +22,18 @@ class OCFHealth(FinancialIndicator):
             return {"ocf_health": None}
         ocf = sum(float(q.get("op_cashflow", 0) or 0) for q in financials[:4])
         profit = sum(float(q.get("profit", q.get("parent_profit", 0)) or 0) for q in financials[:4])
-        if not profit or profit <= 0:
-            return {"ocf_health": None}
-        ratio = ocf / profit
-        if ratio > 1.0:
-            return {"ocf_health": "healthy"}
-        if ratio >= 0.7:
-            return {"ocf_health": "normal"}
-        if ratio >= 0.5:
-            return {"ocf_health": "low"}
-        return {"ocf_health": "poor"}
+
+        if profit > 0:
+            ratio = ocf / profit
+            if ratio > 1.0:
+                return {"ocf_health": "healthy"}
+            if ratio >= 0.7:
+                return {"ocf_health": "normal"}
+            if ratio >= 0.5:
+                return {"ocf_health": "low"}
+            return {"ocf_health": "poor"}
+        else:
+            # 亏损时: OCF正→仍能产生现金; OCF负→双重危险
+            if ocf > 0:
+                return {"ocf_health": "loss_making_but_cash_positive"}
+            return {"ocf_health": "loss_making_with_negative_ocf"}

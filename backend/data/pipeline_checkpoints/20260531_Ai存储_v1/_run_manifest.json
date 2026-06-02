@@ -4,6 +4,10 @@
   "mode": "manual",
   "mode_id": "manual_industry",
   "agent_id": "supply_chain",
-  "status": "running",
-  "started_at": "2026-05-31T22:01:14.539557"
+  "status": "completed",
+  "started_at": "2026-05-31T22:06:27.474575",
+  "completed_at": "2026-05-31T22:07:11.974799",
+  "elapsed_seconds": 44.5,
+  "step": "step2_gatekeeper",
+  "input_hash": "186f1f66b9f7"
 }

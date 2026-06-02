@@ -13,6 +13,7 @@ class GrossMarginTrend(FinancialIndicator):
     applicable_stages = ["inflection", "growth", "mature"]
     params = {}
     output = ["gross_margin_trend"]
+    text_output = ["gross_margin_trend"]
     requires = ["revenue", "operate_cost"]
 
     @classmethod
@@ -24,11 +25,27 @@ class GrossMarginTrend(FinancialIndicator):
             rev = float(q.get("revenue", 0) or 0)
             cost = float(q.get("operate_cost", 0) or 0)
             gms.append((rev - cost) / rev * 100 if rev else 0)
-        if len(gms) >= 3 and gms[0] > gms[1] > gms[2]:
-            return {"gross_margin_trend": "rising"}
-        if len(gms) >= 3 and gms[0] < gms[1] < gms[2]:
+        if len(gms) >= 3 and _is_strictly_monotonic(gms[:3]):
+            if gms[0] > gms[-1]:
+                return {"gross_margin_trend": "rising"}
             return {"gross_margin_trend": "declining"}
         return {"gross_margin_trend": "stable"}
+
+
+def _is_strictly_monotonic(values: list, tolerance_pct: float = 0.5) -> bool:
+    """检查列表是否严格单调 (允许容差 < tolerance_pct 的微小波动)。"""
+    if len(values) < 2:
+        return True
+    increasing = values[0] < values[-1]
+    for i in range(1, len(values)):
+        diff = values[i] - values[i - 1]
+        if increasing:
+            if diff < -tolerance_pct:
+                return False
+        else:
+            if diff > tolerance_pct:
+                return False
+    return True
 
 
 @register

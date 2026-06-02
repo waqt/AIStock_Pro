@@ -389,8 +389,8 @@ async def get_forex_rates():
 @router.post("/forex/sync")
 async def sync_forex_rates():
     """手动触发宏观数据同步"""
-    from app.domain.market_data.sources.router import data_router as dr
-    result = await dr.sync_macro_data()
+    from app.domain.market_data.services.macro_sync import sync_macro_data
+    result = await sync_macro_data()
     return {"success": True, "data": result}
 
 
@@ -492,8 +492,8 @@ async def import_stock_csv(file: UploadFile = File(...)):
 @router.post("/macro/sync")
 async def sync_macro(mode: str = "daily"):
     """同步宏观数据 — mode=daily(当日最新) | historical(2年历史序列)"""
-    from app.domain.market_data.sources.router import data_router
-    result = await data_router.sync_macro_data()
+    from app.domain.market_data.services.macro_sync import sync_macro_data
+    result = await sync_macro_data()
     return {"success": True, "data": result, "mode": mode}
 
 

@@ -151,7 +151,7 @@ class SystemDynamicsAgent(ResearchAgent):
         prompt = self._build_prompt(industry, chain_map, scarcity, core_stocks, search_data, step2, cross_search_data, bn_nodes)
 
         try:
-            text = await self.provider.chat_pro(prompt, max_tokens=6144, timeout=300)
+            text = await self.provider.chat_pro(prompt, max_tokens=16384, timeout=600)
             if trace: trace.record_llm(prompt, text, model="deepseek-v4-pro")
             result = self.parse_json(text)
             if isinstance(result, dict):
@@ -167,6 +167,67 @@ class SystemDynamicsAgent(ResearchAgent):
                 logger.info(f"[{self.name}] Done: confidence={confidence}, sanity={n_questioned}, migration={n_dynamics}, crowding={n_crowding}, hidden={n_hidden}, cross={n_cross}, queries={n_queries}")
                 if trace:
                     trace.record_note("summary", f"confidence={confidence}, sanity_checks={n_questioned}, crowding={n_crowding}, hidden={n_hidden}, cross_chain={n_cross}")
+
+                # ── 后处理: 将 spillover 搜索项注入 asset_search_queries ──
+                # 这样 Step 6 只需统一读取 asset_search_queries, 不需要再单独解析
+                # cross_chain_spillover / hidden_beneficiaries / profit_pool_shift
+                def _infer_mapping_type(text):
+                    import re
+                    if not text: return "direct"
+                    non_cjk = len(re.sub(r'[一-鿿\s]', '', text))
+                    total = len(text) - text.count(' ')
+                    return "a_share_equivalent" if total > 0 and non_cjk / total > 0.4 else "direct"
+
+                asset_queries = sd.get("asset_search_queries", [])
+                seen_q = {q.get("query") for q in asset_queries if q.get("query")}
+
+                for spill in sd.get("cross_chain_spillover", []):
+                    if spill.get("impact_direction") != "positive":
+                        continue
+                    queries = spill.get("search_queries", [])
+                    if not queries and spill.get("target_profile"):
+                        queries = [spill["target_profile"]]
+                    for sq in queries:
+                        if sq and sq not in seen_q:
+                            asset_queries.append({
+                                "query": f"A股 {sq} 上市公司 2026",
+                                "source_node": spill.get("source_node", ""),
+                                "source": f"cross_chain_spillover: {spill.get('source_node', '')}",
+                                "priority": "high",
+                                "mapping_type": _infer_mapping_type(sq),
+                            })
+                            seen_q.add(sq)
+
+                for hb in sd.get("hidden_beneficiaries", []):
+                    queries = hb.get("search_queries", [])
+                    if not queries and hb.get("sector"):
+                        queries = [hb["sector"]]
+                    for sq in queries:
+                        if sq and sq not in seen_q:
+                            asset_queries.append({
+                                "query": f"A股 {sq} 龙头 上市公司 2026",
+                                "source": f"hidden_beneficiary: {hb.get('sector', '')}",
+                                "priority": "medium",
+                                "mapping_type": _infer_mapping_type(sq),
+                            })
+                            seen_q.add(sq)
+
+                for shift in sd.get("profit_pool_shift", []):
+                    to_seg = shift.get("to_segment", "")
+                    if to_seg and to_seg not in seen_q:
+                        asset_queries.append({
+                            "query": f"A股 {to_seg} 龙头 上市公司 2026",
+                            "source": f"profit_pool_shift: {shift.get('trigger', '')[:80]}",
+                            "priority": shift.get("confidence", "medium"),
+                            "mapping_type": _infer_mapping_type(to_seg),
+                        })
+                        seen_q.add(to_seg)
+
+                if asset_queries:
+                    sd["asset_search_queries"] = asset_queries
+                    result["system_dynamics"] = sd
+
+                logger.info(f"[{self.name}] After post-process: {len(asset_queries)} total asset_search_queries")
                 return result
         except asyncio.TimeoutError:
             logger.warning(f"[{self.name}] Timeout: {industry}")

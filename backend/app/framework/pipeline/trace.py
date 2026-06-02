@@ -31,13 +31,13 @@ class TraceContext:
         })
 
     def record_llm(self, prompt: str, response: str, model: str = ""):
-        """记录一次 LLM 调用"""
+        """记录一次 LLM 调用 (完整记录, 不截断 — 调试必需)"""
         self.events.append({
             "type": "llm",
             "ts": datetime.now().isoformat(),
             "model": model,
-            "prompt": prompt[:8000],       # 截断, 确保可读但不过大
-            "response": response[:4000],
+            "prompt": prompt,
+            "response": response,
         })
 
     def record_db(self, query: str, row_count: int):

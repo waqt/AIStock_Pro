@@ -1,7 +1,8 @@
 """
-CandidateComparator V1.0 — 独立候选比较智能体
+CandidateComparator V1.1 — 独立候选比较智能体
 职责: 同源比较 (同一瓶颈节点内的候选) + 全局排名 (跨节点已验证候选)
 原则: 只用外部硬事实 (搜索原文 + 财务数据), 不用 pipeline 内部标签, 避免循环论证
+V1.1: 不排名, 只输出观察+排除建议
 """
 import json
 from typing import Dict, Any, List
@@ -23,7 +24,7 @@ def _j(obj, **kw):
 
 
 class CandidateComparator(ResearchAgent):
-    """候选比较智能体 V1.0 — 独立上下文、自己搜索、定性比较"""
+    """候选比较智能体 V1.1 — 独立上下文、自己搜索、定性比较"""
 
     def __init__(self, provider=None):
         super().__init__(provider=provider, data_loader=data_loader)
@@ -33,29 +34,21 @@ class CandidateComparator(ResearchAgent):
 
     async def compare_within_source(self, candidates: List[Dict],
                                     node_context: Dict) -> Dict:
-        """同一瓶颈节点内的候选比较。
+        """同一瓶颈节点内的候选比较 — 不排名, 只输出观察+排除建议。
 
         Args:
             candidates: [{"code":"688012","name":"中微公司","source_type":"a_stock_mapping"}, ...]
-            node_context: {
-                "name": "刻蚀设备国产化",
-                "bottleneck_narrative": "...",
-                "profit_pool": "significant_15_30pct",
-                "supply_rigidity": "...",
-                "china_substitution_rate": "...",
-                "global_leaders": [...],
-                "value_magnitude": "..."
-            }
+            node_context: 节点背景
 
         Returns:
-            {"source": "节点名", "ranked": [{"code","rank","why"}],
-             "eliminated": [], "comparison_dimensions": [...]}
+            {"source": "节点名", "observations": [...],
+             "exclusion_suggestions": [...], "comparison_dimensions": [...]}
         """
         if len(candidates) < 2:
             return {
                 "source": node_context.get("name", ""),
-                "ranked": self._fallback_rank(candidates),
-                "eliminated": [],
+                "observations": [{"code": c["code"], "name": c.get("name", "")} for c in candidates],
+                "exclusion_suggestions": [],
                 "comparison_dimensions": [],
             }
 
@@ -75,45 +68,54 @@ class CandidateComparator(ResearchAgent):
         except Exception:
             pass
 
-        # 3. LLM 比较 (★ 失败时自动重试 + 定量兜底)
+        # 3. LLM 比较 (★ 失败时安全兜底: 全保留)
         prompt = self._build_comparison_prompt(candidates, node_context, search_data, fundamentals)
         result = None
         try:
             text = await self.provider.chat_pro(prompt, max_tokens=8192, timeout=120)
             result_parsed = self.parse_json(text)
-            if isinstance(result_parsed, dict) and "ranked" in result_parsed:
-                result = result_parsed
+            if isinstance(result_parsed, dict):
+                if "exclusion_suggestions" in result_parsed:
+                    result = result_parsed
+                else:
+                    result = {
+                        "observations": result_parsed.get("observations", []),
+                        "exclusion_suggestions": [],
+                        "comparison_dimensions": result_parsed.get("comparison_dimensions", []),
+                    }
             else:
-                raise ValueError("LLM did not return ranked list")
+                raise ValueError("LLM output not a dict")
         except Exception as first_err:
-            logger.warning(f"[{self.name}] LLM failed ({first_err}), retrying with simplified prompt...")
-            # ★ 重试: 简化 prompt, 仅保留 ranked list, 去掉 comparison_dimensions
+            logger.warning(f"[{self.name}] LLM failed ({first_err}), retrying...")
             try:
                 simple_prompt = self._build_simple_comparison_prompt(
                     candidates, node_context, search_data, fundamentals)
                 text2 = await self.provider.chat_pro(simple_prompt, max_tokens=4096, timeout=90)
                 result2 = self.parse_json(text2)
-                if isinstance(result2, dict) and result2.get("ranked"):
+                if isinstance(result2, dict) and result2.get("exclusion_suggestions") is not None:
                     result = result2
                     logger.info(f"[{self.name}] Retry succeeded")
             except Exception:
-                logger.warning(f"[{self.name}] Retry also failed, using quantitative fallback")
+                logger.warning(f"[{self.name}] Retry also failed, passing all through (safe)")
 
         if result is not None:
-            result.setdefault("eliminated", [])
+            result.setdefault("observations", [])
+            result.setdefault("exclusion_suggestions", [])
             result.setdefault("comparison_dimensions", [])
             result["source"] = node_name
 
-            # 标准化 ranked
-            for i, r in enumerate(result.get("ranked", [])):
-                r["rank"] = i + 1
-
-            logger.info(f"[{self.name}] Done: ranked={[r.get('code','?') for r in result['ranked']]}")
+            logger.info(f"[{self.name}] Done: candidates={len(candidates)}, "
+                        f"suggested_exclude={[s.get('code','?') for s in result['exclusion_suggestions']]}")
             return result
 
-        # ★ 定量兜底: 用基本面数据做客观排序
-        logger.warning(f"[{self.name}] Using quantitative fallback for '{node_name}'")
-        return self._quantitative_rank(candidates, fundamentals, node_name, node_context)
+        # ★ 安全兜底: LLM 完全失败 → 全保留, 不排除任何候选
+        logger.warning(f"[{self.name}] All LLM attempts failed, passing all '{node_name}' candidates through")
+        return {
+            "source": node_name,
+            "observations": [{"code": c["code"], "name": c.get("name", "")} for c in candidates],
+            "exclusion_suggestions": [],
+            "comparison_dimensions": [],
+        }
 
     async def _search_for_comparison(self, candidates: List[Dict],
                                       node_context: Dict) -> Dict[str, List]:
@@ -132,7 +134,7 @@ class CandidateComparator(ResearchAgent):
                 try:
                     r = await self.data_loader.search_web(q, num=3)
                     for rr in r:
-                        snippet = (rr.get("snippet", "") or "")[:150]  # ★ 300→150
+                        snippet = (rr.get("snippet", "") or "")[:150]
                         if snippet:
                             items.append({
                                 "query": q,
@@ -146,7 +148,7 @@ class CandidateComparator(ResearchAgent):
 
     def _build_simple_comparison_prompt(self, candidates, node_context,
                                          search_data, fundamentals) -> str:
-        """★ 简化版比较 prompt (重试用, 只要求 ranked list, 不要 comparison_dimensions)"""
+        """★ 简化版比较 prompt (重试用, 只要求 excluded)"""
         node_name = node_context.get("name", "")
         narrative = node_context.get("bottleneck_narrative", "")
         profit_pool = node_context.get("profit_pool", "")
@@ -177,13 +179,17 @@ class CandidateComparator(ResearchAgent):
 
 基本面: {chr(10).join(fund_lines) if fund_lines else '无'}
 
-先逐票分析每家公司的技术能力、市场地位、盈利能力和竞争壁垒，再按竞争力排序。
-最后输出JSON: {{"ranked": [{{"code":"xxx","rank":1,"why":"理由"}}, ...]}}
+先逐票分析每家公司的技术能力、市场地位、盈利能力和竞争壁垒，分析差异而非排位。
+然后指出明显竞争力不足、在该环节缺乏参与价值的候选。
+最后输出JSON:
+{{"observations": [{{"code":"xxx","key_advantages":"...","key_concerns":"..."}}],
+  "exclusion_suggestions": [{{"code":"xxx","reason":"..."}}]}}
+observations覆盖所有候选，exclusion_suggestions只包含应排除的。
 分析过程写在外面，JSON独立可解析。"""
 
     def _build_comparison_prompt(self, candidates: List[Dict], node_context: Dict,
                                   search_data: Dict, fundamentals: Dict) -> str:
-        """构建同源比较 prompt — 不用 pipeline 标签"""
+        """构建同源比较 prompt — 不排名, 只输出观察+排除建议"""
         node_name = node_context.get("name", "")
         narrative = node_context.get("bottleneck_narrative", "")
         profit_pool = node_context.get("profit_pool", "")
@@ -238,37 +244,39 @@ class CandidateComparator(ResearchAgent):
 {chr(10).join(fund_lines) if fund_lines else "（无基本面数据）"}
 
 ## 分析方法
-先逐票分析，再综合排序。
-
-第一步 — 逐票分析每家公司在该环节的真实竞争壁垒：
+逐票分析每家公司在该环节的真实竞争壁垒，找出差异而非排位：
 1. 技术能力/产品性能 — 制程领先度？产品覆盖度？技术参数？
 2. 市场地位 — 市占率？客户质量？订单可见度？认证壁垒？
 3. 盈利能力 — 毛利率？营收规模？增长趋势？
 4. 竞争壁垒 — 客户切换成本？技术代差？替代难度？
 
-第二步 — 综合排序，引用上述分析中的事实支撑。
+分析完成后，指出哪些候选在该环节明显竞争力不足、缺乏参与价值。
 
 ## 输出格式
 先写一段简要分析过程，然后输出以下JSON：
 
 {{
-  "ranked": [
-    {{"code": "688012", "rank": 1, "why": "简短理由（引用事实）"}},
-    {{"code": "002371", "rank": 2, "why": "简短理由"}}
+  "observations": [
+    {{"code": "688012", "key_advantages": "技术优势", "key_concerns": "估值偏高"}}
+  ],
+  "exclusion_suggestions": [
+    {{"code": "xxx", "reason": "在该环节缺乏核心技术/客户基础/规模"}}
   ],
   "comparison_dimensions": [
-    {{"dimension": "技术能力", "winner": "688012", "evidence": "具体事实"}},
-    {{"dimension": "市场地位", "winner": "002371", "evidence": "具体事实"}},
-    {{"dimension": "盈利能力", "winner": "688012", "evidence": "具体事实"}},
-    {{"dimension": "竞争壁垒", "winner": "688012", "evidence": "具体事实"}}
+    {{"dimension": "技术能力", "leaders": ["688012"], "evidence": "具体事实"}},
+    {{"dimension": "市场地位", "leaders": ["002371"], "evidence": "具体事实"}},
+    {{"dimension": "盈利能力", "leaders": ["688012"], "evidence": "具体事实"}},
+    {{"dimension": "竞争壁垒", "leaders": ["688012"], "evidence": "具体事实"}}
   ]
 }}
+observations 覆盖所有候选, exclusion_suggestions 只包含应排除的。
+comparison_dimensions 的 leaders 是该维度领先的候选列表。
 JSON 之前的分析过程不会被丢弃，请确保 JSON 部分完整且独立可解析。"""
         return prompt
 
     @staticmethod
     def _fallback_rank(candidates: List[Dict]) -> List[Dict]:
-        """LLM 调用失败时的降级排序"""
+        """LLM 调用失败时的降级排序 (已弃用, 保留向后兼容)"""
         return [{"code": c.get("code", ""), "name": c.get("name", ""),
                  "rank": i + 1, "why": "LLM比较失败, 保留原始顺序"}
                 for i, c in enumerate(candidates)]
@@ -355,8 +363,7 @@ JSON 之前的分析过程不会被丢弃，请确保 JSON 部分完整且独立
         """跨节点全局排序。
 
         Args:
-            all_candidates: 已验证候选列表，每项含:
-                {code, name, node, node_context, verification, eliminated_by, eliminated_reason}
+            all_candidates: 已验证候选列表
 
         Returns:
             {"ranked_stocks": [{"rank":1,"code":"688012","why":"..."}], "runner_ups": [...]}

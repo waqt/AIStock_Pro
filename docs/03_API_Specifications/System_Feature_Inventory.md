@@ -210,6 +210,17 @@
 | D2.7 | 宏观同步 | 新浪hq.sinajs.cn → 美元指数/黄金/白银/原油/美元人民币/港币人民币 | |
 | D2.8 | 源探活 | 5分钟间隔probe各数据源, 标记在线/离线 | |
 
+### D3. 数据调用接口 (Data Access API)
+
+| # | 功能 | 说明 | 状态 |
+|---|------|------|------|
+| D3.1 | 历史行情 | `load_market_data(codes, days)`: 加载特定股票近N天历史日线 | ✅ |
+| D3.2 | 基本面信息 | `load_fundamentals(codes)`: 加载PE/PB/市值/行业等基本面 | ✅ |
+| D3.3 | 宏观快照 | `load_macro_latest(codes)`: 加载最新宏观经济数据和基本行情 | ✅ |
+| D3.4 | 宏观历史 | `load_macro_history(code, days)`: 加载特定宏观指标历史时间序列 | ✅ |
+| D3.5 | 专利分类向量 | `load_patent_vectors(code, name)`: 按需提取专利技术方向 (另类数据) | ✅ |
+| D3.6 | 物理参数提取 | `load_physical_parameters(query, keys)`: 硬科技参数搜寻 (另类数据) | ✅ |
+
 ---
 
 ## 模块E: 任务系统

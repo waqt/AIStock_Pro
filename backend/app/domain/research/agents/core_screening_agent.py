@@ -363,7 +363,7 @@ class CoreScreeningAgent(ResearchAgent):
             audit = {"verdict": "SKIP", "score": 0, "error": str(e)}
 
         # 2. ROIC/ROIIC 计算 + 落库 (★ 按需加载 + 搜索兜底)
-        from app.framework.finance.roiic import compute_roic, compute_roiic
+        from app.domain.quant.indicators.fundamental._roic_core import compute_roic, compute_roiic
         from app.domain.quant.engine.indicator_store import store_financial_indicator
         roic_val, roiic_val = None, None
 

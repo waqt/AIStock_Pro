@@ -492,31 +492,36 @@ class MarketScanner(ResearchAgent):
                 f"{phase_modifier}{repricing_modifier} | {base_rationale}".strip(" | "),
                 {"highlight": highlight, "cycle_phase_modulation": phase_modifier})
 
-        # Priority 3: Path A — 市场已定价但逻辑硬 + 利润迁移明确
-        if E == "weak" and S == "strong" and P == "strong":
-            if D == "weak":
-                return _make("A", "medium",
-                    "产业逻辑硬(S=strong+P=strong)但认知已定价+估值已反映, "
-                    "直挖标的并严格评估安全边际",
-                    {"mismatch_status": "逻辑硬但无估值空间"})
+        # Priority 3: Path A — 认知到位/部分到位 + 定价清晰 → 直接挖标的
+        if E in ("weak", "moderate") and S == "strong" and P == "strong":
             if D == "strong":
                 path_note = ""
                 if inv_exp == "limited":
                     path_note = " [A股敞口有限, 需精选标的]"
                 return _make("A", "high",
-                    f"供需错配+利润迁移明确, 市场已有认知(E=weak), "
-                    f"但估值尚未完全反映($=strong), 直挖受益标的 ⭐{path_note}",
+                    f"供需错配+利润迁移明确, 认知到位(E={E}), "
+                    f"且估值尚未完全反映($=strong), 直挖受益标的 ⭐{path_note}",
                     {"highlight": True, "mismatch_status": "S+P+$ 三强, 快速兑现"})
-            # D=uncertain
-            path_note = ""
-            if inv_exp == "limited":
-                path_note = " [A股敞口有限, 需精选]"
-            return _make("A", "medium",
-                f"产业逻辑硬(S=strong+P=strong)但认知已定价(E=weak)+定价不确定($={D}), "
-                f"推荐直挖快速扫描, 结合实际估值判断安全边际{path_note}",
-                {"mismatch_status": "逻辑硬但估值模糊"})
+            if D == "weak":
+                return _make("A", "medium",
+                    "产业逻辑硬(S=strong+P=strong)但认知已定价+估值已反映, "
+                    "直挖标的并严格评估安全边际",
+                    {"mismatch_status": "逻辑硬但无估值空间"})
 
-        # Priority 4: Path B — 二阶推演
+        # Priority 4: Path C — 定价不清 → 需深挖判断估值空间
+        # $=uncertain 意味着"不知道估值有没有反映基本面",
+        # 正需要 Step 3-4 拆供应链瓶颈节点, 找到具体环节的利润池和 A 股映射
+        if S == "strong" and P == "strong" and D in ("uncertain", "moderate"):
+            phase_note = ""
+            if cycle_phase == "bottleneck_formation":
+                phase_note = "瓶颈形成期, 需深挖定位最紧的卡脖子环节 ⭐"
+            elif cycle_phase == "demand_explosion":
+                phase_note = "需求爆发期, 需穿透看利润在供应链各环节的分配"
+            return _make("C", "medium",
+                f"供需缺口+利润迁移明确(S+P=strong), 但定价不清($={D}), "
+                f"需深挖供给链瓶颈和利润池分布, 判断具体环节的估值空间。{phase_note}",
+                {"highlight": True, "mismatch_status": "逻辑硬但定价模糊需深挖"})
+
         if E == "weak" and D in ("weak", "uncertain"):
             return _make("B", "medium",
                 f"认知差弱(E=weak)+定价模糊($={D}), 主产业吸引力有限, "

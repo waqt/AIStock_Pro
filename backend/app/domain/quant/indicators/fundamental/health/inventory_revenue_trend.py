@@ -1,5 +1,6 @@
 """存货/营收比趋势"""
 from ..base import FinancialIndicator, register
+from ..profitability.profit_quality import _is_strictly_monotonic
 
 
 @register
@@ -13,6 +14,7 @@ class InventoryRevenueTrend(FinancialIndicator):
     applicable_stages = ["growth", "mature"]
     params = {}
     output = ["inventory_revenue_trend"]
+    text_output = ["inventory_revenue_trend"]
     requires = ["inventory", "revenue"]
 
     @classmethod
@@ -24,8 +26,8 @@ class InventoryRevenueTrend(FinancialIndicator):
             inv = float(financials[i].get("inventory", 0) or 0)
             rev = float(financials[i].get("revenue", 0) or 0)
             ratios.append(inv / rev if rev else 0)
-        if len(ratios) >= 3 and ratios[0] > ratios[1] > ratios[2]:
-            return {"inventory_revenue_trend": "rising_alert"}
-        if len(ratios) >= 3 and ratios[0] < ratios[1] < ratios[2]:
+        if len(ratios) >= 3 and _is_strictly_monotonic(ratios[:3]):
+            if ratios[0] > ratios[-1]:
+                return {"inventory_revenue_trend": "rising_alert"}
             return {"inventory_revenue_trend": "declining_bullish"}
         return {"inventory_revenue_trend": "stable"}

@@ -32,6 +32,12 @@ class FinancialIndicator:
     params: dict = {}        # 可调参数
     output: list = []        # 输出字段名列表
     requires: list = []      # 依赖的 FinancialStatement 字段
+    text_output: list = []   # 输出字段中属于文本/枚举类型 (非数值) 的字段名
+                             # 存储时作为 TEXT 列, 查询时不参与数值计算
+
+    # 字段单位/含义速查表 (所有注册指标的 output + text_output 综合推导)
+    # key=field_name → {"unit": "...", "meaning": "..."}
+    _FIELD_META_CACHE = None
 
     @classmethod
     def compute(cls, financials: list) -> dict:
@@ -42,8 +48,46 @@ class FinancialIndicator:
         raise NotImplementedError
 
     @classmethod
+    def _infer_unit(cls, field: str) -> str:
+        """根据字段名模式推断单位"""
+        text_set = set(cls.text_output)
+        if field in text_set:
+            return "枚举" if field in ("enum",) else "文本"
+        # numeric patterns
+        if field.endswith("_pct") or field.endswith("_yoy") or field.endswith("_qoq"):
+            return "%"
+        if field.endswith("_yi") or "_4q_yi" in field:
+            return "亿元"
+        if field.endswith("_months"):
+            return "月"
+        if field in ("roe", "rd_intensity", "gross_margin_pct", "net_margin_pct", "operating_margin_pct"):
+            return "%"
+        if field in ("working_capital_efficiency", "operating_leverage", "inventory_revenue_ratio"):
+            return "倍"
+        if field in ("m_score",):
+            return "分"
+        if field in ("scissor_gap", "operating_margin_stability"):
+            return "百分点"
+        if field == "rd_to_opex":
+            return "%"
+        if field == "burn_rate_months":
+            return "月"
+        if "roic" in field or "roiic" in field:
+            if field in ("roic", "roiic", "roic_adjusted", "roiic_adjusted"):
+                return "小数"
+            return "%"
+        return "?"
+
+    @classmethod
     def meta(cls) -> dict:
         """序列化元信息, 供 /registry API 使用"""
+        per_field = {}
+        for f in cls.output:
+            per_field[f] = {
+                "unit": cls._infer_unit(f),
+                "meaning": "",
+                "is_text": f in cls.text_output,
+            }
         return {
             "name": cls.name,
             "label": cls.label,
@@ -55,7 +99,27 @@ class FinancialIndicator:
             "params": cls.params,
             "output": cls.output,
             "requires": cls.requires,
+            "text_output": cls.text_output,
+            "output_fields": per_field,
         }
+
+
+def build_financial_field_registry() -> dict:
+    """从 FINANCIAL_REGISTRY 全局推导全部字段的 unit/meaning/is_text 信息。
+    供 FinancialQueryService 使用, 替代手写 FIELD_ANNOTATIONS。
+    """
+    from app.domain.quant.indicators.fundamental import FINANCIAL_REGISTRY
+    result = {}
+    for name, cls in FINANCIAL_REGISTRY.items():
+        for f in cls.output:
+            if f not in result:
+                result[f] = {
+                    "unit": cls._infer_unit(f),
+                    "meaning": cls.description[:80] if cls.description else "",
+                    "is_text": f in cls.text_output,
+                    "source_indicator": name,
+                }
+    return result
 
 
 # 财务指标注册表 (独立于 INDICATOR_REGISTRY)

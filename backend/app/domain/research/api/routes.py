@@ -626,7 +626,7 @@ async def _do_scan(req: ScanRequest, pre_run_id: str = None):
     try:
         save_checkpoint(step, run_id, input_hash, result, {"elapsed": elapsed, "input_summary": f"mode={req.mode}, target={target}"})
         _now = datetime.now().isoformat()
-        await save_step_observations(run_id, step, result, _now)
+        # DISABLED: await save_step_observations(run_id, step, result, _now)
         trace.write(step)
         save_manifest(run_id, {"run_id": run_id, "industry": report_label,
             "mode": "auto" if mode_id == "auto_scan" else "manual",
@@ -657,7 +657,7 @@ async def _do_scan(req: ScanRequest, pre_run_id: str = None):
                 s3_result["industry"] = s3_industry
                 save_checkpoint("step3_sc_hacker", run_id, "drilldown", s3_result, {"elapsed": 0})
                 s3_trace.write("step3_sc_hacker")
-                await save_step_observations(run_id, "step3_sc_hacker", s3_result, datetime.now().isoformat())
+                # DISABLED: await save_step_observations(run_id, "step3_sc_hacker", s3_result, datetime.now().isoformat())
                 logger.info(f"[MarketScanner] Step3 done: {s3_industry} → {len(s3_result.get('supply_chain_map',[]))} layers")
             except Exception as e:
                 logger.warning(f"[MarketScanner] Step3 auto-chain failed: {e}")
@@ -753,7 +753,7 @@ async def supply_chain_hacker(req: SupplyChainRequest = SupplyChainRequest(),
         try:
             save_checkpoint(step, run_id, input_hash, result, {"elapsed": elapsed})
             trace.write(step)
-            await save_step_observations(run_id, step, result, datetime.now().isoformat())
+            # DISABLED: await save_step_observations(run_id, step, result, datetime.now().isoformat())
             # 更新已有 manifest (追加 step3 信息)
             from app.framework.pipeline.checkpoint import load_manifest
             manifest = load_manifest(run_id) or {}
@@ -810,7 +810,7 @@ async def industry_drilldown(req: IndustryDrilldownRequest):
         result["industry"] = req.industry_name
         save_checkpoint("step3_sc_hacker", run_id, "drilldown", result, {"elapsed": 0})
         trace.write("step3_sc_hacker")
-        await save_step_observations(run_id, "step3_sc_hacker", result, datetime.now().isoformat())
+        # DISABLED: await save_step_observations(run_id, "step3_sc_hacker", result, datetime.now().isoformat())
         logger.info(f"[Drilldown] Step3 done: {req.industry_name} → {len(result.get('supply_chain_map',[]))} layers")
 
         # Step 4: 系统动力学推演 (supply_chain_map >= 2 层时触发)
@@ -837,7 +837,7 @@ async def industry_drilldown(req: IndustryDrilldownRequest):
                 step4_result = await sd.analyze(sd_ctx, trace=sd_trace)
                 save_checkpoint("step4_system_dynamics", run_id, "drilldown", step4_result, {"elapsed": 0})
                 sd_trace.write("step4_system_dynamics")
-                await save_step_observations(run_id, "step4_system_dynamics", step4_result, datetime.now().isoformat())
+                # DISABLED: await save_step_observations(run_id, "step4_system_dynamics", step4_result, datetime.now().isoformat())
                 logger.info(f"[Drilldown] Step4 done: {req.industry_name}")
 
                 # Step 5: 跨产业关联 (V5.14 已合并入 Step 4)
@@ -860,7 +860,7 @@ async def industry_drilldown(req: IndustryDrilldownRequest):
                         step6_result = await screener.analyze(screen_ctx, trace=screen_trace)
                         save_checkpoint("step6_core_screening", run_id, "drilldown", step6_result, {"elapsed": 0})
                         screen_trace.write("step6_core_screening")
-                        await save_step_observations(run_id, "step6_core_screening", step6_result, datetime.now().isoformat())
+                        # DISABLED: await save_step_observations(run_id, "step6_core_screening", step6_result, datetime.now().isoformat())
                         logger.info(f"[Drilldown] Step6 done: {len(step6_result.get('ranked_stocks',[]))} strong + {len(step6_result.get('future_strong_candidates',[]))} future")
                     except Exception as e:
                         logger.warning(f"[Drilldown] Step6 failed (non-fatal): {e}")
@@ -914,7 +914,7 @@ async def system_dynamics_analysis(req: SystemDynamicsRequest = SystemDynamicsRe
         input_hash = hash_input({"industry": industry, "date": __import__("datetime").datetime.now().strftime("%Y%m%d")})
         save_checkpoint("step4_system_dynamics", run_id, input_hash, result, {"elapsed": 0})
         trace.write("step4_system_dynamics")
-        await save_step_observations(run_id, "step4_system_dynamics", result, datetime.now().isoformat())
+        # DISABLED: await save_step_observations(run_id, "step4_system_dynamics", result, datetime.now().isoformat())
 
         # ── 自动链 Step 5+6: 跨产业关联 (V5.14 已合并入 Step 4) + 核心资产筛选 ──
         sd_out = result.get("system_dynamics", {})
@@ -933,7 +933,7 @@ async def system_dynamics_analysis(req: SystemDynamicsRequest = SystemDynamicsRe
                 step6_result = await screener.analyze(screen_ctx, trace=screen_trace)
                 save_checkpoint("step6_core_screening", run_id, "auto", step6_result, {"elapsed": 0})
                 screen_trace.write("step6_core_screening")
-                await save_step_observations(run_id, "step6_core_screening", step6_result, datetime.now().isoformat())
+                # DISABLED: await save_step_observations(run_id, "step6_core_screening", step6_result, datetime.now().isoformat())
                 logger.info(f"[SystemDynamics] Step6 auto-chain done: {len(step6_result.get('ranked_stocks',[]))} strong, {len(step6_result.get('future_strong_candidates',[]))} future")
             except Exception as e:
                 logger.warning(f"[SystemDynamics] Step6 auto-chain failed: {e}")
@@ -975,7 +975,7 @@ async def continue_pipeline_step(run_id: str, step: str):
             save_checkpoint("step3_sc_hacker", run_id, "continue", result, {"elapsed": 0})
             trace.write("step3_sc_hacker")
             _now_s3 = datetime.now().isoformat()
-            await save_step_observations(run_id, "step3_sc_hacker", result, _now_s3)
+            # DISABLED: await save_step_observations(run_id, "step3_sc_hacker", result, _now_s3)
             # 链 Step 4
             scm = result.get("supply_chain_map", [])
             if len(scm) >= 2:
@@ -1002,7 +1002,7 @@ async def continue_pipeline_step(run_id: str, step: str):
                     step4_result = await sd.analyze(sd_ctx, trace=sd_trace)
                     save_checkpoint("step4_system_dynamics", run_id, "continue", step4_result, {"elapsed": 0})
                     sd_trace.write("step4_system_dynamics")
-                    await save_step_observations(run_id, "step4_system_dynamics", step4_result, datetime.now().isoformat())
+                    # DISABLED: await save_step_observations(run_id, "step4_system_dynamics", step4_result, datetime.now().isoformat())
                     # Step 5 (V5.14 已合并入 Step 4) → Step 6
                     sd_out = step4_result.get("system_dynamics", {})
                     cross_chain = sd_out.get("cross_chain_spillover", [])
@@ -1020,7 +1020,7 @@ async def continue_pipeline_step(run_id: str, step: str):
                             step6_result = await screener.analyze(screen_ctx, trace=screen_trace)
                             save_checkpoint("step6_core_screening", run_id, "continue", step6_result, {"elapsed": 0})
                             screen_trace.write("step6_core_screening")
-                            await save_step_observations(run_id, "step6_core_screening", step6_result, datetime.now().isoformat())
+                            # DISABLED: await save_step_observations(run_id, "step6_core_screening", step6_result, datetime.now().isoformat())
                         except Exception as e:
                             logger.warning(f"[ContinueStep] Step6 chain failed: {e}")
                 except Exception as e:
@@ -1070,7 +1070,7 @@ async def continue_pipeline_step(run_id: str, step: str):
             result = await sd.analyze(sd_ctx, trace=trace)
             save_checkpoint("step4_system_dynamics", run_id, "continue", result, {"elapsed": 0})
             trace.write("step4_system_dynamics")
-            await save_step_observations(run_id, "step4_system_dynamics", result, datetime.now().isoformat())
+            # DISABLED: await save_step_observations(run_id, "step4_system_dynamics", result, datetime.now().isoformat())
             # Step 5 (V5.14 已合并入 Step 4) → Step 6
             sd_out = result.get("system_dynamics", {})
             cross_chain = sd_out.get("cross_chain_spillover", [])
@@ -1088,7 +1088,7 @@ async def continue_pipeline_step(run_id: str, step: str):
                     step6_result = await screener.analyze(screen_ctx, trace=screen_trace)
                     save_checkpoint("step6_core_screening", run_id, "continue", step6_result, {"elapsed": 0})
                     screen_trace.write("step6_core_screening")
-                    await save_step_observations(run_id, "step6_core_screening", step6_result, datetime.now().isoformat())
+                    # DISABLED: await save_step_observations(run_id, "step6_core_screening", step6_result, datetime.now().isoformat())
                 except Exception as e:
                     logger.warning(f"[ContinueStep] Step6 chain failed: {e}")
             return {"success": True, "data": result, "run_id": run_id}
@@ -1129,7 +1129,7 @@ async def continue_pipeline_step(run_id: str, step: str):
                     step6_result = await screener.analyze(screen_ctx, trace=screen_trace)
                     save_checkpoint("step6_core_screening", run_id, "continue", step6_result, {"elapsed": 0})
                     screen_trace.write("step6_core_screening")
-                    await save_step_observations(run_id, "step6_core_screening", step6_result, datetime.now().isoformat())
+                    # DISABLED: await save_step_observations(run_id, "step6_core_screening", step6_result, datetime.now().isoformat())
                     logger.info(f"[ContinueStep] Step6 done: {len(step6_result.get('ranked_stocks',[]))} strong, {len(step6_result.get('future_strong_candidates',[]))} future")
                 except Exception as e:
                     logger.error(f"[ContinueStep] Step6 chain FAILED: {type(e).__name__}: {e}")
@@ -1164,7 +1164,7 @@ async def continue_pipeline_step(run_id: str, step: str):
             result = await screener.analyze(ctx, trace=trace)
             save_checkpoint("step6_core_screening", run_id, "continue", result, {"elapsed": 0})
             trace.write("step6_core_screening")
-            await save_step_observations(run_id, "step6_core_screening", result, datetime.now().isoformat())
+            # DISABLED: await save_step_observations(run_id, "step6_core_screening", result, datetime.now().isoformat())
             return {"success": True, "data": result, "run_id": run_id}
         else:
             raise HTTPException(status_code=400, detail=f"Unknown or unsupported step: {step}")
@@ -1205,7 +1205,7 @@ async def direct_asset_mine(body: dict):
         elapsed = round(__import__("time").time() - t0, 1)
         save_checkpoint("step2a_direct_asset", run_id, "direct_asset_mine", result, {"elapsed": elapsed})
         trace.write("step2a_direct_asset")
-        await save_step_observations(run_id, "step2a_direct_asset", result, datetime.now().isoformat())
+        # DISABLED: await save_step_observations(run_id, "step2a_direct_asset", result, datetime.now().isoformat())
 
         n_strong = len(result.get("ranked_stocks", []))
         n_future = len(result.get("future_strong_candidates", []))
@@ -1248,7 +1248,7 @@ async def second_order_extrapolate(body: dict):
         elapsed = round(__import__("time").time() - t0, 1)
         save_checkpoint("step2b_second_order", run_id, "second_order_extrapolate", result, {"elapsed": elapsed})
         trace.write("step2b_second_order")
-        await save_step_observations(run_id, "step2b_second_order", result, datetime.now().isoformat())
+        # DISABLED: await save_step_observations(run_id, "step2b_second_order", result, datetime.now().isoformat())
 
         n_adj = len(result.get("adjacent_industries", []))
         logger.info(f"[SecondOrderExtrapolate] {industry}: {n_adj} adjacent industries ({elapsed:.1f}s)")

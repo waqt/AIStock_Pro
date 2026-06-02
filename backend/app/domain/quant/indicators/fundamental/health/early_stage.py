@@ -21,9 +21,17 @@ class BurnRateMonths(FinancialIndicator):
             return {"burn_rate_months": None}
         cash = float(financials[0].get("cash", 0) or 0)
         ocf = sum(float(q.get("op_cashflow", 0) or 0) for q in financials[:4])
-        monthly_burn = abs(ocf) / 4 if ocf < 0 else 0
-        if monthly_burn <= 0:
+        monthly_burn_avg = abs(ocf) / 4 if ocf < 0 else 0
+
+        # 最近单季的烧钱率 (更敏感)
+        latest_q_ocf = float(financials[0].get("op_cashflow", 0) or 0)
+        monthly_burn_latest = abs(latest_q_ocf) / 3 if latest_q_ocf < 0 else 0
+
+        # 取两者中的较保守值 (TTM 均值可能低估近期加速烧钱)
+        if monthly_burn_avg <= 0 and monthly_burn_latest <= 0:
             return {"burn_rate_months": None}
+        monthly_burn = max(monthly_burn_avg, monthly_burn_latest)
+
         return {"burn_rate_months": round(cash / monthly_burn, 1)}
 
 

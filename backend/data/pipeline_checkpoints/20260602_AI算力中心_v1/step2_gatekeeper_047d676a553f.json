@@ -1,0 +1,299 @@
+{
+  "step": "step2_gatekeeper",
+  "run_id": "20260602_AI算力中心_v1",
+  "input_hash": "047d676a553f",
+  "saved_at": "2026-06-02T13:02:18.004949",
+  "elapsed_seconds": 40.3,
+  "input_summary": "mode=auto, target=AI算力中心",
+  "output": {
+    "industry": "AI算力中心",
+    "industry_granularity": {
+      "type": "subsector",
+      "action": "allow",
+      "reason": "AI算力中心有真实物理供应链（GPU→HBM→CoWoS→封装→服务器→液冷→电力），属于产业板块而非纯概念。"
+    },
+    "cycle_position": {
+      "phase": "demand_explosion",
+      "sub_phase": "mid",
+      "evidence": [
+        {
+          "fact": "2025年中国算力市场规模8351亿元，同比增长超30%；全球八大云厂商2026年CAPEX总额超6000亿美元，年增40%",
+          "from": "search[1.1]·前瞻产业研究院",
+          "quality": {
+            "level": "high",
+            "source_type": "industry_data"
+          }
+        },
+        {
+          "fact": "全球AI相关支出2026年预计4800亿美元，同比增长33%",
+          "from": "search[1.3]·OFweek云计算网",
+          "quality": {
+            "level": "medium",
+            "source_type": "news_media"
+          }
+        }
+      ],
+      "next_phase": "bottleneck_formation",
+      "estimated_duration": "12-18个月",
+      "phase_switch_trigger": "电力或先进封装交期持续拉长、价格显著上涨"
+    },
+    "prosperity": {
+      "type": "demand_explosion",
+      "demand_quality": "real_demand",
+      "demand_evidence": [
+        {
+          "fact": "2026年2月中国AI模型周调用量突破5万亿Token，超越美国，显示真实终端使用增长",
+          "from": "search[1.3]·OFweek云计算网",
+          "quality": {
+            "level": "medium",
+            "source_type": "news_media"
+          }
+        },
+        {
+          "fact": "高盛预计主要云厂商2029年CAPEX+R&D较2025年翻倍",
+          "from": "search[2.1]·手机新浪网",
+          "quality": {
+            "level": "medium",
+            "source_type": "sell_side_report"
+          }
+        }
+      ],
+      "growth_narrative": "需求增速（30%+）远超供给响应速度（数据中心建设2-3年，芯片产能扩产更长），但市场已有广泛认知。",
+      "core_contradiction": "AI算力需求爆发与电力基础设施供给瓶颈之间的矛盾。",
+      "driver_decomposition": [
+        {
+          "driver": "AI大模型训练与推理算力需求",
+          "weight": "主导",
+          "certainty": "高",
+          "duration": "3-5年",
+          "leading_indicator": "云厂商CAPEX指引增速",
+          "evidence": [
+            {
+              "fact": "Meta 2026年CAPEX指引1150-1350亿美元，同比+59-87%；谷歌1750-1850亿美元，同比+91-102%",
+              "from": "search[2.3]·同花顺财经",
+              "quality": {
+                "level": "high",
+                "source_type": "company_filing"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "payoff": {
+      "asymmetry": "对称",
+      "narrative": "若景气兑现，算力基础设施龙头可获数倍利润增长；若证伪（如模型效率提升降低算力需求），需求增速放缓但不会消失，但当前估值已部分反映乐观预期，上行空间与下行风险大致相当。",
+      "evidence": [
+        {
+          "fact": "2026年全球AI相关支出预计4800亿美元，增速33%，但相关股票已大幅上涨，部分芯片股PE超30倍",
+          "from": "search[1.3]·OFweek云计算网",
+          "quality": {
+            "level": "medium",
+            "source_type": "news_media"
+          }
+        }
+      ]
+    },
+    "propagation": {
+      "depth": "深",
+      "transmission_order": [
+        {
+          "stage": 1,
+          "node": "AI芯片（GPU）",
+          "reason": "算力需求最直接受益，供不应求推升价格与利润",
+          "evidence": [
+            {
+              "fact": "全球科技巨头开启算力投资军备竞赛，单位算力成本大幅下行但总量激增",
+              "from": "search[4.2]·新浪财经·任泽平团队",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            }
+          ]
+        },
+        {
+          "stage": 2,
+          "node": "高带宽存储（HBM）",
+          "reason": "AI训练对HBM需求爆发，供给受限于先进封装产能",
+          "evidence": [
+            {
+              "fact": "AI背后是算力，算力背后是电力，且HBM供不应求",
+              "from": "search[4.2]·新浪财经",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            }
+          ]
+        },
+        {
+          "stage": 3,
+          "node": "先进封装（CoWoS）",
+          "reason": "台积电CoWoS产能持续紧张，扩产周期长",
+          "evidence": [
+            {
+              "fact": "AIDC订单疯狂，各环节抢分算力基建蛋糕",
+              "from": "search[4.3]·前瞻经济学人",
+              "quality": {
+                "level": "medium",
+                "source_type": "industry_data"
+              }
+            }
+          ]
+        }
+      ],
+      "last_beneficiary": "电力基础设施（变压器、液冷、UPS）",
+      "last_bottleneck": "电力供应（电网扩容周期长达3-5年）",
+      "alpha_implication": "利润向瓶颈环节（电力、液冷、先进封装）集中，但市场已较充分认知"
+    },
+    "time_horizon": {
+      "alpha_window": "6-12个月",
+      "profit_expansion_window": "12-24个月",
+      "capacity_relief_eta": "2028H1",
+      "market_repricing_stage": "中期",
+      "evidence": [
+        {
+          "fact": "北美云厂商2026年CAPEX指引平均增长60%以上，产能释放预计在2027-2028年",
+          "from": "search[2.3]·同花顺财经",
+          "quality": {
+            "level": "high",
+            "source_type": "company_filing"
+          }
+        }
+      ]
+    },
+    "mismatch_analysis": {
+      "supply_demand_mismatch": "strong",
+      "timing_mismatch": "moderate",
+      "expectation_gap": "weak",
+      "profit_redistribution": {
+        "strength": "strong",
+        "direction": "upstream"
+      },
+      "pricing_gap": "uncertain",
+      "evidence": [
+        {
+          "fact": "算力市场规模年增30%，但电力等基础设施扩产需2-3年，供需错配明显",
+          "from": "search[1.1]·前瞻产业研究院",
+          "quality": {
+            "level": "high",
+            "source_type": "industry_data"
+          },
+          "also_supports": [
+            "supply_demand_mismatch",
+            "timing_mismatch"
+          ]
+        },
+        {
+          "fact": "市场对AI算力主题已有广泛讨论（IDCC2025、多份行业报告），认知充分",
+          "from": "search[1.1]·前瞻产业研究院",
+          "quality": {
+            "level": "high",
+            "source_type": "industry_data"
+          },
+          "also_supports": [
+            "expectation_gap"
+          ]
+        },
+        {
+          "fact": "2026年AI相关支出增速33%，但相关股票估值已处于历史高位，定价是否充分存在分歧",
+          "from": "search[1.3]·OFweek云计算网",
+          "quality": {
+            "level": "medium",
+            "source_type": "news_media"
+          },
+          "also_supports": [
+            "pricing_gap"
+          ]
+        }
+      ]
+    },
+    "thesis_killers": {
+      "substitution_risk": "low",
+      "policy_block_risk": "medium",
+      "investable_exposure": "sufficient",
+      "details": "替代技术（如光学计算、量子计算）3年内难以商业化；美国对华芯片出口管制可能限制国内算力中心建设速度，但国产替代（华为昇腾）部分对冲；A股有液冷（英维克）、光模块（中际旭创）、服务器（浪潮信息）、电力设备（科华数据）等纯正标的。"
+    },
+    "verdict": {
+      "enter_step3": false,
+      "priority": "低",
+      "rationale": "五错配中仅供需错配和利润迁移为strong，时间错配moderate，但认知错配为weak（市场已充分讨论），定价gap为uncertain（部分环节估值已高）。缺少认知错配和明确的定价gap，不满足全部五条件，因此判定skip。",
+      "key_uncertainties": [
+        "AI模型效率提升是否降低算力需求增速",
+        "电力扩容瓶颈的实际缓解节奏"
+      ],
+      "evidence": [
+        {
+          "fact": "AI算力已是市场高度关注的产业主题，多家机构频繁发布深度报告，预期差窄",
+          "from": "search[3.1]·头豹研究院",
+          "quality": {
+            "level": "medium",
+            "source_type": "sell_side_report"
+          }
+        }
+      ]
+    },
+    "kill_reasons": [
+      {
+        "reason": "估值透支3年增长",
+        "monitor_signal": "AI算力相关板块PS/PE历史分位数超过90%且盈利预测持续下修",
+        "data_source_hint": "Wind/同花顺行业估值数据库"
+      }
+    ],
+    "catalysts": [
+      {
+        "type": "earnings",
+        "catalyst": "云厂商2026年Q1 CAPEX实际支出超指引",
+        "expected_date": "2026年Q2",
+        "watch_signal": "Meta/谷歌/亚马逊季报中CAPEX数据高于预期",
+        "status": "pending"
+      },
+      {
+        "type": "order",
+        "catalyst": "电力设备（变压器、液冷）招标量大幅增长公告",
+        "expected_date": "2026年H1",
+        "watch_signal": "国家电网/南方电网招标公告中的数据中心配套设备数量",
+        "status": "pending"
+      }
+    ],
+    "mode": "manual",
+    "agent": "MarketScanner",
+    "_step3_guidance": {
+      "industry_name_for_search": "AI算力中心",
+      "cycle_phase": "demand_explosion",
+      "cycle_meaning": "订单暴增, 渗透率快速拉升 — 搜索时关注下游订单和产能扩张计划",
+      "prosperity_type": "demand_explosion",
+      "prosperity_meaning": "需求驱动 — 分析框架: 找产能扩张瓶颈和订单传导链",
+      "propagation_depth": "深",
+      "enter_step3": false,
+      "priority": "低",
+      "mismatch_summary": "S=strong/T=moderate/E=weak/P=strong/$=uncertain",
+      "recommended_path": {
+        "path": "C",
+        "confidence": "medium",
+        "rationale": "供需缺口+利润迁移明确(S+P=strong), 但定价不清($=uncertain), 需深挖供给链瓶颈和利润池分布, 判断具体环节的估值空间。需求爆发期, 需穿透看利润在供应链各环节的分配",
+        "highlight": true,
+        "mismatch_status": "逻辑硬但定价模糊需深挖"
+      },
+      "profit_redistribution_detail": {
+        "strength": "strong",
+        "direction": "upstream"
+      },
+      "thesis_killers": {
+        "substitution_risk": "low",
+        "policy_block_risk": "medium",
+        "investable_exposure": "sufficient",
+        "details": "替代技术（如光学计算、量子计算）3年内难以商业化；美国对华芯片出口管制可能限制国内算力中心建设速度，但国产替代（华为昇腾）部分对冲；A股有液冷（英维克）、光模块（中际旭创）、服务器（浪潮信息）、电力设备（科华数据）等纯正标的。"
+      },
+      "market_repricing_stage": "中期",
+      "industry_granularity": "subsector",
+      "search_focus": "周期阶段=demand_explosion → 订单暴增, 渗透率快速拉升 — 搜索时关注下游订单和产能扩张计划; 景气类型=demand_explosion → 需求驱动 — 分析框架: 找产能扩张瓶颈和订单传导链",
+      "key_uncertainties": [
+        "AI模型效率提升是否降低算力需求增速",
+        "电力扩容瓶颈的实际缓解节奏"
+      ],
+      "core_contradiction": "AI算力需求爆发与电力基础设施供给瓶颈之间的矛盾。"
+    }
+  }
+}

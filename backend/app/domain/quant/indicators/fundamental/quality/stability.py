@@ -1,6 +1,6 @@
 """稳定性 — ROIC稳定性 / 营业利润率稳定性"""
 from ..base import FinancialIndicator, register
-from app.framework.finance.roiic import compute_roic as _compute_roic
+from .._roic_core import compute_roic as _compute_roic
 
 
 @register
@@ -14,7 +14,9 @@ class ROICStability(FinancialIndicator):
     applicable_stages = ["mature"]
     params = {}
     output = ["roic_stability"]
-    requires = ["revenue", "operate_cost", "sale_expense", "manage_expense", "total_assets", "current_assets"]
+    requires = ["revenue", "operate_cost", "sale_expense", "manage_expense",
+                "rd_expense", "total_assets", "current_assets", "cash",
+                "current_liabilities", "short_loan", "noncurrent_liab_1year"]
 
     @classmethod
     def compute(cls, financials: list) -> dict:
@@ -23,7 +25,7 @@ class ROICStability(FinancialIndicator):
         roics = []
         for i in range(min(4, len(financials) - 3)):
             win = financials[i:i+4]
-            r = _compute_roic(win)
+            r = _compute_roic(win, capitalize_rd=False, tax_rate=0.15)
             v = r.get("roic_pct")
             if v is not None:
                 roics.append(v)

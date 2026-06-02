@@ -25,3 +25,14 @@ from app.framework.finance.roiic import (
     compute_roiic,
     compute_roe_from_financials,
 )
+from app.framework.finance.financial_data_view import (
+    build_financial_data_view,
+    compute_quarterly_metrics,
+    compute_beneish_m_score,
+    compute_audit,
+)
+from app.framework.finance.stage_classifier import (
+    StageClassifier,
+    LIFECYCLE_STAGES,
+)
+from app.framework.finance.indicators import FINANCIAL_INDICATOR_REGISTRY

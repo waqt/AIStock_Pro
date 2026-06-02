@@ -2,7 +2,7 @@
 from typing import List, Dict, Any, Optional
 from app.framework.database.session import async_session
 from app.models.models import (
-    StockInfo, MarketData, Position, ExchangeRate
+    StockInfo, MarketData, Position, ExchangeRate, MacroHistory
 )
 from sqlalchemy import select, func, desc
 from app.framework.logger import logger
@@ -31,6 +31,42 @@ class ResearchDataLoader:
                     for r in rows.scalars().all()
                 ]
         return result
+
+    async def load_macro_latest(self, codes: Optional[List[str]] = None) -> Dict[str, Dict]:
+        """加载最新的宏观经济数据和基本行情 (快照)"""
+        result = {}
+        async with async_session() as db:
+            query = select(ExchangeRate)
+            if codes:
+                query = query.where(ExchangeRate.code.in_(codes))
+            rows = await db.execute(query)
+            for r in rows.scalars().all():
+                result[r.code] = {
+                    "name": r.name,
+                    "price": float(r.rate) if r.rate is not None else None,
+                    "change_pct": float(r.change_pct) if r.change_pct is not None else None,
+                    "biz_date": str(r.biz_date) if r.biz_date else None,
+                    "updated_at": str(r.updated_at)
+                }
+        return result
+
+    async def load_macro_history(self, code: str, days: int = 365) -> List[Dict]:
+        """加载特定宏观指标的历史时间序列"""
+        result = []
+        async with async_session() as db:
+            rows = await db.execute(
+                select(MacroHistory)
+                .where(MacroHistory.code == code)
+                .order_by(MacroHistory.obs_date.desc())
+                .limit(days)
+            )
+            for r in rows.scalars().all():
+                result.append({
+                    "date": str(r.obs_date),
+                    "value": float(r.value)
+                })
+        # 返回按时间正序排列的序列
+        return result[::-1]
 
     async def load_fundamentals(self, codes: List[str]) -> Dict[str, Dict]:
         """加载基本面 (PE/PB/市值)"""
@@ -255,7 +291,7 @@ class ResearchDataLoader:
                     "cash": float(r.cash or 0), "current_liabilities": float(r.current_liabilities or 0),
                     "short_loan": float(r.short_loan or 0), "long_loan": float(r.long_loan or 0),
                     "accounts_payable": float(r.accounts_payable or 0), "noncurrent_liab_1year": float(r.noncurrent_liab_1year or 0),
-                } for r in reversed(rows)]
+                } for r in rows]
                 return {"code": code, "quarters": quarters, "source": "DB"}
 
         # JIT: 如果本地没有足够数据，调用复用的同步方法
@@ -290,7 +326,7 @@ class ResearchDataLoader:
                 "cash": float(r.cash or 0), "current_liabilities": float(r.current_liabilities or 0),
                 "short_loan": float(r.short_loan or 0), "long_loan": float(r.long_loan or 0),
                 "accounts_payable": float(r.accounts_payable or 0), "noncurrent_liab_1year": float(r.noncurrent_liab_1year or 0),
-            } for r in reversed(rows)]
+            } for r in rows]
             logger.info(f"[Financial] Loaded {len(quarters)} quarters for {code} after JIT sync")
             return {"code": code, "quarters": quarters, "source": "JIT-Akshare"}
 

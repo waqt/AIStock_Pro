@@ -81,11 +81,9 @@ async def indicator_coverage(stock_code: str):
     info = cov[0] if cov else {"days": 0, "last_date": None}
     return {"success": True, "data": {
         "stock_code": stock_code,
-            "earliest": str(r[0]) if r and r[0] else None,
-            "latest": str(r[1]) if r and r[1] else None,
-            "days_covered": info.get("days", 0),
-            "last_date": info.get("last_date"),
-        }}
+        "days_covered": info.get("days", 0),
+        "last_date": info.get("last_date"),
+    }}
 
 
 # ═══ 历史时间序列 (必须放在 /{stock_code} 之前) ═══
@@ -330,13 +328,48 @@ async def list_financial_indicators():
     return {"success": True, "data": result}
 
 
+@financial_router.get("/catalog")
+async def financial_data_catalog():
+    """Agent 用数据字典: 已注册指标 + 原始财务字段 — Agent 据此决定需要哪些数据"""
+    from app.domain.quant.engine.financial_query_service import FinancialQueryService
+    return {"success": True, "data": FinancialQueryService.get_catalog()}
+
+
+class FinancialQueryRequest(BaseModel):
+    code: str
+    indicators: Optional[List[str]] = None
+    raw_fields: Optional[List[str]] = None
+    periods: int = 4
+    latest_only: bool = True
+
+
+@financial_router.post("/query")
+async def query_financial_data(req: FinancialQueryRequest):
+    """Agent 按需组装财务数据 — 指定指标/字段, 返回扁平 dict"""
+    from app.domain.quant.engine.financial_query_service import FinancialQueryService
+    data = await FinancialQueryService.query(
+        code=req.code,
+        indicators=req.indicators,
+        raw_fields=req.raw_fields,
+        periods=req.periods,
+        latest_only=req.latest_only,
+    )
+    return {"success": True, "data": data}
+
+
 @financial_router.get("/{stock_code}")
-async def get_financial_indicators(stock_code: str):
-    """单股最新财务指标快照"""
+async def get_financial_indicators(
+    stock_code: str,
+    fields: Optional[str] = Query(None, description="逗号分隔字段, 空=全部"),
+):
+    """单股最新财务指标快照 — 支持 fields 参数筛选指定字段"""
     from app.domain.quant.engine import indicator_store
     row = indicator_store.get_financial_latest(stock_code)
     if not row:
         return {"success": True, "data": None, "message": f"No financial indicators for {stock_code}"}
+    if fields:
+        field_list = [f.strip() for f in fields.split(",") if f.strip()]
+        row = {k: row.get(k) for k in ["stock_code", "report_date"] + field_list if k in row}
     return {"success": True, "data": row}
 
 
@@ -365,12 +398,10 @@ class FinancialComputeRequest(BaseModel):
 
 @financial_router.post("/compute")
 async def compute_financial_indicators(req: FinancialComputeRequest = FinancialComputeRequest()):
-    """批量计算财务指标 (ROIC/ROIIC) — 从 FinancialStatement 加载数据 → 每季度计算 → 落库"""
-    from app.models.models import Position, WatchlistItem, FinancialStatement
+    """批量计算全部财务指标 — 从 FinancialStatement 加载数据 → 滑动窗口 → 遍历全部注册指标 → 落库"""
+    from app.models.models import Position, WatchlistItem
     from app.framework.database.session import async_session
-    from app.framework.finance.roiic import compute_roic, compute_roiic
-    from app.domain.quant.engine.indicator_store import store_financial_indicator
-    from app.domain.research.services.data_loader import data_loader
+    from app.domain.quant.engine.financial_compute import compute_financial_for_codes, filter_a_share_codes
     from sqlalchemy import select
 
     # 确定目标股票 (过滤 ETF 和港股)
@@ -381,8 +412,8 @@ async def compute_financial_indicators(req: FinancialComputeRequest = FinancialC
             pos = await db.execute(select(Position.stock_code))
             wl = await db.execute(select(WatchlistItem.stock_code))
             codes = list(set([r[0] for r in pos.all()] + [r[0] for r in wl.all()]))
-    # 过滤: 只保留 A 股 6 位代码, 排除 ETF (159/510/512/513/560/588 开头)
-    a_codes = [c for c in codes if len(str(c)) == 6 and not str(c).startswith(('159','510','512','513','560','588'))]
+
+    a_codes = filter_a_share_codes(codes)
     skipped_etf = len(codes) - len(a_codes)
     if skipped_etf > 0:
         logger.info(f"[FinCompute] Filtered {skipped_etf} ETF/HK codes, {len(a_codes)} A-share codes remain")
@@ -390,87 +421,6 @@ async def compute_financial_indicators(req: FinancialComputeRequest = FinancialC
     if not a_codes:
         return {"success": True, "data": {"message": "无有效A股代码", "computed": 0}}
 
-    logger.info(f"[FinCompute] Computing indicators for {len(a_codes)} stocks (DB + Web dual-channel)")
+    result = await compute_financial_for_codes(a_codes, mode="local")
+    return {"success": True, "data": result}
 
-    from app.domain.research.services.financial_data_loader import load_financials
-
-    results = []
-    db_count, web_count = 0, 0
-    for code in a_codes:
-        try:
-            fin = await load_financials(code, periods=20, mode="local")
-            data_source = fin.get("source", "db")
-            quarters = fin.get("quarters", [])
-            if len(quarters) < 4:
-                results.append({"code": code, "status": "skipped", "reason": f"仅{len(quarters)}Q数据"})
-                continue
-
-            # quarters 是 oldest-first, 倒序为 newest-first
-            recent_first = list(reversed(quarters))
-            stored_count = 0
-
-            # 加载所有已注册财务指标
-            from app.domain.quant.indicators.fundamental import FINANCIAL_REGISTRY
-            fin_indicators = [(name, cls) for name, cls in FINANCIAL_REGISTRY.items()
-                              if name not in ("roic", "roiic")]  # ROIC/ROIIC 单独处理
-
-            for i in range(len(recent_first) - 3):
-                window_4q = recent_first[i:i+4]
-                rpt_date = window_4q[0].get("report_date", "")[:10]
-
-                # 基础 ROIC/ROIIC
-                roic_data = compute_roic(window_4q)
-                record = {"roic": roic_data.get("roic"), "roic_pct": roic_data.get("roic_pct")}
-
-                if i + 8 <= len(recent_first):
-                    window_8q = recent_first[i:i+8]
-                    ri = compute_roiic(window_8q)
-                    record.update({"roiic": ri.get("roiic"), "roiic_pct": ri.get("roiic_pct")})
-                    # 研发资本化调整后的 ROIIC/ROIC
-                    try:
-                        from app.framework.finance.rd_adjustment import adjust_rd_capitalization
-                        adj = adjust_rd_capitalization(window_8q)
-                        if adj.get("material"):
-                            # 用调整后的利润重算
-                            adj_profit_ratio = adj["adjusted_profit_yi"] / max(adj["reported_profit_yi"], 0.01)
-                            if roic_data.get("roic_pct") is not None and adj_profit_ratio > 1.01:
-                                record["roic_adjusted"] = (roic_data.get("roic") or 0) * adj_profit_ratio
-                                record["roic_pct_adjusted"] = round((roic_data.get("roic_pct") or 0) * adj_profit_ratio, 1)
-                            if ri.get("roiic_pct") is not None and adj_profit_ratio > 1.01:
-                                record["roiic_adjusted"] = (ri.get("roiic") or 0) * adj_profit_ratio
-                                record["roiic_pct_adjusted"] = round((ri.get("roiic_pct") or 0) * adj_profit_ratio, 1)
-                    except Exception as e:
-                        logger.warning(f"[FinCompute] {code}: adjust_rd_capitalization failed: {e}")
-
-                # 遍历所有注册的财务指标并计算 (传完整窗口, 各指标内部自行取所需长度)
-                full_window = recent_first[i:]
-                for name, cls in fin_indicators:
-                    try:
-                        result = cls.compute(full_window)
-                        for k, v in result.items():
-                            record[k] = v
-                    except Exception as e:
-                        logger.warning(f"[FinCompute] {code}: {cls.__name__}.compute failed: {e}")
-
-                record["source"] = data_source
-                stored = store_financial_indicator(code, rpt_date, record)
-                if stored:
-                    stored_count += 1
-
-            if data_source == "db": db_count += 1
-            else: web_count += 1
-
-            results.append({
-                "code": code, "status": "ok" if stored_count > 0 else "store_failed",
-                "periods": stored_count,
-                "latest_date": recent_first[0].get("report_date", "")[:10],
-                "data_source": data_source,
-                "roic_pct": compute_roic(recent_first[:4]).get("roic_pct"),
-            })
-        except Exception as e:
-            results.append({"code": code, "status": "error", "reason": str(e)[:100]})
-            logger.warning(f"[FinCompute] {code} failed: {e}")
-
-    ok_count = sum(1 for r in results if r["status"] == "ok")
-    logger.info(f"[FinCompute] Done: {ok_count}/{len(a_codes)} (DB={db_count}, Web={web_count})")
-    return {"success": True, "data": {"computed": ok_count, "total": len(a_codes), "results": results}}

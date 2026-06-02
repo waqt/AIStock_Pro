@@ -1,0 +1,350 @@
+{
+  "step": "step2_gatekeeper",
+  "run_id": "20260531_AI存储_v1",
+  "input_hash": "186f1f66b9f7",
+  "saved_at": "2026-05-31T22:07:11.949277",
+  "elapsed_seconds": 44.5,
+  "input_summary": "mode=auto, target=AI存储",
+  "output": {
+    "industry": "AI存储",
+    "industry_granularity": {
+      "type": "specific_industry",
+      "action": "allow",
+      "reason": "AI存储是具体的产业节点，包含HBM、DDR5、NAND等产品，有清晰的物理供应链（原厂→模组→服务器），可独立分析供需错配。"
+    },
+    "cycle_position": {
+      "phase": "bottleneck_formation",
+      "sub_phase": "mid",
+      "evidence": [
+        {
+          "fact": "存储芯片供不应求至少持续至2027年，涨价贯穿2026全年",
+          "from": "search[2.1]·新浪财经",
+          "quality": {
+            "level": "medium",
+            "source_type": "sell_side_report"
+          }
+        },
+        {
+          "fact": "HBM产能扩张远滞后于需求增长，SK海力士2026年底前产能已被预定",
+          "from": "search[3.2]·新华网",
+          "quality": {
+            "level": "high",
+            "source_type": "industry_data"
+          }
+        }
+      ],
+      "next_phase": "capital_frenzy",
+      "estimated_duration": "12-18个月",
+      "phase_switch_trigger": "三星、SK海力士宣布大规模扩产计划，新进入者涌入"
+    },
+    "prosperity": {
+      "type": "demand_explosion",
+      "demand_quality": "real_demand",
+      "demand_evidence": [
+        {
+          "fact": "Omdia将2026年半导体市场增长预测上调至62.7%，DRAM市场规模增长近一倍，NAND增长三倍",
+          "from": "search[1.2]·Omdia",
+          "quality": {
+            "level": "medium",
+            "source_type": "industry_data"
+          }
+        },
+        {
+          "fact": "AI服务器单台存储配置1.7TB，是传统服务器0.5TB的3.4倍",
+          "from": "search[3.2]·新华网",
+          "quality": {
+            "level": "high",
+            "source_type": "industry_data"
+          }
+        }
+      ],
+      "growth_narrative": "AI大模型训练和推理驱动存储需求爆发式增长，而原厂扩产周期长达2-3年，供需缺口将持续扩大，推动价格进入超级周期。",
+      "core_contradiction": "AI需求增速（年增长60%+）远超存储产能扩张速度（年增约20-30%），HBM产能被优先用于高端产品，传统DRAM/NAND供给被挤压，形成结构性紧缺。",
+      "driver_decomposition": [
+        {
+          "driver": "AI服务器资本开支增长",
+          "weight": "主导",
+          "certainty": "高",
+          "duration": "3-5年",
+          "leading_indicator": "北美CSP资本开支（2026年预计超8000亿美元）",
+          "evidence": [
+            {
+              "fact": "2026年全球CSP合计资本开支预计约8300亿美元，带动AI产业链景气持续",
+              "from": "search[3.1]·招商证券",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            }
+          ]
+        },
+        {
+          "driver": "单服务器存储密度提升",
+          "weight": "重要",
+          "certainty": "高",
+          "duration": "3-5年",
+          "leading_indicator": "AI服务器出货量",
+          "evidence": [
+            {
+              "fact": "AI服务器对存储需求是普通服务器的3.4倍",
+              "from": "search[3.2]·新华网",
+              "quality": {
+                "level": "high",
+                "source_type": "industry_data"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "payoff": {
+      "asymmetry": "对称",
+      "narrative": "如果AI需求持续超预期，存储价格维持高位，存储原厂及模组厂利润将大幅增长，但当前股价已包含较多涨价预期；如果AI需求证伪或扩产超预期，存储价格可能回落，下行风险主要来自供给端（三星/海力士改变扩产策略）。上涨空间和下跌风险大致相当，属于对称。",
+      "evidence": [
+        {
+          "fact": "行业人士担心AI故事被证伪导致需求下滑，扩产谨慎",
+          "from": "search[2.2]·新浪财经",
+          "quality": {
+            "level": "medium",
+            "source_type": "sell_side_report"
+          }
+        },
+        {
+          "fact": "供需缺口若持续，存储价格将维持高位，但若库存积压可能引发回调",
+          "from": "search[4.3]·21经济网",
+          "quality": {
+            "level": "medium",
+            "source_type": "news_media"
+          }
+        }
+      ]
+    },
+    "propagation": {
+      "depth": "深",
+      "transmission_order": [
+        {
+          "stage": 1,
+          "node": "存储原厂（三星、SK海力士、美光）",
+          "reason": "最先受益于涨价，产能利用率满载，利润弹性最大",
+          "evidence": [
+            {
+              "fact": "原厂将产能转向HBM等高端产品，传统存储供给收缩",
+              "from": "search[3.2]·新华网",
+              "quality": {
+                "level": "high",
+                "source_type": "industry_data"
+              }
+            }
+          ]
+        },
+        {
+          "stage": 2,
+          "node": "存储模组/封测（国内厂商）",
+          "reason": "获得原厂分配货源，享受涨价红利，同时受益国产化替代",
+          "evidence": [
+            {
+              "fact": "国内模组公司进入利润放量期，国产化率提升",
+              "from": "search[3.1]·招商证券",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            }
+          ]
+        },
+        {
+          "stage": 3,
+          "node": "上游设备及材料",
+          "reason": "国内存储扩产带动设备订单持续，材料突破瓶颈后放量",
+          "evidence": [
+            {
+              "fact": "国内存储扩产趋势明确，设备订单持续向好，材料随产能突破迎来规模化提升",
+              "from": "search[3.1]·招商证券",
+              "quality": {
+                "level": "medium",
+                "source_type": "sell_side_report"
+              }
+            }
+          ]
+        }
+      ],
+      "last_beneficiary": "下游消费电子厂商（成本压力）",
+      "last_bottleneck": "HBM产能受限于先进封装（CoWoS）产能，传统DDR5产能受限于原厂产能分配",
+      "alpha_implication": "利润沿产业链向上游高壁垒环节集中（原厂、设备），下游成本压力传导但受益度有限；国产替代主线（模组、设备）因认知差较小，Alpha空间可能不如原厂环节突出。"
+    },
+    "time_horizon": {
+      "alpha_window": "6-12个月",
+      "profit_expansion_window": "12-24个月",
+      "capacity_relief_eta": "2028H1",
+      "market_repricing_stage": "中期",
+      "evidence": [
+        {
+          "fact": "供不应求至少持续至2027年，涨价贯穿2026全年",
+          "from": "search[2.1]·新浪财经",
+          "quality": {
+            "level": "medium",
+            "source_type": "sell_side_report"
+          }
+        },
+        {
+          "fact": "原厂扩产谨慎，新增产能释放需到2027年以后",
+          "from": "search[2.2]·新浪财经",
+          "quality": {
+            "level": "medium",
+            "source_type": "sell_side_report"
+          }
+        }
+      ]
+    },
+    "mismatch_analysis": {
+      "supply_demand_mismatch": "strong",
+      "timing_mismatch": "moderate",
+      "expectation_gap": "weak",
+      "profit_redistribution": {
+        "strength": "strong",
+        "direction": "upstream"
+      },
+      "pricing_gap": "uncertain",
+      "evidence": [
+        {
+          "fact": "供需缺口至少延续至2027年，涨价趋势明确（供需错配强）",
+          "from": "search[2.1]·新浪财经",
+          "quality": {
+            "level": "medium",
+            "source_type": "sell_side_report"
+          }
+        },
+        {
+          "fact": "HBM产能扩张远滞后需求，但传统存储供需改善需要时间（时间错配中等）",
+          "from": "search[3.2]·新华网",
+          "quality": {
+            "level": "high",
+            "source_type": "industry_data"
+          }
+        },
+        {
+          "fact": "市场对存储涨价已有较充分预期（认知错配弱）",
+          "from": "search[4.3]·21经济网",
+          "quality": {
+            "level": "medium",
+            "source_type": "news_media"
+          }
+        },
+        {
+          "fact": "利润向上游原厂迁移明确（利润迁移强）",
+          "from": "search[4.1]·新浪财经",
+          "quality": {
+            "level": "medium",
+            "source_type": "news_media"
+          }
+        },
+        {
+          "fact": "无直接证据表明当前估值未反映上述错配（定价gap不确定）",
+          "from": "search[2]·无直接估值数据",
+          "quality": {
+            "level": "low",
+            "source_type": "ai_summary"
+          }
+        }
+      ]
+    },
+    "thesis_killers": {
+      "substitution_risk": "low",
+      "policy_block_risk": "low",
+      "investable_exposure": "sufficient",
+      "details": "替代技术（如存算一体、新型存储）尚在实验室阶段，3年内难以替代；政策风险较低，存储属于通用芯片，地缘风险主要影响国产化进程但未到阻断程度；A股有兆易创新、北京君正、澜起科技、深科技等纯正标的，以及设备材料环节（北方华创、中微公司等），可投资性充足。"
+    },
+    "verdict": {
+      "enter_step3": false,
+      "priority": "跳过",
+      "rationale": "根据mismatch_analysis结果：供需错配strong、时间错配moderate、利润迁移strong，但认知错配为weak（市场已对涨价充分预期），定价gap为uncertain（缺乏估值是否反映的数据）。缺少认知错配和定价gap两条核心条件，不满足五错配全部要求，因此判定为跳过。",
+      "key_uncertainties": [
+        "存储市场需求能否持续超预期（AI资本开支增速放缓风险）",
+        "原厂是否改变谨慎扩产策略，加速产能释放"
+      ],
+      "evidence": [
+        {
+          "fact": "市场对存储涨价已有充分预期，认知错配弱",
+          "from": "search[4.3]·21经济网",
+          "quality": {
+            "level": "medium",
+            "source_type": "news_media"
+          }
+        },
+        {
+          "fact": "无定价gap的明确证据，估值水平不确定",
+          "from": "search[2]·无结果",
+          "quality": {
+            "level": "low",
+            "source_type": "ai_summary"
+          }
+        }
+      ]
+    },
+    "kill_reasons": [
+      {
+        "reason": "认知错配不足",
+        "monitor_signal": "出现市场尚未预期的存储需求或供给冲击（如HBM新客户突然入场、AI大模型推理超预期等）",
+        "data_source_hint": "行业研讨会、原厂订单变化、Capex指引"
+      },
+      {
+        "reason": "定价gap不确定",
+        "monitor_signal": "存储公司估值出现明显偏离历史均值且无需修正的场景",
+        "data_source_hint": "PE Band、PB-ROE分析"
+      }
+    ],
+    "catalysts": [
+      {
+        "type": "earnings",
+        "catalyst": "三星/SK海力士季度财报显示存储均价环比大幅上涨",
+        "expected_date": "2026Q1-Q2",
+        "watch_signal": "DRAM/NAND ASP环比涨幅超10%",
+        "status": "pending"
+      },
+      {
+        "type": "capacity",
+        "catalyst": "原厂宣布大幅扩产HBM或传统存储产能",
+        "expected_date": "2026H2",
+        "watch_signal": "三星P4工厂、SK海力士M16/M17扩产计划",
+        "status": "pending"
+      }
+    ],
+    "mode": "manual",
+    "agent": "MarketScanner",
+    "_step3_guidance": {
+      "industry_name_for_search": "AI存储",
+      "cycle_phase": "bottleneck_formation",
+      "cycle_meaning": "交期暴涨, 供给不足 — 搜索时重点找产能/交期/设备约束数据",
+      "prosperity_type": "demand_explosion",
+      "prosperity_meaning": "需求驱动 — 分析框架: 找产能扩张瓶颈和订单传导链",
+      "propagation_depth": "深",
+      "enter_step3": false,
+      "priority": "跳过",
+      "mismatch_summary": "S=strong/T=moderate/E=weak/P=strong/$=uncertain",
+      "recommended_path": {
+        "path": "A",
+        "confidence": "medium",
+        "rationale": "产业逻辑硬(S=strong+P=strong)但认知已定价(E=weak)+定价不确定($=uncertain), 推荐直挖快速扫描, 结合实际估值判断安全边际",
+        "mismatch_status": "逻辑硬但估值模糊"
+      },
+      "profit_redistribution_detail": {
+        "strength": "strong",
+        "direction": "upstream"
+      },
+      "thesis_killers": {
+        "substitution_risk": "low",
+        "policy_block_risk": "low",
+        "investable_exposure": "sufficient",
+        "details": "替代技术（如存算一体、新型存储）尚在实验室阶段，3年内难以替代；政策风险较低，存储属于通用芯片，地缘风险主要影响国产化进程但未到阻断程度；A股有兆易创新、北京君正、澜起科技、深科技等纯正标的，以及设备材料环节（北方华创、中微公司等），可投资性充足。"
+      },
+      "market_repricing_stage": "中期",
+      "industry_granularity": "specific_industry",
+      "search_focus": "周期阶段=bottleneck_formation → 交期暴涨, 供给不足 — 搜索时重点找产能/交期/设备约束数据; 景气类型=demand_explosion → 需求驱动 — 分析框架: 找产能扩张瓶颈和订单传导链",
+      "key_uncertainties": [
+        "存储市场需求能否持续超预期（AI资本开支增速放缓风险）",
+        "原厂是否改变谨慎扩产策略，加速产能释放"
+      ],
+      "core_contradiction": "AI需求增速（年增长60%+）远超存储产能扩张速度（年增约20-30%），HBM产能被优先用于高端产品，传统DRAM/NAND供给被挤压，形成结构性紧缺。"
+    }
+  }
+}

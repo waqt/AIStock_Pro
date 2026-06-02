@@ -124,18 +124,18 @@ DataTabs.Macro = {
       var dates = data.map(function(r){return r.date;});
       var values = data.map(function(r){return r.value;});
       var id = 'macro-chart-' + Date.now();
-      var html = '<div id="' + id + '" style="width:100%;height:350px;"></div>';
-      Modal.custom({title: name + ' 历史趋势', content: html});
+      var html = '<div id="' + id + '" style="width:100%;height:450px;"></div>';
+      Modal.custom({title: name + ' 历史趋势', content: html, wide: true});
       setTimeout(function() {
         var chart = echarts.init(document.getElementById(id));
         chart.setOption({
-          tooltip: {trigger:'axis'}, grid: {left:60,right:30,top:20,bottom:30},
-          xAxis: {type:'category',data:dates,axisLabel:{fontSize:9,color:'#888'}},
-          yAxis: {type:'value',axisLabel:{fontSize:9,color:'#888'}},
+          tooltip: {trigger:'axis'}, grid: {left:55,right:30,top:20,bottom:30},
+          xAxis: {type:'category',data:dates,axisLabel:{fontSize:10,color:'#aaa'}},
+          yAxis: {type:'value',scale:true,axisLabel:{fontSize:10,color:'#aaa'}},
           series: [{data:values,type:'line',smooth:true,
-            lineStyle:{color:'#4e9eff'},itemStyle:{color:'#4e9eff'},
+            lineStyle:{color:'#4e9eff', width:2},itemStyle:{color:'#4e9eff'},
             areaStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,
-              colorStops:[{offset:0,color:'rgba(78,158,255,0.3)'},{offset:1,color:'rgba(78,158,255,0.02)'}]}}}]
+              colorStops:[{offset:0,color:'rgba(78,158,255,0.4)'},{offset:1,color:'rgba(78,158,255,0.02)'}]}}}]
         });
       }, 300);
     } catch(e) { DataTabs.Core.addLog('趋势加载失败: ' + e.message, 'error'); }

@@ -13,7 +13,7 @@ class MarginIndicator(FinancialIndicator):
     applicable_stages = ["inflection", "growth", "mature"]
     params = {}
     output = ["gross_margin_pct", "net_margin_pct", "operating_margin_pct"]
-    requires = ["revenue", "operate_cost", "profit", "sale_expense", "manage_expense"]
+    requires = ["revenue", "operate_cost", "profit", "sale_expense", "manage_expense", "rd_expense"]
 
     @classmethod
     def compute(cls, financials: list) -> dict:
@@ -23,11 +23,13 @@ class MarginIndicator(FinancialIndicator):
         cost_ttm = sum(float(q.get("operate_cost", 0) or 0) for q in financials[:4])
         profit_ttm = sum(float(q.get("profit", 0) or 0) for q in financials[:4])
         sga = sum(float(q.get("sale_expense", 0) or 0) + float(q.get("manage_expense", 0) or 0) for q in financials[:4])
+        rd_ttm = sum(float(q.get("rd_expense", 0) or 0) for q in financials[:4])
         if not rev_ttm:
             return {"gross_margin_pct": None, "net_margin_pct": None, "operating_margin_pct": None}
         gm = (rev_ttm - cost_ttm) / rev_ttm * 100
         nm = profit_ttm / rev_ttm * 100
-        om = (rev_ttm - cost_ttm - sga) / rev_ttm * 100
+        # 营业利润率包含全部营业费用, 含研发费用
+        om = (rev_ttm - cost_ttm - sga - rd_ttm) / rev_ttm * 100
         return {"gross_margin_pct": round(gm, 1), "net_margin_pct": round(nm, 1), "operating_margin_pct": round(om, 1)}
 
 

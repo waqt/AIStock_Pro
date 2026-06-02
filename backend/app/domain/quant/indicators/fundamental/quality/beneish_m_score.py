@@ -1,7 +1,5 @@
 """Beneish M-Score — 财务造假概率评估"""
 from ..base import FinancialIndicator, register, _safe_div
-from app.framework.finance.roiic import compute_roic as _roic
-from app.framework.finance.roiic import _nopat_4q, _invested_capital
 
 
 @register
@@ -9,12 +7,13 @@ class BeneishMScoreIndicator(FinancialIndicator):
     name = "beneish_m_score"
     label = "Beneish M-Score"
     description = "M-Score = -4.84 + 0.92*DSRI + 0.528*GMI + 0.404*AQI + 0.892*SGI + 0.115*DEPI - 0.172*SGAI + 4.679*TATA - 0.327*LVGI。8因子财务造假检测模型。"
-    judgment = "<-2.5=造假概率低(安全); -2.5~-1.78=灰色区域(需关注); >-1.78=造假概率较高(危险)。M-Score不是确证,但可做排雷初筛。"
+    judgment = "<-2.22=造假概率低(安全); -2.22~-1.78=灰色区域(需关注); >-1.78=造假概率较高(危险)。M-Score不是确证,但可做排雷初筛。阈值来自Beneish(1999)原文。"
     category = "quality"
     indicator_type = "both"
     applicable_stages = ["growth", "mature"]
     params = {}
     output = ["m_score", "m_score_interpretation", "m_score_components"]
+    text_output = ["m_score_interpretation", "m_score_components"]
     requires = ["revenue", "operate_cost", "profit", "total_assets", "current_assets",
                 "fixed_assets", "total_liabilities", "sale_expense", "manage_expense"]
 
@@ -26,7 +25,6 @@ class BeneishMScoreIndicator(FinancialIndicator):
         t1 = quarters[1]; t2 = quarters[2]; t3 = quarters[3]
         t4 = quarters[4]; t5 = quarters[5]; t6 = quarters[6]; t7 = quarters[7]
         def _f(q, k): return float(q.get(k, 0) or 0)
-        rev, rec, cogs, TA, CA, FA, TL, SGA = 0,0,0,0,0,0,0,0
         try:
             rev_t = sum(_f(q, "revenue") for q in quarters[:4])
             rev_t4 = sum(_f(q, "revenue") for q in quarters[4:8])
@@ -56,9 +54,10 @@ class BeneishMScoreIndicator(FinancialIndicator):
         TATA = _safe_div(profit_t - ocf_t, TA_t) if TA_t else 0
         LVGI = _safe_div(TL_t / TA_t, TL_t4 / TA_t4) if TA_t and TA_t4 else 1
         m_score = -4.84 + 0.92 * DSRI + 0.528 * GMI + 0.404 * AQI + 0.892 * SGI + 0.115 * DEPI - 0.172 * SGAI + 4.679 * TATA - 0.327 * LVGI
+        # Beneish(1999) 标准阈值: < -2.22 → low_risk; -2.22 ~ -1.78 → grey; > -1.78 → high_risk
         if m_score > -1.78:
             interpretation = "high_risk"
-        elif m_score > -2.5:
+        elif m_score > -2.22:
             interpretation = "grey_area"
         else:
             interpretation = "low_risk"

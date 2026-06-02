@@ -1,0 +1,13 @@
+{
+  "run_id": "20260602_AI算力中心_v1",
+  "industry": "AI算力中心",
+  "mode": "manual",
+  "mode_id": "manual_industry",
+  "agent_id": "supply_chain",
+  "status": "completed",
+  "started_at": "2026-06-02T13:01:37.731309",
+  "completed_at": "2026-06-02T13:02:18.026891",
+  "elapsed_seconds": 40.3,
+  "step": "step2_gatekeeper",
+  "input_hash": "047d676a553f"
+}

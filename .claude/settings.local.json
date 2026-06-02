@@ -1,6 +1,5 @@
 {
   "permissions": {
-    "defaultMode": "auto",
     "allow": [
       "Bash(Get-ChildItem -Path \"E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\" -Depth 1)",
       "Bash(Select-Object Mode, Name)",
@@ -240,8 +239,42 @@
       "PowerShell(cd E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro; $env:PYTHONIOENCODING = 'utf-8'; & \"D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe\" \"temp_lab\\\\eval_three_layer.py\")",
       "PowerShell(cd E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro; $env:PYTHONIOENCODING = 'utf-8'; & \"D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe\" \"temp_lab\\\\eval_human_review.py\")",
       "Bash(curl -s \"http://127.0.0.1:8000/api/research/pipeline/20260530_%E5%AD%98%E5%82%A8%E4%BA%A7%E4%B8%9A_v1\")",
-      "Bash(curl -s \"http://127.0.0.1:8000/api/research/pipeline/20260530_%E5%AD%98%E5%82%A8%E4%BA%A7%E4%B8%9A_v1/checkpoint/step5_cross_industry\")"
-    ]
+      "Bash(curl -s \"http://127.0.0.1:8000/api/research/pipeline/20260530_%E5%AD%98%E5%82%A8%E4%BA%A7%E4%B8%9A_v1/checkpoint/step5_cross_industry\")",
+      "PowerShell(Get-Content data/pipeline_checkpoints/20260531_AI存储产业_v1/_run_manifest.json -Encoding UTF8 | python -m json.tool --no-ensure-ascii)",
+      "PowerShell(Get-ChildItem data\\\\pipeline_checkpoints -Directory | Where-Object { $_.Name -match \"20260601\" } | Sort-Object LastWriteTime -Descending)",
+      "PowerShell(conda run *)",
+      "PowerShell(D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe -c \"import sys; sys.path.insert\\(0, r'E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\backend'\\); from app.domain.research.agents.core_screening_agent import CoreScreeningAgent; print\\('Conda python path works:', CoreScreeningAgent.__module__\\)\" 2>&1)",
+      "PowerShell(D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe -u E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\backend\\\\temp_lab\\\\test_v5.15_step6.py 2>&1)",
+      "Bash(grep \"Done\\\\.$\" C:/Users/86157/AppData/Local/Temp/claude/E--workspace-AIResearch-AIStock-Pro/789a3363-707b-4b74-9c54-209155aa3352/tasks/b2941yud0.output)",
+      "PowerShell(D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe -c \"import json;f=open\\(r'E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\backend\\\\data\\\\pipeline_checkpoints\\\\20260531_AI存储产业_v1\\\\step6_v5.15_test_result.json','rb'\\);d=json.load\\(f\\);[print\\(k,type\\(v\\).__name__\\) for k,v in d.items\\(\\)];f.close\\(\\)\" 2>&1)",
+      "PowerShell(D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe -c \"import json;f=open\\(r'E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\backend\\\\data\\\\pipeline_checkpoints\\\\20260531_AI存储产业_v1\\\\step6_v5.15_test_result.json','rb'\\);d=json.load\\(f\\);f.close\\(\\);print\\(json.dumps\\({'ranked_stocks':d['ranked_stocks'],'future_strong':d['future_strong_candidates'][:1],'watchlist':[{'code':c['code'],'name':c.get\\('name',''\\),'source':c.get\\('_source_type',''\\)} for c in d['watchlist'][:5]],'comparisons':d['comparisons'][:2],'eliminated':[{'code':c['code'],'name':c.get\\('name',''\\),'eliminated_by':c.get\\('_eliminated_by',''\\),'reason':c.get\\('_eliminated_reason',''\\)[:60]} for c in d['eliminated'][:5]]},ensure_ascii=False,indent=2\\)\" 2>&1)",
+      "PowerShell(D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe -u E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\backend\\\\temp_lab\\\\show_v5.15_result.py 2>&1)",
+      "Bash(conda run *)",
+      "PowerShell(Get-Content -Path 'E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\backend\\\\app\\\\domain\\\\research\\\\agents\\\\candidate_comparator.py' -Encoding UTF8 | Select-Object -Index \\(168..182\\))",
+      "PowerShell(Get-Content -Path 'E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\backend\\\\app\\\\domain\\\\research\\\\agents\\\\core_screening_agent.py' -Encoding UTF8 | Select-Object -Index \\(440..463\\))",
+      "PowerShell(python -c \"f=open\\('E:/workspace/AIResearch/AIStock_Pro/backend/app/domain/research/agents/candidate_comparator.py','r',encoding='utf-8'\\); lines=f.readlines\\(\\); print\\(repr\\(''.join\\(lines[188:193]\\)\\)\\)\")",
+      "PowerShell(python -c \"f=open\\('E:/workspace/AIResearch/AIStock_Pro/backend/app/domain/research/agents/core_screening_agent.py','r',encoding='utf-8'\\); lines=f.readlines\\(\\); print\\(''.join\\(lines[699:760]\\)\\)\")",
+      "Bash(git checkout *)",
+      "Bash(Start-Process -NoNewWindow powershell -ArgumentList \"-Command\", \"python run_backend.py\")",
+      "Bash(curl -s http://127.0.0.1:8000/api/data/health/simple)",
+      "Bash(curl -s \"http://127.0.0.1:8000/api/data/health/simple\" -m 5)",
+      "Bash(curl -s \"http://127.0.0.1:8000/shutdown\" -m 3)",
+      "Bash(@echo off *)",
+      "PowerShell(Set-Location *)",
+      "PowerShell($s3 = Get-Content \"E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\backend\\\\data\\\\pipeline_checkpoints\\\\20260531_AI存储产业_v1\\\\step3_sc_hacker_continue.json\" | ConvertFrom-Json; Write-Host \"=== Step 3 asset_search_queries ===\"; $s3.output.asset_search_queries | ForEach-Object { Write-Host \"  query: $\\($_.query\\)\"; Write-Host \"  priority: $\\($_.priority\\)\"; if \\($_.rationale\\) { Write-Host \"  rationale: $\\($_.rationale\\)\"; } Write-Host \"---\" })",
+      "PowerShell(Get-Content \"E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\backend\\\\app\\\\domain\\\\research\\\\agents\\\\supply_chain_hacker.py\" | Select-Object -Index 327,328,329,330,331,332,333 | ForEach-Object { \"[$_]\" })",
+      "PowerShell($lines = Get-Content -Encoding UTF8 \"E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\backend\\\\app\\\\domain\\\\research\\\\agents\\\\supply_chain_hacker.py\"; $lines[330..335] | ForEach-Object { $i=0; $c=$_.ToCharArray\\(\\); $escaped = \\($c | ForEach-Object { if\\($_ -eq \" \"\\){ \"·\"} elseif\\($_ -eq \"`t\"\\){\"→\"} else {$_} }\\) -join ''; \"[$escaped]\" })",
+      "PowerShell(& \"D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe\" temp_lab/validate_fib.py 2>&1)",
+      "Bash(\"D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe\" temp_lab/migrate_fib_columns.py)",
+      "Bash(\"D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe\" temp_lab/verify_fib_e2e.py)",
+      "Bash(\"D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe\" -m py_compile app/domain/quant/indicators/trend/fib_retracement.py)",
+      "Bash(\"D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe\" -m py_compile app/domain/quant/engine/indicator_runner.py)",
+      "Bash('D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe' -c ' *)",
+      "Bash(grep -v \"^$\")",
+      "Bash(\"D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe\" -m py_compile app/framework/finance/financial_data_view.py)",
+      "PowerShell(D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python -c \"from app.framework.pipeline.glossary import financial_glossary; print\\('Import OK'\\)\")"
+    ],
+    "defaultMode": "auto"
   },
   "hooks": {
     "PostToolUse": [

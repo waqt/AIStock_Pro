@@ -1,0 +1,663 @@
+{
+  "step": "step6_core_screening",
+  "run_id": "20260531_AI存储产业_v1",
+  "input_hash": "continue",
+  "saved_at": "2026-06-01T01:02:43.639016",
+  "elapsed_seconds": 0,
+  "input_summary": "",
+  "output": {
+    "agent": "CoreScreeningAgent",
+    "confidence": "medium",
+    "lifecycle_gate": {
+      "cycle_position": "",
+      "gate_mode": "growth"
+    },
+    "candidate_pool": {
+      "total_collected": 14,
+      "after_prescreen": 14,
+      "ranked": 3
+    },
+    "ranked_stocks": [],
+    "future_strong_candidates": [
+      {
+        "code": "300666",
+        "name": "江丰电子",
+        "source": [
+          {
+            "step": "step6_mining",
+            "field": "tags",
+            "role": "靶材"
+          }
+        ],
+        "flags": [
+          "revenue_yoy_low (-21.9%)"
+        ],
+        "gate_mode": "growth",
+        "moat_profile": {
+          "position_power": "strong",
+          "position_evidence": [
+            "证据1: 江丰电子已发展成为全球半导体靶材领域的第二大供应商，占据全球市场份额12%-18.6%，国内12英寸晶圆厂靶材市场占有率高达73%。这说明其位置在半导体材料供应链中具有极高的不可替代性，客户（尤其是国内存储晶圆厂）难以绕过。",
+            "证据2: 公司专注于溅射靶材和半导体精密零部件，是AI存储芯片（HBM、NAND）生产制程中薄膜沉积环节的必经节点。若无替代供应商，客户切换成本极高。"
+          ],
+          "pricing_power": "medium",
+          "pricing_evidence": [
+            "证据1: 搜索证据未提供毛利率趋势或具体涨价能力数据，但全球第二、国内第一的市场地位通常赋予企业一定的议价权。由于靶材占晶圆制造总成本比例较低（约3-5%），客户对价格敏感度相对较低，具备温和涨价空间。",
+            "证据2: 缺乏直接证据证明江丰电子能主动大幅提价，其定价权受限于国际竞争对手（如日矿金属、霍尼韦尔）的竞争格局。"
+          ],
+          "expansion_power": "medium",
+          "expansion_evidence": [
+            "证据1: 公司已具备核心技术护城河，并持续加大关键零部件投入，完善半导体精密零部件业务布局。这表明产能扩张计划明确。",
+            "证据2: 搜索证据未提供在建工程规模或设备锁定具体数据，扩张节奏可能受制于高纯金属原料供应和高端设备采购周期。"
+          ],
+          "certification_power": "strong",
+          "certification_evidence": [
+            "证据1: 国内12英寸晶圆厂靶材市占率73%，说明公司已通过国内存储和逻辑大厂的严苛认证，供应商切换成本极高（认证周期通常12-24个月）。",
+            "证据2: 公司作为全球第二大供应商，必然已进入国际主流晶圆厂（如台积电、三星、海力士）的供应体系，认证壁垒构成天然护城河。"
+          ],
+          "resource_power": "emerging",
+          "resource_evidence": [
+            "证据1: 搜索证据未明确提及公司掌控上游高纯金属（如钨、钽、钛）的矿山或独有资源。靶材原料依赖外部采购，资源掌控力尚在发展。",
+            "证据2: 公司通过技术优势在提纯和制造环节建立壁垒，但并未形成对上游矿产资源的直接控制，资源权力属于emerging状态。"
+          ],
+          "cognitive_power": "strong",
+          "cognitive_evidence": [
+            "证据1: 公司成立于2005年，经过近20年发展成为全球第二大靶材供应商，说明其长期押注半导体材料国产化路线，并成功在AI存储和先进逻辑芯片爆发前完成技术布局。",
+            "证据2: “自主可控水平进一步提升”、“持续完善半导体精密零部件业务布局”表明管理层对国内产业链自主化趋势有前瞻认知，并提前卡位核心环节。"
+          ]
+        },
+        "profit_capture_thesis": {
+          "why_it_captures_profit": [
+            "国内AI存储晶圆厂（如长鑫、长江存储）的靶材需求高度依赖江丰电子，73%的国内市占率使其在国内需求增长时能直接转化为收入和利润。",
+            "高认证壁垒和长切换周期锁定客户黏性，避免价格战，保障利润率。",
+            "全球第二、国内第一的规模效应和良率优势带来成本竞争力。"
+          ],
+          "future_profit_driver": [
+            "AI存储（HBM、DDR5、3D NAND）扩产带来的靶材用量增长，尤其是国产存储厂产能爬坡。",
+            "半导体精密零部件业务（如CMP、刻蚀环节零部件）的拓展，打开第二增长曲线。",
+            "进一步提升全球市场份额，从12-18%向20%以上迈进，挤压国际竞争对手份额。"
+          ]
+        },
+        "growth_asymmetry": {
+          "growth_type": "nonlinear_breakout",
+          "triggers": [
+            "国内AI存储晶圆厂（如长鑫、长江存储）大规模扩产并导入国产靶材（已实现）。",
+            "公司顺利进入国际存储巨头（三星、海力士）的HBM供应链并获得批量订单。",
+            "半导体精密零部件业务通过国际大客户认证并放量。"
+          ],
+          "current_stage": "成长期早期至中期：国内AI存储扩产周期启动，公司市占率持续提升，但国际拓展和新业务尚处于加速突破阶段。"
+        },
+        "thesis_breakers": [
+          "AI存储产业景气下行或国内存储厂资本开支大幅缩减，导致靶材需求萎缩。",
+          "上游高纯金属原料被外资控制并出现断供风险，或价格大幅波动侵蚀利润。",
+          "国际竞争对手（日矿金属、霍尼韦尔）在技术和价格上发起极端竞争，打破国内替代逻辑。",
+          "下游存储客户自建靶材产线取得突破，降低外部依赖。"
+        ],
+        "risk_tags": [],
+        "audit": {
+          "verdict": "SKIP",
+          "score": 0,
+          "flags": [],
+          "beneish_m_score": null
+        },
+        "company_stage": "inflection",
+        "stage_indicators": {
+          "primary": [
+            "gross_margin",
+            "gross_margin_trend",
+            "revenue_yoy",
+            "revenue_acceleration",
+            "rd_to_revenue_trend",
+            "contract_liability_yoy",
+            "profit_turnaround",
+            "revenue_qoq"
+          ],
+          "note": "拐点期: '研发→收益'验证窗口, 4个真拐点信号(毛利率上升+合同负债爆发+研发费率下降+营收加速)"
+        },
+        "category": "future_strong"
+      },
+      {
+        "code": "002156",
+        "name": "通富微电",
+        "source": [
+          {
+            "step": "step6_mining",
+            "field": "tags",
+            "role": "HBM封装全球垄断"
+          }
+        ],
+        "flags": [
+          "revenue_yoy_low (-15.8%)"
+        ],
+        "gate_mode": "growth",
+        "moat_profile": {
+          "position_power": "weak",
+          "position_evidence": [
+            "证据: 通富微电募资44亿元用于存储芯片封测产能提升，表明其在AI存储（HBM）封测环节有布局意图，但上游来源'step6_mining/tags(HBM封装全球垄断)'暗示HBM封装的高端市场被全球寡头（如三星、SK海力士、台积电）垄断，通富微电尚非该产业链的必经节点。客户（如AI芯片设计商）在HBM先进封装上可直接选择头部垄断厂商，绕过通富微电。"
+          ],
+          "pricing_power": "weak",
+          "pricing_evidence": [
+            "证据: 搜索证据未提供通富微电在AI存储封测领域的毛利率或定价能力数据。封测行业整体竞争激烈、毛利率较低（一般15-25%），且公司在高壁垒HBM封装中缺乏不可替代性，难以向上游或下游转移成本或涨价。"
+          ],
+          "expansion_power": "strong",
+          "expansion_evidence": [
+            "证据: 通富微电公告拟募资不超过44亿元，明确投向'存储芯片封测产能提升项目'，同时涉及汽车电子、晶圆级封装等领域。这表明公司具备明确的产能扩张规划和资金储备，在建工程和设备锁定有据可查。"
+          ],
+          "certification_power": "weak",
+          "certification_evidence": [
+            "证据: 搜索证据未列出通富微电已进入哪些AI存储大客户（如英伟达、AMD、海力士）的供应链，也未提供认证周期或切换成本信息。在HBM等高壁垒领域，客户认证通常需2-3年，目前公司处于'推进存储芯片领域技术深化'阶段，尚未体现已获核心客户认证。"
+          ],
+          "resource_power": "weak",
+          "resource_evidence": [
+            "证据: 上游来源指出'HBM封装全球垄断'，意味着掌握HBM核心封装产能/工艺/专利资源的是三星、SK海力士、台积电等。通富微电在AI存储赛道中尚未被证明持有稀缺资源（如独家HBM封装产能、先进封装专利池）。搜索证据仅提及其'强化存储关键领域的封测能力'，缺乏资源垄断性证据。"
+          ],
+          "cognitive_power": "strong",
+          "cognitive_evidence": [
+            "证据: 通富微电在2025年年报摘要中提到'行业的增长驱动力、竞争焦点与估值体系均发生着根本性转变'，并且2026年即启动44亿募资聚焦存储芯片、高性能计算等核心领域。这显示公司管理层在大模型/AI存储需求爆发前已做出战略布局，比市场更早押对技术路线（HBM及先进封装）并提前行动。"
+          ]
+        },
+        "profit_capture_thesis": {
+          "why_it_captures_profit": [
+            "通富微电在AI存储赛道中获取利润的核心逻辑在于利用其扩张能力和认知先行优势：通过提前布局存储芯片封测产能，承接国内AI芯片及存储厂商（如长鑫存储、长江存储等）的国产替代需求，在HBM封装全球垄断但国内自有产能稀缺的背景下，成为产业链中游不可或缺的配套环节。",
+            "其利润来源并非来自定价权或上游资源垄断，而是依靠产能扩张速度（44亿募资）与客户认证先发效应，在国产AI存储产业链中占据卡位价值。"
+          ],
+          "future_profit_driver": [
+            "产能爬坡与利用率提升：存储芯片封测产能项目投产后，规模效应带来单位成本下降，利润弹性加大。",
+            "国产替代窗口：在地缘政治背景下，国内AI芯片厂商寻求HBM等先进存储封测本土化，通富微电作为少数具备大规模封测能力的厂商，可获取转移订单。",
+            "技术协同：公司同时布局汽车电子、高性能计算，AI存储业务可与现有客户群交叉销售，提升客户粘性和复购率。"
+          ]
+        },
+        "growth_asymmetry": {
+          "growth_type": "cyclical",
+          "triggers": [
+            "AI存储封测产能投产并进入客户供应链（催化剂: 募投项目达产公告、获得英伟达/AMD等HBM封测订单）",
+            "国产HBM/HBM-like存储芯片量产（催化剂: 长鑫存储或长江存储发布HBM产品）",
+            "全球HBM封装垄断格局松动（催化剂: 美国对韩国HBM出口限制扩大，倒逼国内建厂）"
+          ],
+          "current_stage": "通富微电处于AI存储封测赛道的产能扩张与客户导入初期，尚未产生显著AI存储营收。其利润贡献目前主要依赖传统封测业务（逻辑、封装等），AI存储项目处于投入期。"
+        },
+        "thesis_breakers": [
+          "竞争格局恶化: 国内其他封测厂（如长电科技、华天科技）也同时大规模扩产HBM封装，导致产能过剩、价格战，稀释通富微电的卡位价值。",
+          "技术路径偏移: 如果HBM被新型存储互连技术（如存算一体架构、CXL内存池化）替代，通富微电当前的存储封测布局可能成为沉没成本。",
+          "客户认证失败: 募投项目达产后，若未能通过国内主要AI芯片/存储厂商的认证，产能将面临空置，利润不达标。",
+          "地缘政治恶化: 若美国对华出口限制进一步升级至封测设备或EDA工具，通富微电的产能建设可能受阻。"
+        ],
+        "risk_tags": [],
+        "audit": {
+          "verdict": "SKIP",
+          "score": 0,
+          "flags": [],
+          "beneish_m_score": null
+        },
+        "company_stage": "inflection",
+        "stage_indicators": {
+          "primary": [
+            "gross_margin",
+            "gross_margin_trend",
+            "revenue_yoy",
+            "revenue_acceleration",
+            "rd_to_revenue_trend",
+            "contract_liability_yoy",
+            "profit_turnaround",
+            "revenue_qoq"
+          ],
+          "note": "拐点期: '研发→收益'验证窗口, 4个真拐点信号(毛利率上升+合同负债爆发+研发费率下降+营收加速)"
+        },
+        "category": "future_strong"
+      },
+      {
+        "code": "300672",
+        "name": "国科微",
+        "source": [
+          {
+            "step": "step6_mining",
+            "field": "tags",
+            "role": "企业级SSD主控国产替代"
+          }
+        ],
+        "flags": [
+          "revenue_yoy_low (-8.4%)"
+        ],
+        "gate_mode": "growth",
+        "moat_profile": {
+          "position_power": "weak",
+          "position_evidence": [
+            "搜索证据显示公司在IPTV/OTT和TV/商显领域市场份额逐步提升，但未提供其在AI存储（企业级SSD主控）业务中是否是产业链必经节点的任何证据。客户能否绕过该公司采购其他主控方案（如三星、Marvell、慧荣等）完全未知。",
+            "证据来源：湖南国科微电子股份有限公司2022 年年度报告摘要。此证据仅说明其在视频解码领域的地位，与AI存储赛道无关。"
+          ],
+          "pricing_power": "weak",
+          "pricing_evidence": [
+            "搜索证据未提供任何关于公司AI存储主控芯片的定价能力、毛利率趋势或占客户成本比例的信息。",
+            "在SSD主控领域，竞争激烈（海外巨头+国内初创），若无明确的技术代差或客户锁定，定价权通常较弱。当前搜索证据不支持其具备强定价权。"
+          ],
+          "expansion_power": "weak",
+          "expansion_evidence": [
+            "搜索证据未提及公司AI存储主控芯片的产能扩张计划、在建工程或任何设备（如晶圆代工产能）锁定情况。",
+            "公司作为Fabless芯片设计公司，其扩张能力受限于晶圆代工厂（如中芯国际、台积电）的产能分配。当前证据无法判断其扩产弹性。"
+          ],
+          "certification_power": "weak",
+          "certification_evidence": [
+            "搜索证据完全没有提供公司AI存储主控芯片已进入哪些企业级/数据中心大客户（如阿里云、腾讯云、华为、浪潮等）的信息。",
+            "企业级SSD主控的认证周期长（通常1-2年）、切换成本高。搜索证据未显示任何认证进展，据此判断其在该领域的认证壁垒极低或处于早期阶段。"
+          ],
+          "resource_power": "weak",
+          "resource_evidence": [
+            "搜索证据未提及公司掌握任何与AI存储主控相关的稀缺资源（如独家IP、特殊晶圆产能配额、核心研发人才团队等）。",
+            "证据来源：国科微(300672) 概念题材_F10_同花顺金融服务网。该页面通常罗列概念，但未提供关于资源占有的具体事实证据。"
+          ],
+          "cognitive_power": "emerging",
+          "cognitive_evidence": [
+            "公司作为国内较早布局SSD主控芯片的企业，其“企业级SSD主控国产替代”的定位本身具有前瞻性，体现了对自主可控技术路线的认知。",
+            "搜索证据提到'产品具备较大竞争力'和'市场份额正在逐步提升'（虽指电视领域），但可以间接表明公司具备将技术洞察转化为产品的初步能力。然而，在AI存储这一具体赛道上，缺乏其比市场更早押对特定技术（如PCIe 5.0/6.0, CXL等）的证据，故评定为'emerging'。",
+            "证据来源：湖南国科微电子股份有限公司2022 年年度报告摘要 和 国科微(300672) 概念题材_F10。"
+          ]
+        },
+        "profit_capture_thesis": {
+          "why_it_captures_profit": [
+            "根据现有证据，无法确定公司在AI存储赛道中能持续获取超额利润。其宣称的竞争力主要体现在非AI存储的电视/机顶盒领域。",
+            "潜在的盈利逻辑（需更多证据证实）：若其企业级SSD主控芯片完成大客户认证并实现规模化出货，有望在国产替代浪潮中受益，将产业景气度转化为收入和利润。"
+          ],
+          "future_profit_driver": [
+            "未来利润增长的核心驱动力是'企业级SSD主控芯片的国产替代进度'。具体包括：1) 新客户（特别是云服务商）导入情况；2) 产品从消费级向企业级的技术迭代速度；3) 晶圆代工成本和自身良率的控制。"
+          ]
+        },
+        "growth_asymmetry": {
+          "growth_type": "inflection_point",
+          "triggers": [
+            "核心催化剂：首个大型云服务商（如阿里云、腾讯云等）正式批量采购其企业级SSD主控产品，标志其认证壁垒被突破。",
+            "次要催化剂：公司在PCIe 5.0及下一代企业级主控技术上取得关键突破，并获行业权威认可。"
+          ],
+          "current_stage": "当前处于'预期驱动'阶段，而非'业绩兑现'阶段。搜索证据显示其传统业务（电视/机顶盒）稳健，但AI存储新业务尚未证明自身。市场估值更多依赖其国产替代的'故事'而非现有业绩。"
+        },
+        "thesis_breakers": [
+          "1. **客户认证失败或严重延迟**：企业级客户验证周期过长或最终未能通过，导致商业化遥遥无期。",
+          "2. **技术路线落后**：在PCIe 5.0/6.0和CXL等下一代技术上落后于国际对手或其他国内竞争者。",
+          "3. **产品可靠性问题**：出现大规模市场召回或质量事故，摧毁市场信任。",
+          "4. **下游需求萎缩**：全球AI资本开支放缓，导致对AI存储芯片（尤其是国产主控）的整体需求不及预期。",
+          "5. **竞争对手的迅速崛起**：其他国内SSD主控厂商（如联芸科技、得一微等）更早地抢占了市场份额和客户心智。"
+        ],
+        "risk_tags": [],
+        "audit": {
+          "verdict": "SKIP",
+          "score": 0,
+          "flags": [],
+          "beneish_m_score": null
+        },
+        "company_stage": "inflection",
+        "stage_indicators": {
+          "primary": [
+            "gross_margin",
+            "gross_margin_trend",
+            "revenue_yoy",
+            "revenue_acceleration",
+            "rd_to_revenue_trend",
+            "contract_liability_yoy",
+            "profit_turnaround",
+            "revenue_qoq"
+          ],
+          "note": "拐点期: '研发→收益'验证窗口, 4个真拐点信号(毛利率上升+合同负债爆发+研发费率下降+营收加速)"
+        },
+        "category": "future_strong"
+      }
+    ],
+    "watchlist": [
+      {
+        "code": "688268",
+        "name": "华特气体",
+        "source": [
+          {
+            "step": "step6_mining",
+            "field": "tags",
+            "role": "特气"
+          }
+        ],
+        "flags": [
+          "revenue_yoy_low (-4.4%)"
+        ],
+        "gate_mode": "growth",
+        "risk_tags": [],
+        "audit": {
+          "verdict": "SKIP",
+          "score": 0,
+          "flags": [],
+          "beneish_m_score": null
+        },
+        "company_stage": "inflection",
+        "stage_indicators": {
+          "primary": [
+            "gross_margin",
+            "gross_margin_trend",
+            "revenue_yoy",
+            "revenue_acceleration",
+            "rd_to_revenue_trend",
+            "contract_liability_yoy",
+            "profit_turnaround",
+            "revenue_qoq"
+          ],
+          "note": "拐点期: '研发→收益'验证窗口, 4个真拐点信号(毛利率上升+合同负债爆发+研发费率下降+营收加速)"
+        },
+        "category": "watchlist"
+      },
+      {
+        "code": "000977",
+        "name": "浪潮信息",
+        "source": [
+          {
+            "step": "step6_mining",
+            "field": "tags",
+            "role": "服务器组装"
+          }
+        ],
+        "flags": [
+          "revenue_yoy_low (-6.0%)"
+        ],
+        "gate_mode": "growth",
+        "risk_tags": [],
+        "audit": {
+          "verdict": "SKIP",
+          "score": 0,
+          "flags": [],
+          "beneish_m_score": null
+        },
+        "company_stage": "inflection",
+        "stage_indicators": {
+          "primary": [
+            "gross_margin",
+            "gross_margin_trend",
+            "revenue_yoy",
+            "revenue_acceleration",
+            "rd_to_revenue_trend",
+            "contract_liability_yoy",
+            "profit_turnaround",
+            "revenue_qoq"
+          ],
+          "note": "拐点期: '研发→收益'验证窗口, 4个真拐点信号(毛利率上升+合同负债爆发+研发费率下降+营收加速)"
+        },
+        "category": "watchlist"
+      },
+      {
+        "code": "603986",
+        "name": "兆易创新",
+        "source": [
+          {
+            "step": "step6_mining",
+            "field": "tags",
+            "role": "半导体周期涨价龙头"
+          }
+        ],
+        "flags": [
+          "revenue_yoy_low (-33.5%)"
+        ],
+        "gate_mode": "growth",
+        "risk_tags": [],
+        "audit": {
+          "verdict": "SKIP",
+          "score": 0,
+          "flags": [],
+          "beneish_m_score": null
+        },
+        "company_stage": "inflection",
+        "stage_indicators": {
+          "primary": [
+            "gross_margin",
+            "gross_margin_trend",
+            "revenue_yoy",
+            "revenue_acceleration",
+            "rd_to_revenue_trend",
+            "contract_liability_yoy",
+            "profit_turnaround",
+            "revenue_qoq"
+          ],
+          "note": "拐点期: '研发→收益'验证窗口, 4个真拐点信号(毛利率上升+合同负债爆发+研发费率下降+营收加速)"
+        },
+        "category": "watchlist"
+      },
+      {
+        "code": "688047",
+        "name": "江波龙",
+        "source": [
+          {
+            "step": "step6_mining",
+            "field": "tags",
+            "role": "需求爆发第一站"
+          }
+        ],
+        "flags": [
+          "revenue_yoy_low (-21.1%)",
+          "capex_expansion"
+        ],
+        "gate_mode": "growth",
+        "risk_tags": [],
+        "audit": {
+          "verdict": "SKIP",
+          "score": 0,
+          "flags": [],
+          "beneish_m_score": null
+        },
+        "company_stage": "inflection",
+        "stage_indicators": {
+          "primary": [
+            "gross_margin",
+            "gross_margin_trend",
+            "revenue_yoy",
+            "revenue_acceleration",
+            "rd_to_revenue_trend",
+            "contract_liability_yoy",
+            "profit_turnaround",
+            "revenue_qoq"
+          ],
+          "note": "拐点期: '研发→收益'验证窗口, 4个真拐点信号(毛利率上升+合同负债爆发+研发费率下降+营收加速)"
+        },
+        "category": "watchlist"
+      },
+      {
+        "code": "600584",
+        "name": "长电科技",
+        "source": [
+          {
+            "step": "step6_mining",
+            "field": "tags",
+            "role": "CoWoS产能瓶颈"
+          }
+        ],
+        "flags": [
+          "revenue_yoy_low (-0.7%)"
+        ],
+        "gate_mode": "growth",
+        "risk_tags": [],
+        "audit": {
+          "verdict": "SKIP",
+          "score": 0,
+          "flags": [],
+          "beneish_m_score": null
+        },
+        "company_stage": "inflection",
+        "stage_indicators": {
+          "primary": [
+            "gross_margin",
+            "gross_margin_trend",
+            "revenue_yoy",
+            "revenue_acceleration",
+            "rd_to_revenue_trend",
+            "contract_liability_yoy",
+            "profit_turnaround",
+            "revenue_qoq"
+          ],
+          "note": "拐点期: '研发→收益'验证窗口, 4个真拐点信号(毛利率上升+合同负债爆发+研发费率下降+营收加速)"
+        },
+        "category": "watchlist"
+      },
+      {
+        "code": "688012",
+        "name": "中微公司",
+        "source": [
+          {
+            "step": "step6_mining",
+            "field": "tags",
+            "role": "刻蚀/沉积"
+          }
+        ],
+        "flags": [
+          "revenue_yoy_low (-26.6%)"
+        ],
+        "gate_mode": "growth",
+        "risk_tags": [],
+        "audit": {
+          "verdict": "SKIP",
+          "score": 0,
+          "flags": [],
+          "beneish_m_score": null
+        },
+        "company_stage": "inflection",
+        "stage_indicators": {
+          "primary": [
+            "gross_margin",
+            "gross_margin_trend",
+            "revenue_yoy",
+            "revenue_acceleration",
+            "rd_to_revenue_trend",
+            "contract_liability_yoy",
+            "profit_turnaround",
+            "revenue_qoq"
+          ],
+          "note": "拐点期: '研发→收益'验证窗口, 4个真拐点信号(毛利率上升+合同负债爆发+研发费率下降+营收加速)"
+        },
+        "category": "watchlist"
+      },
+      {
+        "code": "688072",
+        "name": "华海清科",
+        "source": [
+          {
+            "step": "step6_mining",
+            "field": "tags",
+            "role": "CMP"
+          }
+        ],
+        "flags": [
+          "revenue_yoy_low (-37.3%)"
+        ],
+        "gate_mode": "growth",
+        "risk_tags": [],
+        "audit": {
+          "verdict": "SKIP",
+          "score": 0,
+          "flags": [],
+          "beneish_m_score": null
+        },
+        "company_stage": "inflection",
+        "stage_indicators": {
+          "primary": [
+            "gross_margin",
+            "gross_margin_trend",
+            "revenue_yoy",
+            "revenue_acceleration",
+            "rd_to_revenue_trend",
+            "contract_liability_yoy",
+            "profit_turnaround",
+            "revenue_qoq"
+          ],
+          "note": "拐点期: '研发→收益'验证窗口, 4个真拐点信号(毛利率上升+合同负债爆发+研发费率下降+营收加速)"
+        },
+        "category": "watchlist"
+      },
+      {
+        "code": "301308",
+        "name": "江波龙",
+        "source": [
+          {
+            "step": "step6_mining",
+            "field": "tags",
+            "role": "存储模组"
+          }
+        ],
+        "flags": [],
+        "gate_mode": "growth",
+        "company_stage": "startup",
+        "stage_indicators": {
+          "primary": [
+            "burn_rate_months",
+            "rd_intensity",
+            "rd_to_opex",
+            "contract_liability_yoy"
+          ],
+          "note": "研发期: 关注现金跑道和研发投入效率, 财务阈值大幅放宽"
+        },
+        "category": "watchlist"
+      },
+      {
+        "code": "688525",
+        "name": "佰维存储",
+        "source": [
+          {
+            "step": "step6_mining",
+            "field": "tags",
+            "role": "存储模组"
+          }
+        ],
+        "flags": [],
+        "gate_mode": "growth",
+        "company_stage": "startup",
+        "stage_indicators": {
+          "primary": [
+            "burn_rate_months",
+            "rd_intensity",
+            "rd_to_opex",
+            "contract_liability_yoy"
+          ],
+          "note": "研发期: 关注现金跑道和研发投入效率, 财务阈值大幅放宽"
+        },
+        "category": "watchlist"
+      },
+      {
+        "code": "300223",
+        "name": "北京君正",
+        "source": [
+          {
+            "step": "step6_mining",
+            "field": "tags",
+            "role": "DRAM/NAND制造"
+          }
+        ],
+        "flags": [],
+        "gate_mode": "growth",
+        "company_stage": "startup",
+        "stage_indicators": {
+          "primary": [
+            "burn_rate_months",
+            "rd_intensity",
+            "rd_to_opex",
+            "contract_liability_yoy"
+          ],
+          "note": "研发期: 关注现金跑道和研发投入效率, 财务阈值大幅放宽"
+        },
+        "category": "watchlist"
+      },
+      {
+        "code": "001309",
+        "name": "德明利",
+        "source": [
+          {
+            "step": "step6_mining",
+            "field": "tags",
+            "role": "存储模组"
+          }
+        ],
+        "flags": [],
+        "gate_mode": "growth",
+        "company_stage": "startup",
+        "stage_indicators": {
+          "primary": [
+            "burn_rate_months",
+            "rd_intensity",
+            "rd_to_opex",
+            "contract_liability_yoy"
+          ],
+          "note": "研发期: 关注现金跑道和研发投入效率, 财务阈值大幅放宽"
+        },
+        "category": "watchlist"
+      }
+    ],
+    "step3_backfill": {},
+    "filter_log": []
+  }
+}
