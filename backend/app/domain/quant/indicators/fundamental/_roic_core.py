@@ -91,7 +91,7 @@ def adjust_rd_capitalization(financials: List[Dict], amort_years: int = 5) -> di
     公式:
       RD_Asset = Σ(RD_i × 未摊销比例_i)
       Adjusted_Profit = Reported_Profit + Current_RD - 摊销额
-      Adjusted_Assets = Reported_Assets + RD_Asset
+      Adjusted_Equity = Reported_Equity + RD_Asset
 
     参数:
       financials: 最近 8Q 财务数据 (含 rd_expense), newest-first
@@ -130,14 +130,16 @@ def adjust_rd_capitalization(financials: List[Dict], amort_years: int = 5) -> di
 
     adjusted_profit = reported_profit + current_rd - rd_amortization
 
-    # 调整后总资产
-    reported_assets = float(financials[0].get("total_assets", 0) or 0)
-    adjusted_assets = reported_assets + rd_asset
-
     profit_impact = ((adjusted_profit / reported_profit - 1) * 100) \
         if reported_profit and reported_profit > 0 else 0
 
-    adjusted_roe = (adjusted_profit / adjusted_assets * 100) if adjusted_assets else None
+    # 调整后ROE: 分母用净资产而非总资产 (旧版本误用了 total_assets)
+    reported_equity = float(financials[0].get("total_equity", 0) or 0)
+    if reported_equity:
+        adjusted_equity = reported_equity + rd_asset
+        adjusted_roe = (adjusted_profit / adjusted_equity * 100) if adjusted_equity else None
+    else:
+        adjusted_roe = None
 
     return {
         "reported_profit_yi": round(reported_profit / 1e8, 2),
@@ -202,6 +204,13 @@ def compute_roic(financials: List[Dict], capitalize_rd: bool = False,
     nopat = compute_nopat(financials, capitalize_rd, tax_rate)
     ic = compute_invested_capital(financials[0])
 
+    # 研发资本化模式下, 将研发资产加入 IC (旧版本遗漏了分母稀释)
+    if capitalize_rd and ic and ic > 0:
+        rd_res = adjust_rd_capitalization(financials)
+        rd_asset_yi = rd_res.get("rd_asset_yi", 0)
+        if rd_asset_yi and rd_asset_yi > 0:
+            ic += rd_asset_yi * 1e8  # 从亿元转回元
+
     if not ic or ic <= 0:
         return {"roic": None, "error": "ic_zero_or_negative"}
 
@@ -259,6 +268,15 @@ def compute_roiic(financials: List[Dict], capitalize_rd: bool = False,
 
     ic_current = compute_invested_capital(recent_4q[0])
     ic_prev = compute_invested_capital(prior_4q[0])
+
+    # 研发资本化模式下, 将研发资产加入 IC (分母稀释)
+    if capitalize_rd:
+        rd_res = adjust_rd_capitalization(financials)
+        rd_asset_yi = rd_res.get("rd_asset_yi", 0)
+        if rd_asset_yi and rd_asset_yi > 0:
+            rd_raw = rd_asset_yi * 1e8
+            ic_current += rd_raw
+            ic_prev += rd_raw  # 研发资产稳定, 前后期近似相等
 
     if ic_current == ic_prev:
         return {"roiic": None, "error": "no_change_in_ic",

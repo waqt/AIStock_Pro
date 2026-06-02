@@ -42,7 +42,14 @@ class BeneishMScoreIndicator(FinancialIndicator):
         except Exception:
             return {"m_score": None, "m_score_interpretation": "calc_error"}
         DSRI = _safe_div(rec_t / rev_t, rec_t4 / rev_t4) if rev_t and rev_t4 else 1
-        GMI = _safe_div(cogs_t4 / rev_t4, cogs_t / rev_t) if rev_t and rev_t4 else 1
+        # GMI = GrossMargin_t-1 / GrossMargin_t, 其中 GM = (Rev-COGS)/Rev = 1-COGS/Rev
+        # >1 = 毛利率恶化(更高造假概率), <1 = 毛利率改善
+        gm_current = (1 - cogs_t / rev_t) if rev_t else 0
+        gm_prior = (1 - cogs_t4 / rev_t4) if rev_t4 else 0
+        if gm_current <= 0:
+            GMI = 2.0  # 当期毛利率归零或负 → 极高造假动机
+        else:
+            GMI = _safe_div(gm_prior, gm_current)
         AQI = _safe_div(1 - (CA_t + FA_t) / TA_t, 1 - (CA_t4 + FA_t4) / TA_t4) if TA_t and TA_t4 else 1
         SGI = _safe_div(rev_t, rev_t4) if rev_t4 else 1
         DPR_t = _safe_div(FA_t, FA_t + cogs_t) if (FA_t + cogs_t) else 1

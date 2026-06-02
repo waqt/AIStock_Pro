@@ -272,7 +272,8 @@
       "Bash('D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe' -c ' *)",
       "Bash(grep -v \"^$\")",
       "Bash(\"D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe\" -m py_compile app/framework/finance/financial_data_view.py)",
-      "PowerShell(D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python -c \"from app.framework.pipeline.glossary import financial_glossary; print\\('Import OK'\\)\")"
+      "PowerShell(D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python -c \"from app.framework.pipeline.glossary import financial_glossary; print\\('Import OK'\\)\")",
+      "PowerShell(Set-Location E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\backend; conda run -n aiteacher python -m py_compile \"$pwd\\\\app\\\\domain\\\\quant\\\\indicators\\\\fundamental\\\\quality\\\\beneish_m_score.py\" \"$pwd\\\\app\\\\domain\\\\quant\\\\indicators\\\\fundamental\\\\health\\\\early_stage.py\" \"$pwd\\\\app\\\\domain\\\\quant\\\\indicators\\\\fundamental\\\\_roic_core.py\" \"$pwd\\\\app\\\\domain\\\\quant\\\\indicators\\\\fundamental\\\\base.py\" \"$pwd\\\\app\\\\domain\\\\quant\\\\indicators\\\\fundamental\\\\growth\\\\revenue_growth.py\" 2>&1)"
     ],
     "defaultMode": "auto"
   },
