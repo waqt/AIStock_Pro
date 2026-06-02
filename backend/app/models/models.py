@@ -131,6 +131,8 @@ class StockInfo(Base):
     roe = Column(Float, nullable=True, comment="净资产收益率(%)")
     dividend_yield = Column(Float, nullable=True, comment="股息率(%)")
     eps_growth_3y = Column(Float, nullable=True, comment="近3年盈利复合增速(%)")
+    total_shares = Column(Float, nullable=True, comment="总股本(股)")
+    float_shares = Column(Float, nullable=True, comment="流通股本(股)")
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
 

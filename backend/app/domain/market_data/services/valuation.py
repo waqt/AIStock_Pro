@@ -45,9 +45,13 @@ async def sync_stock_info(code: str) -> bool:
             value = row['value']
             if '行业' in item:
                 info['industry'] = str(value)
-            elif '总股本' in item and '流通' not in item:
-                try: info['total_shares'] = float(value)
-                except: pass
+            elif '总股本' in item:
+                if '流通' in item:
+                    try: info['float_shares'] = float(value)
+                    except: pass
+                else:
+                    try: info['total_shares'] = float(value)
+                    except: pass
             elif '上市时间' in item:
                 try:
                     from datetime import date
@@ -83,6 +87,10 @@ async def sync_stock_info(code: str) -> bool:
                     existing.list_date = info['list_date']
                 if 'name' in info and (not existing.stock_name or existing.stock_name == code):
                     existing.stock_name = info['name']
+                if 'total_shares' in info:
+                    existing.total_shares = info['total_shares']
+                if 'float_shares' in info:
+                    existing.float_shares = info['float_shares']
                 existing.updated_at = dt.now()
             else:
                 db.add(StockInfo(
@@ -91,6 +99,8 @@ async def sync_stock_info(code: str) -> bool:
                     exchange='HK' if len(code) == 5 else ('SH' if code.startswith(('6','9')) else 'SZ'),
                     industry=info.get('industry'),
                     list_date=info.get('list_date'),
+                    total_shares=info.get('total_shares'),
+                    float_shares=info.get('float_shares'),
                 ))
             await db.commit()
 
