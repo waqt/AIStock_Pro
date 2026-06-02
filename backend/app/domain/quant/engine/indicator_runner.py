@@ -220,6 +220,9 @@ class IndicatorRunner:
                             all_series[k] = pd.Series(v, index=df.index)
                             ctx[k] = v
                             df[k] = v
+                        elif isinstance(v, np.ndarray):
+                            all_series[k] = pd.Series(v, index=df.index)
+                            df[k] = pd.Series(v, index=df.index)
                         elif isinstance(v, (list, dict)):
                             ctx[k] = v
                             if k not in df.columns:

@@ -3,7 +3,20 @@
 数据源: FinancialStatement (季报) 而非 MarketData (日线)
 计算: 外部触发 (Step 6 / 异步任务), 不在 IndicatorRunner 管线内
 """
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
+
+
+# ═══ 共享工具 ═══════════════════════════════════════
+def _pct(current: float, base: float) -> Optional[float]:
+    """计算百分比变化"""
+    if base and base != 0:
+        return round((current - base) / abs(base) * 100, 2)
+    return None
+
+
+def _safe_div(a: float, b: float) -> float:
+    """安全除法, 分母为0 返回 0"""
+    return a / b if b and b != 0 else 0
 
 
 class FinancialIndicator:
@@ -53,3 +66,7 @@ def register_financial(cls):
     """注册财务指标到 FINANCIAL_REGISTRY"""
     FINANCIAL_REGISTRY[cls.name] = cls
     return cls
+
+
+# 向后兼容别名 (新版统一使用 @register)
+register = register_financial

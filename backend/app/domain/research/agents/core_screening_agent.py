@@ -385,7 +385,7 @@ class CoreScreeningAgent(ResearchAgent):
         roic_source = "none"
         if fin and len(fin) >= 4:
             try:
-                recent_first = list(reversed(fin))
+                recent_first = fin  # newest-first from data_loader
                 company_stage = stage_map.get(code, "startup")
                 capitalize_rd = company_stage in ["startup", "inflection", "growth"]
                 roic_data = compute_roic(recent_first, capitalize_rd=capitalize_rd)
@@ -1121,15 +1121,15 @@ class CoreScreeningAgent(ResearchAgent):
         return {
             "startup":    {"primary": ["burn_rate_months", "rd_intensity", "rd_to_opex", "contract_liability_yoy"],
                            "note": "研发期: 关注现金跑道和研发投入效率, 财务阈值大幅放宽"},
-            "inflection": {"primary": ["gross_margin", "gross_margin_trend", "revenue_yoy", "revenue_acceleration",
+            "inflection": {"primary": ["gross_margin_pct", "gross_margin_trend", "revenue_yoy", "revenue_acceleration",
                                         "rd_to_revenue_trend", "contract_liability_yoy", "profit_turnaround", "revenue_qoq"],
                            "note": "拐点期: '研发→收益'验证窗口, 4个真拐点信号(毛利率上升+合同负债爆发+研发费率下降+营收加速)"},
             "growth":     {"primary": ["roiic", "roic", "gross_margin_trend", "operating_leverage", "revenue_yoy"],
                            "note": "成长期: 验证扩张质量, ROIIC应>当前ROIC"},
-            "mature":     {"primary": ["roic", "roic_stability", "fcf_conversion", "gross_margin", "operating_margin_stability",
+            "mature":     {"primary": ["roic", "roic_stability", "ocf_health", "gross_margin_pct", "operating_margin_stability",
                                         "working_capital_efficiency", "inventory_revenue_ratio"],
                            "note": "成熟期: 验证护城河是否还在, 利润稳定性+现金回报率"},
-            "decline":    {"primary": ["revenue_yoy", "fcf_conversion", "gross_margin_trend", "inventory_revenue_ratio"],
+            "decline":    {"primary": ["revenue_yoy", "ocf_health", "gross_margin_trend", "inventory_revenue_ratio"],
                            "note": "衰退期: 关注收入下滑速度和现金流退化"},
         }.get(stage, {"primary": [], "note": "未知阶段"})
 

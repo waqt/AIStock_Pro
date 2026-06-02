@@ -38,6 +38,9 @@ NUMERIC_COLS = [
     # chip numeric
     "chip_concentration", "chip_peak_price", "chip_avg_cost",
     "chip_is_single_peak",
+    # fib retracement
+    "fib_high", "fib_low",
+    "fib_23_6", "fib_38_2", "fib_50_0", "fib_61_8", "fib_78_6",
 ]
 
 TEXT_COLS = ["chip_pattern", "chip_signal"]
@@ -239,7 +242,7 @@ FINANCIAL_NUMERIC_COLS = [
     "roic", "roic_pct", "roiic", "roiic_pct",
     "roic_adjusted", "roic_pct_adjusted", "roiic_adjusted", "roiic_pct_adjusted",
     "contract_liability_yoy", "inventory_yoy", "revenue_yoy", "rd_growth",
-    "rd_intensity", "gross_margin", "operating_leverage", "fcf_conversion",
+    "rd_intensity", "operating_leverage",
     "roic_stability",
     "burn_rate_months", "rd_to_opex",
     "rd_to_revenue_trend", "revenue_acceleration", "profit_turnaround", "revenue_qoq",

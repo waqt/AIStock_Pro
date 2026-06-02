@@ -1,3 +1,4 @@
+import pandas as pd
 from ..base import BaseIndicator, register
 
 @register
