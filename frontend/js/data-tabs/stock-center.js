@@ -94,6 +94,7 @@ DataTabs.StockCenter = {
   _renderSummary(summary) {
     const bar = document.getElementById('sc-summary-bar');
     if (!bar) return;
+    bar.style.display = 'flex';
 
     // 维度映射: key → { label, color, icon }
     const DIM_MAP = {
@@ -127,7 +128,7 @@ DataTabs.StockCenter = {
         card = document.createElement('div');
         card.className = 'sc-summary-card';
         card.dataset.key = key;
-        card.style.cssText = 'background:var(--bg-card);border:1px solid var(--border-color);border-radius:4px;padding:4px 12px;min-width:70px;text-align:center;';
+        card.style.cssText = 'padding:4px 12px;min-width:70px;text-align:center;';
         card.innerHTML = `
           <div class="sc-summary-num" style="font-size:16px;font-weight:600;font-family:var(--font-mono);"></div>
           <div class="sc-summary-label" style="font-size:8px;color:var(--text-micro);margin-top:1px;display:flex;align-items:center;justify-content:center;gap:3px;">
@@ -355,6 +356,11 @@ DataTabs.StockCenter = {
   if (origSwitch) {
     DataTabs.switchTab = function(tab) {
       origSwitch(tab);
+      // 股票中心 → 去掉外层 padding-top; 其他 tab → 恢复
+      const wrapper = document.getElementById('tab-content-wrapper');
+      if (wrapper) {
+        wrapper.style.paddingTop = tab === 'stock-center' ? '0' : '14px';
+      }
       if (tab === 'stock-center') DataTabs.StockCenter.load(1);
     };
   }

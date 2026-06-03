@@ -60,7 +60,7 @@
     </div>
 </div>
 
-<div style="padding:14px;">
+<div style="padding:14px;" id="tab-content-wrapper">
 
 <!-- Tab: 宏观 -->
 <div class="data-tab-panel active" id="tab-macro">
@@ -211,18 +211,18 @@
     </div>
 </div>
 
-</div><!-- /alt-data -->
+<!-- /alt-data (closes #tab-alt) -->
 
-<!-- Tab: 股票中心 -->
+<!-- 股票中心 Tab (纯平面结构, 无嵌套 div) -->
 <div class="data-tab-panel" id="tab-stock-center" style="display:none;">
-    <!-- 统计概览卡片 (紧凑) -->
-    <div id="sc-summary-bar" style="display:flex;gap:6px;padding:2px 0 6px 0;flex-wrap:wrap;">
-        <div class="sc-summary-card" data-key="total_stocks" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:4px;padding:4px 12px;min-width:70px;text-align:center;">
+    <!-- 统计概览 -->
+    <div id="sc-summary-bar" style="display:flex;gap:6px;padding:6px 14px;flex-wrap:wrap;background:var(--bg-card);border-bottom:1px solid var(--border-color);">
+        <div class="sc-summary-card" data-key="total_stocks" style="padding:4px 12px;min-width:70px;text-align:center;">
             <div class="sc-summary-num" style="font-size:16px;font-weight:600;color:#fff;font-family:var(--font-mono);">-</div>
             <div class="sc-summary-label" style="font-size:8px;color:var(--text-micro);">总计</div>
         </div>
     </div>
-    <div class="toolbar">
+    <div class="toolbar" style="padding:6px 14px 0 14px;margin-bottom:4px;">
         <input type="text" id="sc-search" placeholder="搜索代码/名称..." style="width:160px;" oninput="DataTabs.StockCenter.debounceSearch()">
         <select id="sc-sort" onchange="DataTabs.StockCenter.applyFilter()" style="background:#000;border:1px solid var(--border-color);color:#fff;padding:4px 8px;border-radius:4px;font-size:11px;">
             <option value="code_asc">代码 ↑</option>
@@ -260,7 +260,7 @@
         <span style="flex:1;"></span>
         <span id="sc-pagination" style="font-size:10px;color:var(--text-micro);"></span>
     </div>
-    <div class="toolbar">
+    <div class="toolbar" style="padding:0 14px;margin-bottom:4px;">
         <label style="font-size:10px;color:var(--text-dim);display:flex;align-items:center;gap:4px;">
             <input type="checkbox" id="sc-select-all" onchange="DataTabs.StockCenter.selectAll()">全选
         </label>
@@ -271,7 +271,8 @@
         <button class="btn-action" onclick="DataTabs.StockCenter.batchComputeFinancial()" style="font-size:10px;border-color:var(--accent-purple);color:var(--accent-purple);"><i class="fas fa-calculator"></i> 计算财务指标</button>
         <span style="font-size:10px;color:var(--text-micro);" id="sc-selected-count">已选 0 只</span>
     </div>
-    <div style="max-height:50vh;overflow-y:auto;">
+    <div style="padding:0 14px;">
+        <div style="max-height:50vh;overflow-y:auto;">
         <table class="stock-center-table">
             <thead><tr>
                 <th style="width:28px;">☐</th>
@@ -287,15 +288,16 @@
             </tr></thead>
             <tbody id="sc-table-body"><tr><td colspan="10" style="text-align:center;color:var(--text-micro);padding:30px;">加载中...</td></tr></tbody>
         </table>
+        </div>
     </div>
-    <div class="toolbar" style="justify-content:center;margin-top:8px;">
+    <div class="toolbar" style="justify-content:center;margin-top:4px;padding:0 14px;">
         <button class="btn-action" onclick="DataTabs.StockCenter.prevPage()" style="font-size:10px;"><i class="fas fa-chevron-left"></i> 上一页</button>
         <span id="sc-page-info" style="font-size:10px;color:var(--text-dim);margin:0 12px;">1/1</span>
         <button class="btn-action" onclick="DataTabs.StockCenter.nextPage()" style="font-size:10px;">下一页 <i class="fas fa-chevron-right"></i></button>
     </div>
 </div>
 
-</div><!-- /inner padding -->
+</div><!-- /tab-content-wrapper -->
 
 <!-- Terminal (compact) -->
 <div style="border-top:1px solid var(--border-color);padding:6px 14px;display:flex;align-items:center;gap:10px;">
