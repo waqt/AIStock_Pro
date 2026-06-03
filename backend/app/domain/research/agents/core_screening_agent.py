@@ -344,143 +344,48 @@ class CoreScreeningAgent(ResearchAgent):
     async def _verify_single(self, candidate: Dict, industry: str,
                               stock_info_map: Dict, fin_map: Dict,
                               stage_map: Dict, trace=None) -> Dict:
-        """对单只候选做完整验证: 财务审计 → 6维护城河 → ROIC → 估值"""
+        """对单只候选做自由竞争分析 — LLM 自主定义维度、自选工具查数据、输出结构化结论
+
+        不再硬编码 FinancialAudit / ROIC / 6维权力 / ValuationPricer 等步骤。
+        LLM 在单个对话中自主决定查什么财务数据、搜什么市场信息、比什么维度。
+        """
         code = candidate["code"]
         name = candidate.get("name", code)
 
         logger.info(f"[{self.name}] Verifying {code} {name}")
 
-        # 1. FinancialAudit (s 参数 bug)
-        from app.domain.research.agents.financial_auditor import FinancialAuditor
-        auditor = FinancialAuditor(provider=self.provider)
-        audit = {}
-        try:
-            audit = await auditor.analyze({"stock_code": code, "stock_name": name, "industry": industry})
-            if not audit or not audit.get("verdict"):
-                audit = {"verdict": "SKIP", "score": 0, "reason": "Auditor returned empty"}
-        except Exception as e:
-            logger.warning(f"[{self.name}] Audit failed for {code}: {e}")
-            audit = {"verdict": "SKIP", "score": 0, "error": str(e)}
-
-        # 2. ROIC/ROIIC 查询 (通过 FinancialQueryService, 自动走 SQLite 缓存或实时计算)
-        from app.domain.quant.engine.financial_query_service import FinancialQueryService
-        roic_val, roiic_val = None, None
-        roic_source = "none"
-        try:
-            svc = FinancialQueryService()
-            fin_data = await svc.query(code, indicators=[
-                "roic_pct", "roiic_pct",
-                "roic_pct_adjusted", "roiic_pct_adjusted",
-            ], latest_only=True)
-            roic_val = fin_data.get("roic_pct_adjusted") or fin_data.get("roic_pct")
-            roiic_val = fin_data.get("roiic_pct_adjusted") or fin_data.get("roiic_pct")
-            if roic_val is not None:
-                roic_source = "fqs"
-        except Exception as e:
-            logger.warning(f"[{self.name}] FQS ROIC query failed for {code}: {e}")
-
-        candidate["_roic_val"] = roic_val
-        candidate["_roic_source"] = roic_source
-
-        # 3. 6维权力画像 (tool based: LLM 自主调用 query_financial_data + web_search)
+        # 1. LLM 驱动的自由竞争分析 (自主调用 query_financial_data + web_search)
         src_info = candidate.get("source_node_info", {})
-        prompt = self._build_moat_tool_prompt(
+        prompt = self._build_competitive_analysis_prompt(
             name, code, industry, candidate.get("source", []),
-            node_context=src_info, roic=roic_val)
+            node_context=src_info)
 
         # 注入动态财务数据字典
         from app.domain.quant.engine.financial_query_service import FinancialQueryService
         catalog = FinancialQueryService.format_catalog_for_prompt()
         prompt = prompt.replace("{{FINANCIAL_CATALOG}}", catalog)
 
-        moat_result = {}
-        moat_status = "pending"
+        analysis = {}  # LLM 输出的完整结构化结果
+        category = "future_strong"  # 默认: 保留在 pipeline 中
         try:
             from app.domain.research.agents.base import WEB_SEARCH_TOOL, DEFAULT_TOOL_DEFINITIONS
             text = await self.call_with_tools(prompt,
                 tool_defs=DEFAULT_TOOL_DEFINITIONS + [WEB_SEARCH_TOOL],
                 max_rounds=8)
-            if trace: trace.record_llm(prompt, text, model="deepseek-v4-flash")
+            if trace: trace.record_llm(prompt, text, model="deepseek-v4-pro")
             result = self.parse_json(text)
-            if isinstance(result, dict) and result.get("moat_profile"):
-                moat_result = result
-                moat_status = "assessed"
+            if isinstance(result, dict) and result.get("analysis_dimensions"):
+                analysis = result
+                # 从 LLM 输出提取 category_suggestion
+                cat = (result.get("category_suggestion") or "").lower().strip()
+                if cat in ("current_strong", "future_strong", "watchlist"):
+                    category = cat
+                else:
+                    logger.info(f"[{self.name}] {code}: unclear category_suggestion '{cat}', defaulting to future_strong")
             else:
-                moat_status = "failed"
+                logger.warning(f"[{self.name}] {code}: LLM output missing analysis_dimensions")
         except Exception as e:
-            logger.warning(f"[{self.name}] Moat tool profiling failed for {code}: {e}")
-            moat_status = "failed"
-
-        # 4. ValuationPricer (估值)
-        valuation = {}
-        try:
-            from app.domain.research.agents.valuation_pricer import ValuationPricer
-            pricer = ValuationPricer(provider=self.provider)
-            stock_info = stock_info_map.get(code, {})
-            valuation = await pricer.analyze({
-                "stock_code": code,
-                "stock_name": name,
-                "industry": industry,
-                "stage": stage_map.get(code, "startup"),
-                "financial_data": fin_map.get(code, {}),
-                "moat_profile": moat_result.get("moat_profile", {}),
-                "market_capital": stock_info.get("market_capital"),
-                "pe_ttm": stock_info.get("pe_ttm") or stock_info.get("pe"),
-                "pb": stock_info.get("pb"),
-            })
-            # ★ 标准化估值字段, 补 LLM 可能缺失的嵌套结构
-            if isinstance(valuation, dict) and not valuation.get("parse_error"):
-                if "target_valuation" not in valuation or not valuation.get("target_valuation"):
-                    valuation["target_valuation"] = {}
-                tv = valuation["target_valuation"]
-                tv.setdefault("base_case_mcap", None)
-                tv.setdefault("bull_case_mcap", None)
-                tv.setdefault("bear_case_mcap", None)
-                tv.setdefault("upside_pct", None)
-                tv.setdefault("downside_pct", None)
-
-                if "position_suggest" not in valuation or not valuation.get("position_suggest"):
-                    valuation["position_suggest"] = {}
-                ps = valuation["position_suggest"]
-                ps.setdefault("allocation_pct", None)
-                ps.setdefault("entry_strategy", "")
-                ps.setdefault("exit_trigger", "")
-
-                if "scenarios" not in valuation or not valuation.get("scenarios"):
-                    valuation["scenarios"] = {}
-                if "quality_check" not in valuation or not valuation.get("quality_check"):
-                    valuation["quality_check"] = {}
-        except Exception as e:
-            logger.warning(f"[{self.name}] Valuation failed for {code}: {e}")
-
-        # 5. 分类 (★ 支持 moat_status, 评估失败时不降级)
-        mp = moat_result.get("moat_profile", {})
-        strong_count = sum(1 for v in mp.values() if isinstance(v, str) and v == "strong")
-        has_emerging = any(v == "emerging" for v in mp.values() if isinstance(v, str))
-
-        if moat_status == "assessed":
-            if strong_count >= 4:
-                category = "current_strong"
-            elif has_emerging or strong_count >= 2:
-                category = "future_strong"
-            else:
-                category = "watchlist"
-        else:
-            # 护城河评估失败/数据不足 → 不降级为 watchlist
-            # 保留候选的默认分类, 标记 moat_status
-            if audit.get("verdict") == "PASS":
-                # 审计通过但护城河无法评估 → future_strong 待定
-                category = "future_strong"
-            else:
-                category = "watchlist"
-
-        # 附加审计标注
-        risk_tags = []
-        verdict = audit.get("verdict", "")
-        if verdict == "FAIL":
-            risk_tags.append("audit_fail")
-        elif verdict == "CAUTION":
-            risk_tags.append("audit_caution")
+            logger.warning(f"[{self.name}] Competitive analysis failed for {code}: {e}")
 
         result_dict = {
             "code": code,
@@ -491,25 +396,21 @@ class CoreScreeningAgent(ResearchAgent):
             "node_context": candidate.get("source_node_info", {}),
             "source": candidate.get("source", []),
             "flags": candidate.get("flags", []),
-            "risk_tags": risk_tags,
             "company_stage": stage_map.get(code, "startup"),
             "stage_indicators": self._get_stage_indicators(stage_map.get(code, "startup")),
             "category": category,
             "verification": {
-                "audit": audit,
-                "moat_profile": mp,
-                "moat_status": moat_status,  # ★ 新增: 护城河评估状态
-                "profit_capture_thesis": moat_result.get("profit_capture_thesis", {}),
-                "growth_asymmetry": moat_result.get("growth_asymmetry", {}),
-                "thesis_breakers": moat_result.get("thesis_breakers", []),
-                "roic": roic_val,
-                "roiic": roiic_val,
-                "valuation": valuation,
+                "analysis_dimensions": analysis.get("analysis_dimensions", []),
+                "industry_context": analysis.get("industry_context", ""),
+                "profit_capture_thesis": analysis.get("profit_capture_thesis", ""),
+                "thesis_breakers": analysis.get("thesis_breakers", []),
+                "roic_note": analysis.get("roic_note", ""),
             },
         }
 
+        dim_count = len(analysis.get("analysis_dimensions", []))
         logger.info(f"[{self.name}] Verified {code}: category={category}, "
-                    f"audit={verdict}({audit.get('score',0)}), roic={roic_val}")
+                    f"dimensions={dim_count}")
         return result_dict
 
     # ═══ 多轮淘汰赛 (4+家同源比较) ═════════════════
@@ -1120,9 +1021,9 @@ class CoreScreeningAgent(ResearchAgent):
 - 禁止输出股票代码以外的投资建议
 - 不要编造没有搜索证据支撑的判断"""
 
-    def _build_moat_tool_prompt(self, name, code, industry, sources,
-                                 node_context=None, roic=None) -> str:
-        """工具版六维权力画像 prompt — LLM 自主调用 query_financial_data + web_search"""
+    def _build_competitive_analysis_prompt(self, name, code, industry, sources,
+                                            node_context=None) -> str:
+        """自由竞争分析 prompt — LLM 自主定义分析维度 + 自选财务指标 + 自搜市场信息"""
         source_str = ", ".join(
             f"{s['step']}/{s['field']}" + (f"({s['role']})" if s.get("role") else "")
             for s in sources) if sources else ""
@@ -1136,72 +1037,61 @@ class CoreScreeningAgent(ResearchAgent):
             csr = node_context.get("china_substitution_rate", "?")
             cs = node_context.get("competitive_structure", "?")
             bn = (node_context.get("bottleneck_narrative", "") or "")[:200]
+            gl = node_context.get("global_leaders", [])
+            gl_str = ", ".join(gl[:5]) if gl else ""
             node_block = f"""
-## 该候选所在瓶颈环节背景 (Step 3)
+## 该候选所在产业链环节背景 (Step 2-5)
 - 环节: {pn}
 - 利润池: {pp}  | 市场量级: {vm}
 - 供给刚性: {sr}
 - 国产替代率: {csr}
 - 竞争结构: {cs}
+- 全球领导者: {gl_str}
 - 瓶颈描述: {bn}
 """
 
-        roic_block = "\n- ROIC(投入资本回报率): %.1f%%" % roic if roic is not None else ""
+        return f"""分析 {name}({code}) 在 {industry} 行业中的竞争地位和利润捕获能力。
 
-        return f"""你是产业竞争分析专家。评估 {name}({code}) 在 {industry} 赛道中的六维产业权力。
-
-上游来源: {source_str}{node_block}
-
-## 财务参考{roic_block}
+## 产业背景{node_block}
+上游来源: {source_str}
 
 ## 可用工具
-你有以下工具可实时获取数据，请在每个维度判断前主动使用:
+主动使用以下工具获取实时数据:
 
-1. **query_financial_data(code, indicators=[...])** — 查询财务指标
-   可用指标范围见 FINANCIAL_CATALOG。
-   使用场景: ROIC趋势、毛利率变化、研发投入、现金流质量、营收增长等
+1. **query_financial_data(code, indicators=[...], raw_fields=[...])**
+   提供 30+ 财务指标和 20+ 原始财报字段。数据字典见下方 FINANCIAL_CATALOG。
+   使用场景举例: 毛利率趋势、营收增长、研发投入、现金流质量、资产负债结构等
 
-2. **web_search(query, num=5)** — 搜索网络获取实时信息
-   使用场景: 行业地位、市场份额、客户关系、竞争格局、技术路线、认证壁垒等
+2. **web_search(query, num=5)**
+   搜索网络获取行业/公司实时信息。
+   使用场景举例: 行业地位、市场份额、客户关系、技术路线、认证壁垒、产能布局等
 
 {{FINANCIAL_CATALOG}}
 
-**重要**: 每个维度必须至少引用一次 tool 返回的真实数据作为证据。
+## 分析要求
+- **不要使用任何预设的分析框架或维度**。根据 {industry} 行业的竞争特征, 自主定义最能反映公司竞争力的分析维度
+- 每个维度的判断必须有来自 tool 调用的真实数据作为证据
+- 先查数据再判断, 不要先判断再勉强找证据支持
+- 如有需要, 可以自己从原始字段计算财务比率
 
-## 六维权力判断 (每维: strong/medium/weak/emerging)
-
+## 输出结构
 {{
-  "moat_profile": {{
-    "position_power": "strong/medium/weak/emerging",
-    "position_evidence": ["证据: 是否产业链必经节点? 客户能否绕过? (建议 web_search 搜寻)"],
-    "pricing_power": "strong/medium/weak/emerging",
-    "pricing_evidence": ["证据: 能否涨价? 毛利率趋势? 占客户成本比例? (建议 query_financial_data 查 margin)"],
-    "expansion_power": "strong/medium/weak/emerging",
-    "expansion_evidence": ["证据: 产能能否扩张? 在建工程? 设备锁定? (建议 web_search 搜索)"],
-    "certification_power": "strong/medium/weak/emerging",
-    "certification_evidence": ["证据: 客户认证周期? 切换成本? 已进入哪些大客户? (建议 web_search 搜索)"],
-    "resource_power": "strong/medium/weak/emerging",
-    "resource_evidence": ["证据: 掌握稀缺资源/产能/人才/配额? (建议 web_search 搜索)"],
-    "cognitive_power": "strong/medium/weak/emerging",
-    "cognitive_evidence": ["证据: 是否比市场更早押对技术路线/提前布局? (建议 web_search 搜索)"]
-  }},
-  "profit_capture_thesis": {{
-    "why_it_captures_profit": ["为什么这家公司能把产业景气变成自己的利润"],
-    "future_profit_driver": ["未来利润增长的核心驱动力"]
-  }},
-  "growth_asymmetry": {{
-    "growth_type": "nonlinear_breakout/inflection_point/linear/cyclical/unknown",
-    "triggers": ["催化剂事件"],
-    "current_stage": "当前所处阶段"
-  }},
-  "thesis_breakers": ["什么条件会推翻以上判断"]
-}}
-
-## 规则
-- 每维至少1条 evidence, 并且 evidence 必须来自 tool 调用返回的真实数据
-- 如果某个维度搜索结果不足, 标注"搜索证据不足"而非空想
-- 禁止输出股票代码以外的投资建议
-- 先查数据再判断, 不要先判断再勉强找证据支持"""
+  "company": {{ "code": "{code}", "name": "{name}" }},
+  "industry_context": "对 {industry} 行业竞争特征的高度概括 (为什么这个行业赚/不赚钱)",
+  "analysis_dimensions": [
+    {{
+      "dimension": "自行定义的维度名称 (如: 客户锁定深度、技术迭代速度、供应链韧性...)",
+      "rating": "strong/medium/weak/emerging",
+      "evidence": ["来自 tool 调用的证据1", "证据2"],
+      "reasoning": "为什么这个维度在这个行业重要"
+    }}
+  ],
+  "category_suggestion": "current_strong | future_strong | watchlist",
+  "category_reasoning": "分类理由",
+  "profit_capture_thesis": "这家公司在这个产业链环节中, 靠什么机制把产业景气转化为自身利润",
+  "thesis_breakers": ["什么条件下会推翻以上判断"],
+  "roic_note": "如查询了 ROIC/ROIIC 等资本回报率数据, 在此注明关键结论"
+}}"""
 
     # ═══ 工具 ═══════════════════════════════════════
 

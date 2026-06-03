@@ -404,18 +404,17 @@ JSON 之前的分析过程不会被丢弃，请确保 JSON 部分完整且独立
             magnitude = nc.get("value_magnitude", "?")
 
             v = c.get("verification", {})
-            audit = v.get("audit", {})
-            audit_v = audit.get("verdict", "?")
-            audit_s = audit.get("score", "?")
-            roic = v.get("roic", "?")
-            moat = v.get("moat_profile", {})
-            strong_n = sum(1 for val in moat.values() if isinstance(val, str) and val == "strong")
-            val_u = v.get("valuation", {}).get("upside_pct", "?")
+            dims = v.get("analysis_dimensions", [])
+            dim_summary = "; ".join(
+                f"{d.get('dimension','?')}={d.get('rating','?')}"
+                for d in dims[:4]
+            )
+            roic_note = v.get("roic_note", "")[:60]
 
             if eliminated:
                 status = f"[同源淘汰→输给{eliminated}] {elim_reason}"
             else:
-                status = f"[活跃] 审计={audit_v}({audit_s}) ROIC={roic} 护城河={strong_n}维强 上行={val_u}"
+                status = f"[活跃] 维度:{dim_summary}  ROIC:{roic_note}"
 
             cand_lines.append(
                 f"[{candidates.index(c)+1}] {name}({code}) — 节点:{node} "

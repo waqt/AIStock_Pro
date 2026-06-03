@@ -389,11 +389,14 @@ async def sync_stock_list_endpoint(full: bool = False):
     return {"success": True, "synced": count}
 
 
+class ValuationSyncRequest(BaseModel):
+    target_codes: Optional[List[str]] = None
+
 @router.post("/valuation/sync")
-async def sync_valuation_endpoint():
-    """手动触发估值同步 (PE/PB/市值)"""
+async def sync_valuation_endpoint(req: ValuationSyncRequest = ValuationSyncRequest()):
+    """手动触发估值同步 (PE/PB/市值) — 支持 target_codes 批量指定"""
     from app.domain.market_data.services.valuation import sync_valuation
-    count = await sync_valuation()
+    count = await sync_valuation(target_codes=req.target_codes)
     return {"success": True, "synced": count}
 
 
@@ -1161,3 +1164,203 @@ async def sync_watchlist(mode: str = "daily"):
     await sync_valuation(target_codes=codes)
 
     return {"success": True, "synced": len(codes), "total_rows": total_rows}
+
+
+@router.get("/stock-center/list")
+async def get_stock_center_list(
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=100, le=500),
+    search: str = Query(default=None),
+):
+    """股票中心: 全部股票 + 6 维数据完整度"""
+    from app.domain.quant.engine.indicator_store import (
+        get_financial_coverage_batch, get_indicator_coverage_batch)
+
+    limit = page_size
+    offset = (page - 1) * page_size
+
+    async with async_session() as db:
+        # 1. 查询 StockMaster (分页)
+        base_q = select(StockMaster)
+        count_q = select(func.count(StockMaster.stock_code))
+        if search:
+            like = f"%{search}%"
+            base_q = base_q.where(
+                StockMaster.stock_code.like(like) | StockMaster.stock_name.like(like))
+            count_q = count_q.where(
+                StockMaster.stock_code.like(like) | StockMaster.stock_name.like(like))
+
+        total = (await db.execute(count_q)).scalar() or 0
+        rows = await db.execute(base_q.order_by(StockMaster.stock_code).offset(offset).limit(limit))
+        masters = rows.scalars().all()
+
+        codes = [m.stock_code for m in masters]
+
+        # 2. 批量查询各维度
+        val_map = {}  # code -> StockValuation
+        pos_set = set()  # codes in position
+        wl_set = set()  # codes in watchlist
+        md_map = {}  # code -> {days, latest}
+        fs_map = {}  # code -> {quarters, latest}
+
+        if codes:
+            # 估值
+            val_rows = await db.execute(
+                select(StockValuation).where(StockValuation.stock_code.in_(codes)))
+            for v in val_rows.scalars().all():
+                val_map[v.stock_code] = v
+
+            # 持仓
+            pos_rows = await db.execute(
+                select(Position.stock_code).where(Position.stock_code.in_(codes)))
+            pos_set = {r[0] for r in pos_rows.all()}
+
+            # 自选
+            wl_rows = await db.execute(
+                select(WatchlistItem.stock_code).where(WatchlistItem.stock_code.in_(codes)))
+            wl_set = {r[0] for r in wl_rows.all()}
+
+            # 行情 (group by) — 使用 ORM select 避免 collation/IN 参数问题
+            md_rows = await db.execute(
+                select(MarketData.stock_code, func.count().label("md_days"),
+                       func.max(MarketData.trade_date).label("md_latest"))
+                .where(MarketData.stock_code.in_(codes))
+                .group_by(MarketData.stock_code)
+            )
+            for r in md_rows:
+                md_map[r.stock_code] = {"days": r.md_days, "latest": r.md_latest}
+
+            # 财报
+            fs_rows = await db.execute(
+                select(FinancialStatement.stock_code,
+                       func.count(func.distinct(FinancialStatement.report_date)).label("fs_quarters"),
+                       func.max(FinancialStatement.report_date).label("fs_latest"))
+                .where(FinancialStatement.stock_code.in_(codes))
+                .group_by(FinancialStatement.stock_code)
+            )
+            for r in fs_rows:
+                fs_map[r.stock_code] = {"quarters": r.fs_quarters, "latest": r.fs_latest}
+
+    # 3. SQLite 批量查询: 财务指标 + 价量指标
+    fin_cov = get_financial_coverage_batch(codes) if codes else {}
+    ind_cov = get_indicator_coverage_batch(codes) if codes else {}
+
+    # 4. 组装结果
+    result = []
+    for m in masters:
+        code = m.stock_code
+        v = val_map.get(code)
+        md = md_map.get(code, {})
+        fs = fs_map.get(code, {})
+        fi = fin_cov.get(code, {})
+        ii = ind_cov.get(code, {})
+        result.append({
+            "code": code,
+            "name": m.stock_name,
+            "exchange": m.exchange,
+            "industry": m.industry,
+            "status": {
+                "basic_finance": {
+                    "ok": bool(fs.get("quarters")),
+                    "quarters_count": fs.get("quarters") or 0,
+                    "latest_date": fs.get("latest"),
+                },
+                "financial_indicators": {
+                    "ok": bool(fi.get("count")),
+                    "report_count": fi.get("count") or 0,
+                    "latest_report_date": fi.get("latest"),
+                },
+                "dynamic_info": {
+                    "ok": v is not None and v.pe_ttm is not None,
+                    "pe": v.pe_ttm if v else None,
+                    "pb": v.pb if v else None,
+                    "mcap_yi": v.mcap_yi if v else None,
+                },
+                "market_data": {
+                    "ok": bool(md.get("days")),
+                    "days": md.get("days") or 0,
+                    "latest_date": md.get("latest"),
+                },
+                "price_indicators": {
+                    "ok": bool(ii.get("count")),
+                    "record_count": ii.get("count") or 0,
+                    "latest_date": ii.get("latest"),
+                },
+                "industry": {
+                    "ok": bool(m.industry),
+                    "name": m.industry,
+                },
+            },
+            "in_position": code in pos_set,
+            "in_watchlist": code in wl_set,
+        })
+
+    return {"success": True, "data": {
+        "total": total, "page": page, "page_size": limit, "stocks": result,
+    }}
+
+
+class BatchSyncRequest(BaseModel):
+    codes: List[str] = []
+    mode: str = "daily"
+
+
+@router.post("/stock-center/batch-sync")
+async def stock_center_batch_sync(req: BatchSyncRequest):
+    """股票中心批量同步 — 按 codes 同步行情 + 估值 + 基本信息"""
+    from app.domain.quant.engine.engine import QuantEngine
+    from app.domain.market_data.services.valuation import sync_valuation, sync_stock_info
+    from datetime import date as dt_date
+
+    codes = req.codes
+    mode = req.mode
+    if not codes:
+        raise HTTPException(status_code=400, detail="codes required")
+
+    logger.info(f"[StockCenter] Batch sync: {len(codes)} stocks, mode={mode}")
+    async with async_session() as db:
+        engine = QuantEngine(db)
+        sync_mode = "AUTO" if mode == "daily" else "FULL"
+        total_rows = 0
+        for code in codes:
+            try:
+                rows = await engine.sync_market_data(code, mode=sync_mode)
+                total_rows += rows
+                # 盘中实时价
+                if mode == "daily":
+                    try:
+                        from app.domain.market_data.sources.router import data_router
+                        quotes = await data_router.get_realtime_quotes([code])
+                        q = quotes.get(code, {})
+                        if q.get('price') and q['price'] > 0:
+                            today_str = dt_date.today().strftime('%Y-%m-%d')
+                            existing = await db.execute(
+                                select(MarketData).where(
+                                    MarketData.stock_code == code,
+                                    MarketData.trade_date == today_str))
+                            row = existing.scalars().first()
+                            if row:
+                                row.close = float(q['price'])
+                                if q.get('volume'): row.volume = int(float(q['volume']))
+                            else:
+                                db.add(MarketData(
+                                    stock_code=code, trade_date=today_str,
+                                    open=float(q.get('open', q['price'])),
+                                    close=float(q['price']),
+                                    high=float(q.get('high', q['price'])),
+                                    low=float(q.get('low', q['price'])),
+                                    volume=int(float(q.get('volume', 0)))))
+                    except Exception:
+                        pass
+            except Exception as e:
+                logger.warning(f"[StockCenter] Batch sync fail: {code} | {e}")
+        await db.commit()
+    # 估值 + 基本信息 (批量调用)
+    await sync_valuation(target_codes=codes)
+    for code in codes:
+        try:
+            await sync_stock_info(code)
+        except Exception:
+            pass
+    logger.info(f"[StockCenter] Batch sync done: {len(codes)} codes, {total_rows} rows")
+    return {"success": True, "synced": len(codes), "rows": total_rows}

@@ -112,6 +112,95 @@ class DeepSeekProvider(AIProviderProtocol):
             logger.error(f"[DeepSeek] {resolved_model} error: {type(e).__name__}: {e}")
             return None
 
+    @staticmethod
+    def _to_anthropic_tools(tools: List[Dict]) -> List[Dict]:
+        """将 OpenAI 格式的 tool 定义转换为 Anthropic 格式
+
+        OpenAI:  {"type": "function", "function": {"name": ..., "description": ..., "parameters": ...}}
+        Anthropic: {"name": ..., "description": ..., "input_schema": ...}
+        """
+        result = []
+        for t in tools:
+            f = t.get("function", t)
+            result.append({
+                "name": f.get("name", ""),
+                "description": f.get("description", ""),
+                "input_schema": f.get("parameters", {"type": "object", "properties": {}}),
+            })
+        return result
+
+    @staticmethod
+    def _to_anthropic_messages(msgs: List[Dict]) -> List[Dict]:
+        """将 OpenAI 格式的多轮消息转换为 Anthropic 格式
+
+        关键差异:
+          - tool_result: OpenAI 逐条 role="tool"; Anthropic 合并为单条
+            {"role": "user", "content": [{type: "tool_result", tool_use_id: id, content: ...}, ...]}
+          - assistant tool_use: OpenAI 用 tool_calls 字段; Anthropic 用 content blocks
+        """
+        result = []
+        pending_tool_results = []  # 缓存连续的 tool_result block
+
+        def _flush_tool_results():
+            nonlocal pending_tool_results
+            if pending_tool_results:
+                result.append({
+                    "role": "user",
+                    "content": pending_tool_results,
+                })
+                pending_tool_results = []
+
+        for msg in msgs:
+            role = msg.get("role", "")
+
+            if role == "tool":
+                # tool_result → 缓存, 等待合并
+                pending_tool_results.append({
+                    "type": "tool_result",
+                    "tool_use_id": msg.get("tool_call_id", ""),
+                    "content": msg.get("content", ""),
+                })
+
+            elif role == "assistant" and msg.get("tool_calls"):
+                _flush_tool_results()
+                # assistant with tool_calls → content blocks
+                content_blocks = []
+                if msg.get("content"):
+                    content_blocks.append({"type": "text", "text": msg["content"]})
+                for tc in msg["tool_calls"]:
+                    try:
+                        args = json.loads(tc.get("function", {}).get("arguments", "{}"))
+                    except (json.JSONDecodeError, TypeError):
+                        args = {}
+                    content_blocks.append({
+                        "type": "tool_use",
+                        "id": tc.get("id", ""),
+                        "name": tc.get("function", {}).get("name", ""),
+                        "input": args,
+                    })
+                result.append({"role": "assistant", "content": content_blocks})
+
+            elif role == "assistant" and msg.get("tool_calls") is None:
+                _flush_tool_results()
+                if isinstance(msg.get("content"), list):
+                    result.append(msg)
+                else:
+                    result.append({
+                        "role": "assistant",
+                        "content": [{"type": "text", "text": msg.get("content", "")}],
+                    })
+
+            else:
+                _flush_tool_results()
+                # user / system — 保持原样
+                if isinstance(msg.get("content"), list):
+                    result.append(msg)
+                else:
+                    result.append({"role": role, "content": msg.get("content", "")})
+
+        _flush_tool_results()
+        return result
+
     # ═══ Tool Calling ════════════════════════════
 
     async def chat_with_tools(
@@ -148,8 +237,8 @@ class DeepSeekProvider(AIProviderProtocol):
             body = {
                 "model": resolved_model,
                 "max_tokens": max_tokens,
-                "messages": msgs,
-                "tools": tools,  # Anthropic tools 格式直接传递
+                "messages": self._to_anthropic_messages(msgs),
+                "tools": self._to_anthropic_tools(tools),
             }
         else:
             url = f"{base}/chat/completions"

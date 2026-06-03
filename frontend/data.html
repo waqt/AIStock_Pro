@@ -29,6 +29,15 @@
         .health-table td { padding: 5px 4px; border-bottom: 1px solid var(--border-thin); color: var(--text-dim); }
         .placeholder-tab { text-align: center; padding: 60px 20px; color: var(--text-micro); }
         .placeholder-tab .icon { font-size: 40px; opacity: 0.3; margin-bottom: 12px; }
+        .stock-center-table { width: 100%; font-size: 11px; border-collapse: collapse; }
+        .stock-center-table th { color: var(--text-micro); font-size: 10px; padding: 5px 4px; text-align: left; border-bottom: 1px solid var(--border-color); position: sticky; top: 0; background: var(--bg-card); z-index: 1; }
+        .stock-center-table td { padding: 5px 4px; border-bottom: 1px solid var(--border-thin); color: var(--text-dim); }
+        .stock-center-table tr { cursor: pointer; }
+        .stock-center-table tr:hover td { background: rgba(255,255,255,0.02); }
+        .sc-badge { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; padding: 2px 6px; border-radius: 3px; }
+        .sc-badge-ok { color: var(--accent-green); background: rgba(34,197,94,0.1); }
+        .sc-badge-missing { color: var(--accent-red); background: rgba(239,68,68,0.1); }
+        .sc-badge-info { font-size: 9px; color: var(--text-micro); display: block; }
     </style>
 </head>
 <body data-page-id="data">
@@ -47,6 +56,7 @@
         <button class="data-tab-btn" onclick="DataTabs.switchTab('fundamental')" data-tab="fundamental"><i class="fas fa-building"></i> 基本面</button>
         <button class="data-tab-btn" onclick="DataTabs.switchTab('financial')" data-tab="financial"><i class="fas fa-file-invoice"></i> 财务报告</button>
         <button class="data-tab-btn" onclick="DataTabs.switchTab('alt')" data-tab="alt"><i class="fas fa-database"></i> 另类数据</button>
+        <button class="data-tab-btn" onclick="DataTabs.switchTab('stock-center')" data-tab="stock-center"><i class="fas fa-cubes"></i> 股票中心</button>
     </div>
 </div>
 
@@ -201,6 +211,65 @@
     </div>
 </div>
 
+</div><!-- /alt-data -->
+
+<!-- Tab: 股票中心 -->
+<div class="data-tab-panel" id="tab-stock-center" style="display:none;">
+    <div class="toolbar">
+        <input type="text" id="sc-search" placeholder="搜索代码/名称..." style="width:160px;" oninput="DataTabs.StockCenter.debounceSearch()">
+        <select id="sc-industry-filter" onchange="DataTabs.StockCenter.applyFilter()" style="background:#000;border:1px solid var(--border-color);color:#fff;padding:4px 8px;border-radius:4px;font-size:11px;min-width:120px;">
+            <option value="">全部行业</option>
+        </select>
+        <select id="sc-dim-filter" onchange="DataTabs.StockCenter.applyFilter()" style="background:#000;border:1px solid var(--border-color);color:#fff;padding:4px 8px;border-radius:4px;font-size:11px;">
+            <option value="">完整度全部</option>
+            <option value="basic_finance">基础财务缺数据</option>
+            <option value="financial_indicators">财务指标缺数据</option>
+            <option value="dynamic_info">动态信息缺数据</option>
+            <option value="market_data">行情缺数据</option>
+            <option value="price_indicators">价量指标缺数据</option>
+            <option value="industry">行业缺数据</option>
+        </select>
+        <label style="font-size:10px;color:var(--text-dim);display:flex;align-items:center;gap:4px;">
+            <input type="checkbox" id="sc-only-missing" onchange="DataTabs.StockCenter.applyFilter()">仅显示缺数据的
+        </label>
+        <span style="flex:1;"></span>
+        <span id="sc-pagination" style="font-size:10px;color:var(--text-micro);"></span>
+    </div>
+    <div class="toolbar">
+        <label style="font-size:10px;color:var(--text-dim);display:flex;align-items:center;gap:4px;">
+            <input type="checkbox" id="sc-select-all" onchange="DataTabs.StockCenter.selectAll()">全选
+        </label>
+        <button class="btn-action" onclick="DataTabs.StockCenter.batchSyncMarket()" style="font-size:10px;border-color:var(--accent-green);color:var(--accent-green);"><i class="fas fa-sync-alt"></i> 同步行情</button>
+        <button class="btn-action" onclick="DataTabs.StockCenter.batchSyncValuation()" style="font-size:10px;border-color:var(--accent-cyan);color:var(--accent-cyan);"><i class="fas fa-chart-line"></i> 同步估值</button>
+        <button class="btn-action" onclick="DataTabs.StockCenter.batchSyncFinance()" style="font-size:10px;border-color:var(--accent-gold);color:var(--accent-gold);"><i class="fas fa-file-invoice"></i> 同步财务</button>
+        <button class="btn-action" onclick="DataTabs.StockCenter.batchComputeIndicators()" style="font-size:10px;border-color:var(--accent-blue);color:var(--accent-blue);"><i class="fas fa-microchip"></i> 计算价量指标</button>
+        <button class="btn-action" onclick="DataTabs.StockCenter.batchComputeFinancial()" style="font-size:10px;border-color:var(--accent-purple);color:var(--accent-purple);"><i class="fas fa-calculator"></i> 计算财务指标</button>
+        <span style="font-size:10px;color:var(--text-micro);" id="sc-selected-count">已选 0 只</span>
+    </div>
+    <div style="max-height:50vh;overflow-y:auto;">
+        <table class="stock-center-table">
+            <thead><tr>
+                <th style="width:28px;">☐</th>
+                <th>代码</th>
+                <th>名称</th>
+                <th>基础财务</th>
+                <th>财务指标</th>
+                <th>动态信息</th>
+                <th>行情数据</th>
+                <th>价量指标</th>
+                <th>行业</th>
+                <th>持仓</th>
+            </tr></thead>
+            <tbody id="sc-table-body"><tr><td colspan="10" style="text-align:center;color:var(--text-micro);padding:30px;">加载中...</td></tr></tbody>
+        </table>
+    </div>
+    <div class="toolbar" style="justify-content:center;margin-top:8px;">
+        <button class="btn-action" onclick="DataTabs.StockCenter.prevPage()" style="font-size:10px;"><i class="fas fa-chevron-left"></i> 上一页</button>
+        <span id="sc-page-info" style="font-size:10px;color:var(--text-dim);margin:0 12px;">1/1</span>
+        <button class="btn-action" onclick="DataTabs.StockCenter.nextPage()" style="font-size:10px;">下一页 <i class="fas fa-chevron-right"></i></button>
+    </div>
+</div>
+
 </div><!-- /inner padding -->
 
 <!-- Terminal (compact) -->
@@ -228,5 +297,6 @@
 <script src="js/data-tabs/financial.js"></script>
 <script src="js/data-tabs/fundamental.js"></script>
 <script src="js/data-tabs/alt.js"></script>
+<script src="js/data-tabs/stock-center.js"></script>
 </body>
 </html>

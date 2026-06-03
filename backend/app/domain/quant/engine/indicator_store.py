@@ -1,5 +1,5 @@
 """指标宽表 SQLite 存储 — 每指标一列, 支持时间序列直接查询"""
-import sqlite3, os, threading
+import json, sqlite3, os, threading
 from datetime import date
 from typing import List, Optional, Dict, Any
 import pandas as pd
@@ -344,6 +344,15 @@ def _init_financial_table():
         conn.commit()
 
 
+def _safe_val(v: Any) -> Any:
+    """SQLite 安全值转换 — dict/list 自动 JSON 序列化, 避免 'unsupported type' 错误"""
+    if isinstance(v, (dict, list)):
+        return json.dumps(v, ensure_ascii=False)
+    if v is not None and not isinstance(v, (int, float, str, bytes)):
+        return str(v)
+    return v
+
+
 def store_financial_indicator(code: str, report_date: str, data: dict) -> bool:
     """存储单只股票的财务指标快照 (upsert by stock_code+report_date)"""
     conn = _get_conn()
@@ -356,7 +365,7 @@ def store_financial_indicator(code: str, report_date: str, data: dict) -> bool:
             [code, report_date]).fetchone()
         if existing:
             sets = ", ".join(f"{c}=?" for c in all_cols if c in data)
-            vals = [data.get(c) for c in all_cols if c in data]
+            vals = [_safe_val(data.get(c)) for c in all_cols if c in data]
             if sets:
                 conn.execute(
                     f"UPDATE financial_indicators SET {sets} WHERE stock_code=? AND report_date=?",
@@ -420,3 +429,32 @@ def get_financial_field_latest(field_name: str) -> List[dict]:
     """
     rows = conn.execute(sql).fetchall()
     return [dict(r) for r in rows]
+
+
+def get_financial_coverage_batch(codes: List[str]) -> Dict[str, dict]:
+    """批量查询财务指标覆盖: {code: {count, latest_date}}
+    一次性查询全部 codes, 避免 N+1。"""
+    if not codes:
+        return {}
+    conn = _get_conn()
+    placeholders = ",".join("?" * len(codes))
+    rows = conn.execute(
+        f"SELECT stock_code, COUNT(*) as cnt, MAX(report_date) as max_d "
+        f"FROM financial_indicators WHERE stock_code IN ({placeholders}) GROUP BY stock_code",
+        codes
+    ).fetchall()
+    return {r["stock_code"]: {"count": r["cnt"], "latest": r["max_d"]} for r in rows}
+
+
+def get_indicator_coverage_batch(codes: List[str]) -> Dict[str, dict]:
+    """批量查询价量指标覆盖: {code: {count, latest_date}}"""
+    if not codes:
+        return {}
+    conn = _get_conn()
+    placeholders = ",".join("?" * len(codes))
+    rows = conn.execute(
+        f"SELECT stock_code, COUNT(*) as cnt, MAX(trade_date) as max_d "
+        f"FROM indicators WHERE stock_code IN ({placeholders}) GROUP BY stock_code",
+        codes
+    ).fetchall()
+    return {r["stock_code"]: {"count": r["cnt"], "latest": r["max_d"]} for r in rows}

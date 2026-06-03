@@ -182,6 +182,16 @@ class ResearchAgent(BaseAgent):
                 )
 
                 if result.tool_calls:
+                    # ★ 先添加 assistant tool_calls 消息 (Anthropic 需要 tool_use → tool_result 配对)
+                    msgs.append({
+                        "role": "assistant",
+                        "content": result.content or "",
+                        "tool_calls": [
+                            {"id": tc.id, "type": "function",
+                             "function": {"name": tc.name, "arguments": json.dumps(tc.arguments, ensure_ascii=False)}}
+                            for tc in result.tool_calls
+                        ],
+                    })
                     for tc in result.tool_calls:
                         fn = TOOL_REGISTRY.get(tc.name)
                         if fn:
@@ -235,6 +245,16 @@ class ResearchAgent(BaseAgent):
             )
 
             if result.tool_calls:
+                # ★ 先添加 assistant tool_calls 消息 (Anthropic 需要 tool_use → tool_result 配对)
+                msgs.append({
+                    "role": "assistant",
+                    "content": result.content or "",
+                    "tool_calls": [
+                        {"id": tc.id, "type": "function",
+                         "function": {"name": tc.name, "arguments": json.dumps(tc.arguments, ensure_ascii=False)}}
+                        for tc in result.tool_calls
+                    ],
+                })
                 for tc in result.tool_calls:
                     fn = TOOL_REGISTRY.get(tc.name)
                     if fn:

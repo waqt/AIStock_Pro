@@ -1,4 +1,5 @@
 """Beneish M-Score — 财务造假概率评估"""
+import json
 from ..base import FinancialIndicator, register, _safe_div
 
 
@@ -71,9 +72,9 @@ class BeneishMScoreIndicator(FinancialIndicator):
         return {
             "m_score": round(m_score, 2),
             "m_score_interpretation": interpretation,
-            "m_score_components": {
+            "m_score_components": json.dumps({
                 "DSRI": round(DSRI, 4), "GMI": round(GMI, 4), "AQI": round(AQI, 4),
                 "SGI": round(SGI, 4), "DEPI": round(DEPI, 4),
                 "SGAI": round(SGAI, 4), "TATA": round(TATA, 4), "LVGI": round(LVGI, 4),
-            },
+            }, ensure_ascii=False),
         }
