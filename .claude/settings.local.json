@@ -309,7 +309,13 @@
       "PowerShell(python \"C:\\\\Users\\\\86157\\\\.claude\\\\jobs\\\\729278ef\\\\tmp\\\\add_two_small_uks.py\")",
       "PowerShell($env:PYTHONIOENCODING='utf-8'; $env:CONDA_DEFAULT_ENV='aiteacher'; & 'D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe' E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\temp_lab\\\\refactor_verify_single.py 2>&1)",
       "PowerShell(git checkout *)",
-      "PowerShell($env:PYTHONIOENCODING='utf-8'; & 'D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe' -m py_compile \"E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\backend\\\\app\\\\domain\\\\research\\\\agents\\\\core_screening_agent.py\")"
+      "PowerShell($env:PYTHONIOENCODING='utf-8'; & 'D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe' -m py_compile \"E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\backend\\\\app\\\\domain\\\\research\\\\agents\\\\core_screening_agent.py\")",
+      "PowerShell($env:PYTHONIOENCODING='utf-8'; & 'D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe' -m py_compile \"E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\backend\\\\app\\\\domain\\\\market_data\\\\services\\\\financial_data_service.py\")",
+      "PowerShell($env:PYTHONIOENCODING='utf-8'; & 'D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe' -m py_compile \"E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\backend\\\\app\\\\api\\\\data.py\")",
+      "PowerShell(curl *)",
+      "PowerShell(curl.exe -s \"http://127.0.0.1:8000/api/data/financial-raw/catalog\" | & 'D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe' -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f'fields: {d[\\\\\"data\\\\\"][\\\\\"summary\\\\\"][\\\\\"total_fields\\\\\"]}, categories: {d[\\\\\"data\\\\\"][\\\\\"summary\\\\\"][\\\\\"categories\\\\\"]}'\\)\")",
+      "PowerShell($env:PYTHONIOENCODING='utf-8'; & 'D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe' \"E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\temp_lab\\\\test_financial_raw_service.py\")",
+      "PowerShell($env:PYTHONIOENCODING='utf-8'; & 'D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe' \"E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\temp_lab\\\\test_financial_raw_service2.py\")"
     ],
     "defaultMode": "auto"
   },

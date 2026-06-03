@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Query, UploadFile, File
+from fastapi import APIRouter, HTTPException, Query, UploadFile, File, Body
 from typing import Optional, List
 from sqlalchemy import select, func
 from datetime import date, timedelta
@@ -837,6 +837,84 @@ async def get_financial_statements(stock_code: str, periods: int = 8):
              "announce_date": str(r.announce_date) if r.announce_date else None}
             for r in rows  # 最新在前
         ]}
+
+
+# ═══════════════════════════════════════════
+# 原始财务数据查询 (FinancialRawDataService)
+# ═══════════════════════════════════════════
+
+@router.get("/financial-raw/catalog")
+async def get_financial_raw_catalog():
+    """原始财务数据字典: 21个字段的元数据 (名称/单位/分类/说明)"""
+    from app.domain.market_data.services.financial_data_service import (
+        FinancialRawDataService,
+    )
+    return {"success": True, "data": FinancialRawDataService.get_catalog()}
+
+
+@router.post("/financial-raw/query")
+async def query_financial_raw(
+    code: str = Body(..., description="6位股票代码"),
+    fields: Optional[List[str]] = Body(None, description="字段名列表, 默认全部"),
+    periods: int = Body(4, description="返回的季度数"),
+    latest_only: bool = Body(True, description="True=只返回最新一期"),
+    start_date: Optional[str] = Body(None, description="起始日期 2025-01-01"),
+    end_date: Optional[str] = Body(None, description="结束日期 2026-03-31"),
+):
+    """灵活查询原始财务数据"""
+    from app.domain.market_data.services.financial_data_service import (
+        FinancialRawDataService,
+    )
+    try:
+        result = await FinancialRawDataService.query(
+            code=code, fields=fields, periods=periods,
+            latest_only=latest_only, start_date=start_date, end_date=end_date,
+        )
+        return {"success": True, "data": result}
+    except Exception as e:
+        logger.error(f"[DataAPI] financial-raw query failed: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.post("/financial-raw/query-bulk")
+async def query_financial_raw_bulk(
+    codes: List[str] = Body(..., description="股票代码列表"),
+    fields: Optional[List[str]] = Body(None, description="字段名列表"),
+    periods: int = Body(4, description="季度数"),
+    latest_only: bool = Body(True, description="True=只返回最新一期"),
+):
+    """批量查询多只股票的原始财务数据"""
+    from app.domain.market_data.services.financial_data_service import (
+        FinancialRawDataService,
+    )
+    try:
+        result = await FinancialRawDataService.query_bulk(
+            codes=codes, fields=fields, periods=periods, latest_only=latest_only,
+        )
+        return {"success": True, "data": result}
+    except Exception as e:
+        logger.error(f"[DataAPI] financial-raw bulk query failed: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@router.post("/financial-raw/compare")
+async def compare_financial_raw(
+    code: str = Body(..., description="6位股票代码"),
+    fields: Optional[List[str]] = Body(None, description="需要对比的字段, 默认前10个"),
+    periods: int = Body(8, description="用于对比的季度数"),
+):
+    """周期对比: 同比 + 环比 + TTM 汇总"""
+    from app.domain.market_data.services.financial_data_service import (
+        FinancialRawDataService,
+    )
+    try:
+        result = await FinancialRawDataService.compare(
+            code=code, fields=fields, periods=periods,
+        )
+        return {"success": True, "data": result}
+    except Exception as e:
+        logger.error(f"[DataAPI] financial-raw compare failed: {e}")
+        return {"success": False, "error": str(e)}
 
 
 # ═══════════════════════════════════════════
