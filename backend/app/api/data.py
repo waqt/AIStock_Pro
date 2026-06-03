@@ -5,7 +5,7 @@ from datetime import date, timedelta
 import re
 
 from app.framework.database.session import async_session
-from app.models.models import MarketData, Position, ExchangeRate, StockInfo, WatchlistItem, PortfolioSnapshot, FinancialStatement
+from app.models.models import MarketData, Position, ExchangeRate, StockMaster, StockValuation, WatchlistItem, PortfolioSnapshot, FinancialStatement
 from app.domain.market_data.sources.router import data_router
 from app.framework.tasks.engine import task_manager
 from app.framework.logger import logger
@@ -35,9 +35,9 @@ async def get_daily_data(stock_code: str, limit: int = Query(default=500, le=100
         )
         rows = res.scalars().all()[::-1]  # 反转为正序
 
-        # 查持仓名称
-        name_res = await db.execute(select(Position.stock_name).where(Position.stock_code == stock_code))
-        stock_name = name_res.scalars().first() or ""
+        # 查股票名称
+        master = await db.get(StockMaster, stock_code)
+        stock_name = master.stock_name if master else ""
 
         return [
             {
@@ -117,22 +117,9 @@ async def trigger_single_sync(stock_code: str, mode: str = "daily"):
         from app.domain.market_data.services.valuation import sync_stock_info as sync_info
         await sync_info(stock_code)
 
-        wl = await db.get(WatchlistItem, stock_code)
-        if wl and not wl.stock_name:
-            # 从 stock_info 或 market_data 源获取名称
-            info = await db.get(StockInfo, stock_code)
-            if info and info.stock_name:
-                wl.stock_name = info.stock_name
-            else:
-                # 兜底: 用行情数据源查名称
-                try:
-                    from app.domain.market_data.sources.tencent import get_tencent_quotes
-                    quotes = await get_tencent_quotes([stock_code])
-                    q = quotes.get(stock_code, {})
-                    if q.get('name'):
-                        wl.stock_name = q['name']
-                except: pass
-            await db.commit()
+        # 查 StockMaster 补全前端展示用的名称（不存到 watchlist）
+        master = await db.get(StockMaster, stock_code)
+        display_name = master.stock_name if master else stock_code
 
         mr = await db.execute(
             select(MarketData.close, MarketData.change_pct)
@@ -143,7 +130,7 @@ async def trigger_single_sync(stock_code: str, mode: str = "daily"):
     return {
         "success": True, "stock_code": stock_code, "mode": mode,
         "new_rows": rows,
-        "name": wl.stock_name if wl else "",
+        "name": display_name,
         "price": float(row[0]) if row and row[0] else None,
         "change_pct": float(row[1]) if row and row[1] else None,
     }
@@ -199,7 +186,7 @@ async def get_health_overview():
 
         # 有估值数据的股票数
         val_res = await db.execute(
-            select(func.count(StockInfo.stock_code)).where(StockInfo.pe_ttm.isnot(None))
+            select(func.count(StockValuation.stock_code)).where(StockValuation.pe_ttm.isnot(None))
         )
         val_count = val_res.scalars().first() or 0
 
@@ -228,12 +215,9 @@ async def get_stocks_health():
         )
         rows = res.all()
 
-        # 批量获取名称 (StockInfo > Position > stock_code)
-        pos_res = await db.execute(select(Position.stock_code, Position.stock_name))
-        pos_names = {p.stock_code: p.stock_name for p in pos_res if p.stock_name}
-        info_res = await db.execute(select(StockInfo.stock_code, StockInfo.stock_name))
-        info_names = {s.stock_code: s.stock_name for s in info_res}
-        name_map = {**info_names, **pos_names}  # 持仓名称优先覆盖证券名称
+        # 批量获取名称 (StockMaster)
+        master_res = await db.execute(select(StockMaster.stock_code, StockMaster.stock_name))
+        name_map = {r.stock_code: r.stock_name for r in master_res if r.stock_name}
 
         today = date.today()
         weekday = today.weekday()  # 0=Mon, 6=Sun
@@ -418,10 +402,12 @@ async def get_position_valuation():
     """获取持仓估值数据"""
     async with async_session() as db:
         res = await db.execute(
-            select(StockInfo.stock_code, StockInfo.stock_name, StockInfo.pe_ttm,
-                   StockInfo.pb, StockInfo.mcap_yi, StockInfo.float_mcap_yi,
-                   StockInfo.turnover_pct, StockInfo.updated_at)
-            .where(StockInfo.pe_ttm.isnot(None))
+            select(StockMaster.stock_code, StockMaster.stock_name,
+                   StockValuation.pe_ttm, StockValuation.pb,
+                   StockValuation.mcap_yi, StockValuation.float_mcap_yi,
+                   StockValuation.turnover_pct, StockValuation.updated_at)
+            .outerjoin(StockValuation, StockMaster.stock_code == StockValuation.stock_code)
+            .where(StockValuation.pe_ttm.isnot(None))
         )
         return [
             {"code": r[0], "name": r[1], "pe_ttm": r[2], "pb": r[3],
@@ -436,9 +422,9 @@ async def search_stocks(q: str = "", limit: int = 20):
     """搜索股票代码或名称 (自动补全)"""
     async with async_session() as db:
         res = await db.execute(
-            select(StockInfo.stock_code, StockInfo.stock_name, StockInfo.exchange)
+            select(StockMaster.stock_code, StockMaster.stock_name, StockMaster.exchange)
             .where(
-                StockInfo.stock_code.like(f"%{q}%") | StockInfo.stock_name.like(f"%{q}%")
+                StockMaster.stock_code.like(f"%{q}%") | StockMaster.stock_name.like(f"%{q}%")
             )
             .limit(limit)
         )
@@ -447,7 +433,7 @@ async def search_stocks(q: str = "", limit: int = 20):
 
 @router.post("/stock-list/import-csv")
 async def import_stock_csv(file: UploadFile = File(...)):
-    """上传股票列表 CSV (列: 代码,名称) 导入 stock_info"""
+    """上传股票列表 CSV (列: 代码,名称) 导入 stock_master"""
     if not file.filename.endswith('.csv'):
         raise HTTPException(status_code=400, detail="仅支持 .csv 格式")
     try:
@@ -462,7 +448,6 @@ async def import_stock_csv(file: UploadFile = File(...)):
                 code, name = parts[0], parts[1]
                 if not code or not name or code == '代码':
                     continue
-                # 标准化代码
                 code = re.sub(r'[^0-9]', '', code)
                 if not code:
                     continue
@@ -471,9 +456,9 @@ async def import_stock_csv(file: UploadFile = File(...)):
                 code = code[:6]
 
                 exchange = "SH" if code.startswith(('6','9')) else "SZ"
-                existing = await db.get(StockInfo, code)
+                existing = await db.get(StockMaster, code)
                 if not existing:
-                    db.add(StockInfo(stock_code=code, stock_name=name, exchange=exchange))
+                    db.add(StockMaster(stock_code=code, stock_name=name, exchange=exchange))
                     imported += 1
                 elif not existing.stock_name or existing.stock_name == code:
                     existing.stock_name = name
@@ -542,10 +527,17 @@ async def list_watchlist():
         items = res.scalars().all()
         codes = [i.stock_code for i in items]
 
+        # 批量查名称 (StockMaster)
+        name_map = {}
+        if codes:
+            name_res = await db.execute(
+                select(StockMaster.stock_code, StockMaster.stock_name)
+                .where(StockMaster.stock_code.in_(codes)))
+            name_map = {r[0]: r[1] for r in name_res.all()}
+
         # 批量查最新行情
         price_map = {}
         if codes:
-            from sqlalchemy import and_
             for code in codes:
                 mr = await db.execute(
                     select(MarketData.close, MarketData.change_pct)
@@ -555,10 +547,10 @@ async def list_watchlist():
                 if row:
                     price_map[code] = {"price": float(row[0] or 0), "change_pct": float(row[1] or 0)}
 
-            # 批量查估值
+            # 批量查估值 (StockValuation)
             val_res = await db.execute(
-                select(StockInfo.stock_code, StockInfo.pe_ttm, StockInfo.mcap_yi)
-                .where(StockInfo.stock_code.in_(codes)))
+                select(StockValuation.stock_code, StockValuation.pe_ttm, StockValuation.mcap_yi)
+                .where(StockValuation.stock_code.in_(codes)))
             val_map = {r[0]: {"pe_ttm": r[1], "mcap_yi": r[2]} for r in val_res.all()}
         else:
             val_map = {}
@@ -583,7 +575,7 @@ async def list_watchlist():
                         fin_map[code]["prev_profit"] = float(rows[1][1] or 0)
 
         return {"success": True, "data": [
-            {"stock_code": i.stock_code, "stock_name": i.stock_name,
+            {"stock_code": i.stock_code, "stock_name": name_map.get(i.stock_code, i.stock_code),
              "group_tag": i.group_tag, "is_held": i.is_held,
              "notes": i.notes, "target_price_low": i.target_price_low,
              "target_price_high": i.target_price_high,
@@ -610,26 +602,20 @@ async def add_to_watchlist(stock_code: str, stock_name: str = "", group_tag: str
     """添加自选股 (自动补全名称+持仓标记 + 触发异步同步+指标回补)"""
     is_new = False
     async with async_session() as db:
-        # 自动补全名称
-        if not stock_name:
-            info = await db.get(StockInfo, stock_code)
-            if info and info.stock_name:
-                stock_name = info.stock_name
         # 检查是否持仓
         pos = await db.get(Position, stock_code)
         is_held = pos is not None
-        # Upsert
+        # Upsert (不存 stock_name, 展示时 join StockMaster)
         existing = await db.get(WatchlistItem, stock_code)
         if existing:
             existing.group_tag = group_tag
-            if stock_name: existing.stock_name = stock_name
             existing.is_held = is_held
             if notes: existing.notes = notes
             if target_price_low is not None: existing.target_price_low = target_price_low
             if target_price_high is not None: existing.target_price_high = target_price_high
         else:
             is_new = True
-            db.add(WatchlistItem(stock_code=stock_code, stock_name=stock_name,
+            db.add(WatchlistItem(stock_code=stock_code,
                 group_tag=group_tag, is_held=is_held,
                 notes=notes, target_price_low=target_price_low,
                 target_price_high=target_price_high))
@@ -645,23 +631,27 @@ async def add_to_watchlist(stock_code: str, stock_name: str = "", group_tag: str
         except Exception as e:
             logger.warning(f"[Watchlist] {stock_code}: failed to trigger sync: {e}")
 
-    return {"success": True, "message": f"Added {stock_code}", "name": stock_name, "is_held": is_held}
+    # 从 StockMaster 获取展示用名称
+    async with async_session() as db2:
+        master = await db2.get(StockMaster, stock_code)
+        display_name = master.stock_name if master else (stock_name or stock_code)
+
+    return {"success": True, "message": f"Added {stock_code}", "name": display_name, "is_held": is_held}
 
 
 @router.post("/watchlist/import-positions")
 async def import_positions_to_watchlist():
     """一键从持仓导入到自选股"""
     async with async_session() as db:
-        res = await db.execute(select(Position.stock_code, Position.stock_name))
-        positions = res.all()
+        res = await db.execute(select(Position.stock_code))
+        positions = [r[0] for r in res.all()]
         count = 0
-        for code, name in positions:
+        for code in positions:
             existing = await db.get(WatchlistItem, code)
             if existing:
                 existing.is_held = True
-                if name and not existing.stock_name: existing.stock_name = name
             else:
-                db.add(WatchlistItem(stock_code=code, stock_name=name, group_tag="持仓股", is_held=True))
+                db.add(WatchlistItem(stock_code=code, group_tag="持仓股", is_held=True))
                 count += 1
         await db.commit()
         return {"success": True, "imported": count, "message": f"Imported {count} new, updated existing"}
@@ -718,17 +708,18 @@ async def compute_portfolio_snapshot():
             total_pl += cumulative_pl
             total_daily_pl += daily_pl
 
-            info = await db.get(StockInfo, pos.stock_code)
+            master = await db.get(StockMaster, pos.stock_code)
+            val_info = await db.get(StockValuation, pos.stock_code)
 
             snapshots.append(PortfolioSnapshot(
                 snap_date=today,
-                stock_code=pos.stock_code, stock_name=pos.stock_name or "",
+                stock_code=pos.stock_code, stock_name=master.stock_name if master else "",
                 volume=int(vol), avg_cost=float(pos.avg_cost),
                 current_price=today_price, market_value=pos.market_value,
                 profit_loss=cumulative_pl, profit_loss_ratio=pos.profit_loss_ratio,
-                pe_ttm=info.pe_ttm if info else None,
-                pb=info.pb if info else None,
-                mcap_yi=info.mcap_yi if info else None,
+                pe_ttm=val_info.pe_ttm if val_info else None,
+                pb=val_info.pb if val_info else None,
+                mcap_yi=val_info.mcap_yi if val_info else None,
             ))
 
         # 2. 已实现盈亏: TradeHistory 记录单笔交易无直接盈亏字段, 需配对计算(后续实现)
@@ -856,19 +847,22 @@ async def get_financial_statements(stock_code: str, periods: int = 8):
 async def get_fundamental_overview():
     """基本面总览: 行业分布 + PE/PB/市值统计"""
     async with async_session() as db:
-        # 行业分布
+        # 行业分布 (from StockMaster)
         ind_res = await db.execute(
-            select(StockInfo.industry, func.count(), func.avg(StockInfo.pe_ttm), func.avg(StockInfo.mcap_yi))
-            .where(StockInfo.industry.isnot(None), StockInfo.industry != '')
-            .group_by(StockInfo.industry).order_by(func.count().desc()))
+            select(StockMaster.industry, func.count(), func.avg(StockValuation.pe_ttm), func.avg(StockValuation.mcap_yi))
+            .outerjoin(StockValuation, StockMaster.stock_code == StockValuation.stock_code)
+            .where(StockMaster.industry.isnot(None), StockMaster.industry != '')
+            .group_by(StockMaster.industry).order_by(func.count().desc()))
         industries = [{"name": r[0], "count": r[1], "avg_pe": round(float(r[2] or 0),1), "avg_mcap": round(float(r[3] or 0),1)} for r in ind_res.all()]
 
-        # PE分布
+        # PE分布 (from StockMaster + StockValuation)
         pe_res = await db.execute(
-            select(StockInfo.stock_code, StockInfo.stock_name, StockInfo.pe_ttm, StockInfo.pb, StockInfo.mcap_yi, StockInfo.industry)
-            .where(StockInfo.pe_ttm.isnot(None))
-            .order_by(StockInfo.pe_ttm.asc()).limit(50))
-        stocks = [{"code": r[0], "name": r[1], "pe_ttm": r[2], "pb": r[3], "mcap_yi": r[4], "industry": r[5] or "未知"} for r in pe_res.all()]
+            select(StockMaster.stock_code, StockMaster.stock_name, StockMaster.industry,
+                   StockValuation.pe_ttm, StockValuation.pb, StockValuation.mcap_yi)
+            .outerjoin(StockValuation, StockMaster.stock_code == StockValuation.stock_code)
+            .where(StockValuation.pe_ttm.isnot(None))
+            .order_by(StockValuation.pe_ttm.asc()).limit(50))
+        stocks = [{"code": r[0], "name": r[1], "pe_ttm": r[3], "pb": r[4], "mcap_yi": r[5], "industry": r[2] or "未知"} for r in pe_res.all()]
 
         return {"success": True, "data": {"industries": industries, "stocks": stocks}}
 
@@ -890,8 +884,8 @@ async def get_alt_overview():
         all_codes = list(set([r[0] for r in pos_res.all()] + [r[0] for r in wl_res.all()]))
 
         info_res = await db.execute(
-            select(StockInfo.stock_code, StockInfo.stock_name)
-            .where(StockInfo.stock_code.in_(all_codes)))
+            select(StockMaster.stock_code, StockMaster.stock_name)
+            .where(StockMaster.stock_code.in_(all_codes)))
         name_map = {r[0]: r[1] or r[0] for r in info_res.all()}
 
     rows = indicator_store.get_latest_for_codes(all_codes)
@@ -937,8 +931,8 @@ async def get_crowding_by_industry(days: int = Query(default=30, le=90)):
         all_codes = list(set([r[0] for r in pos_res.all()] + [r[0] for r in wl_res.all()]))
 
         info_res = await db.execute(
-            select(StockInfo.stock_code, StockInfo.stock_name, StockInfo.industry)
-            .where(StockInfo.stock_code.in_(all_codes)))
+            select(StockMaster.stock_code, StockMaster.stock_name, StockMaster.industry)
+            .where(StockMaster.stock_code.in_(all_codes)))
         info_map = {}
         for r in info_res.all():
             info_map[r[0]] = {"name": r[1] or r[0], "industry": r[2] or "未知"}
@@ -978,17 +972,18 @@ async def get_crowding_watchlist(days: int = Query(default=30, le=120)):
     from app.domain.quant.engine import indicator_store
 
     async with async_session() as db:
-        wl_res = await db.execute(select(WatchlistItem.stock_code, WatchlistItem.stock_name))
-        wl_map = {}
-        for r in wl_res.all():
-            wl_map[r[0]] = r[1] or r[0]
-        if not wl_map: return {"success": True, "data": []}
+        wl_res = await db.execute(select(WatchlistItem.stock_code))
+        wl_codes = [r[0] for r in wl_res.all()]
+        if not wl_codes: return {"success": True, "data": []}
 
-        info_res = await db.execute(
-            select(StockInfo.stock_code, StockInfo.stock_name)
-            .where(StockInfo.stock_code.in_(list(wl_map.keys()))))
-        for r2 in info_res.all():
-            if r2[1]: wl_map[r2[0]] = r2[1]
+        # 从 StockMaster 获取名称
+        name_res = await db.execute(
+            select(StockMaster.stock_code, StockMaster.stock_name)
+            .where(StockMaster.stock_code.in_(wl_codes)))
+        wl_map = {r[0]: r[1] or r[0] for r in name_res.all()}
+        # 兜底: StockMaster 中查不到的用原代码
+        for code in wl_codes:
+            if code not in wl_map: wl_map[code] = code
 
     rows = indicator_store.get_latest_for_codes(list(wl_map.keys()))
     ind_map = {r['stock_code']: r for r in rows}
@@ -1027,7 +1022,6 @@ async def refresh_watchlist_held_status():
                 updated += 1
         await db.commit()
         return {"success": True, "updated": updated}
-        return {"success": True, "message": f"Added {stock_code}"}
 
 
 @router.delete("/watchlist/{stock_code}")
@@ -1043,26 +1037,23 @@ async def remove_from_watchlist(stock_code: str):
 
 
 @router.put("/watchlist/{stock_code}")
-async def update_watchlist(stock_code: str, group_tag: str = None, stock_name: str = None,
+async def update_watchlist(stock_code: str, group_tag: str = None,
                             notes: str = None, target_price_low: float = None,
                             target_price_high: float = None):
-    """更新自选股 (分组/名称/备注/目标价)"""
+    """更新自选股 (分组/备注/目标价) — 名称统一从 StockMaster 获取"""
     async with async_session() as db:
         item = await db.get(WatchlistItem, stock_code)
         if not item:
             raise HTTPException(status_code=404, detail="Not in watchlist")
         if group_tag is not None: item.group_tag = group_tag
-        if stock_name: item.stock_name = stock_name
         if notes is not None: item.notes = notes
         if target_price_low is not None: item.target_price_low = target_price_low
         if target_price_high is not None: item.target_price_high = target_price_high
-        # 如果名字为空，尝试从 StockInfo 补全
-        if not item.stock_name:
-            info = await db.get(StockInfo, stock_code)
-            if info and info.stock_name:
-                item.stock_name = info.stock_name
         await db.commit()
-        return {"success": True, "message": f"Updated {stock_code}", "name": item.stock_name}
+        # 从 StockMaster 获取展示用名称
+        master = await db.get(StockMaster, stock_code)
+        display_name = master.stock_name if master else stock_code
+        return {"success": True, "message": f"Updated {stock_code}", "name": display_name}
 
 
 @router.post("/watchlist/sync")
@@ -1090,14 +1081,5 @@ async def sync_watchlist(mode: str = "daily"):
     await db.commit()  # 持久化行情数据
 
     await sync_valuation(target_codes=codes)
-
-    # 补充自选股名称 (从 StockInfo)
-    for code in codes:
-        wl = await db.get(WatchlistItem, code)
-        if wl and not wl.stock_name:
-            info = await db.get(StockInfo, code)
-            if info and info.stock_name:
-                wl.stock_name = info.stock_name
-    await db.commit()
 
     return {"success": True, "synced": len(codes), "total_rows": total_rows}

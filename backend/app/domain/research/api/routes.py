@@ -1323,25 +1323,37 @@ async def capital_flow_scan(async_mode: bool = Query(default=False)):
 
 @router.post("/stocks/batch-info")
 async def batch_stock_info(codes: List[str]):
-    """批量获取股票基本信息 (供投研标的提取面板使用)"""
+    """批量获取股票基本信息 (供投研标的提取面板使用) — 从 StockMaster + StockValuation"""
     if not codes:
         return {"success": True, "data": []}
     from app.framework.database.session import async_session
-    from app.models.models import StockInfo
-    from sqlalchemy import select
+    from app.models.models import StockMaster, StockValuation
+    from sqlalchemy import select, outerjoin
     async with async_session() as db:
+        j = outerjoin(StockMaster, StockValuation,
+                      StockMaster.stock_code == StockValuation.stock_code)
         res = await db.execute(
-            select(StockInfo).where(StockInfo.stock_code.in_(codes[:30])))
-        rows = {r.stock_code: r for r in res.scalars().all()}
+            select(StockMaster, StockValuation)
+            .select_from(j)
+            .where(StockMaster.stock_code.in_(codes[:30])))
+        info_map = {}
+        for r in res.all():
+            m, v = r
+            info_map[m.stock_code] = {
+                "name": m.stock_name,
+                "industry": m.industry,
+                "pe_ttm": v.pe_ttm if v else None,
+                "mcap_yi": v.mcap_yi if v else None,
+            }
         result = []
         for code in codes:
-            s = rows.get(code)
+            s = info_map.get(code, {})
             result.append({
                 "code": code,
-                "name": s.stock_name if s else code,
-                "industry": s.industry if s else None,
-                "pe_ttm": s.pe_ttm if s else None,
-                "mcap_yi": s.mcap_yi if s else None,
+                "name": s.get("name", code),
+                "industry": s.get("industry"),
+                "pe_ttm": s.get("pe_ttm"),
+                "mcap_yi": s.get("mcap_yi"),
             })
         return {"success": True, "data": result}
 

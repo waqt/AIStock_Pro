@@ -362,139 +362,54 @@ class CoreScreeningAgent(ResearchAgent):
             logger.warning(f"[{self.name}] Audit failed for {code}: {e}")
             audit = {"verdict": "SKIP", "score": 0, "error": str(e)}
 
-        # 2. ROIC/ROIIC 计算 + 落库 (★ 按需加载 + 搜索兜底)
-        from app.domain.quant.indicators.fundamental._roic_core import compute_roic, compute_roiic
-        from app.domain.quant.engine.indicator_store import store_financial_indicator
+        # 2. ROIC/ROIIC 查询 (通过 FinancialQueryService, 自动走 SQLite 缓存或实时计算)
+        from app.domain.quant.engine.financial_query_service import FinancialQueryService
         roic_val, roiic_val = None, None
-
-        # 2a. 从 fin_map 获取财务数据 (预加载)
-        fin = fin_map.get(code, {}).get("quarters", [])
-
-        # 2b. 如果 fin_map 没数据或不足4季, 按需加载
-        if not fin or len(fin) < 4:
-            try:
-                on_demand = await self.data_loader.load_financial_statements(code, periods=8)
-                if on_demand and on_demand.get("quarters"):
-                    q = on_demand["quarters"]
-                    logger.info(f"[{self.name}] On-demand fin loaded for {code}: {len(q)} quarters")
-                    fin = q
-            except Exception as e:
-                logger.warning(f"[{self.name}] On-demand fin load failed for {code}: {e}")
-
-        # 2c. ROIC 计算
         roic_source = "none"
-        if fin and len(fin) >= 4:
-            try:
-                recent_first = fin  # newest-first from data_loader
-                company_stage = stage_map.get(code, "startup")
-                capitalize_rd = company_stage in ["startup", "inflection", "growth"]
-                roic_data = compute_roic(recent_first, capitalize_rd=capitalize_rd)
-                roiic_data = compute_roiic(recent_first, capitalize_rd=capitalize_rd) if len(recent_first) >= 8 else {}
+        try:
+            svc = FinancialQueryService()
+            fin_data = await svc.query(code, indicators=[
+                "roic_pct", "roiic_pct",
+                "roic_pct_adjusted", "roiic_pct_adjusted",
+            ], latest_only=True)
+            roic_val = fin_data.get("roic_pct_adjusted") or fin_data.get("roic_pct")
+            roiic_val = fin_data.get("roiic_pct_adjusted") or fin_data.get("roiic_pct")
+            if roic_val is not None:
+                roic_source = "fqs"
+        except Exception as e:
+            logger.warning(f"[{self.name}] FQS ROIC query failed for {code}: {e}")
 
-                if roic_data.get("roic_pct") is not None:
-                    roic_val = roic_data["roic_pct"]
-                    roic_source = "db_computed"
-                elif roic_data.get("error"):
-                    logger.warning(f"[{self.name}] ROIC compute error for {code}: {roic_data['error']}")
-
-                if roiic_data.get("roiic_pct") is not None:
-                    roiic_val = roiic_data["roiic_pct"]
-
-                # 落库
-                if roic_val is not None:
-                    report_date = recent_first[0].get("report_date", "")[:10]
-                    store_financial_indicator(code, report_date, {
-                        "roic": roic_data.get("roic"),
-                        "roic_pct": roic_val,
-                        "roiic": roiic_data.get("roiic"),
-                        "roiic_pct": roiic_val,
-                        "capitalized_rd": capitalize_rd,
-                    })
-            except Exception as e:
-                logger.warning(f"[{self.name}] ROIC compute failed for {code}: {e}")
-
-        # 2d. 搜索兜底: 如果DB计算失败, web search 获取 ROIC
-        if roic_val is None:
-            try:
-                search_q = f"{name} {code} ROIC 投入资本回报率 2025 2026"
-                search_results = await self.data_loader.search_web(search_q, num=3)
-                for sr in search_results:
-                    snippet = (sr.get("snippet", "") or "")[:300]
-                    # 正则: "ROIC" 附近找数字+百分号
-                    import re
-                    matches = re.findall(r'ROIC[^\d]*?([\d]+\.[\d]|[\d]+)%', snippet, re.IGNORECASE)
-                    if not matches:
-                        matches = re.findall(r'投入资本回报率[^\d]*?([\d]+\.[\d]|[\d]+)%', snippet)
-                    if not matches:
-                        matches = re.findall(r'(?:ROIC|回报率)[：:\s]*([\d]+\.[\d]+)%', snippet, re.IGNORECASE)
-                    if matches:
-                        roic_val = float(matches[0])
-                        roic_source = "web_search"
-                        logger.info(f"[{self.name}] ROIC from search for {code}: {roic_val}%")
-                        break
-            except Exception as e:
-                logger.warning(f"[{self.name}] ROIC search fallback failed for {code}: {e}")
-
-        # 填充结果到 candidate, 供下游使用
         candidate["_roic_val"] = roic_val
         candidate["_roic_source"] = roic_source
 
-        # 3. 6维护城河画像 (LLM + 搜索)
-        search_data = await self._search_adaptive([[
-            f"{name} {code} 行业地位 市场份额 竞争壁垒 护城河",
-            f"{name} {code} 定价权 毛利率 客户 认证",
-            f"{name} {code} moat competitive advantage 2026",
-        ]], num=3, trace=trace)
-
-        # 注入节点上下文
+        # 3. 6维权力画像 (tool based: LLM 自主调用 query_financial_data + web_search)
         src_info = candidate.get("source_node_info", {})
-        prompt = self._build_moat_prompt(
-            name, code, industry, candidate.get("source", []), search_data,
+        prompt = self._build_moat_tool_prompt(
+            name, code, industry, candidate.get("source", []),
             node_context=src_info, roic=roic_val)
 
+        # 注入动态财务数据字典
+        from app.domain.quant.engine.financial_query_service import FinancialQueryService
+        catalog = FinancialQueryService.format_catalog_for_prompt()
+        prompt = prompt.replace("{{FINANCIAL_CATALOG}}", catalog)
+
         moat_result = {}
-        moat_status = "pending"  # ★ 三态: assessed / insufficient_data / failed
+        moat_status = "pending"
         try:
-            text = await self.provider.chat_flash(prompt, max_tokens=4096, timeout=90)
+            from app.domain.research.agents.base import WEB_SEARCH_TOOL, DEFAULT_TOOL_DEFINITIONS
+            text = await self.call_with_tools(prompt,
+                tool_defs=DEFAULT_TOOL_DEFINITIONS + [WEB_SEARCH_TOOL],
+                max_rounds=8)
             if trace: trace.record_llm(prompt, text, model="deepseek-v4-flash")
             result = self.parse_json(text)
             if isinstance(result, dict) and result.get("moat_profile"):
                 moat_result = result
                 moat_status = "assessed"
-        except asyncio.TimeoutError:
-            logger.warning(f"[{self.name}] Moat profiling timeout for {code}, retrying...")
-            # ★ 超时重试: 简化 prompt, 仅基于节点背景推断 position_power+certification_power
-            try:
-                retry_prompt = (
-                    f"基于以下节点背景, 判断{name}({code})在'{industry}'的6维护城河。\n"
-                    f"节点背景: {_j(src_info)}\n"
-                    f"重点: 该企业是否处于产业链必经节点(position_power)? "
-                    f"客户切换成本是否高(certification_power)? 技术路线是否正确(cognitive_power)?\n"
-                    f"输出JSON: {{\"moat_profile\":{{\"position_power\":\"strong/weak/unknown\","
-                    f"\"pricing_power\":\"strong/weak/unknown\","
-                    f"\"certification_power\":\"strong/weak/unknown\","
-                    f"\"cognitive_power\":\"strong/weak/unknown\"}}}}"
-                )
-                text2 = await self.provider.chat_flash(retry_prompt, max_tokens=2048, timeout=60)
-                result2 = self.parse_json(text2)
-                if isinstance(result2, dict) and result2.get("moat_profile"):
-                    moat_result = result2
-                    moat_status = "assessed"
-                    logger.info(f"[{self.name}] Moat retry succeeded for {code}")
-            except Exception:
-                logger.warning(f"[{self.name}] Moat retry also failed for {code}")
+            else:
                 moat_status = "failed"
         except Exception as e:
-            logger.warning(f"[{self.name}] Moat profiling failed for {code}: {e}")
+            logger.warning(f"[{self.name}] Moat tool profiling failed for {code}: {e}")
             moat_status = "failed"
-
-        # ★ 判断是否为数据不足导致的失败 (search_data is List[Dict], not dict)
-        if moat_status != "assessed":
-            has_node_context = bool(src_info and src_info.get("bottleneck_narrative"))
-            has_search_results = bool(search_data and any(
-                d.get("results") for d in search_data if isinstance(d, dict)))
-            if not has_search_results and not has_node_context:
-                moat_status = "insufficient_data"
 
         # 4. ValuationPricer (估值)
         valuation = {}
@@ -1204,6 +1119,89 @@ class CoreScreeningAgent(ResearchAgent):
 - 每维至少1条 evidence, 没有证据→标记 weak/emerging 并说明"搜索证据不足"
 - 禁止输出股票代码以外的投资建议
 - 不要编造没有搜索证据支撑的判断"""
+
+    def _build_moat_tool_prompt(self, name, code, industry, sources,
+                                 node_context=None, roic=None) -> str:
+        """工具版六维权力画像 prompt — LLM 自主调用 query_financial_data + web_search"""
+        source_str = ", ".join(
+            f"{s['step']}/{s['field']}" + (f"({s['role']})" if s.get("role") else "")
+            for s in sources) if sources else ""
+
+        node_block = ""
+        if node_context:
+            pn = node_context.get("name", "")
+            pp = node_context.get("profit_pool", "?")
+            vm = node_context.get("value_magnitude", "?")
+            sr = node_context.get("supply_rigidity", "?")
+            csr = node_context.get("china_substitution_rate", "?")
+            cs = node_context.get("competitive_structure", "?")
+            bn = (node_context.get("bottleneck_narrative", "") or "")[:200]
+            node_block = f"""
+## 该候选所在瓶颈环节背景 (Step 3)
+- 环节: {pn}
+- 利润池: {pp}  | 市场量级: {vm}
+- 供给刚性: {sr}
+- 国产替代率: {csr}
+- 竞争结构: {cs}
+- 瓶颈描述: {bn}
+"""
+
+        roic_block = "\n- ROIC(投入资本回报率): %.1f%%" % roic if roic is not None else ""
+
+        return f"""你是产业竞争分析专家。评估 {name}({code}) 在 {industry} 赛道中的六维产业权力。
+
+上游来源: {source_str}{node_block}
+
+## 财务参考{roic_block}
+
+## 可用工具
+你有以下工具可实时获取数据，请在每个维度判断前主动使用:
+
+1. **query_financial_data(code, indicators=[...])** — 查询财务指标
+   可用指标范围见 FINANCIAL_CATALOG。
+   使用场景: ROIC趋势、毛利率变化、研发投入、现金流质量、营收增长等
+
+2. **web_search(query, num=5)** — 搜索网络获取实时信息
+   使用场景: 行业地位、市场份额、客户关系、竞争格局、技术路线、认证壁垒等
+
+{{FINANCIAL_CATALOG}}
+
+**重要**: 每个维度必须至少引用一次 tool 返回的真实数据作为证据。
+
+## 六维权力判断 (每维: strong/medium/weak/emerging)
+
+{{
+  "moat_profile": {{
+    "position_power": "strong/medium/weak/emerging",
+    "position_evidence": ["证据: 是否产业链必经节点? 客户能否绕过? (建议 web_search 搜寻)"],
+    "pricing_power": "strong/medium/weak/emerging",
+    "pricing_evidence": ["证据: 能否涨价? 毛利率趋势? 占客户成本比例? (建议 query_financial_data 查 margin)"],
+    "expansion_power": "strong/medium/weak/emerging",
+    "expansion_evidence": ["证据: 产能能否扩张? 在建工程? 设备锁定? (建议 web_search 搜索)"],
+    "certification_power": "strong/medium/weak/emerging",
+    "certification_evidence": ["证据: 客户认证周期? 切换成本? 已进入哪些大客户? (建议 web_search 搜索)"],
+    "resource_power": "strong/medium/weak/emerging",
+    "resource_evidence": ["证据: 掌握稀缺资源/产能/人才/配额? (建议 web_search 搜索)"],
+    "cognitive_power": "strong/medium/weak/emerging",
+    "cognitive_evidence": ["证据: 是否比市场更早押对技术路线/提前布局? (建议 web_search 搜索)"]
+  }},
+  "profit_capture_thesis": {{
+    "why_it_captures_profit": ["为什么这家公司能把产业景气变成自己的利润"],
+    "future_profit_driver": ["未来利润增长的核心驱动力"]
+  }},
+  "growth_asymmetry": {{
+    "growth_type": "nonlinear_breakout/inflection_point/linear/cyclical/unknown",
+    "triggers": ["催化剂事件"],
+    "current_stage": "当前所处阶段"
+  }},
+  "thesis_breakers": ["什么条件会推翻以上判断"]
+}}
+
+## 规则
+- 每维至少1条 evidence, 并且 evidence 必须来自 tool 调用返回的真实数据
+- 如果某个维度搜索结果不足, 标注"搜索证据不足"而非空想
+- 禁止输出股票代码以外的投资建议
+- 先查数据再判断, 不要先判断再勉强找证据支持"""
 
     # ═══ 工具 ═══════════════════════════════════════
 

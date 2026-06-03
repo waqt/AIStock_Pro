@@ -1,7 +1,120 @@
-"""投研智能体基座 — 继承 BaseAgent, 注入数据加载能力"""
+"""投研智能体基座 — 继承 BaseAgent, 注入数据加载 + 工具调用能力"""
+import json
 from typing import Dict, Any, List, Optional
 from app.framework.agents.base import BaseAgent
 from app.framework.logger import logger
+
+
+# ═══ 工具注册表 ═══════════════════════════════════════
+
+TOOL_REGISTRY: Dict[str, Any] = {}
+"""工具名称 → 可调用函数 的映射, 通过 register_tool 注册"""
+
+
+def register_tool(name: str):
+    """装饰器: 注册工具到全局注册表"""
+    def decorator(func):
+        TOOL_REGISTRY[name] = func
+        return func
+    return decorator
+
+
+# ═══ 工具定义 ═══════════════════════════════════════
+
+QUERY_FINANCIAL_DATA_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "query_financial_data",
+        "description": "查询股票的财务指标或原始财报数据。通过 indicators 参数获取已注册的计算指标（如 roic_pct, margin, ocf_health 等），通过 raw_fields 参数获取原始财报字段（如 revenue, op_cashflow, rd_expense 等）。两个参数可同时使用。",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "description": "6位股票代码，如 '688012'",
+                },
+                "indicators": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "需要获取的财务指标名称列表（可选，不传则不获取指标）",
+                },
+                "raw_fields": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "需要获取的原始财报字段列表（可选，不传则不获取原始字段）",
+                },
+            },
+            "required": ["code"],
+        },
+    },
+}
+
+WEB_SEARCH_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "web_search",
+        "description": "搜索网络获取实时行业/公司/市场信息。每次搜索返回标题+摘要列表。"
+                       "用于获取行业动态、竞争格局、技术路线、市场份额等无法从财务数据直接获取的信息。",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "搜索关键词，建议包含公司名/股票代码+核心维度，"
+                                   "如'中微公司 688012 刻蚀设备 市场份额 2026'",
+                },
+                "num": {
+                    "type": "integer",
+                    "description": "返回结果数量（1-10），默认5",
+                },
+            },
+            "required": ["query"],
+        },
+    },
+}
+
+DEFAULT_TOOL_DEFINITIONS = [QUERY_FINANCIAL_DATA_TOOL]
+# web_search 已在 TOOL_REGISTRY 注册, 但不加入默认工具列表。
+# 只在特定环节（如 Step 6 Phase 3b 6维权力画像）显式传入使用。
+
+
+# ═══ 注册内置工具 ═══════════════════════════════════
+
+
+async def _tool_query_financial_data(
+    code: str,
+    indicators: Optional[List[str]] = None,
+    raw_fields: Optional[List[str]] = None,
+) -> dict:
+    """query_financial_data 的实际执行函数"""
+    from app.domain.quant.engine.financial_query_service import FinancialQueryService
+    svc = FinancialQueryService()
+    return await svc.query(code, indicators=indicators, raw_fields=raw_fields)
+
+
+register_tool("query_financial_data")(_tool_query_financial_data)
+
+
+async def _tool_web_search(query: str, num: int = 5) -> list:
+    """web_search 的实际执行函数"""
+    from app.domain.research.services.data_loader import data_loader
+    try:
+        results = await data_loader.search_web(query, num=num)
+        items = []
+        for r in results:
+            snippet = (r.get("snippet", "") or "")[:500]
+            if "%PDF" in snippet or "endstream" in snippet:
+                continue
+            items.append({
+                "title": r.get("title", ""),
+                "snippet": snippet,
+            })
+        return items
+    except Exception as e:
+        return [{"error": str(e)}]
+
+
+register_tool("web_search")(_tool_web_search)
 
 
 class ResearchAgent(BaseAgent):
@@ -27,6 +140,121 @@ class ResearchAgent(BaseAgent):
         except Exception as e:
             logger.error(f"[{self.name}] Analysis failed: {e}")
             return {"error": str(e), "agent": self.name}
+
+    # ═══ 工具调用增强 ═══════════════════════════════
+
+    async def analyze_with_tools(
+        self,
+        context: Dict[str, Any],
+        tool_defs: Optional[List[Dict]] = None,
+        max_rounds: int = 5,
+    ) -> Dict[str, Any]:
+        """工具增强版分析: 注入动态数据字典 → 工具调用循环 → 解析结论
+
+        Agent 在 prompt 中通过 {{FINANCIAL_CATALOG}} 占位符使用数据字典。
+        子类重写 build_prompt() 时在 prompt 中包含此占位符即可自动注入。
+        """
+        try:
+            enriched = await self.load_context(context)
+            prompt = self.build_prompt(enriched)
+
+            # 注入动态财务数据字典
+            try:
+                from app.domain.quant.engine.financial_query_service import (
+                    FinancialQueryService,
+                )
+                catalog = FinancialQueryService.format_catalog_for_prompt()
+                prompt = prompt.replace("{{FINANCIAL_CATALOG}}", catalog)
+            except ImportError:
+                logger.warning(f"[{self.name}] FinancialQueryService not available, skipping catalog injection")
+            except Exception as e:
+                logger.warning(f"[{self.name}] Catalog injection failed: {e}")
+
+            if not self.provider:
+                return {"error": "No AI provider configured", "agent": self.name}
+
+            tools = tool_defs or DEFAULT_TOOL_DEFINITIONS
+            msgs = [{"role": "user", "content": prompt}]
+
+            for _round in range(max_rounds):
+                result = await self.provider.chat_with_tools(
+                    prompt="", tools=tools, messages=msgs
+                )
+
+                if result.tool_calls:
+                    for tc in result.tool_calls:
+                        fn = TOOL_REGISTRY.get(tc.name)
+                        if fn:
+                            logger.info(
+                                f"[{self.name}] Tool call: {tc.name}({json.dumps(tc.arguments, ensure_ascii=False)})"
+                            )
+                            try:
+                                data = await fn(**tc.arguments)
+                                content = json.dumps(data, ensure_ascii=False, default=str)
+                            except Exception as e:
+                                logger.warning(f"[{self.name}] Tool {tc.name} failed: {e}")
+                                content = json.dumps({"error": str(e)})
+                        else:
+                            content = json.dumps({"error": f"Unknown tool: {tc.name}"})
+
+                        msgs.append({
+                            "role": "tool",
+                            "tool_call_id": tc.id,
+                            "content": content,
+                        })
+                else:
+                    return self.parse_result(result.content or "", enriched)
+
+            logger.warning(f"[{self.name}] Max tool rounds ({max_rounds}) reached")
+            return {"error": f"Max tool call rounds ({max_rounds}) reached", "agent": self.name}
+
+        except Exception as e:
+            logger.error(f"[{self.name}] analyze_with_tools failed: {e}")
+            return {"error": str(e), "agent": self.name}
+
+    async def call_with_tools(
+        self,
+        prompt: str,
+        tool_defs: Optional[List[Dict]] = None,
+        max_rounds: int = 5,
+    ) -> str:
+        """低级别工具调用循环 — 供子类硬编码步骤使用
+
+        不经过 load_context/build_prompt/parse_result 生命周期,
+        直接发送 prompt → 自动执行工具调用 → 返回最终文本。
+        """
+        if not self.provider:
+            return ""
+
+        tools = tool_defs or DEFAULT_TOOL_DEFINITIONS
+        msgs = [{"role": "user", "content": prompt}]
+
+        for _round in range(max_rounds):
+            result = await self.provider.chat_with_tools(
+                prompt="", tools=tools, messages=msgs
+            )
+
+            if result.tool_calls:
+                for tc in result.tool_calls:
+                    fn = TOOL_REGISTRY.get(tc.name)
+                    if fn:
+                        try:
+                            data = await fn(**tc.arguments)
+                            content = json.dumps(data, ensure_ascii=False, default=str)
+                        except Exception as e:
+                            content = json.dumps({"error": str(e)})
+                    else:
+                        content = json.dumps({"error": f"Unknown tool: {tc.name}"})
+
+                    msgs.append({
+                        "role": "tool",
+                        "tool_call_id": tc.id,
+                        "content": content,
+                    })
+            else:
+                return result.content or ""
+
+        return ""
 
     async def load_context(self, ctx: Dict[str, Any]) -> Dict[str, Any]:
         """加载分析所需的全部数据 (子类可重写以加载特定数据)"""

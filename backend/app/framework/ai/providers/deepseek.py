@@ -1,7 +1,7 @@
 import json, asyncio
 from typing import List, Dict, Optional, Literal
 import httpx
-from app.framework.ai.providers.base import AIProviderProtocol
+from app.framework.ai.providers.base import AIProviderProtocol, ChatResult, ToolCall
 from app.framework.config import settings
 from app.framework.logger import logger
 
@@ -111,6 +111,154 @@ class DeepSeekProvider(AIProviderProtocol):
         except Exception as e:
             logger.error(f"[DeepSeek] {resolved_model} error: {type(e).__name__}: {e}")
             return None
+
+    # ═══ Tool Calling ════════════════════════════
+
+    async def chat_with_tools(
+        self,
+        prompt: str,
+        tools: List[Dict],
+        messages: Optional[List[Dict]] = None,
+        max_tokens: int = 4096,
+        model: Optional[str] = None,
+        timeout: int = 240,
+    ) -> ChatResult:
+        """支持工具调用的对话。
+
+        Args:
+            prompt: 用户提示（当 messages=None 时作为单条 user 消息）
+            tools: OpenAI/Anthropic 格式的工具定义列表
+            messages: 多轮对话历史（含 tool_result 消息）
+            max_tokens: 最大输出 token
+            model: 模型名（None→flash, 'pro'→pro）
+
+        Returns:
+            ChatResult — 包含 content（文本回复）和/或 tool_calls（工具调用请求）
+        """
+        if not settings.DEEPSEEK_API_KEY:
+            return ChatResult(content=None)
+
+        resolved_model, do_thinking = self._resolve_model(model, False)
+        base = settings.DEEPSEEK_BASE_URL.rstrip("/")
+        is_anthropic = "anthropic" in base
+        msgs = messages or [{"role": "user", "content": prompt}]
+
+        if is_anthropic:
+            url = f"{base}/messages"
+            body = {
+                "model": resolved_model,
+                "max_tokens": max_tokens,
+                "messages": msgs,
+                "tools": tools,  # Anthropic tools 格式直接传递
+            }
+        else:
+            url = f"{base}/chat/completions"
+            body = {
+                "model": resolved_model,
+                "messages": msgs,
+                "tools": tools,
+                "temperature": 0.1,
+                "max_tokens": max_tokens,
+            }
+
+        headers = {
+            "Authorization": f"Bearer {settings.DEEPSEEK_API_KEY}",
+            "Content-Type": "application/json",
+        }
+
+        try:
+            async with httpx.AsyncClient(proxy=None, timeout=timeout) as client:
+                resp = await client.post(url, json=body, headers=headers)
+                if resp.status_code != 200:
+                    logger.warning(f"[DeepSeek] chat_with_tools HTTP {resp.status_code}: {resp.text[:300]}")
+                    return ChatResult(content=None)
+                data = resp.json()
+
+                if is_anthropic:
+                    return self._parse_anthropic_tools(data)
+                else:
+                    return self._parse_openai_tools(data)
+
+        except httpx.TimeoutException:
+            logger.warning(f"[DeepSeek] chat_with_tools timeout ({timeout}s)")
+            return ChatResult(content=None)
+        except Exception as e:
+            logger.error(f"[DeepSeek] chat_with_tools error: {type(e).__name__}: {e}")
+            return ChatResult(content=None)
+
+    @staticmethod
+    def _parse_openai_tools(data: dict) -> ChatResult:
+        """解析 OpenAI 格式的 tool_calls 响应"""
+        try:
+            msg = data["choices"][0]["message"]
+
+            # 处理 tool_calls
+            tcs_raw = msg.get("tool_calls")
+            if tcs_raw:
+                tcs = []
+                for tc in tcs_raw:
+                    args_str = tc["function"]["arguments"]
+                    # 尝试修复 mojibake
+                    try:
+                        fixed = args_str.encode('latin-1').decode('utf-8')
+                        if any('一' <= c <= '鿿' for c in fixed[:100]):
+                            args_str = fixed
+                    except (UnicodeEncodeError, UnicodeDecodeError):
+                        pass
+                    tcs.append(ToolCall(
+                        id=tc["id"],
+                        name=tc["function"]["name"],
+                        arguments=json.loads(args_str),
+                    ))
+                return ChatResult(tool_calls=tcs)
+
+            # 纯文本回复
+            text = msg.get("content", "")
+            if text:
+                try:
+                    fixed = text.encode('latin-1').decode('utf-8')
+                    if any('一' <= c <= '鿿' for c in fixed[:100]):
+                        text = fixed
+                except (UnicodeEncodeError, UnicodeDecodeError):
+                    pass
+            return ChatResult(content=text)
+
+        except (KeyError, IndexError, json.JSONDecodeError) as e:
+            logger.warning(f"[DeepSeek] parse_openai_tools error: {e}")
+            return ChatResult(content=None)
+
+    @staticmethod
+    def _parse_anthropic_tools(data: dict) -> ChatResult:
+        """解析 Anthropic 格式的 tool_use 响应"""
+        try:
+            content_blocks = data.get("content", [])
+            text_parts = []
+            tcs = []
+
+            for block in content_blocks:
+                if block.get("type") == "text":
+                    text_parts.append(block.get("text", ""))
+                elif block.get("type") == "tool_use":
+                    tcs.append(ToolCall(
+                        id=block.get("id", ""),
+                        name=block.get("name", ""),
+                        arguments=block.get("input", {}),
+                    ))
+
+            text = "".join(text_parts)
+            if text:
+                try:
+                    fixed = text.encode('latin-1').decode('utf-8')
+                    if any('一' <= c <= '鿿' for c in fixed[:100]):
+                        text = fixed
+                except (UnicodeEncodeError, UnicodeDecodeError):
+                    pass
+
+            return ChatResult(content=text or None, tool_calls=tcs or None)
+
+        except (KeyError, TypeError) as e:
+            logger.warning(f"[DeepSeek] parse_anthropic_tools error: {e}")
+            return ChatResult(content=None)
 
     # ═══ Vision (固用 flash) ═══════════════════
 

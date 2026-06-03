@@ -1,7 +1,13 @@
-"""持仓估值同步 — 从腾讯行情获取 PE/PB/市值 + 从东财获取行业等基本信息"""
-from datetime import datetime as dt
+"""持仓估值同步 — 从腾讯行情获取 PE/PB/市值 + 从东财获取行业等基本信息
+
+表拆分（V5.16）:
+  - sync_stock_info  → StockMaster（静态：名称/行业/上市日/总股本）
+  - sync_valuation   → StockValuation（动态：PE/PB/市值/换手率）
+  - sync_financial_factors → StockValuation（动态：ROE/股息率/盈利增速）
+"""
+from datetime import datetime as dt, date
 from app.framework.database.session import async_session
-from app.models.models import StockInfo, Position
+from app.models.models import StockMaster, StockValuation, Position
 from app.domain.market_data.sources.tencent import get_tencent_quotes
 from app.framework.logger import logger
 from sqlalchemy import select
@@ -14,7 +20,6 @@ def _find_column(df_columns, keywords: list) -> object:
         col_str = str(col)
         if all(kw in col_str for kw in keywords):
             return col
-    # 放宽: 只要包含任一关键词
     for col in df_columns:
         col_str = str(col)
         if any(kw in col_str for kw in keywords):
@@ -22,19 +27,28 @@ def _find_column(df_columns, keywords: list) -> object:
     return None
 
 
+def _infer_exchange(code: str) -> str:
+    """根据股票代码推断交易所"""
+    if len(code) == 5:
+        return "HK"
+    return "SH" if code.startswith(("6", "9")) else "SZ"
+
+
 async def sync_stock_info(code: str) -> bool:
-    """同步单只股票的基本信息 (行业/总股本/上市时间) 从 akshare 东财接口"""
+    """同步单只股票的基本信息 (行业/总股本/上市时间/名称) → StockMaster
+
+    数据源: akshare 东财 (stock_individual_info_em), Tushare 兜底
+    """
     try:
-        import akshare as ak, httpx, os
+        import akshare as ak
         loop = asyncio.get_event_loop()
-        # akshare 内部用 requests, 需绕过系统代理
+
         def _fetch():
             import os
-            os.environ['HTTP_PROXY'] = ''
-            os.environ['HTTPS_PROXY'] = ''
-            os.environ['http_proxy'] = ''
-            os.environ['https_proxy'] = ''
+            for k in ('HTTP_PROXY','HTTPS_PROXY','http_proxy','https_proxy'):
+                os.environ[k] = ''
             return ak.stock_individual_info_em(code)
+
         df = await loop.run_in_executor(None, _fetch)
         if df is None or df.empty:
             return False
@@ -54,7 +68,6 @@ async def sync_stock_info(code: str) -> bool:
                     except: pass
             elif '上市时间' in item:
                 try:
-                    from datetime import date
                     val_str = str(int(value))
                     info['list_date'] = date(int(val_str[:4]), int(val_str[4:6]), int(val_str[6:8]))
                 except: pass
@@ -62,7 +75,6 @@ async def sync_stock_info(code: str) -> bool:
                 info['name'] = str(value)
 
         if not info:
-            # Tushare 兜底
             from app.domain.market_data.sources.tushare_provider import TushareProvider
             if TushareProvider.available():
                 ts_info = await loop.run_in_executor(None, TushareProvider._fetch_stock_info, code)
@@ -72,14 +84,13 @@ async def sync_stock_info(code: str) -> bool:
                     info['industry'] = ts_info['industry']
                 if ts_info.get('list_date'):
                     try:
-                        from datetime import date as d2
-                        info['list_date'] = d2.fromisoformat(str(ts_info['list_date']))
+                        info['list_date'] = date.fromisoformat(str(ts_info['list_date']))
                     except: pass
         if not info:
             return False
 
         async with async_session() as db:
-            existing = await db.get(StockInfo, code)
+            existing = await db.get(StockMaster, code)
             if existing:
                 if 'industry' in info and info['industry']:
                     existing.industry = info['industry']
@@ -91,12 +102,11 @@ async def sync_stock_info(code: str) -> bool:
                     existing.total_shares = info['total_shares']
                 if 'float_shares' in info:
                     existing.float_shares = info['float_shares']
-                existing.updated_at = dt.now()
             else:
-                db.add(StockInfo(
+                db.add(StockMaster(
                     stock_code=code,
                     stock_name=info.get('name', code),
-                    exchange='HK' if len(code) == 5 else ('SH' if code.startswith(('6','9')) else 'SZ'),
+                    exchange=_infer_exchange(code),
                     industry=info.get('industry'),
                     list_date=info.get('list_date'),
                     total_shares=info.get('total_shares'),
@@ -104,15 +114,18 @@ async def sync_stock_info(code: str) -> bool:
                 ))
             await db.commit()
 
-        logger.info(f"[StockInfo] Synced {code}: industry={info.get('industry','?')}")
+        logger.info(f"[StockMaster] Synced {code}: name={info.get('name','?')} industry={info.get('industry','?')}")
         return True
     except Exception as e:
-        logger.warning(f"[StockInfo] {code} info sync failed: {e}")
+        logger.warning(f"[StockMaster] {code} info sync failed: {e}")
         return False
 
 
 async def sync_valuation(target_codes: list = None):
-    """同步 PE/PB/市值到 stock_info 表。target_codes 为 None 时同步全部持仓"""
+    """同步 PE/PB/市值到 StockValuation 表。target_codes 为 None 时同步全部持仓
+
+    若股票尚未在 StockMaster 中，自动用腾讯接口的名称创建一条初始记录。
+    """
     async with async_session() as db:
         if target_codes:
             codes = list(target_codes)
@@ -128,21 +141,30 @@ async def sync_valuation(target_codes: list = None):
 
     async with async_session() as db:
         for code, q in quotes.items():
-            if not q.get("name"):
+            name = q.get("name")
+            if not name:
                 continue
-            existing = await db.get(StockInfo, code)
-            if existing:
-                existing.stock_name = q["name"] or existing.stock_name
-                existing.pe_ttm = q.get("pe_ttm")
-                existing.pb = q.get("pb")
-                existing.mcap_yi = q.get("mcap_yi")
-                existing.float_mcap_yi = q.get("float_mcap_yi")
-                existing.turnover_pct = q.get("turnover_pct")
-                existing.updated_at = dt.now()
+
+            # 确保 StockMaster 有该股票的记录（用腾讯名称兜底创建）
+            master = await db.get(StockMaster, code)
+            if not master:
+                db.add(StockMaster(
+                    stock_code=code, stock_name=name,
+                    exchange=_infer_exchange(code),
+                ))
+
+            # 写入/更新 StockValuation
+            val = await db.get(StockValuation, code)
+            if val:
+                val.pe_ttm = q.get("pe_ttm")
+                val.pb = q.get("pb")
+                val.mcap_yi = q.get("mcap_yi")
+                val.float_mcap_yi = q.get("float_mcap_yi")
+                val.turnover_pct = q.get("turnover_pct")
+                val.updated_at = dt.now()
             else:
-                db.add(StockInfo(
-                    stock_code=code, stock_name=q["name"],
-                    exchange="HK" if len(code) == 5 else ("SH" if code.startswith(("6","9")) else "SZ"),
+                db.add(StockValuation(
+                    stock_code=code,
                     pe_ttm=q.get("pe_ttm"), pb=q.get("pb"),
                     mcap_yi=q.get("mcap_yi"), float_mcap_yi=q.get("float_mcap_yi"),
                     turnover_pct=q.get("turnover_pct"),
@@ -150,18 +172,18 @@ async def sync_valuation(target_codes: list = None):
             updated += 1
         await db.commit()
 
-    logger.info(f"[✅] Valuation synced: {updated} stocks")
+    logger.info(f"[StockValuation] Synced: {updated} stocks")
     return updated
 
 
 async def sync_financial_factors(target_codes: list = None):
-    """同步 ROE/股息率/近3年盈利增速到 stock_info 表。
+    """同步 ROE/股息率/近3年盈利增速到 StockValuation 表。
+
     数据来源: akshare 新浪财务指标 (ROE+股息率) + 财报表计算 (eps_growth_3y)。
     target_codes 为 None 时同步全部持仓+自选。
     """
     from app.models.models import WatchlistItem
 
-    # 确定待同步股票范围
     async with async_session() as db:
         if target_codes:
             codes = list(target_codes)
@@ -173,7 +195,6 @@ async def sync_financial_factors(target_codes: list = None):
     if not codes:
         return 0
 
-    # 过滤港股（新浪财务指标只支持A股）
     a_codes = [c for c in codes if len(c) == 6]
     if not a_codes:
         logger.info("[FinancialFactors] No A-share stocks to sync")
@@ -181,7 +202,6 @@ async def sync_financial_factors(target_codes: list = None):
 
     import akshare as ak
     from app.models.models import FinancialStatement
-    from sqlalchemy import func
 
     updated = 0
     logger.info(f"[FinancialFactors] Syncing ROE/eps_growth for {len(a_codes)} A-share stocks")
@@ -189,9 +209,8 @@ async def sync_financial_factors(target_codes: list = None):
     async with async_session() as db:
         for code in a_codes:
             try:
-                # ── ROE + 股息率: 从 akshare 新浪财务指标获取 ──
-                roe_val = None
-                div_val = None
+                # ── ROE + 股息率 ──
+                roe_val = div_val = None
                 try:
                     df = await asyncio.to_thread(
                         ak.stock_financial_analysis_indicator, symbol=code, start_year="2020")
@@ -200,17 +219,15 @@ async def sync_financial_factors(target_codes: list = None):
                         roe_col = _find_column(df, ['净资产收益率', '%'])
                         if roe_col is not None and str(latest[roe_col]) != 'nan':
                             roe_val = float(latest[roe_col])
-                        # 股息率: 列名可能是 "股息率(%)" 或 "股利支付率"
                         div_col = _find_column(df, ['股息率', '股利支付率'])
                         if div_col is not None and str(latest[div_col]) != 'nan':
                             div_val = float(latest[div_col])
                 except Exception:
-                    pass  # 获取失败不阻塞其他字段
+                    pass
 
-                # ── eps_growth_3y: 从财报表计算近12个季度利润复合增速 ──
+                # ── eps_growth_3y ──
                 eps_growth = None
                 try:
-                    # 取最近 12 季度 parent_profit
                     rows = await db.execute(
                         select(FinancialStatement.report_date, FinancialStatement.parent_profit)
                         .where(FinancialStatement.stock_code == code)
@@ -219,7 +236,6 @@ async def sync_financial_factors(target_codes: list = None):
                     )
                     profits = [(r[0], r[1]) for r in rows.all() if r[1] and r[1] != 0]
                     if len(profits) >= 8:
-                        # TTM 利润: 最近4个季度 vs 12季度前的4个季度
                         recent_ttm = sum(p[1] for p in profits[:4])
                         old_ttm = sum(p[1] for p in profits[8:12]) if len(profits) >= 12 else sum(p[1] for p in profits[4:8])
                         if old_ttm and old_ttm > 0:
@@ -228,30 +244,26 @@ async def sync_financial_factors(target_codes: list = None):
                 except Exception:
                     pass
 
-                # ── 写入 stock_info ──
-                existing = await db.get(StockInfo, code)
-                if existing:
-                    dirty = False
-                    if roe_val is not None:
-                        existing.roe = round(roe_val, 2)
-                        dirty = True
-                    if eps_growth is not None:
-                        existing.eps_growth_3y = eps_growth
-                        dirty = True
-                    if div_val is not None:
-                        existing.dividend_yield = round(div_val, 2)
-                        dirty = True
-                    if dirty:
-                        existing.updated_at = dt.now()
-                        updated += 1
-                elif roe_val is not None:
-                    db.add(StockInfo(
-                        stock_code=code, stock_name=code,
-                        roe=round(roe_val, 2),
-                        eps_growth_3y=eps_growth,
-                        dividend_yield=round(div_val, 2) if div_val is not None else None,
-                    ))
+                # ── 写入 StockValuation ──
+                val = await db.get(StockValuation, code)
+                if not val:
+                    val = StockValuation(stock_code=code)
+                    db.add(val)
+
+                dirty = False
+                if roe_val is not None:
+                    val.roe = round(roe_val, 2)
+                    dirty = True
+                if eps_growth is not None:
+                    val.eps_growth_3y = eps_growth
+                    dirty = True
+                if div_val is not None:
+                    val.dividend_yield = round(div_val, 2)
+                    dirty = True
+                if dirty:
+                    val.updated_at = dt.now()
                     updated += 1
+
                 await asyncio.sleep(0)
 
             except Exception as e:

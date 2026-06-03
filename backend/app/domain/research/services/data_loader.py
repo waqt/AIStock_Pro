@@ -2,7 +2,7 @@
 from typing import List, Dict, Any, Optional
 from app.framework.database.session import async_session
 from app.models.models import (
-    StockInfo, MarketData, Position, ExchangeRate, MacroHistory
+    StockMaster, StockValuation, MarketData, Position, ExchangeRate, MacroHistory
 )
 from sqlalchemy import select, func, desc
 from app.framework.logger import logger
@@ -69,23 +69,32 @@ class ResearchDataLoader:
         return result[::-1]
 
     async def load_fundamentals(self, codes: List[str]) -> Dict[str, Dict]:
-        """加载基本面 (PE/PB/市值)"""
+        """加载基本面 (名称/行业/PE/PB/市值/ROE) — 从 StockMaster + StockValuation"""
         if not codes:
             return {}
         async with async_session() as db:
+            from sqlalchemy import outerjoin
+            j = outerjoin(StockMaster, StockValuation,
+                          StockMaster.stock_code == StockValuation.stock_code)
             rows = await db.execute(
-                select(StockInfo).where(StockInfo.stock_code.in_(codes))
+                select(StockMaster, StockValuation)
+                .select_from(j)
+                .where(StockMaster.stock_code.in_(codes))
             )
-            return {
-                r.stock_code: {
-                    "name": r.stock_name, "exchange": r.exchange,
-                    "pe_ttm": r.pe_ttm, "pb": r.pb,
-                    "mcap_yi": r.mcap_yi, "industry": r.industry,
-                    "roe": r.roe, "dividend_yield": r.dividend_yield,
-                    "eps_growth_3y": r.eps_growth_3y,
+            result = {}
+            for r in rows.all():
+                m, v = r  # tuple: (StockMaster row, StockValuation row or None)
+                result[m.stock_code] = {
+                    "name": m.stock_name, "exchange": m.exchange,
+                    "pe_ttm": v.pe_ttm if v else None,
+                    "pb": v.pb if v else None,
+                    "mcap_yi": v.mcap_yi if v else None,
+                    "industry": m.industry,
+                    "roe": v.roe if v else None,
+                    "dividend_yield": v.dividend_yield if v else None,
+                    "eps_growth_3y": v.eps_growth_3y if v else None,
                 }
-                for r in rows.scalars().all()
-            }
+            return result
 
     async def load_indicators(self, codes: List[str]) -> Dict[str, Dict]:
         """加载最新技术指标 (SQLite)，支持遭遇新股票时 JIT(Just-In-Time) 现场计算"""
@@ -120,7 +129,7 @@ class ResearchDataLoader:
                     # 2. 触发历史计算
                     await IndicatorRunner.compute_historical(code)
             
-            # 3. JIT 补全基本信息: 从 MarketData 新增代码中抓取 StockInfo(名称/交易所)
+            # 3. JIT 补全基本信息: 从 MarketData 新增代码中同步到 StockMaster
             from app.domain.market_data.services.stock_list import sync_stock_list
             await sync_stock_list()
                     
@@ -158,51 +167,61 @@ class ResearchDataLoader:
         return result
 
     async def load_positions(self) -> List[Dict]:
-        """加载当前持仓"""
+        """加载当前持仓 (名称从 StockMaster 获取)"""
         async with async_session() as db:
-            rows = await db.execute(select(Position))
+            rows = await db.execute(
+                select(Position, StockMaster.stock_name)
+                .outerjoin(StockMaster, Position.stock_code == StockMaster.stock_code)
+            )
             return [
                 {
-                    "stock_code": p.stock_code, "stock_name": p.stock_name,
-                    "volume": p.volume, "avg_cost": p.avg_cost,
-                    "current_price": p.current_price, "market_value": p.market_value,
-                    "profit_loss": p.profit_loss, "profit_loss_ratio": p.profit_loss_ratio,
+                    "stock_code": p.Position.stock_code, "stock_name": p.stock_name or p.Position.stock_code,
+                    "volume": p.Position.volume, "avg_cost": p.Position.avg_cost,
+                    "current_price": p.Position.current_price, "market_value": p.Position.market_value,
+                    "profit_loss": p.Position.profit_loss, "profit_loss_ratio": p.Position.profit_loss_ratio,
                 }
-                for p in rows.scalars().all()
+                for p in rows.all()
             ]
 
     async def load_sector_overview(self, industry: str) -> Dict:
-        """加载行业概览 (该行业所有股票的估值汇总)"""
+        """加载行业概览 (该行业所有股票的估值汇总) — from StockMaster + StockValuation"""
         async with async_session() as db:
+            from sqlalchemy import outerjoin
+            j = outerjoin(StockMaster, StockValuation,
+                          StockMaster.stock_code == StockValuation.stock_code)
             rows = await db.execute(
-                select(StockInfo)
-                .where(StockInfo.industry.isnot(None))
+                select(StockMaster, StockValuation)
+                .select_from(j)
+                .where(StockMaster.industry.isnot(None))
             )
-            sector_stocks = [r for r in rows.scalars().all() if industry in (r.industry or "")]
-            if not sector_stocks:
-                return {"count": 0}
+            all_stocks = []
+            for r in rows.all():
+                m, v = r
+                if industry in (m.industry or ""):
+                    all_stocks.append({
+                        "code": m.stock_code, "name": m.stock_name,
+                        "pe_ttm": v.pe_ttm if v else None,
+                        "pb": v.pb if v else None,
+                        "mcap_yi": v.mcap_yi if v else None,
+                    })
 
-            pe_values = [s.pe_ttm for s in sector_stocks if s.pe_ttm and s.pe_ttm > 0]
-            pb_values = [s.pb for s in sector_stocks if s.pb and s.pb > 0]
+            pe_values = [s["pe_ttm"] for s in all_stocks if s["pe_ttm"] and s["pe_ttm"] > 0]
+            pb_values = [s["pb"] for s in all_stocks if s["pb"] and s["pb"] > 0]
             return {
-                "count": len(sector_stocks),
+                "count": len(all_stocks),
                 "avg_pe": sum(pe_values) / len(pe_values) if pe_values else None,
                 "avg_pb": sum(pb_values) / len(pb_values) if pb_values else None,
-                "stocks": [
-                    {"code": s.stock_code, "name": s.stock_name,
-                     "pe_ttm": s.pe_ttm, "pb": s.pb, "mcap_yi": s.mcap_yi}
-                    for s in sector_stocks[:20]
-                ]
+                "stocks": all_stocks[:20],
             }
 
     async def search_stocks(self, keyword: str, limit: int = 20) -> List[Dict]:
-        """搜索股票 (代码/名称模糊匹配)"""
+        """搜索股票 (代码/名称模糊匹配) — from StockMaster"""
         async with async_session() as db:
             rows = await db.execute(
-                select(StockInfo.stock_code, StockInfo.stock_name, StockInfo.exchange)
+                select(StockMaster.stock_code, StockMaster.stock_name, StockMaster.exchange)
                 .where(
-                    StockInfo.stock_code.like(f"%{keyword}%") |
-                    StockInfo.stock_name.like(f"%{keyword}%")
+                    StockMaster.stock_code.like(f"%{keyword}%") |
+                    StockMaster.stock_name.like(f"%{keyword}%")
                 )
                 .limit(limit)
             )
@@ -218,18 +237,28 @@ class ResearchDataLoader:
             }
 
     async def search_industry_stocks(self, keyword: str) -> List[Dict]:
-        """搜索行业内所有标的 (StockInfo.industry 模糊匹配)"""
+        """搜索行业内所有标的 — from StockMaster + StockValuation"""
         async with async_session() as db:
+            from sqlalchemy import outerjoin
+            j = outerjoin(StockMaster, StockValuation,
+                          StockMaster.stock_code == StockValuation.stock_code)
             rows = await db.execute(
-                select(StockInfo)
-                .where(StockInfo.industry.isnot(None))
+                select(StockMaster, StockValuation)
+                .select_from(j)
+                .where(StockMaster.industry.isnot(None))
             )
-            matched = [r for r in rows.scalars().all() if keyword in (r.industry or "")]
-            return [
-                {"code": s.stock_code, "name": s.stock_name, "industry": s.industry,
-                 "pe_ttm": s.pe_ttm, "pb": s.pb, "mcap_yi": s.mcap_yi}
-                for s in matched
-            ]
+            matched = []
+            for r in rows.all():
+                m, v = r
+                if keyword in (m.industry or ""):
+                    matched.append({
+                        "code": m.stock_code, "name": m.stock_name,
+                        "industry": m.industry,
+                        "pe_ttm": v.pe_ttm if v else None,
+                        "pb": v.pb if v else None,
+                        "mcap_yi": v.mcap_yi if v else None,
+                    })
+            return matched
 
     async def load_financials(self, codes: List[str]) -> Dict[str, Dict]:
         """加载财务数据 — PE/PB/市值 (akshare优先, tushare兜底)"""

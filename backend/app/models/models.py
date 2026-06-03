@@ -9,7 +9,6 @@ class Position(Base):
     __tablename__ = "positions"
     id = Column(Integer, primary_key=True, index=True)
     stock_code = Column(String(20), unique=True, index=True)
-    stock_name = Column(String(50))
     volume = Column(Integer, default=0)
     avg_cost = Column(Float, default=0.0)
     current_price = Column(Float, default=0.0)
@@ -115,14 +114,23 @@ class ReportRegistry(Base):
     created_at = Column(DateTime, default=datetime.now)
 
 
-class StockInfo(Base):
-    """股票基础信息 — A股+港股全量代码名称"""
-    __tablename__ = "stock_info"
+class StockMaster(Base):
+    """全量股票底表（静态信息）— A股+港股全量代码名称、行业、上市日等不变信息"""
+    __tablename__ = "stock_master"
     stock_code = Column(String(10), primary_key=True)
-    stock_name = Column(String(50), nullable=False)
+    stock_name = Column(String(50), nullable=False, comment="股票名称（唯一真相源）")
     exchange = Column(String(5), comment="SH/SZ/HK")
-    industry = Column(String(50), nullable=True)
+    industry = Column(String(50), nullable=True, comment="申万行业")
     list_date = Column(Date, nullable=True)
+    total_shares = Column(Float, nullable=True, comment="总股本(股)")
+    float_shares = Column(Float, nullable=True, comment="流通股本(股)")
+    status = Column(String(10), default="active", comment="active/st/delisted")
+    created_at = Column(DateTime, default=datetime.now)
+
+class StockValuation(Base):
+    """每日估值快照（动态信息）— PE/PB/市值/ROE/换手率等每日刷新"""
+    __tablename__ = "stock_valuation"
+    stock_code = Column(String(10), primary_key=True)
     pe_ttm = Column(Float, nullable=True, comment="市盈率(TTM)")
     pb = Column(Float, nullable=True, comment="市净率")
     mcap_yi = Column(Float, nullable=True, comment="总市值(亿)")
@@ -131,9 +139,11 @@ class StockInfo(Base):
     roe = Column(Float, nullable=True, comment="净资产收益率(%)")
     dividend_yield = Column(Float, nullable=True, comment="股息率(%)")
     eps_growth_3y = Column(Float, nullable=True, comment="近3年盈利复合增速(%)")
-    total_shares = Column(Float, nullable=True, comment="总股本(股)")
-    float_shares = Column(Float, nullable=True, comment="流通股本(股)")
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+# ─────────────────────────────────────────────────────────
+# 注: StockInfo 原表已于 V5.16 迁移为 StockMaster + StockValuation
+# ─────────────────────────────────────────────────────────
 
 
 class FinancialStatement(Base):
@@ -179,7 +189,6 @@ class WatchlistItem(Base):
     """自选股 — 用户关注的股票 (与持仓独立)"""
     __tablename__ = "watchlist"
     stock_code = Column(String(20), primary_key=True)
-    stock_name = Column(String(50), default="")
     group_tag = Column(String(30), default="默认")  # 分组标签
     is_held = Column(Boolean, default=False)  # 是否已持仓
     sort_order = Column(Integer, default=0)

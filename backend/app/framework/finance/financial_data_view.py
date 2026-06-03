@@ -26,8 +26,19 @@ def _pct(current: float, base: float) -> Optional[float]:
 # ═══ 逐季度指标计算 (中间数据, 非指示器) ═══════════
 
 def compute_quarterly_metrics(quarters: List[Dict]) -> List[Dict]:
-    """为每个季度计算 YoY / QoQ / 剪刀差 / 净利率 / OCF健康度 / 存货占比
-    保留为独立工具函数, 因为它返回的是逐季度时间序列, 不是标量指示器
+    """为每个季度计算中间指标（仅保留未被注册指标覆盖的计算）
+
+    已由注册指标覆盖的计算（通过 compute_all_indicators 获取）:
+      rev_qoq    → revenue_qoq 指标
+      rev_yoy    → revenue_yoy / revenue_growth 指标
+      profit_yoy → profit_growth 指标
+      scissor_gap → scissor_gap 指标
+
+    仍保留的手算（单季度视角，无直接指标对应或仅作降级用）:
+      profit_qoq       — 利润环比（波动大，指标系统无直接对应）
+      net_margin       — 单季度净利率（与指标 TTM 口径不同）
+      ocf_profit_ratio — 单季度 OCF/利润（指标是 TTM 版）
+      inventory_revenue_ratio — 单季度库存/营收（指标是 TTM/营收）
 
     输入: newest-first (i=0=最新季度)
     输出: 同样 newest-first 顺序
@@ -37,35 +48,27 @@ def compute_quarterly_metrics(quarters: List[Dict]) -> List[Dict]:
         rev = float(q.get("revenue", 0) or 0)
         profit = float(q.get("profit", 0) or 0)
         inv = float(q.get("inventory", 0) or 0)
-        cl = float(q.get("contract_liability", 0) or 0)
         ocf = float(q.get("op_cashflow", 0) or 0)
 
         m = {"report_date": q.get("report_date", ""),
              "revenue": rev, "profit": profit, "op_cashflow": ocf,
-             "inventory": inv, "contract_liability": cl}
+             "inventory": inv}
 
-        # QoQ: vs 上一季度 (i+1 in newest-first)
+        # profit QoQ: vs 上一季度 (保留: 无直接指标对应)
         if i + 1 < len(quarters):
-            m["rev_qoq"] = _pct(rev, float(quarters[i + 1].get("revenue", 0) or 0))
             m["profit_qoq"] = _pct(profit, float(quarters[i + 1].get("profit", 0) or 0))
         else:
-            m["rev_qoq"] = m["profit_qoq"] = None
+            m["profit_qoq"] = None
 
-        # YoY: vs 4季前 (i+4 in newest-first)
-        if i + 4 < len(quarters):
-            m["rev_yoy"] = _pct(rev, float(quarters[i + 4].get("revenue", 0) or 0))
-            m["profit_yoy"] = _pct(profit, float(quarters[i + 4].get("profit", 0) or 0))
-        else:
-            m["rev_yoy"] = m["profit_yoy"] = None
-
-        if m.get("rev_yoy") is not None and m.get("profit_yoy") is not None:
-            m["scissor_gap"] = round(m["profit_yoy"] - m["rev_yoy"], 2)
-        else:
-            m["scissor_gap"] = None
-
+        # 单季度净利率 (保留: TTM 口径与单季口径不同)
         m["net_margin"] = round(profit / rev * 100, 1) if rev > 0 else 0.0
+
+        # 单季度 OCF/利润比 (保留: 指标是 TTM, 此处是单季)
         m["ocf_profit_ratio"] = round(ocf / profit, 2) if profit and profit > 0 else None
+
+        # 单季度库存/营收 (保留: 指标是 TTM/营收)
         m["inventory_revenue_ratio"] = round(inv / rev, 2) if rev > 0 else None
+
         results.append(m)
 
     return results

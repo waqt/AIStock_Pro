@@ -41,6 +41,53 @@ RAW_FIELD_UNITS: Dict[str, str] = {k: "元" for k in [
     "total_equity",
 ]}
 
+
+# ═══ 衍生指标注册表 (Layer 2: 查询时实时计算, 不持久化) ═══
+# 简单比率/周转类指标, 从已有财务字段直接计算, 无需预存
+
+DERIVED_INDICATORS: Dict[str, Dict] = {
+    "ar_turnover_days": {
+        "label": "应收账款周转天数(DSO)",
+        "description": "应收账款周转天数 = 平均应收账款 / 营业收入(TTM) × 365。"
+                       "衡量回款速度, 缩短说明客户不敢拖欠（卡位权增强）, 拉长说明地位下降。",
+        "judgment": "<30天=强; 30~60=正常; 60~90=偏长; >90=弱",
+        "unit": "天",
+        "category": "health",
+        "indicator_type": "moat",
+        "requires": ["accounts_receivable", "revenue"],
+    },
+    "fixed_asset_turnover": {
+        "label": "固定资产周转率",
+        "description": "营业收入(TTM) / 平均固定资产。"
+                       "衡量产能利用效率, 扩张后维持或提升说明产能有效利用, 下降说明产能闲置。",
+        "judgment": ">5=高(轻资产高周转); 2~5=正常; <2=低(重资产或产能闲置)",
+        "unit": "倍",
+        "category": "profitability",
+        "indicator_type": "prosperity",
+        "requires": ["revenue", "fixed_assets"],
+    },
+    "sga_ratio": {
+        "label": "销售管理费用率",
+        "description": "(销售费用+管理费用) / 营业收入(TTM)。"
+                       "竞争加剧→销售费用率上升吞噬利润; 高认证壁垒→SG&A占比低且稳定。",
+        "judgment": "<10%=低(壁垒高); 10~20%=正常; >20%=偏高(竞争激烈)",
+        "unit": "%",
+        "category": "health",
+        "indicator_type": "moat",
+        "requires": ["sale_expense", "manage_expense", "revenue"],
+    },
+    "ocf_to_revenue_ratio": {
+        "label": "经营现金流/营收比",
+        "description": "经营性现金流净额(TTM) / 营业收入(TTM)。"
+                       "衡量每元收入的现金创造能力, 高说明收款好、利润质量高。",
+        "judgment": ">20%=强; 10~20%=正常; <10%=偏弱; <0=亏损",
+        "unit": "%",
+        "category": "health",
+        "indicator_type": "both",
+        "requires": ["op_cashflow", "revenue"],
+    },
+}
+
 # ═══ 原始财务数据字段字典 ═══════════════════════════
 
 FINANCIAL_RAW_FIELDS: Dict[str, str] = {
@@ -111,6 +158,19 @@ class FinancialQueryService:
                 "requires_raw_fields": meta["requires"],
             }
 
+        # 衍生指标 (Layer 2)
+        derived = {}
+        for name, dmeta in DERIVED_INDICATORS.items():
+            derived[name] = {
+                "label": dmeta["label"],
+                "description": dmeta["description"],
+                "judgment": dmeta["judgment"],
+                "unit": dmeta.get("unit", "?"),
+                "category": dmeta.get("category", "other"),
+                "indicator_type": dmeta.get("indicator_type", "both"),
+                "requires_raw_fields": dmeta.get("requires", []),
+            }
+
         # 原始字段附加单位信息
         raw_fields_with_meta = {}
         for f, label in FINANCIAL_RAW_FIELDS.items():
@@ -121,9 +181,11 @@ class FinancialQueryService:
 
         _catalog_cache = {
             "indicators": indicators,
+            "derived_indicators": derived,
             "raw_fields": raw_fields_with_meta,
             "summary": {
                 "total_indicators": len(indicators),
+                "total_derived": len(derived),
                 "total_raw_fields": len(FINANCIAL_RAW_FIELDS),
                 "categories": _group_by_category(indicators),
             },
@@ -140,7 +202,7 @@ class FinancialQueryService:
         lines.append("以下是可用指标和字段: ")
         lines.append("")
 
-        lines.append("### 已注册财务指标（通过 indicators 参数请求）")
+        lines.append("### Layer 1 — 已注册财务指标（通过 indicators 参数请求，预计算持久化）")
         lines.append("")
         for name, meta in sorted(catalog["indicators"].items()):
             lines.append(f"**{name}** ({meta['label']}) — {meta['description']}")
@@ -150,6 +212,16 @@ class FinancialQueryService:
                 unit_str = f"单位={fmeta['unit']}" if fmeta['unit'] != '?' else ""
                 tag = f" ({unit_str})" if unit_str else ""
                 lines.append(f"    * `{fmeta['field']}` — {fmeta['meaning']}{tag}")
+            lines.append("")
+
+        lines.append("### Layer 2 — 衍生指标（通过 indicators 参数请求，实时计算）")
+        lines.append("")
+        lines.append("以下指标由原始财务字段实时计算，无需预计算。")
+        lines.append("")
+        for name, dmeta in sorted(catalog.get("derived_indicators", {}).items()):
+            lines.append(f"**{name}** ({dmeta['label']}) — {dmeta['description']}")
+            lines.append(f"  - 分类: {dmeta['category']} | 判断: {dmeta['judgment']} | 单位: {dmeta['unit']}")
+            lines.append(f"  - 依赖字段: {', '.join(f'`{f}`' for f in dmeta['requires_raw_fields'])}")
             lines.append("")
 
         lines.append("### 原始财务数据字段（通过 raw_fields 参数请求）")
@@ -246,6 +318,51 @@ class FinancialQueryService:
             return FinancialQueryService._assemble_multi(
                 code, quarters, indicators, raw_fields)
 
+    # ── 衍生指标计算 ─────────────────────────────────────
+
+    @staticmethod
+    def _compute_derived(name: str, quarters: list) -> Optional[float]:
+        """实时计算衍生指标 (Layer 2), 不涉及 SQLite 存储"""
+        def _ttm(idx: str) -> float:
+            return sum(float(q.get(idx, 0) or 0) for q in quarters[:4])
+
+        def _avg_ttm(idx: str) -> float:
+            """平均余额: (本期末 + 上期末) / 2"""
+            if len(quarters) < 5:
+                return _ttm(idx) / 4  # 不足5季, 用TTM均值近似
+            cur = float(quarters[0].get(idx, 0) or 0)
+            prev = float(quarters[4].get(idx, 0) or 0)
+            return (cur + prev) / 2
+
+        try:
+            if name == "ar_turnover_days":
+                rev_ttm = _ttm("revenue")
+                ar_avg = _avg_ttm("accounts_receivable")
+                if rev_ttm and ar_avg is not None:
+                    return round(ar_avg / (rev_ttm / 365), 1)
+
+            elif name == "fixed_asset_turnover":
+                rev_ttm = _ttm("revenue")
+                fa_avg = _avg_ttm("fixed_assets")
+                if rev_ttm and fa_avg:
+                    return round(rev_ttm / fa_avg, 2)
+
+            elif name == "sga_ratio":
+                rev_ttm = _ttm("revenue")
+                sga = _ttm("sale_expense") + _ttm("manage_expense")
+                if rev_ttm:
+                    return round(sga / rev_ttm * 100, 1)
+
+            elif name == "ocf_to_revenue_ratio":
+                rev_ttm = _ttm("revenue")
+                ocf_ttm = _ttm("op_cashflow")
+                if rev_ttm:
+                    return round(ocf_ttm / rev_ttm * 100, 1)
+
+        except Exception:
+            pass
+        return None
+
     # ── 内部 ──────────────────────────────────────────────
 
     @staticmethod
@@ -254,13 +371,18 @@ class FinancialQueryService:
         indicator_names: Optional[List[str]],
         raw_field_names: Optional[List[str]],
     ) -> Dict[str, Any]:
-        """组装单期数据 (最新报告期)"""
+        """组装单期数据 (最新报告期), 支持持久化+衍生指标"""
         from app.domain.quant.indicators.fundamental import FINANCIAL_REGISTRY
 
         result = {"stock_code": code, "report_date": quarters[0].get("report_date", "")[:10]}
 
         if indicator_names:
-            for name in indicator_names:
+            # 分离持久化指标 vs 衍生指标
+            persistent = [n for n in indicator_names if n in FINANCIAL_REGISTRY]
+            derived = [n for n in indicator_names if n in DERIVED_INDICATORS]
+
+            # 持久化指标 (Layer 1)
+            for name in persistent:
                 cls = FINANCIAL_REGISTRY.get(name)
                 if cls:
                     try:
@@ -269,6 +391,11 @@ class FinancialQueryService:
                             result.update(output)
                     except Exception as e:
                         logger.warning(f"[FinQuery] {code}: {name} failed: {e}")
+
+            # 衍生指标 (Layer 2, 实时计算)
+            for name in derived:
+                val = FinancialQueryService._compute_derived(name, quarters)
+                result[name] = val
 
         if raw_field_names and quarters:
             for f in raw_field_names:
@@ -283,8 +410,11 @@ class FinancialQueryService:
         indicator_names: Optional[List[str]],
         raw_field_names: Optional[List[str]],
     ) -> Dict[str, Any]:
-        """组装多期数据 (每个报告期一条)"""
+        """组装多期数据 (每个报告期一条), 支持持久化+衍生指标"""
         from app.domain.quant.indicators.fundamental import FINANCIAL_REGISTRY
+
+        persistent = [n for n in (indicator_names or []) if n in FINANCIAL_REGISTRY]
+        derived = [n for n in (indicator_names or []) if n in DERIVED_INDICATORS]
 
         periods_data = []
         for i in range(len(quarters) - 3):
@@ -292,8 +422,9 @@ class FinancialQueryService:
             rpt_date = window[0].get("report_date", "")[:10]
             entry = {"report_date": rpt_date}
 
-            if indicator_names:
-                for name in indicator_names:
+            # 持久化指标 (Layer 1)
+            if persistent:
+                for name in persistent:
                     cls = FINANCIAL_REGISTRY.get(name)
                     if cls:
                         try:
@@ -302,6 +433,11 @@ class FinancialQueryService:
                                 entry.update(output)
                         except Exception:
                             pass
+
+            # 衍生指标 (Layer 2, 实时计算)
+            if derived:
+                for name in derived:
+                    entry[name] = FinancialQueryService._compute_derived(name, window)
 
             if raw_field_names and window:
                 for f in raw_field_names:

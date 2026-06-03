@@ -107,7 +107,7 @@ async def get_indicator_history(
 async def get_indicator_coverage(scope: str = Query(default="all", description="all=持仓+自选股 | positions=仅持仓")):
     """检测需要指标计算的股票覆盖情况 (SQLite 查询)"""
     from app.framework.database.session import async_session
-    from app.models.models import Position, WatchlistItem, StockInfo, MarketData
+    from app.models.models import Position, WatchlistItem, StockMaster, MarketData
     from app.domain.quant.indicators import INDICATOR_REGISTRY
     from app.domain.quant.engine import indicator_store
     from sqlalchemy import select, func
@@ -121,7 +121,7 @@ async def get_indicator_coverage(scope: str = Query(default="all", description="
             wl_codes = set(r[0] for r in wl.all())
         all_codes = sorted(pos_codes | wl_codes)
 
-        name_res = await db.execute(select(StockInfo.stock_code, StockInfo.stock_name))
+        name_res = await db.execute(select(StockMaster.stock_code, StockMaster.stock_name))
         name_map = {r[0]: r[1] or r[0] for r in name_res.all()}
 
         md_res = await db.execute(
@@ -270,7 +270,7 @@ async def get_field_values(field_name: str):
     """某指标字段在所有股票上的最新值排名 (如 /field/crowding_ratio)"""
     from app.domain.quant.engine import indicator_store
     from app.framework.database.session import async_session
-    from app.models.models import StockInfo
+    from app.models.models import StockMaster
     from sqlalchemy import select
 
     rows = indicator_store.get_field_latest(field_name)
@@ -279,8 +279,8 @@ async def get_field_values(field_name: str):
         codes = [r['stock_code'] for r in rows if r.get('stock_code')]
         info = {}
         if codes:
-            res = await db.execute(select(StockInfo.stock_code, StockInfo.stock_name)
-                .where(StockInfo.stock_code.in_(codes)))
+            res = await db.execute(select(StockMaster.stock_code, StockMaster.stock_name)
+                .where(StockMaster.stock_code.in_(codes)))
             for r2 in res.all():
                 info[r2[0]] = r2[1] or r2[0]
 

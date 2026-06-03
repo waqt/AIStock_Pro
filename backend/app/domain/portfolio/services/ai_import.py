@@ -485,11 +485,11 @@ class AIImportService:
 
     @classmethod
     async def batch_import_positions(cls, db: AsyncSession, items: List[Dict], clear_old: bool = False) -> Dict:
-        from app.models.models import Position, MarketData, StockInfo
+        from app.models.models import Position, MarketData, StockMaster
         cleared = 0
 
         # 预加载股票代码对照表 (名称→代码, 支持模糊匹配)
-        info_res = await db.execute(select(StockInfo.stock_code, StockInfo.stock_name))
+        info_res = await db.execute(select(StockMaster.stock_code, StockMaster.stock_name))
         code_by_name = {}  # 精确匹配
         code_fuzzy = []    # (name, code) 模糊匹配
         for row in info_res.all():
@@ -523,7 +523,7 @@ class AIImportService:
                 code = cls._normalize_code(item.get("stock_code", ""))
                 name = item.get("stock_name", "").strip()
 
-                # 自动补全: 无代码时用名称匹配 StockInfo 表
+                # 自动补全: 无代码时用名称匹配 StockMaster 表
                 if not code and name:
                     if name in code_by_name:
                         code = code_by_name[name]
@@ -562,7 +562,6 @@ class AIImportService:
                 res = await db.execute(select(Position).where(Position.stock_code == code))
                 existing = res.scalars().first()
                 if existing:
-                    existing.stock_name = name or existing.stock_name
                     existing.volume = shares
                     existing.avg_cost = cost
                     existing.current_price = current
@@ -574,7 +573,7 @@ class AIImportService:
                     logger.info(f"[+] Updated: {code} {name} vol={shares} cost={cost} price={current}")
                 else:
                     db.add(Position(
-                        stock_code=code, stock_name=name,
+                        stock_code=code,
                         volume=shares, avg_cost=cost, current_price=current,
                         market_value=mv, profit_loss=pl, profit_loss_ratio=plr,
                         first_buy_date=date.today()

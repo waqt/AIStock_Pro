@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from typing import List
 from app.framework.database.session import get_db
-from app.models.models import Position, StockInfo
+from app.models.models import Position, StockMaster, StockValuation
 from app.models.schemas import PositionResponse
 from app.framework.logger import logger
 
@@ -17,21 +17,27 @@ async def list_positions(db: AsyncSession = Depends(get_db)):
         result = await db.execute(select(Position))
         positions = result.scalars().all()
 
-        # 批量查询估值数据
+        # 批量查询名称 (StockMaster) + 估值 (StockValuation)
         codes = [p.stock_code for p in positions]
+        name_map = {}
         val_map = {}
         if codes:
+            master_res = await db.execute(
+                select(StockMaster.stock_code, StockMaster.stock_name)
+                .where(StockMaster.stock_code.in_(codes)))
+            name_map = {r[0]: r[1] for r in master_res.all()}
+
             val_res = await db.execute(
-                select(StockInfo.stock_code, StockInfo.pe_ttm, StockInfo.pb, StockInfo.mcap_yi)
-                .where(StockInfo.stock_code.in_(codes))
-            )
+                select(StockValuation.stock_code, StockValuation.pe_ttm, StockValuation.pb, StockValuation.mcap_yi)
+                .where(StockValuation.stock_code.in_(codes)))
             for row in val_res.all():
                 val_map[row[0]] = {"pe_ttm": row[1], "pb": row[2], "mcap_yi": row[3]}
 
-        # 构建带估值的响应
+        # 构建带估值+名称的响应
         results = []
         for p in positions:
             d = {c.name: getattr(p, c.name) for c in p.__table__.columns}
+            d["stock_name"] = name_map.get(p.stock_code, p.stock_code)
             v = val_map.get(p.stock_code, {})
             d["pe_ttm"] = v.get("pe_ttm")
             d["pb"] = v.get("pb")
@@ -66,10 +72,12 @@ async def delete_position(stock_code: str, db: AsyncSession = Depends(get_db)):
     pos = result.scalars().first()
     if not pos:
         raise HTTPException(status_code=404, detail=f"持仓 {stock_code} 不存在")
+    master = await db.get(StockMaster, stock_code)
+    stock_name = master.stock_name if master else stock_code
     await db.execute(delete(Position).where(Position.stock_code == stock_code))
     await db.commit()
-    logger.info(f"[🧹] Deleted position: {stock_code} {pos.stock_name}")
-    return {"message": f"已删除 {stock_code} {pos.stock_name}"}
+    logger.info(f"[🧹] Deleted position: {stock_code} {stock_name}")
+    return {"message": f"已删除 {stock_code} {stock_name}"}
 
 
 @router.post("/update-prices")
