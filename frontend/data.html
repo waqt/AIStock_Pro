@@ -215,19 +215,44 @@
 
 <!-- Tab: 股票中心 -->
 <div class="data-tab-panel" id="tab-stock-center" style="display:none;">
+    <!-- 统计概览卡片 (紧凑) -->
+    <div id="sc-summary-bar" style="display:flex;gap:6px;padding:2px 0 6px 0;flex-wrap:wrap;">
+        <div class="sc-summary-card" data-key="total_stocks" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:4px;padding:4px 12px;min-width:70px;text-align:center;">
+            <div class="sc-summary-num" style="font-size:16px;font-weight:600;color:#fff;font-family:var(--font-mono);">-</div>
+            <div class="sc-summary-label" style="font-size:8px;color:var(--text-micro);">总计</div>
+        </div>
+    </div>
     <div class="toolbar">
         <input type="text" id="sc-search" placeholder="搜索代码/名称..." style="width:160px;" oninput="DataTabs.StockCenter.debounceSearch()">
+        <select id="sc-sort" onchange="DataTabs.StockCenter.applyFilter()" style="background:#000;border:1px solid var(--border-color);color:#fff;padding:4px 8px;border-radius:4px;font-size:11px;">
+            <option value="code_asc">代码 ↑</option>
+            <option value="code_desc">代码 ↓</option>
+            <option value="name_asc">名称 ↑</option>
+            <option value="name_desc">名称 ↓</option>
+            <option value="completeness_desc">完整度 ↓</option>
+            <option value="completeness_asc">完整度 ↑</option>
+        </select>
         <select id="sc-industry-filter" onchange="DataTabs.StockCenter.applyFilter()" style="background:#000;border:1px solid var(--border-color);color:#fff;padding:4px 8px;border-radius:4px;font-size:11px;min-width:120px;">
             <option value="">全部行业</option>
         </select>
         <select id="sc-dim-filter" onchange="DataTabs.StockCenter.applyFilter()" style="background:#000;border:1px solid var(--border-color);color:#fff;padding:4px 8px;border-radius:4px;font-size:11px;">
-            <option value="">完整度全部</option>
-            <option value="basic_finance">基础财务缺数据</option>
-            <option value="financial_indicators">财务指标缺数据</option>
-            <option value="dynamic_info">动态信息缺数据</option>
-            <option value="market_data">行情缺数据</option>
-            <option value="price_indicators">价量指标缺数据</option>
-            <option value="industry">行业缺数据</option>
+            <option value="">数据维度不限</option>
+            <optgroup label="—— 有数据 ——">
+                <option value="has_basic_finance">有基础财务</option>
+                <option value="has_financial_indicators">有财务指标</option>
+                <option value="has_dynamic_info">有动态信息(PE/PB)</option>
+                <option value="has_market_data">有行情数据</option>
+                <option value="has_price_indicators">有价量指标</option>
+                <option value="has_industry">有行业分类</option>
+            </optgroup>
+            <optgroup label="—— 缺数据 ——">
+                <option value="missing_basic_finance">缺基础财务</option>
+                <option value="missing_financial_indicators">缺财务指标</option>
+                <option value="missing_dynamic_info">缺动态信息</option>
+                <option value="missing_market_data">缺行情数据</option>
+                <option value="missing_price_indicators">缺价量指标</option>
+                <option value="missing_industry">缺行业分类</option>
+            </optgroup>
         </select>
         <label style="font-size:10px;color:var(--text-dim);display:flex;align-items:center;gap:4px;">
             <input type="checkbox" id="sc-only-missing" onchange="DataTabs.StockCenter.applyFilter()">仅显示缺数据的

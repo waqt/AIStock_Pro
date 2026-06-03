@@ -1171,16 +1171,36 @@ async def get_stock_center_list(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=100, le=500),
     search: str = Query(default=None),
+    sort_by: str = Query(default="code", description="code|name|completeness"),
+    sort_order: str = Query(default="asc", description="asc|desc"),
+    has_basic_finance: Optional[bool] = Query(default=None),
+    has_financial_indicators: Optional[bool] = Query(default=None),
+    has_dynamic_info: Optional[bool] = Query(default=None),
+    has_market_data: Optional[bool] = Query(default=None),
+    has_price_indicators: Optional[bool] = Query(default=None),
+    has_industry: Optional[bool] = Query(default=None),
+    industry: str = Query(default=None, description="按行业名称筛选"),
 ):
-    """股票中心: 全部股票 + 6 维数据完整度"""
+    """股票中心: 全部股票 + 6 维数据完整度。支持排序和维度筛选。"""
     from app.domain.quant.engine.indicator_store import (
         get_financial_coverage_batch, get_indicator_coverage_batch)
 
     limit = page_size
     offset = (page - 1) * page_size
 
+    # 收集 has_* 筛选条件
+    has_filters = {}
+    for dim in ["basic_finance", "financial_indicators", "dynamic_info",
+                 "market_data", "price_indicators", "industry"]:
+        v = locals().get(f"has_{dim}")
+        if v is not None:
+            has_filters[dim] = v
+
+    # 是否需要全量拉取 (非 code/name 排序 或 有 has_* 筛选 或 有行业筛选)
+    need_full = bool(has_filters) or sort_by not in ("code", "name") or bool(industry)
+
     async with async_session() as db:
-        # 1. 查询 StockMaster (分页)
+        # 构建基础查询 + 搜索 + 行业条件
         base_q = select(StockMaster)
         count_q = select(func.count(StockMaster.stock_code))
         if search:
@@ -1189,63 +1209,178 @@ async def get_stock_center_list(
                 StockMaster.stock_code.like(like) | StockMaster.stock_name.like(like))
             count_q = count_q.where(
                 StockMaster.stock_code.like(like) | StockMaster.stock_name.like(like))
+        if industry:
+            base_q = base_q.where(StockMaster.industry == industry)
+            count_q = count_q.where(StockMaster.industry == industry)
 
         total = (await db.execute(count_q)).scalar() or 0
-        rows = await db.execute(base_q.order_by(StockMaster.stock_code).offset(offset).limit(limit))
-        masters = rows.scalars().all()
 
-        codes = [m.stock_code for m in masters]
+        if need_full:
+            # ── 全量拉取: 搜索全部 → 组装配齐 6 维 → 筛选 → 排序 → 分页 ──
+            all_rows = await db.execute(base_q)
+            all_masters = all_rows.scalars().all()
+            all_codes = [m.stock_code for m in all_masters]
 
-        # 2. 批量查询各维度
-        val_map = {}  # code -> StockValuation
-        pos_set = set()  # codes in position
-        wl_set = set()  # codes in watchlist
-        md_map = {}  # code -> {days, latest}
-        fs_map = {}  # code -> {quarters, latest}
+            # 批量查各维度 (全量)
+            val_map, pos_set, wl_set, md_map, fs_map = await _batch_stock_dims(db, all_codes)
 
-        if codes:
-            # 估值
-            val_rows = await db.execute(
-                select(StockValuation).where(StockValuation.stock_code.in_(codes)))
-            for v in val_rows.scalars().all():
-                val_map[v.stock_code] = v
+            # SQLite 覆盖
+            fin_cov = get_financial_coverage_batch(all_codes) if all_codes else {}
+            ind_cov = get_indicator_coverage_batch(all_codes) if all_codes else {}
 
-            # 持仓
-            pos_rows = await db.execute(
-                select(Position.stock_code).where(Position.stock_code.in_(codes)))
-            pos_set = {r[0] for r in pos_rows.all()}
+            # 组装完整列表
+            assembled = _assemble_stocks(all_masters, val_map, pos_set, wl_set,
+                                         md_map, fs_map, fin_cov, ind_cov)
 
-            # 自选
-            wl_rows = await db.execute(
-                select(WatchlistItem.stock_code).where(WatchlistItem.stock_code.in_(codes)))
-            wl_set = {r[0] for r in wl_rows.all()}
+            # 维度筛选
+            if has_filters:
+                assembled = [s for s in assembled if all(
+                    s["status"].get(d, {}).get("ok") == v
+                    for d, v in has_filters.items()
+                )]
+                total = len(assembled)
 
-            # 行情 (group by) — 使用 ORM select 避免 collation/IN 参数问题
-            md_rows = await db.execute(
-                select(MarketData.stock_code, func.count().label("md_days"),
-                       func.max(MarketData.trade_date).label("md_latest"))
-                .where(MarketData.stock_code.in_(codes))
-                .group_by(MarketData.stock_code)
-            )
-            for r in md_rows:
-                md_map[r.stock_code] = {"days": r.md_days, "latest": r.md_latest}
+            # 排序
+            sort_desc = sort_order.lower() == "desc"
+            if sort_by == "completeness":
+                assembled.sort(key=lambda s: (
+                    sum(1 for d in s["status"].values() if d.get("ok")),
+                    s["code"]
+                ), reverse=sort_desc)
+            elif sort_by == "name":
+                assembled.sort(key=lambda s: (s.get("name") or "", s["code"]),
+                               reverse=sort_desc)
+            else:
+                assembled.sort(key=lambda s: s["code"], reverse=sort_desc)
 
-            # 财报
-            fs_rows = await db.execute(
-                select(FinancialStatement.stock_code,
-                       func.count(func.distinct(FinancialStatement.report_date)).label("fs_quarters"),
-                       func.max(FinancialStatement.report_date).label("fs_latest"))
-                .where(FinancialStatement.stock_code.in_(codes))
-                .group_by(FinancialStatement.stock_code)
-            )
-            for r in fs_rows:
-                fs_map[r.stock_code] = {"quarters": r.fs_quarters, "latest": r.fs_latest}
+            # 分页
+            page_stocks = assembled[offset:offset + limit]
 
-    # 3. SQLite 批量查询: 财务指标 + 价量指标
-    fin_cov = get_financial_coverage_batch(codes) if codes else {}
-    ind_cov = get_indicator_coverage_batch(codes) if codes else {}
+        else:
+            # ── 常规分页: MySQL 先分页, 再组装配齐 6 维 ──
+            order = StockMaster.stock_code.desc() if sort_order.lower() == "desc" else StockMaster.stock_code
+            rows = await db.execute(base_q.order_by(order).offset(offset).limit(limit))
+            masters = rows.scalars().all()
+            codes = [m.stock_code for m in masters]
 
-    # 4. 组装结果
+            val_map, pos_set, wl_set, md_map, fs_map = await _batch_stock_dims(db, codes)
+            fin_cov = get_financial_coverage_batch(codes) if codes else {}
+            ind_cov = get_indicator_coverage_batch(codes) if codes else {}
+
+            page_stocks = _assemble_stocks(masters, val_map, pos_set, wl_set,
+                                           md_map, fs_map, fin_cov, ind_cov)
+
+    # 计算完整度分数 (用于前端显示)
+    for s in page_stocks:
+        s["completeness"] = sum(1 for d in s["status"].values() if d.get("ok"))
+
+    # 统计概览 (一次聚合查询)
+    summary = await _compute_stock_center_summary(db)
+
+    return {"success": True, "data": {
+        "total": total, "page": page, "page_size": limit,
+        "summary": summary, "stocks": page_stocks,
+    }}
+
+
+async def _compute_stock_center_summary(db):
+    """计算股票中心统计概览 (聚合查询, 轻量快速)"""
+    # 总股票数
+    total = (await db.execute(select(func.count(StockMaster.stock_code)))).scalar() or 0
+
+    # 各维度的覆盖数
+    has_industry = (await db.execute(
+        select(func.count(StockMaster.stock_code))
+        .where(StockMaster.industry.isnot(None)))).scalar() or 0
+
+    has_market_data = (await db.execute(
+        select(func.count(func.distinct(MarketData.stock_code)))
+        .where(MarketData.stock_code.isnot(None)))).scalar() or 0
+
+    has_finance = (await db.execute(
+        select(func.count(func.distinct(FinancialStatement.stock_code)))
+        .where(FinancialStatement.stock_code.isnot(None)))).scalar() or 0
+
+    has_valuation = (await db.execute(
+        select(func.count(func.distinct(StockValuation.stock_code)))
+        .where(StockValuation.pe_ttm.isnot(None)))).scalar() or 0
+
+    # SQLite 聚合 (通过同步查询)
+    from app.domain.quant.engine.indicator_store import (
+        _get_conn)
+    conn = _get_conn()
+    has_financial_indicators = 0
+    has_price_indicators = 0
+    try:
+        r = conn.execute("SELECT COUNT(DISTINCT stock_code) FROM financial_indicators").fetchone()
+        has_financial_indicators = r[0] if r else 0
+    except Exception:
+        pass
+    try:
+        r = conn.execute("SELECT COUNT(DISTINCT stock_code) FROM indicators").fetchone()
+        has_price_indicators = r[0] if r else 0
+    except Exception:
+        pass
+
+    return {
+        "total_stocks": total,
+        "dim_coverage": {
+            "industry": {"ok": has_industry, "total": total},
+            "market_data": {"ok": has_market_data, "total": total},
+            "basic_finance": {"ok": has_finance, "total": total},
+            "dynamic_info": {"ok": has_valuation, "total": total},
+            "financial_indicators": {"ok": has_financial_indicators, "total": total},
+            "price_indicators": {"ok": has_price_indicators, "total": total},
+        },
+    }
+
+
+async def _batch_stock_dims(db, codes):
+    """批量查询个股各维度数据, 返回 (val_map, pos_set, wl_set, md_map, fs_map)"""
+    val_map, pos_set, wl_set, md_map, fs_map = {}, set(), set(), {}, {}
+    if not codes:
+        return val_map, pos_set, wl_set, md_map, fs_map
+
+    # 估值
+    val_rows = await db.execute(
+        select(StockValuation).where(StockValuation.stock_code.in_(codes)))
+    for v in val_rows.scalars().all():
+        val_map[v.stock_code] = v
+
+    # 持仓
+    pos_rows = await db.execute(
+        select(Position.stock_code).where(Position.stock_code.in_(codes)))
+    pos_set = {r[0] for r in pos_rows.all()}
+
+    # 自选
+    wl_rows = await db.execute(
+        select(WatchlistItem.stock_code).where(WatchlistItem.stock_code.in_(codes)))
+    wl_set = {r[0] for r in wl_rows.all()}
+
+    # 行情
+    md_rows = await db.execute(
+        select(MarketData.stock_code, func.count().label("md_days"),
+               func.max(MarketData.trade_date).label("md_latest"))
+        .where(MarketData.stock_code.in_(codes))
+        .group_by(MarketData.stock_code))
+    for r in md_rows:
+        md_map[r.stock_code] = {"days": r.md_days, "latest": r.md_latest}
+
+    # 财报
+    fs_rows = await db.execute(
+        select(FinancialStatement.stock_code,
+               func.count(func.distinct(FinancialStatement.report_date)).label("fs_quarters"),
+               func.max(FinancialStatement.report_date).label("fs_latest"))
+        .where(FinancialStatement.stock_code.in_(codes))
+        .group_by(FinancialStatement.stock_code))
+    for r in fs_rows:
+        fs_map[r.stock_code] = {"quarters": r.fs_quarters, "latest": r.fs_latest}
+
+    return val_map, pos_set, wl_set, md_map, fs_map
+
+
+def _assemble_stocks(masters, val_map, pos_set, wl_set, md_map, fs_map, fin_cov, ind_cov):
+    """组装 6 维度状态列表"""
     result = []
     for m in masters:
         code = m.stock_code
@@ -1294,10 +1429,7 @@ async def get_stock_center_list(
             "in_position": code in pos_set,
             "in_watchlist": code in wl_set,
         })
-
-    return {"success": True, "data": {
-        "total": total, "page": page, "page_size": limit, "stocks": result,
-    }}
+    return result
 
 
 class BatchSyncRequest(BaseModel):
