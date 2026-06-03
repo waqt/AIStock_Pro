@@ -267,10 +267,10 @@ DataTabs.StockCenter = {
     if (codes.length === 0) { await Modal.alert('提示', '请先勾选需要同步的股票'); return; }
     const ok = await Modal.confirm('同步行情', `确认对 ${codes.length} 只股票执行行情+估值同步?`);
     if (!ok) return;
-    DataTabs.addLog(`[StockCenter] 开始批量同步: ${codes.length} 只...`);
+    DataTabs.Core.addLog(`[StockCenter] 开始批量同步: ${codes.length} 只...`);
     try {
       await API.post('/data/stock-center/batch-sync', { codes, mode: 'daily' });
-      DataTabs.addLog('[StockCenter] 批量同步完成');
+      DataTabs.Core.addLog('[StockCenter] 批量同步完成');
       await Modal.alert('同步完成', `${codes.length} 只股票已提交同步`);
     } catch (e) {
       console.error('[StockCenter] Batch sync fail:', e);
@@ -284,13 +284,13 @@ DataTabs.StockCenter = {
     if (codes.length === 0) { await Modal.alert('提示', '请先勾选需要同步的股票'); return; }
     const ok = await Modal.confirm('同步估值', `确认对 ${codes.length} 只同步估值?`);
     if (!ok) return;
-    DataTabs.addLog(`[StockCenter] 开始同步估值: ${codes.length} 只...`);
+    DataTabs.Core.addLog(`[StockCenter] 开始同步估值: ${codes.length} 只...`);
     let done = 0;
     for (const code of codes) {
       try { await API.post('/data/valuation/sync', { target_codes: [code] }); done++; }
       catch (e) { console.error(`[StockCenter] ${code} val sync fail:`, e); }
     }
-    DataTabs.addLog(`[StockCenter] 估值同步: ${done}只`);
+    DataTabs.Core.addLog(`[StockCenter] 估值同步: ${done}只`);
     await Modal.alert('同步完成', `${done} 只已同步`);
     this.load(this.currentPage);
   },
@@ -300,13 +300,13 @@ DataTabs.StockCenter = {
     if (codes.length === 0) { await Modal.alert('提示', '请先勾选需要同步的股票'); return; }
     const ok = await Modal.confirm('同步财务', `确认对 ${codes.length} 只逐个同步财报?`);
     if (!ok) return;
-    DataTabs.addLog(`[StockCenter] 开始同步财务: ${codes.length} 只...`);
+    DataTabs.Core.addLog(`[StockCenter] 开始同步财务: ${codes.length} 只...`);
     let done = 0;
     for (const code of codes) {
       try { await API.post(`/data/financial/sync/${code}`); done++; }
       catch (e) { console.error(`[StockCenter] ${code} fin sync fail:`, e); }
     }
-    DataTabs.addLog(`[StockCenter] 财务同步: ${done}只`);
+    DataTabs.Core.addLog(`[StockCenter] 财务同步: ${done}只`);
     await Modal.alert('同步完成', `${done} 只已同步`);
     this.load(this.currentPage);
   },
@@ -316,14 +316,16 @@ DataTabs.StockCenter = {
     if (codes.length === 0) { await Modal.alert('提示', '请先勾选需要计算的股票'); return; }
     const ok = await Modal.confirm('计算价量指标', `确认对 ${codes.length} 只计算结果指标?`);
     if (!ok) return;
-    DataTabs.addLog(`[StockCenter] 计算价量指标: ${codes.length} 只...`);
+    DataTabs.Core.addLog(`[StockCenter] 计算价量指标: ${codes.length} 只...`);
     try {
-      const url = `/quant/indicators/compute?codes=${codes.join(',')}&mode=incremental`;
-      await fetch(`${API_BASE}${url}`, { method: 'POST' });
-      DataTabs.addLog('[StockCenter] 价量指标计算已提交');
-      await Modal.alert('计算完成', `${codes.length} 只已提交计算`);
+      const resp = await API.post(`/quant/indicators/compute?codes=${codes.join(',')}&mode=incremental`, {});
+      const d = resp.data || {};
+      const msg = d.message || `已提交 ${codes.length} 只`;
+      DataTabs.Core.addLog(`[StockCenter] 价量指标: ${msg}`);
+      await Modal.alert('计算完成', `${codes.length} 只已提交`);
     } catch (e) {
       console.error('[StockCenter] Indicator compute fail:', e);
+      DataTabs.Core.addLog(`[StockCenter] 价量指标计算失败: ${e.message}`, 'error');
       await Modal.alert('计算失败', e.message);
     }
   },
@@ -333,13 +335,29 @@ DataTabs.StockCenter = {
     if (codes.length === 0) { await Modal.alert('提示', '请先勾选需要计算的股票'); return; }
     const ok = await Modal.confirm('计算财务指标', `确认对 ${codes.length} 只计算财务指标?`);
     if (!ok) return;
-    DataTabs.addLog(`[StockCenter] 计算财务指标: ${codes.length} 只...`);
+    DataTabs.Core.addLog(`[StockCenter] 计算财务指标: ${codes.length} 只...`);
     try {
-      await API.post('/quant/financial-indicators/compute', { target_codes: codes });
-      DataTabs.addLog('[StockCenter] 财务指标计算已提交');
-      await Modal.alert('计算完成', `${codes.length} 只已提交计算`);
+      const resp = await API.post('/quant/financial-indicators/compute', { target_codes: codes });
+      const d = resp.data || {};
+      const okCount = d.computed || 0;
+      const total = d.total || 0;
+      DataTabs.Core.addLog(`[StockCenter] 财务指标: ${okCount}/${total} 完成`);
+      // 显示每只结果摘要
+      const results = d.results || [];
+      results.forEach(function(r) {
+        if (r.status === 'ok') {
+          DataTabs.Core.addLog(`  ${r.code}: ${r.periods}期 OK  ROIC=${r.roic_pct != null ? r.roic_pct + '%' : '?'}`);
+        } else if (r.status === 'skipped') {
+          DataTabs.Core.addLog(`  ${r.code}: 跳过 (${r.reason})`);
+        } else if (r.status === 'error') {
+          DataTabs.Core.addLog(`  ${r.code}: 失败 (${r.reason})`, 'error');
+        }
+      });
+      const summary = okCount > 0 ? `${okCount} 只完成` : '无有效数据';
+      await Modal.alert('计算完成', `${codes.length} 只提交, ${summary}`);
     } catch (e) {
       console.error('[StockCenter] Financial compute fail:', e);
+      DataTabs.Core.addLog(`[StockCenter] 财务指标计算失败: ${e.message}`, 'error');
       await Modal.alert('计算失败', e.message);
     }
   },
