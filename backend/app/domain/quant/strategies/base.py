@@ -89,8 +89,16 @@ class TimingStrategy(ABC):
     required_indicators: List[str] = []
     weight: float = 1.0
 
-    async def load_indicators(self, stock_code: str) -> dict:
-        """加载策略所需的指标数据 (SQLite)"""
+    async def load_indicators(self, stock_code: str,
+                               indicator_names: Optional[List[str]] = None) -> dict:
+        """加载策略所需的指标数据 (SQLite)
+        Args:
+            stock_code: 股票代码
+            indicator_names: 需要的指标名列表, None=全部字段
+        """
+        if indicator_names:
+            from app.domain.quant.engine.technical_query_service import TechnicalQueryService
+            return TechnicalQueryService.query(code=stock_code, indicators=indicator_names)
         from app.domain.quant.engine import indicator_store
         row = indicator_store.get_latest(stock_code)
         return row or {}

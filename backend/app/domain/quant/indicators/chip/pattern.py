@@ -10,6 +10,7 @@ class ChipPatternIndicator(BaseIndicator):
     category = "chip"
     params = {"window": 0, "conc_dense": 0.12, "conc_dispersed": 0.20, "peak_dominance": 0.5}
     output = ["chip_pattern", "chip_signal"]
+    text_output = ["chip_pattern", "chip_signal"]
     requires = ["close", "chip_concentration", "chip_peak_price", "chip_peaks", "chip_is_single_peak"]
 
     @classmethod

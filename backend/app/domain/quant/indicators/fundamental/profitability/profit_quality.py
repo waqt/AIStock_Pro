@@ -7,12 +7,12 @@ class GrossMarginTrend(FinancialIndicator):
     name = "gross_margin_trend"
     label = "毛利率趋势"
     description = "判断毛利率连续3Q的变化方向: rising/stable/declining。"
-    judgment = "rising=毛利率持续上升; stable=窄幅波动; declining=毛利率持续下降。"
+    judgment = "rising=毛利率持续上升; stable=窄幅波动; declining=毛利率持续下降。gross_margin_chg_pp=最新季与4季前毛利率差值(百分点)。"
     category = "profitability"
     indicator_type = "moat"
     applicable_stages = ["inflection", "growth", "mature"]
     params = {}
-    output = ["gross_margin_trend"]
+    output = ["gross_margin_trend", "gross_margin_chg_pp"]
     text_output = ["gross_margin_trend"]
     requires = ["revenue", "operate_cost"]
 
@@ -25,11 +25,12 @@ class GrossMarginTrend(FinancialIndicator):
             rev = float(q.get("revenue", 0) or 0)
             cost = float(q.get("operate_cost", 0) or 0)
             gms.append((rev - cost) / rev * 100 if rev else 0)
+        chg_pp = round(gms[0] - gms[-1], 2) if len(gms) >= 4 else None
         if len(gms) >= 3 and _is_strictly_monotonic(gms[:3]):
             if gms[0] > gms[-1]:
-                return {"gross_margin_trend": "rising"}
-            return {"gross_margin_trend": "declining"}
-        return {"gross_margin_trend": "stable"}
+                return {"gross_margin_trend": "rising", "gross_margin_chg_pp": chg_pp}
+            return {"gross_margin_trend": "declining", "gross_margin_chg_pp": chg_pp}
+        return {"gross_margin_trend": "stable", "gross_margin_chg_pp": chg_pp}
 
 
 def _is_strictly_monotonic(values: list, tolerance_pct: float = 0.5) -> bool:

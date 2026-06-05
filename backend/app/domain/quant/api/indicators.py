@@ -92,7 +92,7 @@ async def indicator_coverage(stock_code: str):
 async def get_indicator_history(
     stock_code: str,
     fields: str = Query(default="crowding_ratio,sharpe_60d", description="逗号分隔指标字段"),
-    days: int = Query(default=120, le=365)
+    days: int = Query(default=120, ge=0, le=1095)
 ):
     """单股指标历史时间序列 (SQLite 直读, 供 ECharts 渲染)"""
     from app.domain.quant.engine import indicator_store
@@ -296,7 +296,121 @@ async def get_field_values(field_name: str):
     return {"success": True, "data": result, "field": field_name}
 
 
-# ═══ 单股查询 (放在最后, 避免拦截 /data/ 等前缀路由) ═══
+# ═══ 技术指标服务端点 (catalog / compare / backfill / query) ═══
+
+@router.get("/catalog")
+async def technical_data_catalog():
+    """Agent 用数据字典: 已注册技术指标的分组和字段元信息"""
+    from app.domain.quant.engine.technical_query_service import TechnicalQueryService
+    return {"success": True, "data": TechnicalQueryService.get_catalog()}
+
+
+class TechnicalCompareRequest(BaseModel):
+    stocks: List[str]
+    indicators: List[str]
+
+
+@router.post("/compare")
+async def compare_technical_indicators(req: TechnicalCompareRequest):
+    """多股多指标最新值交叉对比"""
+    from app.domain.quant.engine.technical_query_service import TechnicalQueryService
+    from app.domain.quant.indicators import INDICATOR_REGISTRY
+    from app.framework.database.session import async_session
+    from app.models.models import StockMaster
+    from sqlalchemy import select
+
+    async with async_session() as db:
+        name_rows = await db.execute(
+            select(StockMaster.stock_code, StockMaster.stock_name)
+            .where(StockMaster.stock_code.in_(req.stocks)))
+        name_map = {r[0]: r[1] or r[0] for r in name_rows.all()}
+
+    rows = []
+    for indicator_name in req.indicators:
+        cls = INDICATOR_REGISTRY.get(indicator_name)
+        if not cls:
+            continue
+        meta = cls.meta()
+        label = meta.get("label", indicator_name)
+        text_set = set(meta.get("text_output", []))
+        numeric_fields = [f for f in meta.get("output", []) if f not in text_set]
+        if not numeric_fields:
+            continue
+        primary = numeric_fields[0]
+        field_data = {}
+        for code in req.stocks:
+            row = TechnicalQueryService.query(code, [indicator_name])
+            if primary in row:
+                field_data[code] = row[primary]
+        rows.append({
+            "indicator": indicator_name,
+            "label": label,
+            "primary_field": primary,
+            "values": field_data,
+        })
+
+    stocks_info = [{"code": c, "name": name_map.get(c, c)} for c in req.stocks]
+    return {"success": True, "data": {
+        "stocks": stocks_info,
+        "indicators": req.indicators,
+        "rows": rows,
+    }}
+
+
+class TechnicalBackfillRequest(BaseModel):
+    names: List[str]
+    codes: Optional[List[str]] = None
+
+
+@router.post("/backfill")
+async def backfill_indicators(req: TechnicalBackfillRequest):
+    """选择性回填: 只计算指定指标, 不碰其他列 (新增指标后的关键操作)"""
+    from app.domain.quant.engine.indicator_runner import IndicatorRunner
+    from app.framework.database.session import async_session
+    from app.models.models import Position, WatchlistItem
+    from sqlalchemy import select
+
+    if req.codes:
+        stock_codes = req.codes
+    else:
+        async with async_session() as db:
+            pos = await db.execute(select(Position.stock_code))
+            wl = await db.execute(select(WatchlistItem.stock_code))
+            stock_codes = list(set([r[0] for r in pos.all()] + [r[0] for r in wl.all()]))
+
+    if not stock_codes:
+        return {"success": True, "data": {"message": "No stocks to backfill"}}
+
+    result = await IndicatorRunner.compute_batch(stock_codes, "historical", req.names)
+    return {"success": True, "data": result,
+            "note": f"Backfilled {len(req.names)} indicators for {len(stock_codes)} stocks"}
+
+
+class TechnicalQueryRequest(BaseModel):
+    code: str
+    indicators: Optional[List[str]] = None
+
+
+@router.post("/query")
+async def query_technical_data(req: TechnicalQueryRequest):
+    """按指标名查询最新值 (Agent 友好)"""
+    from app.domain.quant.engine.technical_query_service import TechnicalQueryService
+    data = TechnicalQueryService.query(code=req.code, indicators=req.indicators)
+    return {"success": True, "data": data}
+
+
+@router.post("/query_batch")
+async def query_technical_data_batch(
+    codes: List[str],
+    indicators: Optional[List[str]] = None,
+):
+    """批量查询多只股票的最新技术指标值"""
+    from app.domain.quant.engine.technical_query_service import TechnicalQueryService
+    data = TechnicalQueryService.query_batch(codes, indicators)
+    return {"success": True, "data": data}
+
+
+# ═══ 单股查询 (放在最后, 避免拦截前缀路由) ═══
 
 @router.get("/{stock_code}")
 async def get_stock_indicators(stock_code: str):
@@ -387,10 +501,101 @@ async def get_financial_history(
 
 @financial_router.get("/field/{field_name}")
 async def get_financial_field_ranking(field_name: str):
-    """全股票某财务指标字段最新排名"""
+    """全股票某财务指标字段最新排名 (含股票名称)"""
     from app.domain.quant.engine import indicator_store
+    from app.framework.database.session import async_session
+    from app.models.models import StockMaster
+    from sqlalchemy import select
+
     rows = indicator_store.get_financial_field_latest(field_name)
+
+    # 补充 stock_name
+    if rows:
+        codes = [r["stock_code"] for r in rows if r.get("stock_code")]
+        async with async_session() as db:
+            res = await db.execute(
+                select(StockMaster.stock_code, StockMaster.stock_name)
+                .where(StockMaster.stock_code.in_(codes)))
+            name_map = {r[0]: r[1] or r[0] for r in res.all()}
+        for r in rows:
+            code = r.get("stock_code", "")
+            r["stock_name"] = name_map.get(code, code)
+
     return {"success": True, "data": rows, "field": field_name}
+
+
+class CompareRequest(BaseModel):
+    stocks: List[str]
+    indicators: List[str]
+
+
+@financial_router.post("/compare")
+async def compare_financial_indicators(req: CompareRequest):
+    """交叉比较: 多股票 × 多指标的最新值矩阵
+
+    请求: {stocks: ["688012","600519"], indicators: ["roic_pct", "gross_margin_pct"]}
+    返回: {rows: [{indicator: "roic_pct", label: "ROIC(%)", values: {"688012": 18.5, "600519": 35.2}}, ...]}
+    """
+    from app.domain.quant.engine import indicator_store
+    from app.domain.quant.indicators.fundamental import FINANCIAL_REGISTRY
+    from app.framework.database.session import async_session
+    from app.models.models import StockMaster
+    from sqlalchemy import select
+
+    rows = []
+    for indicator_name in req.indicators:
+        # 查找该指标的所有 output 字段
+        cls = FINANCIAL_REGISTRY.get(indicator_name)
+        if not cls:
+            # 可能是具体字段名
+            field_data = {}
+            for code in req.stocks:
+                latest = indicator_store.get_financial_latest(code)
+                if latest and indicator_name in latest:
+                    field_data[code] = latest[indicator_name]
+            if field_data:
+                rows.append({
+                    "indicator": indicator_name,
+                    "label": indicator_name,
+                    "values": field_data,
+                })
+            continue
+
+        meta = cls.meta()
+        label = meta.get("label", indicator_name)
+        # 取第一个数值字段作为主值
+        text_fields = set(meta.get("text_output", []))
+        numeric_fields = [f for f in meta.get("output", []) if f not in text_fields]
+        if numeric_fields:
+            primary = numeric_fields[0]
+            field_data = {}
+            for code in req.stocks:
+                latest = indicator_store.get_financial_latest(code)
+                if latest and primary in latest:
+                    field_data[code] = latest[primary]
+            rows.append({
+                "indicator": indicator_name,
+                "label": label,
+                "primary_field": primary,
+                "values": field_data,
+            })
+
+    # 补充股票名称
+    async with async_session() as db:
+        stock_codes = req.stocks
+        res = await db.execute(
+            select(StockMaster.stock_code, StockMaster.stock_name)
+            .where(StockMaster.stock_code.in_(stock_codes)))
+        name_map = {r[0]: r[1] or r[0] for r in res.all()}
+
+    return {
+        "success": True,
+        "data": {
+            "stocks": [{"code": c, "name": name_map.get(c, c)} for c in req.stocks],
+            "indicators": req.indicators,
+            "rows": rows,
+        }
+    }
 
 
 class FinancialComputeRequest(BaseModel):

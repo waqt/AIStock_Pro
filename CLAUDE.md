@@ -5,7 +5,7 @@
 AIStock Pro 是一套 AI 驱动的量化分析与投资研究系统，面向 A 股 + 港股。系统采用 DDD 领域驱动 + 多智能体（MAS）架构，由 Python 3.8+ 异步引擎驱动。
 
 - **架构风格**: DDD + MAS 多智能体 + 图结构 (DAG) 编排
-- **版本**: V5.10
+- **版本**: V5.15
 - **数据存储**: MySQL (事务数据: 持仓/日线/财务) + **SQLite 宽表** (量化指标, 每字段一列)
 - **conda 环境**: `aiteacher` (`D:\develop_env\python_related\anaconda\Anaconda3\envs\aiteacher`)
 - **启动**: 双击 `run_backend.bat` → `http://127.0.0.1:8000`
@@ -135,15 +135,18 @@ Pipeline 整体定位为**三层递进式研究**，每层职责明确，不可�
   核心: 聚焦"产业逻辑"而非"个股研究", 产出供给刚性/利润分配/瓶颈节点。
   线索: output.asset_search_queries 是传递给 Step 6 的唯一搜索接口。
 
-第三层: 资产筛选与验证                   Step 6 + 7 + 8
-  ├─ 核心资产筛选 (CoreScreeningAgent)  — 线索汇总→搜索→比较→验证→排名
-  ├─ 财务审计     (FinancialAuditor)    — 8Q剪刀差+Beneish M-Score
-  ├─ 人力资本审计 (HumanCapitalDetective) — 创始人/CTO/专利审计
-  └─ 估值定价     (ValuationPricer)     — 估值定价
-  职责: 在前道(第二层)提供的产业线索基础上, 挖掘具体资产标的,
-       进行定性(护城河)与定量(财务/估值)分析, 通过比较淘汰选出最优解。
-  输入: 唯一来源是 Step 2-5 的 asset_search_queries + 结构化产出。
-  方法: 搜索→LLM提取→分组比较→逐只验证→全局排名的四阶段流程。
+第三层: 资产筛选与验证                   Step 6 (+ 可选 Step 7/8)
+  ├─ 核心资产筛选 (CoreScreeningAgent V5.15) — 四阶段: 线索汇总→搜索→先比较后验证→全局排名
+  │    ├─ Phase 1: 线索汇总           (8线索源: a_stock_mapping/bottleneck_inversion/asset_search_query/human_capital)
+  │    ├─ Phase 2: 搜索+LLM提取       (双源搜索+深搜a_share_equivalent)
+  │    ├─ Phase 3a: 分组+筛选+比较    (_group_by_source → _llm_screen_group → compare_within_source)
+  │    ├─ Phase 3b: 逐只验证          (_verify_single: LLM自主定维+tool calling, 无预设维度)
+  │    └─ Phase 4: 全局排名           (CandidateComparator.global_ranking + enriched)
+  ├─ 财务审计     (FinancialAuditor)    — 8Q剪刀差+Beneish M-Score (仅 Path A/旧流程保留)
+  └─ 人力资本审计 (HumanCapitalDetective) / 估值定价 (ValuationPricer) — 可选
+  职责: 在前道(第二层)提供的产业线索基础上, 挖掘具体资产标的, 通过比较淘汰选出最优解。
+  方法: 搜索→LLM提取→分组→Phase A快速筛→同源比较排除→逐只自由验证→全局排名。
+  关键变化(V5.15): FinancialAuditor 不再是固定步骤; 比较器不排名只排除; 验证改为LLM自主定维。
 ```
 
 **层间接口规范:**
@@ -179,8 +182,8 @@ Step 3  产业链拆解 (SupplyChainHacker V5.9)
 
 Step 4  系统动力学推演 (SystemDynamicsAgent, 已有)
 Step 5  跨产业关联分析 (CrossIndustryLinkageAgent, 已有)
-Step 6  核心资产筛选 (CoreScreeningAgent, 已有, 含 step2_only 模式)
-Step 7  财务质量审计 (FinancialAuditor, 已有, 由 Step 6 内部调用)
+Step 6  核心资产筛选 (CoreScreeningAgent V5.15, 含 step2_only 模式)
+Step 7  财务质量审计 (FinancialAuditor, 存在, 但 V5.15 Path C 不再固定调用, 仅 Path A 旧流程保留)
 Step 8  人力资本审计 (HumanCapitalDetective, 可选)
 Step 8  估值定价 (ValuationPricer, 已有, 未接入 pipeline)
 Step 9  市场预期差 (📋 计划中)
@@ -198,8 +201,8 @@ Step 11 综合报告 (📋 计划中)
 | SupplyChainHacker | supply_chain_hacker.py | V5.9 | 3 | ✅ 完成 (定性schema+证据层+自适应搜索) |
 | SystemDynamicsAgent | system_dynamics.py | V1.0 | 4 | ✅ 完成 |
 | CrossIndustryLinkageAgent | cross_industry_linkage.py | V1.0 | 5 | ✅ 完成 |
-| CoreScreeningAgent | core_screening_agent.py | V5.10 | 6 | ✅ 完成 (含 step2_only 模式供 Path A) |
-| FinancialAuditor | financial_auditor.py | - | 7 | ⚠️ 已有, 由 Step 6 内部调用 |
+| CoreScreeningAgent | core_screening_agent.py | V5.15 | 6 | ✅ 完成 (四阶段: 线索汇总→搜索→比较→验证, LLM自主验证, 含 step2_only/溢出候选/多轮淘汰) |
+| FinancialAuditor | financial_auditor.py | - | 7 | ⚠️ 已有, V5.15 Path C 不再固定调用 (仅 Path A 旧流程保留) |
 | HumanCapitalDetective | human_capital_detective.py | - | 8 | ⚠️ 已有, 可选步骤 |
 | ValuationPricer | valuation_pricer.py | V5.7 | 8 | ⚠️ 已有, 未使用 framework/finance |
 | SecondOrderExtrapolator | second_order_extrapolator.py | V1.0 | 2B | ✅ 完成 (Path B: 二阶推演) |

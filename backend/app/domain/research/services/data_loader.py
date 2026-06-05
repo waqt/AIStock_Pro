@@ -154,8 +154,8 @@ class ResearchDataLoader:
         from app.domain.quant.engine import indicator_store
         result = {}
         if not fields:
-            from app.domain.quant.engine.indicator_store import ALL_COLS
-            fields = ALL_COLS
+            from app.domain.quant.engine.indicator_store import INDICATOR_ALL_COLS
+            fields = INDICATOR_ALL_COLS()
             
         for code in codes:
             history = indicator_store.get_history(code, fields, days=days)

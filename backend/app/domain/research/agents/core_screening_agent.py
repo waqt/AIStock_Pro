@@ -201,6 +201,7 @@ class CoreScreeningAgent(ResearchAgent):
                         f"A股 {foreign_company} 供应商 合作伙伴 供货 上市公司 2026",
                         f"A股 {foreign_company} 竞争对手 国产替代 对标 上市公司 2026",
                         f"{foreign_company} 中国 供应链 合作 A股 供应商 2026",
+                        f"曾在{foreign_company}工作 前员工 创始人 核心团队 A股 公司 2026",
                     ]
                     logger.info(f"[{self.name}] Deep search for '{foreign_company}': {len(deep_queries)} queries")
 
@@ -307,6 +308,80 @@ class CoreScreeningAgent(ResearchAgent):
         logger.info(f"[{self.name}] Search done: {len(new_candidates)} new candidates from {len(search_clues)} clues")
         return new_candidates
 
+    # ═══ 搜索线索去重 ═════════════════════════════
+
+    @staticmethod
+    def _dedup_search_clues(search_clues: List[Dict]) -> List[Dict]:
+        """对搜索线索做语义去重，取代硬上限截断。
+
+        - asset_search_query: 按 query 关键词 Jaccard 相似度去重 (阈值 0.6)
+        - human_capital: 按 leader 名去重
+        - 保留 priority 更高的那条
+        """
+        if not search_clues:
+            return []
+
+        def _tokenize(q: str) -> set:
+            # 提取中英文关键词（去停用词）
+            import re
+            tokens = set()
+            for t in re.findall(r'[a-zA-Z0-9]+|[一-鿿]+', q.lower()):
+                if len(t) > 1:  # 过滤单字
+                    tokens.add(t)
+            stopwords = {"a股", "上市公司", "2026", "2025", "公司", "中国", "股票"}
+            return tokens - stopwords
+
+        kept = []
+        # 1. human_capital: 按 leader 名去重
+        seen_leaders = set()
+        for clue in search_clues:
+            if clue.get("_source_type") == "human_capital":
+                leader = clue.get("leader", "")
+                if leader and leader not in seen_leaders:
+                    seen_leaders.add(leader)
+                    kept.append(clue)
+                else:
+                    continue  # 跳过重复 leader
+            else:
+                kept.append(clue)
+
+        # 2. asset_search_query: 按语义去重
+        final = []
+        seen_queries = []  # (tokenized_set, priority)
+        for clue in kept:
+            if clue.get("_source_type") != "asset_search_query":
+                final.append(clue)
+                continue
+            q = clue.get("query", "")
+            tokens = _tokenize(q)
+            if not tokens:
+                final.append(clue)
+                continue
+            priority = clue.get("priority", "medium")
+            p_val = {"high": 2, "medium": 1, "low": 0}.get(priority, 1)
+
+            # 检查是否与已有线索相似
+            dup = False
+            for i, (existing_tokens, existing_p) in enumerate(seen_queries):
+                if not tokens or not existing_tokens:
+                    continue
+                jaccard = len(tokens & existing_tokens) / len(tokens | existing_tokens)
+                if jaccard > 0.6:
+                    # 保留 priority 更高的
+                    if p_val > existing_p:
+                        seen_queries[i] = (tokens, p_val)
+                        # 替换 final 中对应的条目
+                        # 简单处理: 追加新的, 旧的后面删
+                    else:
+                        dup = True
+                    break
+            if not dup:
+                seen_queries.append((tokens, p_val))
+                final.append(clue)
+
+        logger.info(f"[CoreScreeningAgent] Dedup clues: {len(search_clues)} -> {len(final)}")
+        return final
+
     # ═══ Phase 3a: 同源比较 ═════════════════════════
 
     @staticmethod
@@ -342,8 +417,7 @@ class CoreScreeningAgent(ResearchAgent):
     # ═══ Phase 3b: 逐只验证 ═════════════════════════
 
     async def _verify_single(self, candidate: Dict, industry: str,
-                              stock_info_map: Dict, fin_map: Dict,
-                              stage_map: Dict, trace=None) -> Dict:
+                              stock_info_map: Dict, trace=None) -> Dict:
         """对单只候选做自由竞争分析 — LLM 自主定义维度、自选工具查数据、输出结构化结论
 
         不再硬编码 FinancialAudit / ROIC / 6维权力 / ValuationPricer 等步骤。
@@ -366,6 +440,7 @@ class CoreScreeningAgent(ResearchAgent):
         prompt = prompt.replace("{{FINANCIAL_CATALOG}}", catalog)
 
         analysis = {}  # LLM 输出的完整结构化结果
+        lifecycle_stage = "startup"  # 默认: 由 LLM 自主判定
         category = "future_strong"  # 默认: 保留在 pipeline 中
         try:
             from app.domain.research.agents.base import WEB_SEARCH_TOOL, DEFAULT_TOOL_DEFINITIONS
@@ -376,6 +451,14 @@ class CoreScreeningAgent(ResearchAgent):
             result = self.parse_json(text)
             if isinstance(result, dict) and result.get("analysis_dimensions"):
                 analysis = result
+                # 从 LLM 输出提取 lifecycle_stage
+                raw_stage = (result.get("lifecycle_stage") or "").lower().strip()
+                valid_stages = ("startup", "inflection", "growth", "mature", "cyclical_bottom", "cyclical_decline")
+                if raw_stage in valid_stages:
+                    lifecycle_stage = raw_stage
+                else:
+                    logger.info(f"[{self.name}] {code}: unclear lifecycle_stage '{raw_stage}', defaulting to startup")
+                    lifecycle_stage = "startup"
                 # 从 LLM 输出提取 category_suggestion
                 cat = (result.get("category_suggestion") or "").lower().strip()
                 if cat in ("current_strong", "future_strong", "watchlist"):
@@ -396,8 +479,8 @@ class CoreScreeningAgent(ResearchAgent):
             "node_context": candidate.get("source_node_info", {}),
             "source": candidate.get("source", []),
             "flags": candidate.get("flags", []),
-            "company_stage": stage_map.get(code, "startup"),
-            "stage_indicators": self._get_stage_indicators(stage_map.get(code, "startup")),
+            "company_stage": lifecycle_stage,  # LLM 自主判定
+
             "category": category,
             "verification": {
                 "analysis_dimensions": analysis.get("analysis_dimensions", []),
@@ -519,10 +602,10 @@ class CoreScreeningAgent(ResearchAgent):
         step2_only = ctx.get("step2_only", False)
         step2_output = ctx.get("step2_output", {})
 
-        # ── Path A: Step 2 only (保留原有逻辑) ──
+        # ── Path A: Step 2 only (DEPRECATED V5.16, will be removed in V6) ──
         if step2_only:
+            logger.warning(f"[{self.name}] Path A (step2_only) is DEPRECATED, will be removed in V6")
             candidates = await self._aggregate_candidates_from_step2(step2_output, trace=trace)
-            # 沿用旧的简化流程 (无比较排名, 只有基础验证)
             return await self._legacy_step2_flow(candidates, industry, ctx, trace)
 
         step3 = ctx.get("step3_output", ctx.get("supply_chain_map_ctx", {}))
@@ -543,7 +626,7 @@ class CoreScreeningAgent(ResearchAgent):
             # a_share_equivalent 需要深度搜索, 排在最前面
             mapping_bonus = -1 if mt == "a_share_equivalent" else 0
             return (base + mapping_bonus)
-        search_clues = sorted(clues["search_clues"], key=_sort_key)[:12]
+        search_clues = self._dedup_search_clues(sorted(clues["search_clues"], key=_sort_key))
         search_candidates = await self._execute_search_clues(search_clues, trace)
         all_candidates = clues["direct_candidates"] + search_candidates
 
@@ -561,50 +644,18 @@ class CoreScreeningAgent(ResearchAgent):
         if not deduped:
             return self._empty_result(industry)
 
-        # ── 加载财务数据 + 硬过滤器 + LLM 生命周期分类 ──
-        from app.domain.research.services.financial_data_loader import load_financials as _load_fin
+        # ── 硬过滤器 + 基本面 (生命周期由 _verify_single 中 LLM 自主判定) ──
         from app.domain.research.services.screening_gate import hard_filter
-        from app.framework.finance.financial_data_view import build_financial_data_view
-        from app.framework.finance.stage_classifier import StageClassifier
 
         codes = [c["code"] for c in deduped[:20]]
         stock_info_map = await data_loader.load_fundamentals(codes) if codes else {}
         cycle_position = (step3 if isinstance(step3, dict) else {}).get("cycle_position", "")
-        fin_map = {}
-        for code in codes[:10]:
-            try:
-                fin_data = await _load_fin(code, periods=8, mode="auto")
-                if fin_data and fin_data.get("quarters"):
-                    fin_map[code] = fin_data
-            except Exception:
-                pass
 
         # 硬过滤器: 只排除 ST / 低流动性
         passed, filtered = hard_filter(deduped, stock_info_map)
         if not passed:
             logger.warning(f"[{self.name}] All {len(deduped)} candidates filtered by hard_filter")
             return self._empty_result(industry, filtered=filtered, cycle_position=cycle_position)
-
-        # LLM 生命周期分类 (每个候选独立判定)
-        classifier = StageClassifier(provider=self.provider)
-        stage_map = {}
-        for c in passed:
-            code = c["code"]
-            quarters = fin_map.get(code, {}).get("quarters", [])
-            if quarters:
-                try:
-                    fv = build_financial_data_view(quarters)
-                    result = await classifier.classify(fv, {
-                        "stock_code": code,
-                        "stock_name": c.get("name", ""),
-                        "industry": industry,
-                        "cycle_position": cycle_position,
-                    })
-                    stage_map[code] = result.get("stage", "startup")
-                except Exception:
-                    stage_map[code] = "startup"
-            else:
-                stage_map[code] = "startup"
 
         # ═══ Phase 3a: 分组 → Phase A筛选 → Phase B比较 ════
         from app.domain.research.agents.candidate_comparator import CandidateComparator
@@ -660,14 +711,14 @@ class CoreScreeningAgent(ResearchAgent):
                         "node_context": cand.get("source_node_info", {}),
                         "source": cand.get("source", []),
                         "_eliminated_by": None,
-                        "company_stage": stage_map.get(cand["code"], "startup"),
+                        "company_stage": "unknown",  # 溢出候选, 不单独验证
                         "category": "watchlist",
                         "verification": {},
                     }
                     v.setdefault("_tags", []).append("overflow_audit_pass")
                     verified.append(v)
                 else:
-                    v = await self._verify_single(cand, industry, stock_info_map, fin_map, stage_map, trace)
+                    v = await self._verify_single(cand, industry, stock_info_map, trace)
                     v["_eliminated_by"] = None
                     verified.append(v)
             else:
@@ -683,7 +734,7 @@ class CoreScreeningAgent(ResearchAgent):
                     "source": cand.get("source", []),
                     "_eliminated_by": elim_by,
                     "_eliminated_reason": elim_reason,
-                    "company_stage": stage_map.get(cand["code"], "startup"),
+                    "company_stage": "unknown",  # 淘汰者, 不单独验证
                     "category": "watchlist",
                     "verification": {},
                 })
@@ -759,7 +810,7 @@ class CoreScreeningAgent(ResearchAgent):
     # ═══ 旧流程 (Path A: step2_only) ═══════════════
 
     async def _legacy_step2_flow(self, candidates, industry, ctx, trace) -> Dict:
-        """Path A 简化流程: 无比较排名"""
+        """Path A 简化流程: 无比较排名 (DEPRECATED V5.16, will be removed in V6)"""
         if not candidates:
             return self._empty_result(industry)
 
@@ -859,7 +910,7 @@ class CoreScreeningAgent(ResearchAgent):
         return [c for c in result if c.get("code") and c["code"] not in seen or seen.add(c["code"])]
 
     async def _aggregate_candidates_from_step2(self, step2_output: Dict, trace=None) -> List[Dict]:
-        """Path A: 从 Step 2 的 transmission_order 节点直接挖掘标的"""
+        """Path A: 从 Step 2 的 transmission_order 节点直接挖掘标的 (DEPRECATED V5.16, will be removed in V6)"""
         propagation = step2_output.get("propagation", {}) if isinstance(step2_output, dict) else {}
         transmission_order = propagation.get("transmission_order", [])
         node_names = [node.get("node", "") for node in transmission_order if node.get("node", "")]
@@ -881,7 +932,7 @@ class CoreScreeningAgent(ResearchAgent):
 
     async def _llm_tag_to_stock_mapping(self, tags: List[str], search_data: List[Dict],
                                          industry: str, trace=None) -> List[Dict]:
-        """将 value node tags 通过 LLM 分批映射为具体股票代码"""
+        """将 value node tags 通过 LLM 分批映射为具体股票代码 (DEPRECATED V5.16, will be removed in V6)"""
         if not tags:
             return []
 
@@ -1086,6 +1137,8 @@ class CoreScreeningAgent(ResearchAgent):
       "reasoning": "为什么这个维度在这个行业重要"
     }}
   ],
+  "lifecycle_stage": "startup | inflection | growth | mature | cyclical_bottom | cyclical_decline",
+  "stage_reasoning": "一句话说明判定依据 (如: 营收增速30%+且ROIC拐点向上, 判定为 inflection)",
   "category_suggestion": "current_strong | future_strong | watchlist",
   "category_reasoning": "分类理由",
   "profit_capture_thesis": "这家公司在这个产业链环节中, 靠什么机制把产业景气转化为自身利润",
@@ -1136,8 +1189,6 @@ class CoreScreeningAgent(ResearchAgent):
             return {"error": f"{stock_code} not found in checkpoint"}
 
         stock_info_map = {}
-        fin_map = {}
-        stage_map = {}
         try:
             codes = [stock_code]
             stock_info_map = await self.data_loader.load_fundamentals(codes) if codes else {}
@@ -1145,10 +1196,11 @@ class CoreScreeningAgent(ResearchAgent):
             pass
 
         logger.info(f"[{self.name}] Patch verify {stock_code}: re-running verification")
-        v = await self._verify_single(cand, industry, stock_info_map, fin_map, stage_map, trace)
+        v = await self._verify_single(cand, industry, stock_info_map, trace)
 
         # 2. 只更新 verification 部分
         cand["verification"] = v.get("verification", {})
+        cand["company_stage"] = v.get("company_stage", "unknown")
         cand["category"] = v.get("category", cand.get("category", "watchlist"))
         cand["risk_tags"] = v.get("risk_tags", cand.get("risk_tags", []))
         return cand

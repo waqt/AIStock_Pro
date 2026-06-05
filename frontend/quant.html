@@ -39,13 +39,12 @@
             <div class="top-bar"></div>
             <div class="workspace" style="grid-template-columns: 340px 1fr; gap: 14px; padding: 14px;">
 
-                <!-- Left: Tabs for Indicators / Strategies / Decision / Financial -->
+                <!-- Left: Tabs for Indicators / Strategies / Decision -->
                 <div style="display:flex;flex-direction:column;gap:10px;">
                     <div class="tab-nav">
                         <button class="tab-btn active" onclick="switchTab('indicators')">算子清单</button>
                         <button class="tab-btn" onclick="switchTab('strategies')">策略清单</button>
                         <button class="tab-btn" onclick="switchTab('decide')">决策中心</button>
-                        <button class="tab-btn" onclick="switchTab('financial')">财务指标</button>
                     </div>
 
                     <!-- Tab 1: Indicators -->
@@ -99,38 +98,6 @@
                         <div id="decision-result-area"></div>
                     </div>
 
-                    <!-- Tab 4: Financial Indicators -->
-                    <div class="tab-panel" id="tab-financial" style="display:none;flex-direction:column;gap:10px;max-height:70vh;overflow-y:auto;">
-                        <!-- Compute Panel -->
-                        <div class="panel">
-                            <div class="panel-header"><span class="panel-title"><i class="fas fa-calculator"></i> 财务指标计算</span></div>
-                            <div class="panel-body" id="fin-compute-panel" style="font-size:11px;"></div>
-                        </div>
-                        <!-- Sub-tabs: 算子清单 / 数据查看 -->
-                        <div style="display:flex;gap:4px;margin-bottom:2px;">
-                            <button class="tab-btn active" onclick="switchFinSubTab('list')" id="fin-subtab-list">算子清单</button>
-                            <button class="tab-btn" onclick="switchFinSubTab('data')" id="fin-subtab-data">数据查看</button>
-                        </div>
-                        <!-- Sub: 算子清单 -->
-                        <div id="fin-indicator-list" style="font-size:11px;"></div>
-                        <!-- Sub: 数据查看 -->
-                        <div id="fin-data-panel" style="display:none;">
-                            <div class="panel">
-                                <div class="panel-body" style="display:flex;flex-direction:column;gap:8px;">
-                                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                                        <select id="fin-view-mode" onchange="switchFinView()" style="background:#000;border:1px solid var(--border-color);color:#fff;padding:5px 10px;border-radius:4px;font-size:11px;">
-                                            <option value="by_stock">按股票查看</option>
-                                            <option value="by_field">按指标排名</option>
-                                        </select>
-                                        <select id="fin-stock-select" onchange="loadFinStock()" style="background:#000;border:1px solid var(--border-color);color:#fff;padding:5px 10px;border-radius:4px;font-size:11px;min-width:150px;"><option value="">— 加载中 —</option></select>
-                                        <select id="fin-field-select" onchange="loadFinField()" style="display:none;background:#000;border:1px solid var(--border-color);color:#fff;padding:5px 10px;border-radius:4px;font-size:11px;min-width:150px;"><option value="">— 加载中 —</option></select>
-                                        <span id="fin-view-info" style="font-size:10px;color:var(--text-micro);"></span>
-                                    </div>
-                                    <div id="fin-data-content" style="max-height:40vh;overflow-y:auto;font-size:10px;"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                 </div>
 
                 <!-- Right: Detail / Results -->
@@ -160,7 +127,6 @@
     <script src="js/framework/modal.js"></script>
     <script src="js/framework/task_monitor.js"></script>
     <script src="js/framework/indicator_compute.js"></script>
-    <script src="js/financial_indicators.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/common.js"></script>
     <script>
@@ -174,9 +140,9 @@
             if (panel) { panel.classList.add('active'); panel.style.display = 'flex'; }
             var btns = document.querySelectorAll('.tab-nav > .tab-btn');
             btns.forEach(function(b, i) {
-                var labels = ['算子清单','策略清单','决策中心','财务指标'];
+                var labels = ['算子清单','策略清单','决策中心'];
                 if (i < labels.length && b.textContent.includes(labels[i])) {
-                    if ((tab==='indicators'&&i===0)||(tab==='strategies'&&i===1)||(tab==='decide'&&i===2)||(tab==='financial'&&i===3))
+                    if ((tab==='indicators'&&i===0)||(tab==='strategies'&&i===1)||(tab==='decide'&&i===2))
                         b.classList.add('active');
                 }
             });
@@ -186,7 +152,6 @@
                 document.getElementById('panel-empty').style.display = '';
                 document.getElementById('panel-detail').style.display = 'none';
             }
-            if (tab === 'financial') initFinancialTab();
         }
 
         // ═══ Indicators Tab ═══
@@ -358,143 +323,6 @@
                     items.map(function(i) { return '<tr><td style="color:var(--accent-blue);">' + i.code + '</td><td>' + (i.name || i.code) + '</td><td style="text-align:right;font-family:var(--font-mono);">' + (i.value != null ? Number(i.value).toFixed(4) : '—') + '</td><td>' + (i.date || '') + '</td></tr>'; }).join('') + '</tbody></table>';
             }).catch(function(e) { el.innerHTML = '<div style="color:var(--accent-red);">加载失败: ' + e.message + '</div>'; });
         }
-
-        // ═══ Financial Indicators Tab ═══
-        var finInited = false;
-        var stockNameMap = {};  // code → name cache
-        var finSubTab = 'list';
-        function switchFinSubTab(sub) {
-            finSubTab = sub;
-            document.getElementById('fin-subtab-list').classList.toggle('active', sub === 'list');
-            document.getElementById('fin-subtab-data').classList.toggle('active', sub === 'data');
-            document.getElementById('fin-indicator-list').style.display = sub === 'list' ? '' : 'none';
-            document.getElementById('fin-data-panel').style.display = sub === 'data' ? '' : 'none';
-            if (sub === 'list') loadFinIndicatorList();
-        }
-        function loadFinIndicatorList() {
-            var el = document.getElementById('fin-indicator-list');
-            fetch(API_BASE + '/quant/financial-indicators/registry').then(function(r) { return r.json(); }).then(function(d) {
-                var list = d.data || [];
-                var typeBadge = { moat: '护城河', prosperity: '高景气', both: '通用' };
-                var typeClass = { moat: 'badge-trend', prosperity: 'badge-momentum', both: 'badge-crowding' };
-                el.innerHTML = list.map(function(i) {
-                    var stages = (i.applicable_stages || []).map(function(s) { return '<span class="badge badge-chip">' + s + '</span>'; }).join(' ');
-                    return '<div class="card" onclick="FinInd.showIndicatorDetail(\'' + i.name + '\')" style="cursor:pointer;">' +
-                        '<div style="display:flex;justify-content:space-between;align-items:center;">' +
-                        '<span class="card-title">' + i.name + '</span>' +
-                        '<span class="badge ' + (typeClass[i.indicator_type] || 'badge-trend') + '">' + (typeBadge[i.indicator_type] || i.indicator_type) + '</span>' +
-                        '</div>' +
-                        '<div class="card-meta">' + (i.label || '') + ' | 阶段: ' + stages + '</div>' +
-                        '<div class="card-desc">依赖: ' + (i.requires || []).join(', ') + ' → 输出: ' + (i.output || []).join(', ') + '</div>' +
-                        '</div>';
-                }).join('');
-                if (!list.length) el.innerHTML = '<div style="color:var(--text-micro);text-align:center;padding:20px;">暂无算子</div>';
-            }).catch(function(e) { el.innerHTML = '<div style="color:var(--accent-red);">加载失败</div>'; });
-        }
-        function showFinIndicatorDetail(name) {
-            FinInd.showIndicatorDetail(name);
-        }
-        function initFinancialTab() {
-            if (finInited) return;
-            finInited = true;
-            // Render compute panel
-            var el = document.getElementById('fin-compute-panel');
-            el.innerHTML =
-                '<div style="font-size:10px;color:var(--text-micro);margin-bottom:6px;">财务数据源: DB (financial_statements表)。请先在 <a href="data.html" target="_blank" style="color:var(--accent-blue);">数据中心→财务Tab</a> 同步最新季报。</div>' +
-                '<div style="margin-bottom:6px;">' +
-                  '<label style="font-size:10px;color:var(--text-micro);display:flex;align-items:center;gap:3px;margin-bottom:3px;"><input type="radio" name="fin-scope" value="all" checked onchange="FinCompute._toggleCode()"> 全部持仓+自选股</label>' +
-                  '<label style="font-size:10px;color:var(--text-micro);display:flex;align-items:center;gap:3px;"><input type="radio" name="fin-scope" value="custom" onchange="FinCompute._toggleCode()"> 指定代码</label>' +
-                  '<input type="text" id="fin-codes" placeholder="如: 688012,002409" disabled style="width:100%;background:#000;border:1px solid var(--border-color);color:#fff;padding:4px 8px;border-radius:4px;font-size:10px;">' +
-                '</div>' +
-                '<button id="fin-btn-submit" onclick="FinCompute._onSubmit()" style="font-size:11px;width:100%;background:transparent;border:1px solid var(--accent-green);color:var(--accent-green);cursor:pointer;padding:6px 10px;border-radius:4px;justify-content:center;display:flex;align-items:center;gap:4px;"><i class="fas fa-calculator"></i> 计算财务指标</button>' +
-                '<div id="fin-status" style="font-size:10px;color:var(--text-micro);margin-top:6px;text-align:center;"></div>';
-            // Init stock select + field select for data view + 算子清单
-            loadFinStockList();
-            loadFinFieldList();
-            loadFinIndicatorList();
-            // Init FinInd cache (stock list + registry)
-            setTimeout(function() { FinInd.initData(); }, 100);
-        }
-
-        function loadFinStockList() {
-            var ss = document.getElementById('fin-stock-select');
-            // 从 positions + watchlist 获取股票列表
-            Promise.all([
-                fetch(API_BASE + '/positions').then(function(r) { return r.json(); }),
-                fetch(API_BASE + '/data/watchlist').then(function(r) { return r.json(); })
-            ]).then(function(results) {
-                var posItems = (results[0].data || []).map(function(p) { return { stock_code: p.stock_code, stock_name: p.stock_name || '' }; });
-                var wlItems = (results[1].data || []).map(function(w) { return { stock_code: w.stock_code, stock_name: w.stock_name || '' }; });
-                // 去重 (按 code)
-                var map = {};
-                posItems.concat(wlItems).forEach(function(i) { map[i.stock_code] = i; });
-                var items = Object.values(map);
-                items.forEach(function(i) { stockNameMap[i.stock_code] = i.stock_name || ''; });
-                ss.innerHTML = '<option value="">— 选择股票 —</option>' +
-                    items.map(function(i) { return '<option value="' + i.stock_code + '">' + i.stock_code + ' ' + (i.stock_name || '') + '</option>'; }).join('');
-            }).catch(function() { ss.innerHTML = '<option value="">加载失败</option>'; });
-        }
-
-        function loadFinFieldList() {
-            var fs = document.getElementById('fin-field-select');
-            fetch(API_BASE + '/quant/financial-indicators/registry').then(function(r) { return r.json(); }).then(function(d) {
-                var list = d.data || [];
-                fs.innerHTML = '<option value="">— 选择指标 —</option>' +
-                    list.map(function(i) { return '<option value="' + i.name + '">' + (i.label || i.name) + '</option>'; }).join('');
-            });
-        }
-
-        function switchFinView() {
-            FinInd.switchView();
-        }
-
-        function loadFinStock() {
-            FinInd.loadStockFullView(document.getElementById('fin-stock-select').value);
-        }
-
-        function loadFinField() {
-            FinInd.loadFieldRanking(document.getElementById('fin-field-select').value);
-        }
-
-        function showFinHistory(code) {
-            FinInd.loadStockFullViewInPanel(code);
-        }
-
-        var FinCompute = {
-            _toggleCode: function() {
-                var custom = document.querySelector('input[name="fin-scope"]:checked');
-                var el = document.getElementById('fin-codes');
-                if (el) el.disabled = !custom || custom.value !== 'custom';
-            },
-            _getCodes: function() {
-                var scope = document.querySelector('input[name="fin-scope"]:checked');
-                if (!scope || scope.value === 'all') return null;
-                var raw = document.getElementById('fin-codes');
-                return raw ? raw.value.split(',').map(function(s) { return s.trim(); }).filter(Boolean) : [];
-            },
-            _onSubmit: function() {
-                var btn = document.getElementById('fin-btn-submit');
-                var status = document.getElementById('fin-status');
-                var codes = this._getCodes();
-                var params = { mode: 'local' };
-                if (codes && codes.length) params.target_codes = codes;
-                var orig = btn.innerHTML;
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 入队中...';
-                btn.disabled = true;
-                if (status) status.textContent = '提交异步任务...';
-                fetch(API_BASE + '/system/tasks/executions', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ task_code: 'calc_financial_indicators', params: params })
-                }).then(function(r) { return r.json(); }).then(function(d) {
-                    if (status) status.textContent = '任务入队: ' + (d.id || 'ok') + ' | 请查看任务监视器';
-                }).catch(function(e) {
-                    if (status) status.textContent = '入队失败: ' + e.message;
-                }).finally(function() {
-                    btn.innerHTML = orig;
-                    btn.disabled = false;
-                });
-            }
-        };
 
         // ═══ Decision Center ═══
         IndicatorCompute.render('compute-panel');

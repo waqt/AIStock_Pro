@@ -7,29 +7,30 @@ class RevenueAcceleration(FinancialIndicator):
     name = "revenue_acceleration"
     label = "营收加速"
     description = "最新单季YoY增速相比前一季是提升(加速)还是下降(减速)。相邻两期比较,非趋势判断。"
-    judgment = "accelerating=当期YoY较上期提升>2pp; decelerating=下降>2pp; stable=变化幅度≤2pp。"
+    judgment = "accelerating=当期YoY较上期提升>2pp; decelerating=下降>2pp; stable=变化幅度≤2pp。revenue_accel_pp=最新YoY与前一季YoY差值(百分点),正值=加速,负值=减速。"
     category = "growth"
     indicator_type = "prosperity"
     applicable_stages = ["inflection", "growth"]
     params = {}
-    output = ["revenue_acceleration"]
+    output = ["revenue_acceleration", "revenue_accel_pp"]
     text_output = ["revenue_acceleration"]
     requires = ["revenue"]
 
     @classmethod
     def compute(cls, financials: list) -> dict:
         if len(financials) < 9:
-            return {"revenue_acceleration": None}
+            return {"revenue_acceleration": None, "revenue_accel_pp": None}
         latest_yoy = _pct(float(financials[0].get("revenue", 0) or 0), float(financials[4].get("revenue", 0) or 0))
         prev_yoy = _pct(float(financials[1].get("revenue", 0) or 0), float(financials[5].get("revenue", 0) or 0))
         if latest_yoy is None or prev_yoy is None:
-            return {"revenue_acceleration": None}
+            return {"revenue_acceleration": None, "revenue_accel_pp": None}
         # 使用绝对百分点变化: 对大小基数都公平
-        if latest_yoy > prev_yoy + 2.0:
-            return {"revenue_acceleration": "accelerating"}
-        elif latest_yoy < prev_yoy - 2.0:
-            return {"revenue_acceleration": "decelerating"}
-        return {"revenue_acceleration": "stable"}
+        accel_pp = round(latest_yoy - prev_yoy, 2)
+        if accel_pp > 2.0:
+            return {"revenue_acceleration": "accelerating", "revenue_accel_pp": accel_pp}
+        elif accel_pp < -2.0:
+            return {"revenue_acceleration": "decelerating", "revenue_accel_pp": accel_pp}
+        return {"revenue_acceleration": "stable", "revenue_accel_pp": accel_pp}
 
 
 @register
@@ -68,29 +69,30 @@ class RDToRevenueTrend(FinancialIndicator):
     name = "rd_to_revenue_trend"
     label = "研发费用率趋势"
     description = "研发费用/营收的比例变化趋势: rising/stable/declining。"
-    judgment = "rising=研发费用率持续上升; declining=持续下降(需区分:营收增长快于研发 vs 研发费用绝对值下降)。"
+    judgment = "rising=研发费用率持续上升; declining=持续下降; stable=窄幅波动。rd_to_revenue_chg_pp=最新季与4季前研发费用率差值(百分点)。"
     category = "growth"
     indicator_type = "moat"
     applicable_stages = ["startup", "inflection", "growth"]
     params = {}
-    output = ["rd_to_revenue_trend"]
+    output = ["rd_to_revenue_trend", "rd_to_revenue_chg_pp"]
     text_output = ["rd_to_revenue_trend"]
     requires = ["rd_expense", "revenue"]
 
     @classmethod
     def compute(cls, financials: list) -> dict:
         if len(financials) < 4:
-            return {"rd_to_revenue_trend": None}
+            return {"rd_to_revenue_trend": None, "rd_to_revenue_chg_pp": None}
         ratios = []
         for q in financials[:4]:
             rev = float(q.get("revenue", 0) or 0)
             rd = float(q.get("rd_expense", 0) or 0)
             ratios.append(rd / rev if rev else 0)
+        chg_pp = round((ratios[0] - ratios[-1]) * 100, 2) if len(ratios) >= 4 else None
         if len(ratios) >= 3 and ratios[0] > ratios[1] > ratios[2]:
-            return {"rd_to_revenue_trend": "rising"}
+            return {"rd_to_revenue_trend": "rising", "rd_to_revenue_chg_pp": chg_pp}
         if len(ratios) >= 3 and ratios[0] < ratios[1] < ratios[2]:
-            return {"rd_to_revenue_trend": "declining"}
-        return {"rd_to_revenue_trend": "stable"}
+            return {"rd_to_revenue_trend": "declining", "rd_to_revenue_chg_pp": chg_pp}
+        return {"rd_to_revenue_trend": "stable", "rd_to_revenue_chg_pp": chg_pp}
 
 
 @register

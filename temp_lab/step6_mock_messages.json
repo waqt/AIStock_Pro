@@ -1,0 +1,275 @@
+{
+  "prompt_length": 13500,
+  "total_rounds": 5,
+  "tool_calls_count": 18,
+  "messages": [
+    {
+      "role": "user",
+      "content": "你是产业竞争分析专家。比较以下两家公司在汽车零部件赛道的竞争地位。\n\n## 标的 A: 均胜电子(600699)\n全球汽车安全系统龙头, 被动安全+智能驾驶\n## 标的 B: 拓普集团(601689)\nNVH龙头, 向智能底盘+轻量化一体化压铸转型\n\n## 行业背景\n汽车零部件赛道, 新能源车渗透率超50%, 行业面临:\n- 传统 Tier1 格局重塑, 国产替代加速\n- 智能驾驶+轻量化带来增量市场\n- 主机厂降本压力向上游传导, 有定价权的零部件厂才能维持利润率\n\n## 可用工具\n你可以调用以下工具获取实时数据:\n\n1. **query_financial_data(code, indicators=[...], raw_fields=[...])**\n   - indicators: 财务指标 (如 roic_pct, revenue_yoy, margin, rd_intensity, gross_margin_trend 等)\n   - raw_fields: 原始财报字段 (如 revenue, parent_profit, op_cashflow, total_assets 等)\n   - 两者可同时使用\n\n2. **web_search(query, num=5)**\n   - 搜索网络获取行业/公司实时信息\n\n## 财务数据字典\n## 可用财务数据字典\n\n你可通过 query_financial_data(code, indicators=[...], raw_fields=[...]) 获取数据。\n以下是可用指标和字段: \n\n### Layer 1 — 已注册财务指标（通过 indicators 参数请求，预计算持久化）\n\n**beneish_m_score** (Beneish M-Score) — M-Score = -4.84 + 0.92*DSRI + 0.528*GMI + 0.404*AQI + 0.892*SGI + 0.115*DEPI - 0.172*SGAI + 4.679*TATA - 0.327*LVGI。8因子财务造假检测模型。\n  - 分类: quality | 判断: <-2.22=low_risk(低于Beneish阈值); -2.22~-1.78=grey_area(介于阈值之间); >-1.78=high_risk(高于Beneish阈值)。M-Score是统计信号,非确定性结论。阈值来自Beneish(1999)原文。\n  - 产出字段:\n    * `m_score` —  (单位=分)\n    * `m_score_interpretation` —  (单位=文本)\n    * `m_score_components` —  (单位=文本)\n\n**burn_rate_months** (现金消耗月数) — 现金余额/(平均每月经营现金流消耗)。衡量早期公司在不融资情况下的生存时间。\n  - 分类: health | 判断: >24个月=高(现金可维持2年以上); 12~24个月=中高; 6~12个月=中等; <6个月=低(现金不足6个月)。\n  - 产出字段:\n    * `burn_rate_months` —  (单位=月)\n\n**contract_liability** (合同负债) — 合同负债(预收账款)余额+同比增速。客户预先支付的款项,是未来收入的先行指标。\n  - 分类: health | 判断: 正增长=合同负债同比增加(新订单增长); 负增长=同比减少。合同负债增速>营收增速=新订单增速高于营收确认速度。\n  - 产出字段:\n    * `contract_liability_yoy` —  (单位=%)\n    * `contract_liability_yi` —  (单位=亿元)\n\n**gross_margin_trend** (毛利率趋势) — 判断毛利率连续3Q的变化方向: rising/stable/declining。\n  - 分类: profitability | 判断: rising=毛利率持续上升; stable=窄幅波动; declining=毛利率持续下降。\n  - 产出字段:\n    * `gross_margin_trend` —  (单位=文本)\n\n**inventory** (存货分析) — 存货余额/TTM营收占比 + 同比增速。存货过高有跌价风险,过低可能丧失销售机会。\n  - 分类: health | 判断: 存货/营收<10%=低(存货占营收比重小); 10~20%=中等; 20~40%=较高; >40%=高(存货占比大)。存货增速>营收增速=存货累积速度快于营收确认速度。\n  - 产出字段:\n    * `inventory_revenue_ratio` —  (单位=%)\n    * `inventory_yoy` —  (单位=%)\n\n**inventory_revenue_trend** (存货/营收比趋势) — 存货余额/营收的连续变化趋势分类。\n  - 分类: health | 判断: rising_alert=存货占比连续上升; declining_bullish=持续下降; stable=窄幅波动。\n  - 产出字段:\n    * `inventory_revenue_trend` —  (单位=文本)\n\n**margin** (综合利润率) — 毛利率、净利率、营业利润率。衡量公司盈利能力和定价权的核心指标。\n  - 分类: profitability | 判断: 毛利率>70%=高(通常对应强定价权); 50~70%=较高; 30~50%=中等; <30%=偏低。净利率>20%=高利润率。行业间差异大(消费品牌通常高,零售/大宗低),建议与同行横向对比。\n  - 产出字段:\n    * `gross_margin_pct` —  (单位=%)\n    * `net_margin_pct` —  (单位=%)\n    * `operating_margin_pct` —  (单位=%)\n\n**ocf_health** (OCF健康度) — 近4Q经营现金流/近4Q净利润。衡量利润是否真实转化为现金,是识别纸面利润的核心指标。\n  - 分类: health | 判断: >1.0=高(OCF覆盖净利润有余); 0.7~1.0=中高; 0.5~0.7=中等; <0.5=低(OCF不足净利润一半); loss_making_but_cash_positive=净利润为负但OCF为正; loss_making_with_negative_ocf=净利润为负且OCF为负。\n  - 产出字段:\n    * `ocf_health` —  (单位=文本)\n\n**ocf_profit_ratio_ttm** (经营现金流/净利润(TTM)) — 近4Q经营现金流净额 / 近4Q归母净利润。衡量利润的现金保障程度, 是ocf_health指标的数值版, 支持阈值筛选和趋势跟踪。\n  - 分类: health | 判断: >1.0=现金保障充足; 0.7~1.0=正常; 0.5~0.7=偏低; 0~0.5=较差; <0=利润无现金支撑(或亏损)。\n  - 产出字段:\n    * `ocf_profit_ratio_ttm` — \n\n**operating_leverage** (经营杠杆(DOL)) — 经营杠杆 = %ΔEBIT / %Δ营收。衡量营业利润对营收变化的敏感度, 反映固定成本占比。\n  - 分类: growth | 判断: >2.0=高(固定成本占比高,利润对营收变化敏感); 1.5~2.0=中高; 1.0~1.5=中; 0~1.0=低(利润增幅低于营收); <0=负(营收增长时利润反降,表明成本结构问题)。\n  - 产出字段:\n    * `operating_leverage` —  (单位=倍)\n\n**operating_margin_stability** (营业利润率稳定性) — 近8Q营业利润率的标准差(百分点)。衡量盈利能力稳定性。\n  - 分类: quality | 判断: <1pp=低波动(标准差小); 1~3pp=中等波动; >3pp=高波动(标准差大,营业利润率变化大)。\n  - 产出字段:\n    * `operating_margin_stability` —  (单位=百分点)\n\n**profit_growth** (利润增长) — 近4Q归母净利润YoY增速。衡量公司盈利能力的提升速度。\n  - 分类: growth | 判断: >30%=高增速; 15~30%=中高增速; 5~15%=中低增速; 0~5%=低增速; <0=负增长。利润增速>营收增速=利润率在扩张。\n  - 产出字段:\n    * `profit_yoy_latest` — \n    * `avg_profit_yoy_4q` — \n    * `profit_yoy_ttm` — \n    * `profit_4q_yi` —  (单位=亿元)\n\n**profit_turnaround** (利润反转) — 利润从亏损到盈利的拐点信号。识别转折型投资机会。\n  - 分类: growth | 判断: turnaround=近4Q利润由负转正; sustained=持续为正; risk=由正转负; negative=持续为负。\n  - 产出字段:\n    * `profit_turnaround` —  (单位=文本)\n\n**rd_growth** (研发费用同比(%)) — 研发费用同比增速。高研发增长预示公司在积极构建技术护城河。\n  - 分类: growth | 判断: >30%=高增速; 15~30%=中高增速; 0~15%=中低增速; <0%=负增长。\n  - 产出字段:\n    * `rd_growth` — \n\n**rd_intensity** (研发费用率(%)) — 研发费用占营收比例。衡量公司对技术/创新的投入力度。\n  - 分类: profitability | 判断: >15%=高(生物医药/软件行业常见); 8~15%=中高; 3~8%=中等; <3%=低。高低本身无绝对好坏,需结合行业特征和研发资本化政策综合判断。\n  - 产出字段:\n    * `rd_intensity` —  (单位=%)\n\n**rd_to_opex** (研发/运营费用比) — 研发费用/(销售费用+管理费用)。衡量公司在创新vs销售之间的资源分配倾向。\n  - 分类: profitability | 判断: >1.0=研发费用高于销售管理费用; 0.5~1.0=两者相当; <0.5=销售管理费用高于研发费用。技术密集型行业通常>0.5。\n  - 产出字段:\n    * `rd_to_opex` —  (单位=%)\n\n**rd_to_revenue_trend** (研发费用率趋势) — 研发费用/营收的比例变化趋势: rising/stable/declining。\n  - 分类: growth | 判断: rising=研发费用率持续上升; declining=持续下降(需区分:营收增长快于研发 vs 研发费用绝对值下降)。\n  - 产出字段:\n    * `rd_to_revenue_trend` —  (单位=文本)\n\n**revenue_acceleration** (营收加速) — 最新单季YoY增速相比前一季是提升(加速)还是下降(减速)。相邻两期比较,非趋势判断。\n  - 分类: growth | 判断: accelerating=当期YoY较上期提升>2pp; decelerating=下降>2pp; stable=变化幅度≤2pp。\n  - 产出字段:\n    * `revenue_acceleration` —  (单位=文本)\n\n**revenue_growth** (营收增长) — 近4Q营收YoY增速 + 近4Q平均增速。衡量公司收入扩张的核心指标。\n  - 分类: growth | 判断: >30%=高增速; 15~30%=中高增速; 5~15%=中低增速; 0~5%=低增速; <0=负增长。\n  - 产出字段:\n    * `rev_yoy_latest` — \n    * `avg_rev_yoy_4q` — \n    * `rev_yoy_ttm` — \n    * `revenue_4q_yi` —  (单位=亿元)\n\n**revenue_qoq** (营收环比(%)) — 营收环比增速。比同比更敏感的短期景气指标,但受季节性影响大。\n  - 分类: growth | 判断: >20%=高环比增长; 10~20%=中高; 0~10%=中低; <0%=环比下降。季节性强的行业建议与去年同季环比对比。\n  - 产出字段:\n    * `revenue_qoq` —  (单位=%)\n\n**revenue_scale** (营收规模) — TTM营收规模分类: mega/large/medium/small/micro。判定公司体量和市场地位。\n  - 分类: profile | 判断: mega=千亿级(营收≥1000亿RMB); large=百亿级(100亿~1000亿); medium=十亿级(10亿~100亿); small=亿级(1亿~10亿); micro=千万级(<1亿)。阈值基于A股标准(RMB计价),港股/美股需按汇率换算后参考。\n  - 产出字段:\n    * `revenue_scale` —  (单位=文本)\n\n**revenue_yoy** (营收同比(%)) — 单季度营收同比增速。相比TTM更敏感的增速指标,能更快捕捉拐点。\n  - 分类: growth | 判断: 同比增速上升=加速; 同比增速下降但仍为正=增速放缓; 转负=由正转负。\n  - 产出字段:\n    * `revenue_yoy` —  (单位=%)\n\n**roe** (ROE(%)) — 净资产收益率 = 归母净利润/净资产。巴菲特的选股金标准，衡量股东权益的回报效率。\n  - 分类: profitability | 判断: >20%=高(显著高于多数行业资本成本); 15~20%=较高; 10~15%=中等; 5~10%=偏低; <5%=低。注意金融/地产等高杠杆行业ROE天然偏高,需结合财务杠杆判断。连续5年>15%通常对应较强的盈利持续性。\n  - 产出字段:\n    * `roe` —  (单位=%)\n\n**roic** (ROIC(%)) — 投资资本回报率 = NOPAT/IC。衡量公司占用资本的回报效率，不受资本结构影响，比ROE更纯净的护城河指标。\n  - 分类: profitability | 判断: >20%=高; 15~20%=较高; 10~15%=中等; 8~10%=偏低; <8%=低。ROIC>15%且稳定通常对应较强的竞争优势。\n  - 产出字段:\n    * `roic` —  (单位=小数)\n    * `roic_pct` —  (单位=%)\n    * `roic_quality` —  (单位=文本)\n    * `roic_interpretation` —  (单位=文本)\n    * `roic_adjusted` —  (单位=小数)\n    * `roic_pct_adjusted` —  (单位=%)\n\n**roic_stability** (ROIC稳定性) — ROIC的变异系数(标准差/均值)。越小越稳定,护城河越牢固。\n  - 分类: quality | 判断: <0.1=低波动(变异系数小); 0.1~0.3=中等波动; >0.3=高波动(变异系数大)。高均值+低变异=ROIC高且稳定。\n  - 产出字段:\n    * `roic_stability` —  (单位=%)\n\n**roiic** (ROIIC(%)) — 增量投资资本回报率 = ΔNOPAT/ΔIC。衡量新投入资本的边际回报，判断成长质量的关键指标。\n  - 分类: profitability | 判断: >30%=新增资本回报率高; 15~30%=较高; 8~15%=中等; 0~8%=偏低; <0=新增资本亏损。ROIIC>ROIC表明边际回报在改善。\n  - 产出字段:\n    * `roiic` —  (单位=小数)\n    * `roiic_pct` —  (单位=%)\n    * `roiic_quality` —  (单位=文本)\n    * `roiic_interpretation` —  (单位=文本)\n    * `roic_adjusted` —  (单位=小数)\n    * `roic_pct_adjusted` —  (单位=%)\n    * `roiic_adjusted` —  (单位=小数)\n    * `roiic_pct_adjusted` —  (单位=%)\n\n**scissor_gap** (剪刀差) — 利润YoY - 营收YoY。剪刀差为正表示利润率在扩张, 为负表示利润率在收缩。\n  - 分类: growth | 判断: >10=利润增速领先营收>10pp; 5~10=领先5-10pp; 0~5=小幅领先; -5~0=小幅落后; <-5=落后>5pp。连续3Q为正=利润率同比持续改善。\n  - 产出字段:\n    * `scissor_gap` —  (单位=百分点)\n    * `scissor_is_expanding` —  (单位=文本)\n    * `scissor_quarters_count` — \n\n**working_capital_efficiency** (营运资本效率(%)) — (应收账款+存货-应付账款)/TTM营收。衡量公司对上下游的议价能力和渠道控制力。\n  - 分类: profitability | 判断: <5%=低(营运资本需求小,占用上下游资金); 5~10%=较低; 10~20%=中等; >30%=高(扩张时资金占用大)。负值=净占用上下游资金,但需确认非拖欠供应商。\n  - 产出字段:\n    * `working_capital_efficiency` —  (单位=%)\n\n### Layer 2 — 衍生指标（通过 indicators 参数请求，实时计算）\n\n以下指标由原始财务字段实时计算，无需预计算。\n\n**ar_turnover_days** (应收账款周转天数(DSO)) — 应收账款周转天数 = 平均应收账款 / 营业收入(TTM) × 365。衡量回款速度, 缩短说明客户不敢拖欠（卡位权增强）, 拉长说明地位下降。\n  - 分类: health | 判断: <30天=强; 30~60=正常; 60~90=偏长; >90=弱 | 单位: 天\n  - 依赖字段: `accounts_receivable`, `revenue`\n\n**fixed_asset_turnover** (固定资产周转率) — 营业收入(TTM) / 平均固定资产。衡量产能利用效率, 扩张后维持或提升说明产能有效利用, 下降说明产能闲置。\n  - 分类: profitability | 判断: >5=高(轻资产高周转); 2~5=正常; <2=低(重资产或产能闲置) | 单位: 倍\n  - 依赖字段: `revenue`, `fixed_assets`\n\n**ocf_to_revenue_ratio** (经营现金流/营收比) — 经营性现金流净额(TTM) / 营业收入(TTM)。衡量每元收入的现金创造能力, 高说明收款好、利润质量高。\n  - 分类: health | 判断: >20%=强; 10~20%=正常; <10%=偏弱; <0=亏损 | 单位: %\n  - 依赖字段: `op_cashflow`, `revenue`\n\n**sga_ratio** (销售管理费用率) — (销售费用+管理费用) / 营业收入(TTM)。竞争加剧→销售费用率上升吞噬利润; 高认证壁垒→SG&A占比低且稳定。\n  - 分类: health | 判断: <10%=低(壁垒高); 10~20%=正常; >20%=偏高(竞争激烈) | 单位: %\n  - 依赖字段: `sale_expense`, `manage_expense`, `revenue`\n\n### 原始财务数据字段（通过 raw_fields 参数请求）\n\n  - `accounts_payable`: 应付账款 (单位=元)\n  - `accounts_receivable`: 应收账款 (单位=元)\n  - `cash`: 货币资金 (单位=元)\n  - `contract_liability`: 合同负债（预收账款） (单位=元)\n  - `current_assets`: 流动资产 (单位=元)\n  - `current_liabilities`: 流动负债合计 (单位=元)\n  - `fixed_assets`: 固定资产 (单位=元)\n  - `inventory`: 存货 (单位=元)\n  - `long_loan`: 长期借款 (单位=元)\n  - `manage_expense`: 管理费用 (单位=元)\n  - `noncurrent_liab_1year`: 一年内到期非流动负债 (单位=元)\n  - `op_cashflow`: 经营性现金流 (单位=元)\n  - `operate_cost`: 营业成本 (单位=元)\n  - `parent_profit`: 归母净利润 (单位=元)\n  - `rd_expense`: 研发费用 (单位=元)\n  - `revenue`: 营业收入 (单位=元)\n  - `sale_expense`: 销售费用 (单位=元)\n  - `short_loan`: 短期借款 (单位=元)\n  - `total_assets`: 总资产 (单位=元)\n  - `total_equity`: 总权益（净资产） (单位=元)\n  - `total_liabilities`: 总负债 (单位=元)\n\n### 使用示例\n```python\n# 获取ROIC和营收增长\ndata = query_financial_data(\"688012\", indicators=[\"roic_pct\", \"revenue_yoy\"])\n# → {\"stock_code\": \"688012\", \"report_date\": \"2026-03-31\", \"roic_pct\": 18.5, \"revenue_yoy\": 12.3}\n\n# 获取原始财务字段\ndata = query_financial_data(\"688012\", raw_fields=[\"revenue\", \"rd_expense\"])\n# → {\"stock_code\": \"688012\", \"report_date\": \"2026-03-31\", \"revenue\": 1250000000, \"rd_expense\": 150000000}\n\n# 获取多个报告期的趋势数据\ndata = query_financial_data(\"688012\", indicators=[\"roic_pct\"], latest_only=False)\n# → {\"stock_code\": \"688012\", \"periods\": [{\"report_date\": \"...\", \"roic_pct\": 18.5}, ...]}\n```\n\n### 注意\n- 原始财务字段单位为 **元**（非亿元），LLM 需自行转换\n- `roic_pct=18.5` 表示 18.5%，不是 0.185\n- `roic=0.185` 表示小数形式，不是百分比\n- `m_score=-2.5` 表示 -2.5 分，非百分比\n## 原始财报数据字典 (FinancialStatement)\n\n可通过 raw_fields 参数请求以下字段。单位为**元**（注意非亿元）。\n数据最新在前 (newest-first), 季报频率。\n\n### 利润表\n\n  - `manage_expense`: 管理费用 (单位=元)\n    行政管理费用 (管理人员薪酬/办公/折旧)。管理费用率下降说明规模效应显现。\n    📌 新准则下不含研发费用 (已单独列示)\n\n  - `operate_cost`: 营业成本 (单位=元)\n    主营业务对应的直接成本 (材料+人工+制造费用)。毛利率=(收入-成本)/收入, 是最核心的盈利质量指标。\n    📌 不含销售/管理/研发/财务费用\n\n  - `parent_profit`: 归母净利润 (单位=元)\n    归属于母公司股东的净利润, 扣除非经常性损益前。净利润=收入-成本-费用+其他收益-所得税。\n    📌 与扣非净利润的差距反映非经常性损益比重\n\n  - `rd_expense`: 研发费用 (单位=元)\n    研发投入 (资本化+费用化合计中的费用化部分)。研发费用率=RD/收入, >10%为高研发投入型公司。\n    📌 资本化的研发支出在资产负债表中, 不在本字段\n\n  - `revenue`: 营业收入 (单位=元)\n    企业主营业务收入, 不含营业外收入。增长驱动=量×价, 判断景气度核心指标。\n    📌 a股季报为单季度数据, 计算TTM需累加近4季\n\n  - `sale_expense`: 销售费用 (单位=元)\n    销售环节产生的费用 (广告/渠道/销售人员薪酬)。销售费用率上升可能意味着竞争加剧/获客成本上升。\n\n### 现金流量表\n\n  - `op_cashflow`: 经营性现金流净额 (单位=元)\n    经营活动产生的现金流量净额。持续>净利润为佳, 持续<净利润需警惕。\n    📌 是利润质量的'照妖镜', 比净利润更难造假\n\n### 资产负债表(资产)\n\n  - `accounts_receivable`: 应收账款 (单位=元)\n    已发货但未收回的货款。应收/收入比上升说明回款能力下降。周转天数(DSO)=AR/收入×365。\n    📌 应收账款坏账准备会直接减少利润\n\n  - `cash`: 货币资金 (单位=元)\n    现金及现金等价物。是企业偿债能力的最后保障。货币资金/总负债 > 30% 为安全。\n    📌 需注意'存贷双高'异常信号\n\n  - `contract_liability`: 合同负债(预收账款) (单位=元)\n    已收款但尚未履约的合同负债 (原'预收账款')。持续增长说明产品供不应求, 是未来收入的先行指标。\n    📌 新收入准则下预收账款改为合同负债\n\n  - `current_assets`: 流动资产合计 (单位=元)\n    一年内可变现的资产 (货币资金+应收+存货+其他)。流动比率=流动资产/流动负债, >1为安全。\n\n  - `fixed_assets`: 固定资产 (单位=元)\n    厂房/设备/土地等长期资产 (扣除累计折旧)。固定资产周转率=收入/平均固定资产, 衡量产能利用效率。\n    📌 重资产公司的折旧对利润影响大\n\n  - `inventory`: 存货 (单位=元)\n    原材料+在产品+产成品。存货增速 > 收入增速 → 滞销预警。\n    📌 存货跌价准备会直接减少利润\n\n  - `total_assets`: 总资产 (单位=元)\n    资产总计 = 流动资产 + 非流动资产。总资产扩张反映企业规模增长。\n    📌 与总负债对比得到资产负债率\n\n### 资产负债表(负债)\n\n  - `accounts_payable`: 应付账款 (单位=元)\n    已收货但尚未支付给供应商的款项。应付账款/收入反映对上游供应商的占款能力。\n    📌 应付款增加说明产业链地位强 (占用上游资金)\n\n  - `current_liabilities`: 流动负债合计 (单位=元)\n    一年内需偿还的负债 (短期借款+应付+其他)。与流动资产对比得到流动比率。\n\n  - `long_loan`: 长期借款 (单位=元)\n    一年以上到期的银行借款。反映企业的长期融资能力。\n    📌 结合在建工程判断借款用途\n\n  - `noncurrent_liab_1year`: 一年内到期非流动负债 (单位=元)\n    原属长期负债但将在一年内到期的部分。是隐性短期偿债压力, 常被忽略。\n    📌 短期借款+本项=真实的短期有息负债\n\n  - `short_loan`: 短期借款 (单位=元)\n    一年内到期的银行借款。短期借款/货币资金 > 1 有短期偿债压力。\n    📌 是流动负债中有息的部分\n\n  - `total_liabilities`: 总负债 (单位=元)\n    负债合计 = 流动负债 + 非流动负债。资产负债率=负债/总资产, 制造业通常40-60%。\n    📌 结合有息负债率看真实偿债压力\n\n### 资产负债表(权益)\n\n  - `total_equity`: 总权益(净资产) (单位=元)\n    股东权益合计 = 总资产 - 总负债。ROE=净利润/平均权益, 是衡量股东回报的核心指标。\n    📌 包含股本/资本公积/未分配利润等\n\n### 元数据字段 (自动附带)\n  - `stock_code`: 股票代码\n  - `report_date`: 报告期 (如 2026-03-31)\n  - `report_type`: 报告类型 (Q=季报, M=中报, A=年报)\n  - `announce_date`: 公告日期\n\n### 注意事项\n- 所有金额单位为**元**，LLM 需自行转换亿元显示\n- 数据方向: newest-first, quarters[0]=最新\n- 季报数据为单季度, TTM=近4季求和\n- 同比增长率需同期对比 ( quarters[i] vs quarters[i+4] )\n\n\n## 分析要求\n- **不要使用任何预设的分析框架或维度**。根据汽车零部件行业的竞争特征, 自主定义最能反映这两家公司竞争力的分析维度\n- 每个维度的判断必须来自 tool 调用的真实数据作为证据\n- 先查数据再判断, 不要先判断再勉强找证据支持\n- 如有需要, 可以自己从原始字段计算财务比率\n\n## 输出结构\n{\n  \"comparison\": [\n    {\n      \"code\": \"600699\",\n      \"name\": \"均胜电子\",\n      \"analysis_dimensions\": [\n        {\n          \"dimension\": \"自定义维度名称\",\n          \"rating\": \"strong/medium/weak/emerging\",\n          \"evidence\": [\"来自 tool 调用的证据\"],\n          \"reasoning\": \"为什么这个维度重要\"\n        }\n      ],\n      \"profit_capture_thesis\": \"利润捕获能力分析\",\n      \"roic_note\": \"如查询了 ROIC 数据在此注明\"\n    },\n    {\n      \"code\": \"601689\",\n      \"name\": \"拓普集团\",\n      \"analysis_dimensions\": [...],\n      \"profit_capture_thesis\": \"...\",\n      \"roic_note\": \"...\"\n    }\n  ],\n  \"winner\": \"哪个标的总体竞争力更强\",\n  \"winner_reasoning\": \"详细理由\",\n  \"thesis_breakers\": [\"什么条件会推翻判断\"]\n}\n\n## 规则\n- 每个维度的 evidence 必须来自 tool 调用返回的真实数据\n- 禁止输出投资建议\n- 先查数据再判断, 不要先判断再勉强找证据支持"
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "call_00_dFyIpv4KY7YfcW4wzodp9123",
+          "type": "function",
+          "function": {
+            "name": "query_financial_data",
+            "arguments": "{\"code\": \"600699\", \"indicators\": [\"roic_pct\", \"roic_stability\", \"roiic_pct\", \"margin\", \"gross_margin_trend\", \"revenue_growth\", \"revenue_yoy\", \"revenue_scale\", \"profit_growth\", \"scissor_gap\", \"ocf_health\", \"ocf_profit_ratio_ttm\", \"working_capital_efficiency\", \"rd_intensity\", \"rd_growth\", \"rd_to_opex\", \"rd_to_revenue_trend\", \"inventory\", \"inventory_revenue_trend\", \"operating_leverage\", \"operating_margin_stability\", \"profit_turnaround\", \"revenue_acceleration\", \"burn_rate_months\", \"contract_liability\", \"beneish_m_score\", \"roe\"], \"raw_fields\": [\"revenue\", \"parent_profit\", \"op_cashflow\", \"operate_cost\", \"rd_expense\", \"sale_expense\", \"manage_expense\", \"accounts_receivable\", \"accounts_payable\", \"inventory\", \"fixed_assets\", \"total_assets\", \"total_equity\", \"total_liabilities\", \"short_loan\", \"long_loan\", \"cash\", \"current_assets\", \"current_liabilities\", \"noncurrent_liab_1year\", \"contract_liability\"]}"
+          }
+        },
+        {
+          "id": "call_01_lcbyan9CCLXXgDDOU7iu4071",
+          "type": "function",
+          "function": {
+            "name": "query_financial_data",
+            "arguments": "{\"code\": \"601689\", \"indicators\": [\"roic_pct\", \"roic_stability\", \"roiic_pct\", \"margin\", \"gross_margin_trend\", \"revenue_growth\", \"revenue_yoy\", \"revenue_scale\", \"profit_growth\", \"scissor_gap\", \"ocf_health\", \"ocf_profit_ratio_ttm\", \"working_capital_efficiency\", \"rd_intensity\", \"rd_growth\", \"rd_to_opex\", \"rd_to_revenue_trend\", \"inventory\", \"inventory_revenue_trend\", \"operating_leverage\", \"operating_margin_stability\", \"profit_turnaround\", \"revenue_acceleration\", \"burn_rate_months\", \"contract_liability\", \"beneish_m_score\", \"roe\"], \"raw_fields\": [\"revenue\", \"parent_profit\", \"op_cashflow\", \"operate_cost\", \"rd_expense\", \"sale_expense\", \"manage_expense\", \"accounts_receivable\", \"accounts_payable\", \"inventory\", \"fixed_assets\", \"total_assets\", \"total_equity\", \"total_liabilities\", \"short_loan\", \"long_loan\", \"cash\", \"current_assets\", \"current_liabilities\", \"noncurrent_liab_1year\", \"contract_liability\"]}"
+          }
+        },
+        {
+          "id": "call_02_ohV37wXvN5fBkoG9iIC89889",
+          "type": "function",
+          "function": {
+            "name": "web_search",
+            "arguments": "{\"query\": \"均胜电子 600699 汽车安全 被动安全 市场份额 2024 2025\", \"num\": 5}"
+          }
+        },
+        {
+          "id": "call_03_ZyEkCCUKso9lnIj2DKTg3827",
+          "type": "function",
+          "function": {
+            "name": "web_search",
+            "arguments": "{\"query\": \"拓普集团 601689 NVH 智能底盘 一体化压铸 竞争力 2024 2025\", \"num\": 5}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_00_dFyIpv4KY7YfcW4wzodp9123",
+      "content": "{\"stock_code\": \"600699\", \"report_date\": \"2026-03-31\", \"roic_stability\": 0.1, \"gross_margin_pct\": 18.3, \"net_margin_pct\": 2.3, \"operating_margin_pct\": 6.0, \"gross_margin_trend\": \"declining\", \"rev_yoy_latest\": -5.22, \"avg_rev_yoy_4q\": 5.9, \"rev_yoy_ttm\": 5.7, \"revenue_4q_yi\": 604.22, \"revenue_yoy\": -5.22, \"revenue_scale\": \"large\", \"profit_yoy_latest\": 18.11, \"avg_profit_yoy_4q\": 275.3, \"profit_yoy_ttm\": 40.5, \"profit_4q_yi\": 13.97, \"scissor_gap\": 23.33, \"scissor_is_expanding\": true, \"scissor_quarters_count\": 4, \"ocf_health\": \"healthy\", \"ocf_profit_ratio_ttm\": 0, \"working_capital_efficiency\": 14.5, \"rd_intensity\": 5.5, \"rd_growth\": 5.39, \"rd_to_opex\": 0.82, \"rd_to_revenue_trend\": \"stable\", \"inventory_revenue_ratio\": 17.3, \"inventory_yoy\": -7.1, \"inventory_revenue_trend\": \"rising_alert\", \"operating_leverage\": 3.46, \"operating_margin_stability\": 1.2, \"profit_turnaround\": \"sustained\", \"revenue_acceleration\": null, \"burn_rate_months\": null, \"contract_liability_yoy\": 13.35, \"contract_liability_yi\": 8.21, \"m_score\": -2.82, \"m_score_interpretation\": \"low_risk\", \"m_score_components\": {\"DSRI\": 0.8671, \"GMI\": 0.9236, \"AQI\": 1.0274, \"SGI\": 1.057, \"DEPI\": 1.0535, \"SGAI\": 1.0069, \"TATA\": -0.0571, \"LVGI\": 0.9297}, \"roe\": 5.6, \"revenue\": 13815200000.0, \"op_cashflow\": 914854000.0, \"operate_cost\": 11374700000.0, \"rd_expense\": 839396000.0, \"sale_expense\": 127907000.0, \"manage_expense\": 697236000.0, \"accounts_receivable\": 8156770000.0, \"accounts_payable\": 9822750000.0, \"inventory\": 10435600000.0, \"fixed_assets\": 12909500000.0, \"total_assets\": 70844500000.0, \"total_equity\": 24851300000.0, \"total_liabilities\": 45993300000.0, \"short_loan\": 5375340000.0, \"long_loan\": 16506500000.0, \"cash\": 11607600000.0, \"current_assets\": 34535900000.0, \"current_liabilities\": 26252200000.0, \"noncurrent_liab_1year\": 4197730000.0, \"contract_liability\": 821119000.0}"
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_01_lcbyan9CCLXXgDDOU7iu4071",
+      "content": "{\"stock_code\": \"601689\", \"report_date\": \"2026-03-31\", \"roic_stability\": 0.037, \"gross_margin_pct\": 19.3, \"net_margin_pct\": 9.1, \"operating_margin_pct\": 10.8, \"gross_margin_trend\": \"stable\", \"rev_yoy_latest\": 14.92, \"avg_rev_yoy_4q\": 14.0, \"rev_yoy_ttm\": 14.1, \"revenue_4q_yi\": 304.42, \"revenue_yoy\": 14.92, \"revenue_scale\": \"large\", \"profit_yoy_latest\": -2.42, \"avg_profit_yoy_4q\": -5.0, \"profit_yoy_ttm\": -5.3, \"profit_4q_yi\": 27.65, \"scissor_gap\": -17.34, \"scissor_is_expanding\": false, \"scissor_quarters_count\": 4, \"ocf_health\": \"healthy\", \"ocf_profit_ratio_ttm\": 0, \"working_capital_efficiency\": 14.9, \"rd_intensity\": 5.0, \"rd_growth\": 7.4, \"rd_to_opex\": 1.44, \"rd_to_revenue_trend\": \"rising\", \"inventory_revenue_ratio\": 14.3, \"inventory_yoy\": 13.64, \"inventory_revenue_trend\": \"rising_alert\", \"operating_leverage\": 0.52, \"operating_margin_stability\": 1.0, \"profit_turnaround\": \"sustained\", \"revenue_acceleration\": null, \"burn_rate_months\": null, \"contract_liability_yoy\": -16.42, \"contract_liability_yi\": 0.27, \"m_score\": -2.53, \"m_score_interpretation\": \"low_risk\", \"m_score_components\": {\"DSRI\": 0.9664, \"GMI\": 1.0495, \"AQI\": 0.9639, \"SGI\": 1.141, \"DEPI\": 1.0294, \"SGAI\": 1.0103, \"TATA\": -0.0331, \"LVGI\": 1.0169}, \"roe\": 11.2, \"revenue\": 6628190000.0, \"op_cashflow\": 547215000.0, \"operate_cost\": 5351850000.0, \"rd_expense\": 367509000.0, \"sale_expense\": 64443100.0, \"manage_expense\": 208311000.0, \"accounts_receivable\": 5684890000.0, \"accounts_payable\": 5499180000.0, \"inventory\": 4343140000.0, \"fixed_assets\": 15195600000.0, \"total_assets\": 41581100000.0, \"total_equity\": 24626400000.0, \"total_liabilities\": 16954600000.0, \"short_loan\": 2864250000.0, \"long_loan\": 200123000.0, \"cash\": 4020020000.0, \"current_assets\": 20981600000.0, \"current_liabilities\": 15855800000.0, \"noncurrent_liab_1year\": 1211890000.0, \"contract_liability\": 26751900.0}"
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_02_ohV37wXvN5fBkoG9iIC89889",
+      "content": "[{\"title\": \"请务必阅读正文之后的免责声明及其项下所有内容 证券研究报告| 2025年04月09日 优于大市 均胜电子（600699.SH）\", \"snippet\": \"市场份额正快速上涨，得益于公司丰富的客户基础及先期在国内客户结构上的布\"}, {\"title\": \"公司报告 | 首次覆盖报告 请务必阅读正文之后的信息披露和免责申明 1 均胜电子（600699） 证券研究报告 2025 年06 月19 日 投资评级 行业\", \"snippet\": \"<strong>民币1,577 亿元</strong>。全球汽车被动安全行业的前三大供应商约占市场规模总额的92.8%。 · 2023 年，均胜电子以人民币364 亿元的收入排名全球第二，占据23.1%的市场份额，排\"}, {\"title\": \"宁波均胜电子股份有限公司 募集说明书（申报稿） 1-1-1\", \"snippet\": \"Standards，FMVSS）中与碰撞有关的被动安全标准进行的批量修订等。未来若\"}, {\"title\": \"精准预判，超前布局，均胜电子正迎来自己的时代 - 财闻网\", \"snippet\": \"时至今日，均胜电子<strong>占据全球汽车安全领域约30%市场份额</strong>，是中国汽车电子营收第一的汽车零部件企业，也是中国跨国指数最高公司。\"}, {\"title\": \"宁波均胜电子股份有限公司2024 年年度报告摘要\", \"snippet\": \"创新型汽车安全产品不断出现。公司作为汽车被动安全领域的领导者，在汽车安全行业有着稳定\"}]"
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_03_ZyEkCCUKso9lnIj2DKTg3827",
+      "content": "[{\"title\": \"公司代码：601689 公司简称：拓普集团 宁波拓普集团股份有限公司 2024 年年度报告 2025 年4 月\", \"snippet\": \"公司奉行为客户创造价值的经营理念，坚持研发与创新，推进全球布局，提升综合竞争力， ... 公司把握行业发展趋势，前瞻布局智能电动汽车赛道，持续扩大产品线，形成平台型企业。 · 目前已经拥有8 大系列产品，即汽车NVH 减震系统、内外饰系统、车身轻量化、智能座舱部件、 · 热管理系统、底盘系统、空气悬架系统、智能驾驶系统，单车配套金额约3 万元，且公司产品线\"}, {\"title\": \"拓普集团(601689.SH)操盘必读-PC_HSF10资料\", \"snippet\": \"财经 · 要闻 · 股票 · 新股 · 期指 · 期权 · 行情 · 数据 · 全球 · 美股\"}, {\"title\": \"拓普集团(601689) 概念题材_F10_同花顺金融服务网\", \"snippet\": \"谢谢您的宝贵意见 · 您的支持是我们最大的动力\"}, {\"title\": \"公司代码：601689 公司简称：拓普集团 宁波拓普集团股份有限公司\", \"snippet\": \"公司自成立四十年以来，不断提升综合竞争力，提高竞争门槛构建护城河。 ... 公司把握行业发展趋势，前瞻布局智能电动汽车赛道，持续扩大产品线，形成平台型企业。 · 目前已经拥有8 大系列产品，即汽车NVH 减震系统、内外饰系统、车身轻量化、智能座舱部件、 · 热管理系统、底盘系统、空气悬架系统、智能驾驶系统，单车配套金额约3 万元，且公司产品线\"}, {\"title\": \"拓普集团(601689) 盈利预测_F10_同花顺金融服务网\", \"snippet\": \"事件：2025年4月23日，公司发布2024年年报，2024全年实现营业收入266.00亿元，同比增长35.02%，归母净利润30.01亿元，同比增长39.52%，实现扣非归母净利润27.28亿元，同比增长35.00%。 收入高速增长，汽车电子业务增速亮眼。2024年营收高速增长，分业务看，内饰业务营收84.34亿元，同比+28.24%，底盘业务营收82.03亿元，同比+33.98%，减震业务营收44.02亿元，同比+2.40%，热管理业务营收21.40亿元，同比+38.24%，汽车电子业务营收18.20亿元，同比+907.63%，电驱业务营收0.1\"}]"
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "call_00_dBXxPHohTAAGcleQSsV25638",
+          "type": "function",
+          "function": {
+            "name": "query_financial_data",
+            "arguments": "{\"code\": \"600699\", \"indicators\": [\"roic_pct\", \"roiic_pct\", \"ar_turnover_days\", \"fixed_asset_turnover\", \"ocf_to_revenue_ratio\", \"sga_ratio\", \"revenue_qoq\"]}"
+          }
+        },
+        {
+          "id": "call_01_LqjrgY3CqrO9JHkFYX1p4330",
+          "type": "function",
+          "function": {
+            "name": "query_financial_data",
+            "arguments": "{\"code\": \"601689\", \"indicators\": [\"roic_pct\", \"roiic_pct\", \"ar_turnover_days\", \"fixed_asset_turnover\", \"ocf_to_revenue_ratio\", \"sga_ratio\", \"revenue_qoq\"]}"
+          }
+        },
+        {
+          "id": "call_02_lSU6Aifj8CvbVgBzCf1g5950",
+          "type": "function",
+          "function": {
+            "name": "web_search",
+            "arguments": "{\"query\": \"均胜电子 600699 毛利率 净利率 下滑 2024 2025 汽车安全 竞争\", \"num\": 5}"
+          }
+        },
+        {
+          "id": "call_03_5gvf7HcRLl7CRkYukXJC3112",
+          "type": "function",
+          "function": {
+            "name": "web_search",
+            "arguments": "{\"query\": \"拓普集团 601689 利润率 盈利能力 2024 2025 一体化压铸 智能底盘\", \"num\": 5}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_00_dBXxPHohTAAGcleQSsV25638",
+      "content": "{\"stock_code\": \"600699\", \"report_date\": \"2026-03-31\", \"revenue_qoq\": -9.93, \"ar_turnover_days\": 51.5, \"fixed_asset_turnover\": 4.62, \"ocf_to_revenue_ratio\": 9.0, \"sga_ratio\": 6.8}"
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_01_LqjrgY3CqrO9JHkFYX1p4330",
+      "content": "{\"stock_code\": \"601689\", \"report_date\": \"2026-03-31\", \"revenue_qoq\": -23.4, \"ar_turnover_days\": 65.0, \"fixed_asset_turnover\": 2.1, \"ocf_to_revenue_ratio\": 13.6, \"sga_ratio\": 3.5}"
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_02_lSU6Aifj8CvbVgBzCf1g5950",
+      "content": "[{\"title\": \"均胜电子(600699.SH)操盘必读-PC_HSF10资料\", \"snippet\": \"600699 · 均胜电子 · 最新价: - · 涨跌: - · 涨跌幅: -% · 换手: -% · 总手: - · 金额: -万 · 操盘必读 · 股东研究\"}, {\"title\": \"均胜电子(600699)研报精选_九方智投\", \"snippet\": \"均胜电子(600699)2025年年报点评：<strong>汽车安全毛利率提升明显 盈利能力持续增强</strong>\"}, {\"title\": \"宁波均胜电子股份有限公司2024 年年度报告 1 / 274\", \"snippet\": \"归属于上市公司股东的扣除非经常性损益的净利润：主要系公司近年来推进的各项降本增效措 · 施成效显著，主营业务盈利能力持续增强，<strong>2024 年主营业务毛利率水平同比提升1.8 个百分点</strong> · 至约16.3%，其中汽车安全业务主...\"}, {\"title\": \"均胜电子(600699)个股资讯_新浪财经_新浪网\", \"snippet\": \"财经首页 | 新浪首页 | 新浪导航 · 行情中心 · 意见反馈 · 精选股票池 财经首页股票基金港股美股期货外汇贵金属债券大盘个股新股数据博客股吧自选股 · 投资助手： · 资金流向 · 业绩报表 · 业绩预告 · 限售解禁 · ...\"}, {\"title\": \"均胜电子(600699)公司公告_新浪财经_新浪网\", \"snippet\": \"财经首页 | 新浪首页 | 新浪导航 · 行情中心 · 意见反馈 · 精选股票池 财经首页股票基金港股美股期货外汇贵金属债券大盘个股新股数据博客股吧自选股 · 投资助手： · 资金流向 · 业绩报表 · 业绩预告 · 限售解禁 · ...\"}]"
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_03_5gvf7HcRLl7CRkYukXJC3112",
+      "content": "[{\"title\": \"拓普集团(601689)财务指标_新浪财经_新浪网\", \"snippet\": \"财经首页 | 新浪首页 | 新浪导航 · 热点推荐 · ·自选股-轻松管理您的千只股票 · ·金融e路通-理财投资更轻松 · ·行情中心-通往财富之门 · 财经首页 · 股票 · 基金 · 滚动 · 公告\"}, {\"title\": \"拓普集团(601689) 盈利预测_F10_同花顺金融服务网\", \"snippet\": \"2024年业绩高速增长，25Q1业绩承压。 ①<strong>2024年公司实现营业收入266.00亿元，同比+35.02%；归母净利润30.01亿，同比+39.52%；扣非归母净利润27.28亿，同比+35%</strong>。②2025Q1公司实现营业收入57.7亿元，同比+1.4%；归母净利润5.65亿元，同...\"}, {\"title\": \"公司代码：601689 公司简称：拓普集团 宁波拓普集团股份有限公司\", \"snippet\": \"有增值的并购重组机会，特别是在2025 年以后，预计会有一些企业因转型缓慢而步入经营困难状 · 态，公司或将迎来并购重组的机遇，从而推动企业继续保持高速扩张。 ... 公司2024 年将紧密围绕既定战略，努力开拓市场，加快项目量产进程，提升管理，控制成本，\"}, {\"title\": \"公司代码：601689 公司简称：拓普集团 宁波拓普集团股份有限公司 2024 年年度报告 2025 年4 月\", \"snippet\": \"业链垂直整合能力，可以显著提升该公司的盈利能力，同时为客户打通供应链产能制约。 ... 报告期内，公司继续加大研发投入，增加资源配置，以保持研发领先优势，报告期研发费用 · 达到<strong>12.24 亿元</strong>。通过持续研发投入...\"}, {\"title\": \"拓普集团(601689.SH)操盘必读-PC_HSF10资料\", \"snippet\": \"含义：加权净资产收益率（ROE）等于报告期净利润与年初和年末平均净资产的比值。净资产收益率往往能够很好地反应企业（乃至所在行业）的盈利能力。\"}]"
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "call_00_IHcUAKyimW35HpmPX2KT1608",
+          "type": "function",
+          "function": {
+            "name": "query_financial_data",
+            "arguments": "{\"code\": \"600699\", \"indicators\": [\"roic_pct\", \"roic\", \"roiic_pct\", \"roiic\", \"roic_quality\", \"roic_interpretation\", \"roiic_quality\", \"roiic_interpretation\", \"roic_adjusted\", \"roic_pct_adjusted\"]}"
+          }
+        },
+        {
+          "id": "call_01_JPnZx7iX7MnDWIQxGuTf7706",
+          "type": "function",
+          "function": {
+            "name": "query_financial_data",
+            "arguments": "{\"code\": \"601689\", \"indicators\": [\"roic_pct\", \"roic\", \"roiic_pct\", \"roiic\", \"roic_quality\", \"roic_interpretation\", \"roiic_quality\", \"roiic_interpretation\", \"roic_adjusted\", \"roic_pct_adjusted\"]}"
+          }
+        },
+        {
+          "id": "call_02_ZDso9jp33A1qcoOO43Cm4870",
+          "type": "function",
+          "function": {
+            "name": "web_search",
+            "arguments": "{\"query\": \"均胜电子 被动安全 全球第二 奥托立夫 竞争格局 市场份额 2025\", \"num\": 5}"
+          }
+        },
+        {
+          "id": "call_03_2nbAznD3sJk59qpaojH07900",
+          "type": "function",
+          "function": {
+            "name": "web_search",
+            "arguments": "{\"query\": \"拓普集团 特斯拉 客户结构 单车价值 平台化 2025\", \"num\": 5}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_00_IHcUAKyimW35HpmPX2KT1608",
+      "content": "{\"stock_code\": \"600699\", \"report_date\": \"2026-03-31\", \"roic_pct\": 13.9, \"roic\": 0.1386, \"roiic_pct\": 217.7, \"roiic\": 2.177, \"roic_quality\": null, \"roic_interpretation\": null, \"roiic_quality\": null, \"roiic_interpretation\": null, \"roic_adjusted\": 0.26638582677165357, \"roic_pct_adjusted\": 26.7}"
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_01_JPnZx7iX7MnDWIQxGuTf7706",
+      "content": "{\"stock_code\": \"601689\", \"report_date\": \"2026-03-31\", \"roic\": 0.1087, \"roic_pct\": 10.9, \"roic_quality\": \"medium\", \"roic_interpretation\": \"可接受: 覆盖资本成本\", \"roic_adjusted\": 0.1506, \"roic_pct_adjusted\": 15.1, \"roiic\": 0.0545, \"roiic_pct\": 5.4, \"roiic_quality\": \"medium\", \"roiic_interpretation\": \"低效: 新增回报不足, 需观察拐点信号\", \"roiic_adjusted\": 0.15, \"roiic_pct_adjusted\": 15.0}"
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_02_ZDso9jp33A1qcoOO43Cm4870",
+      "content": "[{\"title\": \"汽车被动安全行业：以安全带和安全气囊为主 奥托立夫、均胜电子、采埃孚三足鼎立_观研报告网\", \"snippet\": \"汽车被动安全市场竞争以外资企业为主。外资企业凭借着先发、技术、规模优势处于领先地位，在国际被动安全领域呈现出寡头垄断局面。由于起步较晚，国内企业除均胜电子外市场份额较低。根据数据，2021年全球被动安全行业三家头部企业为奥托立夫、均胜电子（先后收购KSS和高田）以及采埃孚（2015年收购天合），市场份额分别为37%、27%和20%，合计占到全行业84%的市场份额。 · 数据来源：观研天下数据中心整理（zlj） ... 从销量来看，2025年我国新\"}, {\"title\": \"公司报告 | 首次覆盖报告 请务必阅读正文之后的信息披露和免责申明 1 均胜电子（600699） 证券研究报告 2025 年06 月19 日 投资评级 行业\", \"snippet\": \"民币1,577 亿元。全球汽车被动安全行业的前三大供应商约占市场规模总额的92.8%。 · 2023 年，均胜电子以人民币364 亿元的收入排名全球第二，占据23.1%的市场份额，排 · 名<strong>第一为奥托立夫，占据46.8%的市场份额</strong>，第三为采埃...\"}, {\"title\": \"宁波均胜电子股份有限公司2024 年年度报告摘要\", \"snippet\": \"We cannot provide a description for this page right now\"}, {\"title\": \"均胜电子：安全板块巨头发力汽车电子带来新增量|界面新闻 · JMedia\", \"snippet\": \"现金牛：均胜电子通过收购 KKS 和高田进入汽车安全板块，其中被动安全与奥托立夫并列该领域双寡头，挤入国内一线零部件供应商行列，成为公司业务中 最大的现金牛。未来期待市占率进一步提高。 HMI 业务通过与头部车企的绑定， 跟随车联网的渗透发展会有较强的增长。目前公司已经成功和传统车企（大众、 奔驰、特斯拉等）进行绑定，成为产业链中 Tier 0.5，掌握话语权，未来有望 进一步提高盈利能力。\"}, {\"title\": \"均胜电子研究报告：汽车安全提业绩，智能网联谱新篇_腾讯新闻\", \"snippet\": \"汽车被动安全业务格局稳...在全球被动安全领域的市场份额中<strong>奥托立夫占比 40%，均胜安全业务以 30% 的份额位居全球第二</strong>。 · 对标奥托立夫，盈利能力仍有增长空间。奥托立夫作为均...\"}]"
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_03_2nbAznD3sJk59qpaojH07900",
+      "content": "[{\"title\": \"突破千亿市值，命系特斯拉，这家企业横跨汽车与机器人两大产业|拓普集团_新浪财经_新浪网\", \"snippet\": \"由此可见，拓普集团在原...核心大客户特斯拉新车销售的下滑问题尤其突出。 · 早在2016年，拓普集团就成为特斯拉的底盘供应商，其供应轻量化铝合金底盘结构件主要应用于特斯拉Model 3车型。此后，拓普集团又将其配套产品拓展至臂架、副车架、电池包、电池盖板、电池托盘内饰以及热管理系统等领域，单车价值量持续提升...\"}, {\"title\": \"拓普集团，深不可测！|特斯拉_新浪财经_新浪网\", \"snippet\": \"所以，从营收结构上看，拓普集团覆盖了内饰功能件、底盘系统、减震器、汽车电子等诸多 ... 模式下，拓普集团的多个业务并不需要单独寻找客户，只需要整合起来服务于同一家车企。因此，\"}, {\"title\": \"一季度净利润负增长，拓普集团实控人拟减持，“特斯拉供应链龙头”正在褪去光环？ | 每经网\", \"snippet\": \"对此，拓普集团认为：“公司客户群覆盖全球主流车企，尤其是电动车企。电动汽车市场虽然竞争激烈，但对零部件供应商来说，订单（份额）是此消彼长的关系。公司通过创新商业模式、平台化战略和国际化战略等持续拓展客户和市场，单车配套价值和订单有望保持稳步增长。” · 值得一提的是，尽管拓普集团新能源汽车零部件业务由于相关客户车型调整而放缓，但其机器人业务正在崛起之中。 · 高工机器人产业研究所（GGII）预测显示，2025年全球\"}, {\"title\": \"拓普集团研究报告：平台型汽车零部件的业务复盘和展望 - 知乎\", \"snippet\": \"依托多年来合作外资、合资及自主的经验以及产品线开拓（03 年启动轻量化悬挂项目），拓普 2016 年 8 月获特斯拉铝合金底盘结构件定点并与之保持紧密联系；后续在 1）量增：2018 年以来随特斯拉畅销车型放量及临港工厂产能持续释放（特斯拉 21 年销量增至 93 万辆），拓普获大量同步研发合作机会及高额增量订单；和 2）价升：从最初配套单一产品逐渐拓展至配套内饰+减震+底盘系统+热管理产品，提振平均单车配套价值。特斯拉也逐渐成长为拓普第一\"}, {\"title\": \"突破千亿市值，命系特斯拉，这家企业横跨汽车与机器人两大产业 - 知乎\", \"snippet\": \"由此可见，拓普集团在原...绩的大爆发。数据显示，<strong>2020年-2024年，拓普集团营业收入由65.11亿元增长至266.00亿元，净利润由6.29亿元增长至30.01亿元</strong>。这其中，来自特斯拉的订...\"}]"
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "call_00_Cd2JXhxydR9EMrcNEwK68360",
+          "type": "function",
+          "function": {
+            "name": "web_search",
+            "arguments": "{\"query\": \"均胜电子 智能驾驶 汽车电子 域控制器 2025 进展\", \"num\": 5}"
+          }
+        },
+        {
+          "id": "call_01_meY64WJAtM0kLGjofR2C8278",
+          "type": "function",
+          "function": {
+            "name": "web_search",
+            "arguments": "{\"query\": \"拓普集团 机器人 电驱 执行器 2025 第二增长曲线\", \"num\": 5}"
+          }
+        },
+        {
+          "id": "call_02_muS42yCKR5HOAgmMISWL0947",
+          "type": "function",
+          "function": {
+            "name": "web_search",
+            "arguments": "{\"query\": \"均胜电子 600699 负债率 商誉 并购 整合 财务风险 2025\", \"num\": 5}"
+          }
+        },
+        {
+          "id": "call_03_MGain99zIPJCPBo7HJj52568",
+          "type": "function",
+          "function": {
+            "name": "web_search",
+            "arguments": "{\"query\": \"拓普集团 601689 客户集中度 特斯拉占比 依赖风险 2025\", \"num\": 5}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_00_Cd2JXhxydR9EMrcNEwK68360",
+      "content": "[{\"title\": \"均胜电子首个L4智驾域控即将量产，有望成首个量产基于国产芯片平台的L4智驾域控产品_腾讯新闻\", \"snippet\": \"公司在智能驾驶、智能座舱、智能网联等汽车智能化业务获得多方位突破，如2025年第三季度获超200亿元智能驾驶域控制器、CCU、智能网联、智能驾驶 ...\"}, {\"title\": \"均胜电子再获50亿元汽车智能电动化项目定点 加速布局全球智能驾驶与智能座舱市场|均胜电子_新浪财经_新浪网\", \"snippet\": \"均胜电子 (600699)10月20日晚间公告，公司子公司近期新获重要客户项目定点通知，将为该客户在全球范围内开发并供应一系列汽车智能电动化产品 ...\"}, {\"title\": \"均胜电子 L3/L4 智驾域控迎量产节点-盖世汽车资讯\", \"snippet\": \"均胜电子 L3/L4 智驾域控迎量产节点近日，均胜电子发布公告称，公司在高阶智能驾驶领域取得关键突破，首款L3级智能驾驶域控制器与基于国产芯片 ...\"}, {\"title\": \"均胜电子智驾与机器人双线突破，打开未来高增潜力\", \"snippet\": \"无人驾驶出租和机器人行业发展加速，相关零部件厂商也随之加大两方面领域布局。汽车零部件龙头均胜电子2025年上半年在两大领域进展显著，新业务增长可期。 今年上半年，均胜电子一方面获得国内外多个主机厂智能辅助驾驶域控订单，同时还推出多个机器人关键零部件解决方案。国元证券表示 ...\"}, {\"title\": \"2025年均胜电子研究报告：锚定&quot;汽车+机器人Tier1&quot;，双轮驱动开启智能新时代 - 报告精读 - 未来智库\", \"snippet\": \"均胜电子研究报告：锚定&quot;汽车+机器人Tier1&quot;，双轮驱动开启智能新时代.pdf 均胜电子研究报告：锚定&quot;汽车+机器人Tier1&quot;，双轮驱动开启智能新时代。报告亮点：我们认为，伴随汽车智能化深入推进，汽车安全及汽车电子的市场需求将持续扩容；同时均胜电子凭借领先的技术研发能力与全球化供应 ...\"}]"
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_01_meY64WJAtM0kLGjofR2C8278",
+      "content": "[{\"title\": \"拓普集团2025年营收增11%至296亿元，机器人业务营收1359万元_智能_公司_系统\", \"snippet\": \"拓普集团主营业务为汽车零部件的研发、生产及销售，主要产品包括汽车NVH减震系统、内外饰系统、轻量化车身、智能座舱部件、热管理系统、底盘系统、空气悬架系统、智能驾驶系统共八大业务板块，主要客户包括国际国内智能电动车企和传统OEM车企等。 · 另外，拓普集团表示，成立机器人执行器业部切入具身智能业务是公司的一个重要战略举措。该产业是一个具有广阔发展前景的领域，通过拓展机器人执行器等相关业务，为公司打造新的增长曲线。不过，当期机器人执行器的营收仅1359.12万元。\"}, {\"title\": \"人形机器人双雄对决，拓普集团VS三花智控，谁将主宰万亿赛道？__财经头条__新浪财经\", \"snippet\": \"三花智控营收98.74亿元，同比增长31.6%，净利润11.52亿元，同比增长45.2%，毛利率25.83%，技术溢价明显，研发投入5.82亿元，专注执行器优化。 ... &quot;平台化战略是拓普的核心竞争力，我们从汽车产业积累的集成能力，正顺利复制到机器人领域。未来三年，机器人业务将成为公司第二增长曲线。&quot;\"}, {\"title\": \"2025年人形机器人本体厂商营收狂奔 上游企业加速卡位_上市公司_人工智能_同比增长\", \"snippet\": \"同样在执行系统上发力的...机器人执行器产品<strong>实现收入1359.12万元，同比微增1.22%，但营业成本同比大幅增加47.92%，该产品毛利率同比减少22.65个百分点</strong>。...\"}, {\"title\": \"拓普集团业绩说明会：推进智能汽车部件与机器人部件业务协同发展\", \"snippet\": \"近年来，拓普集团抓住机器人产业快速发展的历史机遇，聚焦并不断拓展机器人产业链关键产品和核心技术，以实现智能汽车部件业务与机器人部件业务的协同发展，为公司保持快速发展奠定基础。据悉，拓普集团已布局机器人电驱执行器等产品。\"}, {\"title\": \"拓普集团机器人执行器浅析_财富号_东方财富网\", \"snippet\": \"拓普集团业绩预增公告里面，关于业绩预增的主要原因一共有七条，其中第五条是“电驱系统正式投产并开始交付产品，已形成智能汽车与电驱的双产业发展模式”，显然这个影响不小，如果按照上半年627万元，乘以2得到...\"}]"
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_02_muS42yCKR5HOAgmMISWL0947",
+      "content": "[{\"title\": \"宁波均胜电子股份有限公司2025 年半年度报告 1 / 202 公司代码：600699 公司简称：均胜电子 宁波均胜电子股份有限公司 2025 年半年度报告\", \"snippet\": \"和生产延误，影响产品交付，增加公司生产成本，进而损害财务状况。 ... 公司通过开展外延式并购发展，导致公司商誉累计金额较大。近几年公司经营业绩持续改善，经过商誉减值测试后未出现商誉减值情况。如果未来 · 宏观经济、下游客户行业、市场环境等发生重大不利变化，或相关子公司未来年度经营业绩未达到预期效益，则面临商誉减值的风险，从而对公司业绩\"}, {\"title\": \"均胜电子IPO前利息超过归母净利，王剑峰想降负债率 - 瑞财经\", \"snippet\": \"均胜电子表示，2024年商...也给均胜电子带来了一定的债务影响。<strong>2022年-2024年，均胜电子总负债分别为364.1亿元、377.6亿元、443.2亿元，资产负债率分别为67.3%、66.4%、69.1%</strong>。...\"}, {\"title\": \"证券研究报告·公司点评报告·汽车零部件 东吴证券研究所 1 / 3 请务必阅读正文之后的免责声明部分 均胜电子（600699）\", \"snippet\": \"证券研究报告·公司点评报告·汽车零部件 · 东吴证券研究所\"}, {\"title\": \"均胜电子(600699)_公司公告_均胜电子：2025年半年度报告新浪财经_新浪网\", \"snippet\": \"公司代码：600699公司简称：均胜电子 · 宁波均胜电子股份有限公司\"}, {\"title\": \"均胜电子2024年净利润下降，高负债、高商誉、高质押“三高”风险并存|均胜电子_新浪财经_新浪网\", \"snippet\": \"2024年贷款及应付款项的利息支出为11.12亿元，占利润总额的55.49%，巨大的财务费用支出影响了利润和现金流。2024年，均胜电子用于确定借款费用资本化金额的资本化率为2.4%~7.7%，而2023年为4.1%~6.9%。 ... 频繁的并购是公司债务攀升的重要原因。自2012年以来，均胜电子陆续并购了德国Quin公司、德国TS道恩公司、美国KSS公司和日本高田公司的股权或资产，完成了全球布局，但同时也带来了大量的债务负担。\"}]"
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_03_MGain99zIPJCPBo7HJj52568",
+      "content": "[{\"title\": \"拓普集团(601689) 盈利预测_F10_同花顺金融服务网\", \"snippet\": \"事件：2024年公司实现营...计公司2025年、2026年和2027年实现营业收入为320.8亿元、403.1亿元和480.0亿元，对应归母净利润为36.4亿元、46.6亿元和56.0亿元，以4月23日收盘价计算PE为24.7倍、19.3倍和16.1倍，维持“增持”评级。 风险提示：下游汽车行业复苏不及预期；客户集中度较高风险...\"}, {\"title\": \"拓普集团——汽车+机器人优质铲子 - 集思录\", \"snippet\": \"人形机器人产业化加速 特斯拉Optimus Gen3计划2025年底推出原型机，2026年量产5万-10万台，拓普作为执行器核心供应商，单台价值占比35%，若2030年特斯拉实现百万台目标，对应收入超200亿元。公司宁波机器人基地规划产能30万套/年，2025年Q3开始批量交付，长期市场空间广阔。 四、风险提示：短期波动与长期挑战 · 客户集中度与订单波动 前五大客户收入占比63.44%，特斯拉销量下滑直接影响业绩（2025Q1特斯拉全球销量-13%）。尽管积极拓展小米、极氪等新客户，但2024年新增客户营收贡献不足5%，结构优化仍需时间。\"}, {\"title\": \"拓普集团|机器人界的富士康，T链核心供应商 - 古东管家\", \"snippet\": \"而较高的集中度，导致客户的销量情况对公司业绩影响大，从最新收入情况来看，核心客户特斯拉、吉利、赛力斯的销量表现对公司业绩呈正向，比亚迪和理在2025年三季度销量出现同比、环比下滑，成为影响公司业绩的因素之一。 · 产能布局的全球化是公司应对客户结构风险的重要举措。目前已在美、巴、马、波、墨、泰等国设立生产基地，墨西哥一期已投产，泰国基地预计2025年底投产，波兰二期规划中。\"}, {\"title\": \"“超量”减持8.84亿元，被特斯拉带飞的拓普集团炸板了！\", \"snippet\": \"与此同时，2025年半年报也是过去六年唯一走下坡路的半年报。2020年半年报至2024年半年报，拓普集团不论在营业收入、净利润方面均呈现持续增长状态；其中营业收入五年增速分别为5.07%，91.90%，38.18%，34.83%和33.41%；净利润增速分别为2.5%，112.8%，53.97%，54.56%和33.11%。成本控制、客户依赖以及新旧业务转换期面临的挑战显著。\"}, {\"title\": \"拓普集团股票分析，拓普集团公司怎么样？ - 知乎\", \"snippet\": \"非周期股特征扣非净利润5年CAGR 35%，波动主要来自客户销量（如特斯拉占比<strong>40%</strong>），但多元化客户（华为、理想等）分散风险。\"}]"
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "call_00_8Bi4L08ixzO4eXdju3l76632",
+          "type": "function",
+          "function": {
+            "name": "web_search",
+            "arguments": "{\"query\": \"均胜电子 奥托立夫 毛利率对比 盈利能力 差距 原因 2024\", \"num\": 5}"
+          }
+        },
+        {
+          "id": "call_01_jNVtK6eWZTpjwwjAvOMb4225",
+          "type": "function",
+          "function": {
+            "name": "web_search",
+            "arguments": "{\"query\": \"拓普集团 2025年一季度 净利润下滑 原因 毛利率 成本压力\", \"num\": 5}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_00_8Bi4L08ixzO4eXdju3l76632",
+      "content": "[{\"title\": \"均胜电子2024年报：欧洲区业务调整见成效，精细化管理提升盈利能力 - 银柿财经\", \"snippet\": \"在管理方面，均胜电子还充分发挥亚洲区域的优势，向海外输送管理人才及中国智能制造经验，提升海外工厂生产效率。银柿财经了解到，2023年，均胜电子汽车安全业务亚洲区的人均产值接近200万元，远超公司的亚洲区和美洲区，以及行业龙头奥托立夫和采埃孚。 · 一系列降本增效“组合拳”下，体现在利润表，2022年—2024年，均胜电子整体毛利率分别为11.96%、15.09、16.22%，实现了稳步提升，毛利率、净利率两大数据均创下2019年来的最高水平。 · 其中2024年，均胜电子的汽车安全业务毛利率同比提升2.27个百分点，欧洲、美洲区域盈利能力较去年同期明显改善，全球四大业务区域均已实现盈利；汽车电子主营业务毛利率约19.71%，同比提高0.63个百分点。\"}, {\"title\": \"均胜电子聚焦经营质量提升，“汽车+机器人”双线布局建新增长曲线|均胜电子_新浪科技_新浪网\", \"snippet\": \"均胜电子2024年整体毛利率同比稳步提升1.8个百分点至16.22%，盈利能力持续增强。机构指出，其汽车安全业务毛利率已提升至14.81%，离市占率第一的奥托立夫仍有差距但已进一步缩窄；汽车电子毛利率约19.71%，维持较高水平。\"}, {\"title\": \"“并购王”均胜电子赴港IPO，募资先还债？ - 新浪财经\", \"snippet\": \"在整体的营收结构中，汽车安全业务占比超过60%，并且高度依赖海外市场，但该领域全球市场集中度高，国际巨头奥托立夫、采埃孚等占比超过70%，并且产品同质化严重导致毛利率持续承压，2024年前三季度毛利率较行业龙头低3-5个百分点。 · 同时，均胜电子正面临欧美“供应链去风险化”政策的直接冲击，2024年上半年北美订单同比下降19.3%。\"}, {\"title\": \"均胜电子2024年净利润下降，高负债、高商誉、高质押“三高”风险并存|均胜电子_新浪财经_新浪网\", \"snippet\": \"根据日前发布的2024年财报，均胜电子2024年实现归属于上市公司股东的净利润9.60亿元，同比减少11.33%。值得注意的是，根据Wind数据，均胜电子的毛利率与净利率均远低于行业均值，但资产负债率却高于行业同行，高负债、高商誉、高质押“三高”风险备受关注。\"}, {\"title\": \"盈利能力改善、多点布局释放潜力，均胜电子(600699.SH)回归价值逻辑_腾讯新闻\", \"snippet\": \"不久前均胜电子发布2024年中期财报，在过往增长态势基础上再次提速，业务潜力十足。结合当前股价来看，公司估值尚在低位，配置吸引力凸显。 ... 上半年营收271亿元，同比增长0.2%；毛利率提升至15.58%；扣非归母净利润6.39亿元，同比大幅增长61.20%，盈利能力显著增强。\"}]"
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_01_jNVtK6eWZTpjwwjAvOMb4225",
+      "content": "[{\"title\": \"拓普集团：预计2025年净利润同比下降3%-13% 原材料价格波动与市场竞争加剧导致毛利率下降\", \"snippet\": \"拓普集团：预计2025年净利润同比下降3%-13% <strong>原材料价格波动与市场竞争加剧</strong>导致毛利率下降\"}, {\"title\": \"拓普集团(601689) 盈利预测_F10_同花顺金融服务网\", \"snippet\": \"摘要：预测2025-2027年归母净利润为35.38、42.86、51.17亿元，可比公司2025年PE平均估值35倍，目标价71.40元，维持买入评级。 查看全文&gt;&gt; ... 业绩符合预期。1季度营业收入57.68亿元，同比增长1.4%；归母净利润5.65亿元，同比减少12.4%；扣非归母净利润4.87亿元，同比减少18.4%。 主要客户车型调整影响1季度业绩。1季度毛利率19.9%，按最新会计准则同比减少2.5个百分点，预计主要系公司核心客户中ModelY、问界M9等车型改款以及产能扩张折旧影响，1季度特斯拉全球产\"}, {\"title\": \"拓普集团2025年报解读：营收增11.21%至295.81亿元 筹资现金流大降142.04%|费用_新浪财经_新浪网\", \"snippet\": \"归属于上市公司股东的净利润27.79亿元，同比下降7.38%；扣非净利润26.11亿元，同比下降4.30%。盈利下滑<strong>主要受原材料价格波动、新建工厂初期成本较高、研发投入增加等因素影响</strong>，但扣...\"}, {\"title\": \"业绩下滑、实控人减持 拓普集团多次公告变更募投项目|募投项目_新浪财经_新浪网\", \"snippet\": \"2025年一季度， · 拓普集团 · 净利润同比下降12.39%，出现了自2020年以来的首次下滑。 · 拓普集团 · 半年报显示，2025年上半年，公司营收同比增长5.83%，但 · 归母净利润 · 下降11.08%，主要是因为传统底盘、内饰业务 · 毛利率 ·\"}, {\"title\": \"国金证券：给予拓普集团增持评级_腾讯新闻\", \"snippet\": \"国金证券股份有限公司陈传红,冉婷近期对拓普集团进行研究并发布了研究报告《一季度业绩承压，机器人平台化布局加速》，给予拓普集团增持评级。 · 拓普集团(601689) 4月29日，公司发布2025年第一季度报告： 2025Q1实现营收57.68亿元，同比+1.4%；归母净利润为5.65亿元，同比-12.39%；销售毛利率为19.89%，同比-2.5pct，环比+0.1pct；销售净率为9.81%，同比-1.6pct，环比-0.7pct。 经营分析 1、下游客户出货不及预期，25Q1业绩阶段性承压。 （1）费用端：2025Q1销售/管理\"}]"
+    }
+  ]
+}

@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>AIStock | 财务指标</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .tab-nav { display: flex; gap: 0; margin-bottom: 12px; border-bottom: 1px solid var(--border-color); }
+        .tab-btn { padding: 8px 16px; background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 13px; border-bottom: 2px solid transparent; transition: all 0.2s; }
+        .tab-btn:hover { color: #fff; }
+        .tab-btn.active { color: #fff; border-bottom-color: var(--accent-blue); }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+        .card { background: rgba(255,255,255,0.02); border: 1px solid var(--border-thin); border-radius: 4px; padding: 12px; margin-bottom: 8px; }
+        .card-title { font-size: 13px; color: #fff; font-weight: 600; }
+        .card-meta { font-size: 10px; color: var(--text-micro); margin-top: 4px; }
+        .card-desc { font-size: 11px; color: var(--text-dim); margin-top: 6px; line-height: 1.5; }
+        .badge { display: inline-block; padding: 1px 6px; border-radius: 2px; font-size: 9px; }
+        .badge-trend { background: rgba(112,161,255,0.15); color: var(--accent-blue); }
+        .badge-momentum { background: rgba(46,213,115,0.15); color: var(--accent-green); }
+        .badge-volatility { background: rgba(255,165,2,0.15); color: var(--accent-gold); }
+        .badge-volume { background: rgba(255,107,107,0.15); color: var(--accent-red); }
+        .badge-crowding { background: rgba(162,155,254,0.15); color: #a29bfe; }
+        .badge-chip { background: rgba(255,107,167,0.15); color: #fb6da7; }
+        .fin-cat-title { font-size: 10px; color: var(--text-micro); margin: 8px 0 4px; padding: 3px 6px; background: rgba(255,255,255,0.03); border-radius: 3px; }
+        .fin-table-wrap { overflow-x: auto; max-height: 50vh; overflow-y: auto; }
+        .health-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        .health-table th { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border-color); color: var(--text-micro); font-weight: 500; position: sticky; top: 0; background: #0a0a0a; z-index: 1; }
+        .health-table td { padding: 4px 8px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+        .health-table tr:hover td { background: rgba(255,255,255,0.03); }
+        .result-card { background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 6px; padding: 14px; margin-bottom: 10px; }
+    </style>
+</head>
+<body data-page-id="financial">
+    <div class="app-container">
+        <aside class="sidebar"></aside>
+        <main class="main-content">
+            <div class="top-bar"></div>
+            <div class="workspace" style="grid-template-columns: 340px 1fr; gap: 14px; padding: 14px;">
+
+                <!-- Left: Indicator Directory / Stock Query / Cross Comparison -->
+                <div style="display:flex;flex-direction:column;gap:10px;max-height:70vh;overflow-y:auto;">
+                    <!-- Compute Panel -->
+                    <div class="panel">
+                        <div class="panel-header"><span class="panel-title"><i class="fas fa-calculator"></i> 财务指标计算</span></div>
+                        <div class="panel-body" id="fin-compute-panel" style="font-size:11px;"></div>
+                    </div>
+                    <!-- 3 sub-tabs -->
+                    <div style="display:flex;gap:4px;margin-bottom:2px;">
+                        <button class="tab-btn active" onclick="FinInd.switchSubTab('directory')" id="fin-subtab-dir">指标目录</button>
+                        <button class="tab-btn" onclick="FinInd.switchSubTab('query')" id="fin-subtab-query">股票查询</button>
+                        <button class="tab-btn" onclick="FinInd.switchSubTab('compare')" id="fin-subtab-compare">交叉比较</button>
+                    </div>
+                    <!-- Sub: 指标目录 -->
+                    <div id="fin-directory" style="font-size:11px;flex:1;overflow-y:auto;"></div>
+                    <!-- Sub: 股票查询 -->
+                    <div id="fin-query-panel" style="display:none;font-size:11px;">
+                        <div class="panel">
+                            <div class="panel-body" style="display:flex;flex-direction:column;gap:6px;">
+                                <input type="text" id="fin-query-search" placeholder="搜索股票代码或名称..." oninput="FinInd.debounceSearch()" style="background:#000;border:1px solid var(--border-color);color:#fff;padding:6px 10px;border-radius:4px;font-size:11px;width:100%;">
+                                <div id="fin-query-results" style="max-height:35vh;overflow-y:auto;">
+                                    <div style="color:var(--text-micro);text-align:center;padding:20px;">输入关键词搜索股票</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Sub: 交叉比较 -->
+                    <div id="fin-compare-panel" style="display:none;font-size:11px;">
+                        <div class="panel">
+                            <div class="panel-body" style="display:flex;flex-direction:column;gap:6px;">
+                                <div style="display:flex;gap:4px;align-items:center;">
+                                    <span style="color:var(--text-dim);font-size:10px;">已选股票:</span>
+                                    <span id="compare-stock-list" style="color:var(--text-micro);font-size:10px;">(空)</span>
+                                    <button onclick="FinInd.showAddStockDialog()" style="margin-left:auto;background:transparent;border:1px solid var(--accent-blue);color:var(--accent-blue);padding:3px 8px;border-radius:3px;cursor:pointer;font-size:9px;">+添加</button>
+                                </div>
+                                <div style="display:flex;gap:4px;align-items:center;">
+                                    <span style="color:var(--text-dim);font-size:10px;">已选指标:</span>
+                                    <span id="compare-indicator-list" style="color:var(--text-micro);font-size:10px;">(空)</span>
+                                    <button onclick="FinInd.showAddIndicatorDialog()" style="margin-left:auto;background:transparent;border:1px solid var(--accent-gold);color:var(--accent-gold);padding:3px 8px;border-radius:3px;cursor:pointer;font-size:9px;">+添加</button>
+                                </div>
+                                <button onclick="FinInd.runComparison()" style="width:100%;background:transparent;border:1px solid var(--accent-green);color:var(--accent-green);padding:6px;border-radius:4px;cursor:pointer;font-size:11px;">
+                                    <i class="fas fa-chart-bar"></i> 运行比较
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Detail / Results -->
+                <div style="display:flex;flex-direction:column;gap:10px;" id="right-panel">
+                    <div class="panel" id="panel-empty">
+                        <div class="panel-body" style="text-align:center;padding:60px;">
+                            <div style="font-size:36px;margin-bottom:10px;opacity:0.3;">&#128202;</div>
+                            <div style="color:var(--text-dim);font-size:12px;">左侧选择功能，右侧展示详情</div>
+                        </div>
+                    </div>
+                    <div class="panel" id="panel-detail" style="display:none;">
+                        <div class="panel-header"><span class="panel-title" id="detail-title">详情</span></div>
+                        <div class="panel-body" id="detail-content"></div>
+                    </div>
+                    <div class="panel" id="panel-loading" style="display:none;">
+                        <div class="panel-body" style="text-align:center;padding:30px;">
+                            <i class="fas fa-spinner fa-spin" style="color:var(--accent-blue);font-size:20px;"></i>
+                            <div style="color:var(--text-dim);font-size:12px;margin-top:8px;">加载中...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="js/framework/api.js"></script>
+    <script src="js/framework/modal.js"></script>
+    <script src="js/framework/task_monitor.js"></script>
+    <script src="js/framework/indicator_compute.js"></script>
+    <script src="js/financial_indicators.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/common.js"></script>
+    <script>
+        var finInited = false;
+
+        function initFinancialTab() {
+            if (finInited) return;
+            finInited = true;
+            var el = document.getElementById('fin-compute-panel');
+            el.innerHTML =
+                '<div style="font-size:10px;color:var(--text-micro);margin-bottom:6px;">财务数据源: DB (financial_statements表)。请先在 <a href="data.html" target="_blank" style="color:var(--accent-blue);">数据中心→财务Tab</a> 同步最新季报。</div>' +
+                '<div style="margin-bottom:6px;">' +
+                  '<label style="font-size:10px;color:var(--text-micro);display:flex;align-items:center;gap:3px;margin-bottom:3px;"><input type="radio" name="fin-scope" value="all" checked onchange="FinCompute._toggleCode()"> 全部持仓+自选股</label>' +
+                  '<label style="font-size:10px;color:var(--text-micro);display:flex;align-items:center;gap:3px;"><input type="radio" name="fin-scope" value="custom" onchange="FinCompute._toggleCode()"> 指定代码</label>' +
+                  '<input type="text" id="fin-codes" placeholder="如: 688012,002409" disabled style="width:100%;background:#000;border:1px solid var(--border-color);color:#fff;padding:4px 8px;border-radius:4px;font-size:10px;">' +
+                '</div>' +
+                '<button id="fin-btn-submit" onclick="FinCompute._onSubmit()" style="font-size:11px;width:100%;background:transparent;border:1px solid var(--accent-green);color:var(--accent-green);cursor:pointer;padding:6px 10px;border-radius:4px;justify-content:center;display:flex;align-items:center;gap:4px;"><i class="fas fa-calculator"></i> 计算财务指标</button>' +
+                '<div id="fin-status" style="font-size:10px;color:var(--text-micro);margin-top:6px;text-align:center;"></div>';
+            setTimeout(function() {
+                FinInd.initData().then(function() {
+                    FinInd.loadDirectory();
+                });
+            }, 100);
+        }
+
+        var FinCompute = {
+            _toggleCode: function() {
+                var custom = document.querySelector('input[name="fin-scope"]:checked');
+                var el = document.getElementById('fin-codes');
+                if (el) el.disabled = !custom || custom.value !== 'custom';
+            },
+            _getCodes: function() {
+                var scope = document.querySelector('input[name="fin-scope"]:checked');
+                if (!scope || scope.value === 'all') return null;
+                var raw = document.getElementById('fin-codes');
+                return raw ? raw.value.split(',').map(function(s) { return s.trim(); }).filter(Boolean) : [];
+            },
+            _onSubmit: function() {
+                var btn = document.getElementById('fin-btn-submit');
+                var status = document.getElementById('fin-status');
+                var codes = this._getCodes();
+                var params = { mode: 'local' };
+                if (codes && codes.length) params.target_codes = codes;
+                var orig = btn.innerHTML;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 入队中...';
+                btn.disabled = true;
+                if (status) status.textContent = '提交异步任务...';
+                fetch(API_BASE + '/system/tasks/executions', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ task_code: 'calc_financial_indicators', params: params })
+                }).then(function(r) { return r.json(); }).then(function(d) {
+                    if (status) status.textContent = '任务入队: ' + (d.id || 'ok') + ' | 请查看任务监视器';
+                }).catch(function(e) {
+                    if (status) status.textContent = '入队失败: ' + e.message;
+                }).finally(function() {
+                    btn.innerHTML = orig;
+                    btn.disabled = false;
+                });
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initFinancialTab();
+        });
+    </script>
+</body>
+</html>

@@ -21,59 +21,75 @@ def _get_conn() -> sqlite3.Connection:
 
 # ═══ 表结构定义 ═══════════════════════════════
 
-# 所有数值列 (排除 Series-of-object 和文本类型)
-NUMERIC_COLS = [
-    "price",
-    # trend
-    "ma5", "ma10", "ma20", "ma60", "ma120", "ma250",
-    "macd", "macd_signal", "macd_hist", "k", "d", "j",
-    # momentum
-    "rsi", "atr", "cci",
-    # volatility
-    "bb_upper", "bb_mid", "bb_lower", "bb_width",
-    # volume
-    "obv", "v_ma5", "v_ma10", "v_ma20", "vwap",
-    # crowding
-    "turnover_20d", "turnover_120d", "crowding_ratio", "sharpe_60d",
-    # chip numeric
-    "chip_concentration", "chip_peak_price", "chip_avg_cost",
-    "chip_is_single_peak",
-    # fib retracement
-    "fib_high", "fib_low",
-    "fib_23_6", "fib_38_2", "fib_50_0", "fib_61_8", "fib_78_6",
-]
+# 基础种子列 (非指标产出, 由计算引擎直接写入)
+INDICATOR_BASE_NUMERIC_COLS = ["price"]
+INDICATOR_BASE_TEXT_COLS = []
 
-TEXT_COLS = ["chip_pattern", "chip_signal"]
+# 缓存: 避免每次调用都重新推导
+_ind_cols_cache = None
 
-# 所有列 (按 CREATE TABLE 顺序)
-ALL_COLS = NUMERIC_COLS + TEXT_COLS
+def _reset_indicator_cols_cache():
+    global _ind_cols_cache
+    _ind_cols_cache = None
+
+def _get_dynamic_indicator_cols() -> tuple:
+    """从 INDICATOR_REGISTRY 自动推导数值列和文本列"""
+    global _ind_cols_cache
+    if _ind_cols_cache is not None:
+        return _ind_cols_cache
+
+    from app.domain.quant.indicators import INDICATOR_REGISTRY
+    if not INDICATOR_REGISTRY:
+        _ind_cols_cache = (INDICATOR_BASE_NUMERIC_COLS[:], INDICATOR_BASE_TEXT_COLS[:])
+        return _ind_cols_cache
+
+    numeric = set(INDICATOR_BASE_NUMERIC_COLS)
+    text = set(INDICATOR_BASE_TEXT_COLS)
+    for cls in INDICATOR_REGISTRY.values():
+        text_set = set(getattr(cls, 'text_output', []))
+        for f in getattr(cls, 'output', []):
+            if f in text_set:
+                text.add(f)
+            else:
+                numeric.add(f)
+    _ind_cols_cache = (sorted(numeric), sorted(text))
+    return _ind_cols_cache
+
+
+def INDICATOR_NUMERIC_COLS() -> list:
+    num, _ = _get_dynamic_indicator_cols()
+    return num
+
+
+def INDICATOR_TEXT_COLS() -> list:
+    _, txt = _get_dynamic_indicator_cols()
+    return txt
+
+
+def INDICATOR_ALL_COLS() -> list:
+    return INDICATOR_NUMERIC_COLS() + INDICATOR_TEXT_COLS()
+
 
 def _col_defs() -> str:
+    num, txt = _get_dynamic_indicator_cols()
     defs = []
-    for c in NUMERIC_COLS:
+    for c in num:
         defs.append(f"{c} REAL DEFAULT NULL")
-    for c in TEXT_COLS:
+    for c in txt:
         defs.append(f"{c} TEXT DEFAULT NULL")
     return ", ".join(defs)
-
-CREATE_TABLE_SQL = f"""
-CREATE TABLE IF NOT EXISTS indicators (
-    stock_code TEXT NOT NULL,
-    trade_date TEXT NOT NULL,
-    {_col_defs()},
-    PRIMARY KEY (stock_code, trade_date)
-)
-"""
 
 PRECISION = 4
 
 def _normalize(results: dict) -> dict:
+    all_cols = INDICATOR_ALL_COLS()
+    text_cols = INDICATOR_TEXT_COLS()
     row = {}
-    for c in ALL_COLS:
+    for c in all_cols:
         val = results.get(c)
         if val is None:
             row[c] = None
-        elif c in TEXT_COLS:
+        elif c in text_cols:
             row[c] = str(val)
         else:
             try:
@@ -82,25 +98,62 @@ def _normalize(results: dict) -> dict:
                 row[c] = None
     return row
 
-INSERT_SQL = f"INSERT OR REPLACE INTO indicators (stock_code, trade_date, {', '.join(ALL_COLS)}) VALUES (?, ?, {', '.join('?' * len(ALL_COLS))})"
+
+def _get_insert_sql() -> str:
+    cols = INDICATOR_ALL_COLS()
+    return f"INSERT OR REPLACE INTO indicators (stock_code, trade_date, {', '.join(cols)}) VALUES (?, ?, {', '.join('?' * len(cols))})"
 
 # ═══ 公开 API ═════════════════════════════════
 
 def init_db():
-    """建表 (幂等)"""
+    """建表 + 自动补充缺失列 (幂等, 新增指标后重启自动加列)"""
     conn = _get_conn()
-    conn.execute(CREATE_TABLE_SQL)
+    # 只建基础表 (PK 列), 指标列通过 ALTER TABLE 动态补充
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS indicators (
+            stock_code TEXT NOT NULL,
+            trade_date TEXT NOT NULL,
+            PRIMARY KEY (stock_code, trade_date)
+        )
+    """)
     conn.commit()
-    logger.info(f"[IndicatorStore] SQLite ready: {DB_PATH}")
+
+    # 自动补充全部注册指标字段
+    num, txt = _get_dynamic_indicator_cols()
+    all_expected = set(num + txt)
+
+    # 检查现有列
+    existing_cols = set()
+    try:
+        rows = conn.execute("PRAGMA table_info(indicators)").fetchall()
+        existing_cols = {r[1] for r in rows}
+    except Exception:
+        pass
+
+    # 只补充缺少的列, 不 DROP 表
+    missing = sorted(all_expected - existing_cols)
+    if missing:
+        for col in missing:
+            col_type = "TEXT" if col in txt else "REAL"
+            try:
+                conn.execute(f"ALTER TABLE indicators ADD COLUMN {col} {col_type} DEFAULT NULL")
+                logger.info(f"[IndicatorStore] Added indicator column: {col} ({col_type})")
+            except Exception as e:
+                logger.warning(f"[IndicatorStore] Failed to add column {col}: {e}")
+        conn.commit()
+
+    logger.info(f"[IndicatorStore] SQLite ready: {DB_PATH} ({len(all_expected)} columns)")
 
 def upsert_snapshot(stock_code: str, trade_date: date, results: dict, partial_cols: List[str] = None):
     """写入单日快照。partial_cols=None → 全量覆盖; 指定时只更新那些列"""
     conn = _get_conn()
+    all_cols = INDICATOR_ALL_COLS()
     row = _normalize(results)
+    sql = _get_insert_sql()
     if partial_cols is None:
-        conn.execute(INSERT_SQL, [stock_code, str(trade_date)] + [row[c] for c in ALL_COLS])
+        conn.execute(sql, [stock_code, str(trade_date)] + [row[c] for c in all_cols])
     else:
-        upd = [c for c in partial_cols if c in ALL_COLS]
+        upd = [c for c in partial_cols if c in all_cols]
         if not upd: conn.commit(); return
         set_c = ', '.join(f"{c}=excluded.{c}" for c in upd)
         cols = ['stock_code', 'trade_date'] + upd
@@ -112,11 +165,13 @@ def upsert_snapshot(stock_code: str, trade_date: date, results: dict, partial_co
 def insert_batch(batch: List[dict]):
     """批量写入每日行 [{stock_code, trade_date, day_results}, ...]"""
     conn = _get_conn()
+    all_cols = INDICATOR_ALL_COLS()
+    sql = _get_insert_sql()
     rows = []
     for item in batch:
         row = _normalize(item['day_results'])
-        rows.append([item['stock_code'], str(item['trade_date'])] + [row[c] for c in ALL_COLS])
-    conn.executemany(INSERT_SQL, rows)
+        rows.append([item['stock_code'], str(item['trade_date'])] + [row[c] for c in all_cols])
+    conn.executemany(sql, rows)
     conn.commit()
 
 def upsert_rows(batch: List[dict], partial_cols: List[str] = None):
@@ -124,12 +179,14 @@ def upsert_rows(batch: List[dict], partial_cols: List[str] = None):
     partial_cols=None → INSERT OR REPLACE 全量覆盖 (executemany, 快)
     partial_cols 指定 → 先读现有行 → 内存合并 → executemany 全量写回 (2次SQL, 快)"""
     conn = _get_conn()
+    all_cols = INDICATOR_ALL_COLS()
+    sql = _get_insert_sql()
     if partial_cols is None:
         rows = []
         for item in batch:
             row = _normalize(item['day_results'])
-            rows.append([item['stock_code'], str(item['trade_date'])] + [row[c] for c in ALL_COLS])
-        conn.executemany(INSERT_SQL, rows)
+            rows.append([item['stock_code'], str(item['trade_date'])] + [row[c] for c in all_cols])
+        conn.executemany(sql, rows)
         logger.debug(f"[IndicatorStore] upsert: {len(batch)} rows (full replace)")
     else:
         # 按 stock_code 分组, 每只股票一次 SELECT 读取全部现有行
@@ -148,8 +205,8 @@ def upsert_rows(batch: List[dict], partial_cols: List[str] = None):
             merged.update({k: v for k, v in new_vals.items() if v is not None})
             merged.setdefault('stock_code', sc)
             merged.setdefault('trade_date', td)
-            rows.append([sc, td] + [merged.get(c) for c in ALL_COLS])
-        conn.executemany(INSERT_SQL, rows)
+            rows.append([sc, td] + [merged.get(c) for c in all_cols])
+        conn.executemany(sql, rows)
         logger.debug(f"[IndicatorStore] upsert: {len(batch)} rows (merge, cols={partial_cols})")
     conn.commit()
 
@@ -168,15 +225,24 @@ def get_latest(stock_code: str) -> Optional[dict]:
     return dict(row) if row else None
 
 def get_history(stock_code: str, fields: List[str], days: int = 120) -> dict:
-    """获取单股指标时间序列 → {dates: [...], fields: {field: [...]}}"""
+    """获取单股指标时间序列 → {dates: [...], fields: {field: [...]}}
+    days: 返回最近 N 条记录 (默认 120), 0 或 None 返回全部
+    """
     conn = _get_conn()
-    valid = [f for f in fields if f in ALL_COLS]
+    all_cols = INDICATOR_ALL_COLS()
+    valid = [f for f in fields if f in all_cols]
     if not valid:
         return {"stock_code": stock_code, "dates": [], "fields": {}}
     cols = "trade_date, " + ", ".join(valid)
-    rows = conn.execute(
-        f"SELECT {cols} FROM indicators WHERE stock_code = ? ORDER BY trade_date ASC",
-        [stock_code]).fetchall()
+    if days and days > 0:
+        rows = conn.execute(
+            f"SELECT {cols} FROM indicators WHERE stock_code = ? ORDER BY trade_date DESC LIMIT ?",
+            [stock_code, days]).fetchall()
+        rows.reverse()
+    else:
+        rows = conn.execute(
+            f"SELECT {cols} FROM indicators WHERE stock_code = ? ORDER BY trade_date ASC",
+            [stock_code]).fetchall()
     dates = []
     result_fields = {f: [] for f in valid}
     for r in rows:
@@ -189,7 +255,7 @@ def get_history(stock_code: str, fields: List[str], days: int = 120) -> dict:
 def get_field_latest(field_name: str) -> List[dict]:
     """某指标字段在所有股票上的最新值 (按值降序)"""
     conn = _get_conn()
-    if field_name not in ALL_COLS:
+    if field_name not in INDICATOR_ALL_COLS():
         return []
     sql = f"""
         SELECT i.stock_code, i.{field_name}, i.trade_date FROM indicators i

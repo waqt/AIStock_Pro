@@ -18,8 +18,12 @@ const UI_COMPONENTS = {
                 { id: 'observations', icon: 'fas fa-eye', label: '投研观察', url: 'observations.html' },
               ]
             },
-            { id: 'quant', icon: 'fas fa-chart-line', label: '量化决策', url: 'quant.html' },
-            { id: 'indicators', icon: 'fas fa-table', label: '指标数据', url: 'indicators.html' },
+            { id: 'quant', icon: 'fas fa-chart-line', label: '量化决策', url: 'quant.html',
+              subs: [
+                { id: 'financial', icon: 'fas fa-calculator', label: '财务指标', url: 'financial.html' },
+                { id: 'indicators', icon: 'fas fa-table', label: '价量指标', url: 'indicators.html' },
+              ]
+            },
             { id: 'data', icon: 'fas fa-globe', label: '市场分析', url: 'data.html' },
         ];
 

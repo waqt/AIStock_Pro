@@ -315,7 +315,12 @@
       "PowerShell(curl *)",
       "PowerShell(curl.exe -s \"http://127.0.0.1:8000/api/data/financial-raw/catalog\" | & 'D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe' -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f'fields: {d[\\\\\"data\\\\\"][\\\\\"summary\\\\\"][\\\\\"total_fields\\\\\"]}, categories: {d[\\\\\"data\\\\\"][\\\\\"summary\\\\\"][\\\\\"categories\\\\\"]}'\\)\")",
       "PowerShell($env:PYTHONIOENCODING='utf-8'; & 'D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe' \"E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\temp_lab\\\\test_financial_raw_service.py\")",
-      "PowerShell($env:PYTHONIOENCODING='utf-8'; & 'D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe' \"E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\temp_lab\\\\test_financial_raw_service2.py\")"
+      "PowerShell($env:PYTHONIOENCODING='utf-8'; & 'D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe' \"E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\temp_lab\\\\test_financial_raw_service2.py\")",
+      "PowerShell($env:PYTHONIOENCODING='utf-8'; & 'D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe' \"E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\temp_lab\\\\step6_mock_test.py\")",
+      "PowerShell($env:PYTHONIOENCODING='utf-8'; & 'D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe' -m py_compile \"E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\backend\\\\app\\\\framework\\\\ai\\\\providers\\\\deepseek.py\")",
+      "PowerShell($env:PYTHONIOENCODING='utf-8'; & 'D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe' -m py_compile \"E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\backend\\\\app\\\\domain\\\\research\\\\agents\\\\base.py\"; & 'D:\\\\develop_env\\\\python_related\\\\anaconda\\\\Anaconda3\\\\envs\\\\aiteacher\\\\python.exe' -m py_compile \"E:\\\\workspace\\\\AIResearch\\\\AIStock_Pro\\\\backend\\\\app\\\\framework\\\\ai\\\\providers\\\\deepseek.py\")",
+      "PowerShell(pip install *)",
+      "Bash(curl *)"
     ],
     "defaultMode": "auto"
   },
