@@ -9,7 +9,7 @@ from datetime import date
 from typing import List, Optional, Dict, Any
 from app.framework.logger import logger
 
-DB_PATH = os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', '..', '..', 'data', 'indicators.db')
+DB_PATH = os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', '..', 'data', 'indicators.db')
 TABLE = "valuation_metrics"
 
 _local = threading.local()

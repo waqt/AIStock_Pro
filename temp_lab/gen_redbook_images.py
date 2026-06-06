@@ -1,6 +1,6 @@
 """
 生成小红书配图 — Serenity 瓶颈投资法 → AIStock Pro Pipeline 映射
-输出到 backend/data/redbook/
+输出到 Local_data/redbook/ (已从 data/redbook 迁移)
 """
 import matplotlib
 matplotlib.use('Agg')
@@ -16,7 +16,7 @@ FONT_SONG = r'C:\Windows\Fonts\stsong.ttf'
 fp = fm.FontProperties(fname=FONT_PATH)
 fp_song = fm.FontProperties(fname=FONT_SONG)
 
-OUTPUT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data', 'redbook')
+OUTPUT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'Local_data', 'redbook')
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 COLORS = {

@@ -14,3 +14,8 @@ position*/
 Local_data/
 backend/import_cache.json
 backend/data/research_reports/
+backend/data/*.db
+backend/data/*.db-shm
+backend/data/*.db-wal
+backend/data/pipeline_checkpoints/
+data/
