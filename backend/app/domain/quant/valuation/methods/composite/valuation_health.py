@@ -16,6 +16,9 @@ class ValuationHealthMethod(ValuationMethod):
 
     # 依赖所有其他方法的输出
     requires = ["pe_percentile", "pb_percentile", "peg_ratio"]
+    judgment = "valuation_score<30→低估(绿色), 30-60→合理(黄色), >60→高估(红色)。valuation_verdict 提供文字结论。各维度(PE/PB/PS/PEG/FCF)得分详情见valuation_summary"
+    applicable_scenarios = "适用于有完整估值数据覆盖的公司(PE/PB/PS/PEG/FCF等维度齐全); 作为快速估值体检工具使用"
+    limitations = "数据维度越多评分越准确; 某些维度数据缺失时评分可能片面; 综合加权平均可能平滑掉局部极端信号; 建议结合具体维度明细而非仅看总分"
 
     @classmethod
     def compute(cls, **kwargs) -> dict:

@@ -14,6 +14,9 @@ class PEPercentileMethod(ValuationMethod):
     text_output = ["pe_status"]
     params = {"lookback_years": 3}
     requires_market_data = True
+    judgment = "pe_percentile<20→低估(绿色), 20-80→合理(黄色), >80→高估(红色)。pe_status 直接反映当前状态。pe_median 提供历史中位数参考"
+    applicable_scenarios = "适用于所有有持续盈利记录的公司; 市场情绪和周期性因素可能导致百分位长期偏离"
+    limitations = "亏损公司PE为负或无穷, 百分位计算无意义; 3年窗口不足以反映完整周期; 算法用股价反推历史PE, 未考虑EPS变化"
 
     @classmethod
     def compute(cls, pe_ttm: float = None, pe_history: list = None, **kwargs) -> dict:

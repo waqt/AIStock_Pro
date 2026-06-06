@@ -27,6 +27,10 @@ class ScissorGapInflectionMethod(ValuationMethod):
     requires_financial_data = True
     requires_financial_indicators = True
 
+    judgment = "scissor_re_rating_pct≥15→盈利改善阶段PE有望重估, ≥5→关注拐点, ≥-5→PE维持, else→PE下行风险。scissor_phase_score>70→盈利质量拐点已确认"
+    applicable_scenarios = "处于盈利拐点附近的成长公司; 互联网/科技/医药等先投入后收获模式; 利润增速从负转正阶段"
+    limitations = "依赖财务指标剪刀差数据的及时性; 仅调整PE倍数未纳入FCF折现; 营收和利润增速不同的会计处理可能导致误判"
+
     _field_labels = {
         "scissor_phase_label": "剪刀差阶段",
         "scissor_phase_score": "阶段评分(0-100)",

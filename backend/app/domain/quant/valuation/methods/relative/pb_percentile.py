@@ -14,6 +14,9 @@ class PBPercentileMethod(ValuationMethod):
     text_output = ["pb_status"]
     params = {"lookback_years": 3}
     requires_market_data = True
+    judgment = "pb_percentile<20→低估(绿色), 20-80→合理(黄色), >80→高估(红色)。pb_status 直接反映当前状态。pb_median 提供历史中位数参考"
+    applicable_scenarios = "适用于重资产行业(银行/地产/制造)的估值; 也适用于亏损但资产清晰的公司"
+    limitations = "轻资产公司(科技/互联网) PB 参考价值有限; 商誉减值或资产重估会扭曲PB; 3年窗口不足够覆盖完整周期"
 
     @classmethod
     def compute(cls, pb: float = None, pb_history: list = None, **kwargs) -> dict:

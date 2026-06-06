@@ -13,6 +13,9 @@ class PSValuationMethod(ValuationMethod):
     requires = ["mcap_yi", "total_shares", "revenue_ttm"]
     text_output = ["ps_status"]
     requires_financial_data = True
+    judgment = "ps_percentile<20→低估, 20-80→合理, >80→高估。ps_ttm < 1 可能低估, > 10 可能高估(TMT行业正常范围可能更高)"
+    applicable_scenarios = "适用于营收稳定但利润波动大的公司(如成长初期); 适合周期性行业和亏损公司"
+    limitations = "PS不考虑成本结构和利润率差异; 高毛利和低毛利公司的PS不可直接比较; 营收操控风险低于利润但依然存在"
 
     @classmethod
     def compute(cls, mcap_yi: float = None, total_shares: float = None,

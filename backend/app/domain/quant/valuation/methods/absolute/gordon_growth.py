@@ -14,6 +14,9 @@ class GordonGrowthMethod(ValuationMethod):
     description = "戈登增长模型: P = DPS / (r - g)。适用于稳定派息、可预测增长的成熟公司"
     output = ["ddm_value", "ddm_vs_price_pct", "dps_est", "implied_growth_rate"]
     requires = ["dividend_yield", "mcap_yi", "total_shares"]
+    judgment = "ddm_vs_price_pct>0%→股价低于DDM价值(低估)。implied_growth_rate > 实际GDP增速+通胀 → 市场预期过高。股息率不足1%时DDM可靠性下降"
+    applicable_scenarios = "适用于稳定派息、可预测增长的成熟公司(消费/公用事业/银行); 派息率>30%且股息连续增长5年以上"
+    limitations = "不适用于亏损公司或不分红公司; 支付率波动时估值不稳定; 增长率和折现率的小幅变化对结果影响巨大"
 
     @classmethod
     def compute(cls, dividend_yield: float = None, mcap_yi: float = None,

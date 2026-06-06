@@ -16,6 +16,9 @@ class ScenarioEstimateMethod(ValuationMethod):
     output = ["bull_target", "base_target", "bear_target", "weighted_target",
               "upside_pct", "downside_pct", "asymmetry"]
     requires = ["pe_ttm", "mcap_yi", "total_shares"]
+    judgment = "asymmetry = bull_target/bear_target - 1, 正值越大上行空间越大。base_target 是中性情景下的合理价值。asymmetry>2→上行远大于下行风险"
+    applicable_scenarios = "适用于不确定性高的成长股/周期股/事件驱动型公司; 有明确EPS预测但市场观点分歧大的公司"
+    limitations = "三情景EPS和PE为估算值, 依赖分析师判断精度; 概率权重主观(默认悲观25%/中性50%/乐观25%); 不适用于无法预测EPS的亏损公司"
 
     @classmethod
     def compute(cls, pe_ttm: float = None, mcap_yi: float = None,

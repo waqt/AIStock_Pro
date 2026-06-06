@@ -11,6 +11,9 @@ class PEGAnalysisMethod(ValuationMethod):
     output = ["peg_ratio", "peg_verdict"]
     requires = ["pe_ttm", "eps_growth_3y"]
     text_output = ["peg_verdict"]
+    judgment = "peg_ratio<1→可能低估, 1-2→合理, >2→可能高估。peg_ratio<0.5→显著低估, >3→显著高估。PEG结合growth_quality使用更可靠"
+    applicable_scenarios = "适用于有利润且EPS增速稳定的成长公司; 适合消费/科技/医药等持续增长行业"
+    limitations = "eps_growth_3y缺失时无法计算; 增速剧烈波动的公司PEG失真; 未区分内生增长和并购增长"
 
     @classmethod
     def compute(cls, pe_ttm: float = None, eps_growth_3y: float = None, **kwargs) -> dict:

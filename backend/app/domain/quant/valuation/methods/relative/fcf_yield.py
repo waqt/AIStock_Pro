@@ -11,6 +11,9 @@ class FCFYieldMethod(ValuationMethod):
     output = ["fcf_yield_pct", "fcf_est_yi", "implied_value"]
     requires = ["mcap_yi", "ocf_ttm", "total_shares", "fixed_assets"]
     requires_financial_data = True
+    judgment = "fcf_yield_pct>5%→现金流充裕, >8%→优秀, <2%→现金流紧张。implied_value 相对 mcap_yi 的比值反映市场是否定价合理"
+    applicable_scenarios = "适用于成熟稳定、现金流可预测的公司; 消费/公用事业/能源行业效果较好"
+    limitations = "资本开支为估算(OCF×经验比例), 实际可能偏差大; 高增长公司FCF通常为负导致yield无意义; 营运资本变动影响OCF数字"
 
     @classmethod
     def compute(cls, mcap_yi: float = None, ocf_ttm: float = None,

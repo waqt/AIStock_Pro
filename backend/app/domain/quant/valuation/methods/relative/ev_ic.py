@@ -12,6 +12,9 @@ class EVICMethod(ValuationMethod):
     requires = ["mcap_yi", "total_liabilities", "cash", "total_equity"]
     text_output = ["ev_ic_verdict"]
     requires_financial_data = True
+    judgment = "ev_ic_ratio<1→极度低估, 1-2→合理, >3→可能高估。ROIC>10%且EV/IC<2→价值创造型公司(类巴菲特标准)"
+    applicable_scenarios = "适用于重资产制造业、基础设施、公用事业等资本密集型公司; 适合与ROIC指标配合使用"
+    limitations = "投入资本(IC)的计算涉及较多假设; 轻资产公司IC被低估导致EV/IC偏高; 资本化研发费用的处理方式影响可比性"
 
     @classmethod
     def compute(cls, mcap_yi: float = None, total_liabilities: float = None,

@@ -29,6 +29,10 @@ class GrowthAdjustedPEGMethod(ValuationMethod):
     requires_financial_data = True
     requires_financial_indicators = True
 
+    judgment = "growth_peg_upside_pct>20%→显著低估, >5%→略微低估, >-10%→合理, else→高估。growth_peg_target<0.7→极端打折可能过度悲观; growth_adjustment_detail显示各因子调整明细"
+    applicable_scenarios = "有利润(PE>0)且EPS增速>0的成长公司; 适合营收趋势/毛利率/经营杠杆变化敏感的公司"
+    limitations = "eps_growth_3y数据缺失时无法计算(需从StockValuation获取); 多因子调整幅度(0.3/0.2)为经验值; 净利润率转换营收增速为利润增速有近似误差"
+
     _field_labels = {
         "growth_peg_target": "调整后PEG目标",
         "growth_peg_adjusted_pe": "调整后PE(倍)",

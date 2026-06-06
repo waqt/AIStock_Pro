@@ -14,6 +14,9 @@ class ResidualIncomeMethod(ValuationMethod):
     output = ["rim_value", "rim_vs_price_pct"]
     requires = ["roe", "pb", "mcap_yi", "total_shares", "total_equity"]
     requires_financial_data = True
+    judgment = "rim_vs_price_pct>0%→股价低于剩余收益模型价值(低估)。ROE>r时创造价值, ROE<r时摧毁价值。ROE<r+g时增长反而毁损价值"
+    applicable_scenarios = "适用于有形资产比重大的公司(银行/保险/制造); ROE稳定可预测的成熟公司效果最好"
+    limitations = "权益成本率(r)取固定值9%, 未按个股β调整; g取3%偏低, 可能低估成长期公司; 依赖BVPS准确性(受会计政策影响)"
 
     @classmethod
     def compute(cls, roe: float = None, pb: float = None,

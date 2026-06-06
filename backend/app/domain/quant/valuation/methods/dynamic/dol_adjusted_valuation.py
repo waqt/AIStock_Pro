@@ -26,6 +26,10 @@ class DOLAdjustedValuationMethod(ValuationMethod):
     requires_financial_data = True
     requires_financial_indicators = True
 
+    judgment = "dol_upside_pct>20%→低估, >5%→适度低估, >-10%→合理, else→高估。DOL>3.0且营收增速>20%是经营杠杆最强组合; dol_forward_growth_est是核心参考值"
+    applicable_scenarios = "固定成本占比高/规模效应强的公司(制造业/互联网/平台经济); 营收增速>15%且经营杠杆持续上升的公司"
+    limitations = "DOL波动较大时单一最新值不够稳定; 未区分固定经营杠杆和财务杠杆; 极端DOL值被截断至[1.0,5.0]范围"
+
     _field_labels = {
         "dol_adjusted_pe": "DOL调整后PE(倍)",
         "dol_base_pe": "当前PE(倍)",

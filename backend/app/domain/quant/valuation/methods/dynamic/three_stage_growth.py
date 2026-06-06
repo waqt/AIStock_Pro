@@ -30,6 +30,10 @@ class ThreeStageGrowthMethod(ValuationMethod):
     requires_financial_data = True
     requires_financial_indicators = True
 
+    judgment = "three_stage_upside_pct>20%→显著低估, >5%→略微低估, >-10%→合理, else→高估。three_stage_margin_target反映长期利润率预期; three_stage_implied_pe可交叉验证当前PE合理性"
+    applicable_scenarios = "营收增速>15%的高成长公司, 处于规模扩张中期; 适合科技/新能源/生物医药等长赛道行业"
+    limitations = "三阶段假设(3年高增+5年过渡)对所有公司统一, 未因行业调整; 终端价值占比大(常>50%), 对WACC和终值增速敏感; FCF计算简化未考虑营运资本变动"
+
     _field_labels = {
         "three_stage_value": "三阶段价值(¥)",
         "three_stage_upside_pct": "上行空间(%)",

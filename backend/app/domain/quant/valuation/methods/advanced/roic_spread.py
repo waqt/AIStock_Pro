@@ -15,6 +15,9 @@ class ROICSpreadMethod(ValuationMethod):
     output = ["roic_spread_pct", "wacc_est", "value_creation_label"]
     requires = ["roe", "pe_ttm"]
     requires_financial_data = True
+    judgment = "spread_pct>0→创造价值(绿色), <0→毁灭价值(红色)。spread_pct>5%→优秀, 2-5%→良好, 0-2%→平庸, <0→价值毁灭。value_creation_label 直接反映分类"
+    applicable_scenarios = "适用于资本密集型和所有有稳定ROI数据的公司; 银行/制造/消费行业效果最佳; 与EV/IC配合使用效果更好"
+    limitations = "WACC取固定值8%, 未按个股风险调整; ROIC计算依赖投入资本的会计定义; 成长阶段公司ROIC偏低但未来可能改善, 单一时间点判断有偏差"
     text_output = ["value_creation_label"]
 
     @classmethod

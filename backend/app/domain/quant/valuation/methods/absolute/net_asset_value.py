@@ -14,6 +14,9 @@ class NetAssetValueMethod(ValuationMethod):
     output = ["nav_per_share", "nav_vs_price_pct"]
     requires = ["total_assets", "total_liabilities", "total_shares", "mcap_yi"]
     requires_financial_data = True
+    judgment = "nav_vs_price_pct>0%→股价低于清算价值(低估)。nav_per_share可作为安全边际参考线。对于控股型公司, NAV折价>30%可能意味着市场过度悲观"
+    applicable_scenarios = "适用于控股型公司/综合性企业集团; 地产/基金/资源类公司(资产价值可明确衡量); 极端熊市后寻找破净机会"
+    limitations = "账面价值不等于市场价值(资产可能被低估或高估); 无形资产和商誉未计入; 不适用于轻资产和科技公司"
 
     @classmethod
     def compute(cls, total_assets: float = None, total_liabilities: float = None,

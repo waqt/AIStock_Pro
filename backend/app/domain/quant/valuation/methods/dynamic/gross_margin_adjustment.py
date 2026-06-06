@@ -24,6 +24,10 @@ class GrossMarginMultipleAdjustMethod(ValuationMethod):
     requires_financial_data = True
     requires_financial_indicators = True
 
+    judgment = "gm_upside_pct>25%→毛利率支撑强显著低估, >5%→合理偏低, >-10%→合理, else→已透支。gm_quality_score>70→高质量毛利率。毛利率持续上升+营收增长>30%是最强组合信号"
+    applicable_scenarios = "毛利率差异大的行业(消费/医药/TMT/软件), 毛利率>40%的公司定价权更强; 适合品牌驱动或技术壁垒型公司"
+    limitations = "基准PS设定为2.0偏主观, 未引入行业基准; 毛利率下降阶段可能低估转型公司价值; 不适用于大宗商品/周期行业"
+
     _field_labels = {
         "gm_adjusted_ps": "调整后 PS(倍)",
         "gm_base_ps": "基准 PS(倍)",

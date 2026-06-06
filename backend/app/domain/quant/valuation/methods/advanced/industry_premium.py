@@ -16,6 +16,9 @@ class IndustryPremiumMethod(ValuationMethod):
     requires = ["pe_ttm", "industry"]
     text_output = ["industry_verdict"]
     requires_financial_data = True
+    judgment = "premium_pct>50%→个股显著高于行业中位数(可能高估或包含成长溢价); premium_pct<-30%→低于行业中位数(可能低估或基本面弱于同行)"
+    applicable_scenarios = "适用于同行可比公司多的行业(银行/制造/消费); PE为负的行业自动显示N/A"
+    limitations = "行业内公司差异大时中位数缺乏代表性; 未对规模/增速/杠杆率做标准化调整; 行业分类粒度影响结果"
 
     @classmethod
     def compute(cls, pe_ttm: float = None, industry: str = None, **kwargs) -> dict:

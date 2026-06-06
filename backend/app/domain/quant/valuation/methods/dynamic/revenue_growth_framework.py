@@ -26,6 +26,10 @@ class RevenueGrowthFrameworkMethod(ValuationMethod):
     requires_financial_data = True
     requires_financial_indicators = True
 
+    judgment = "rgv_upside_pct>20%→显著低估, >5%→略微低估, >-5%→合理, >-20%→略微高估, else→显著高估。营收增速>30%时框架更可靠"
+    applicable_scenarios = "营收增速>10%的成长型公司, 有利润或即将盈利; 适合科技/医药/消费等规模效应强的行业"
+    limitations = "假设条件较多(增速衰减路径/利润改善节奏/WACC), 营收增速剧烈波动时误差大; 不适用于亏损恶化阶段的公司"
+
     _field_labels = {
         "rgv_target_price": "框架目标价(¥)",
         "rgv_upside_pct": "上行空间(%)",

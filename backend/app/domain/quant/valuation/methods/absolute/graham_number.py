@@ -11,6 +11,9 @@ class GrahamNumberMethod(ValuationMethod):
     output = ["graham_number", "graham_vs_price_pct", "safety_margin_pct"]
     requires = ["pe_ttm", "pb", "mcap_yi", "total_shares", "total_equity"]
     requires_financial_data = True
+    judgment = "当前股价 < graham_number → 安全边际为正(低估)。safety_margin_pct>20%→显著低估, >0%→低估, <0%→高估。与净流动价值(NCAV)配合使用效果更好"
+    applicable_scenarios = "适用于有稳定盈利和净资产的成熟价值型公司; 格雷厄姆式价值投资的最基础工具"
+    limitations = "成长型公司普遍高于格雷厄姆数, 价值陷阱；22.5倍PE的假设(15×1.5)在低利率环境下可能过于保守; 不适用于亏损公司"
 
     @classmethod
     def compute(cls, pe_ttm: float = None, pb: float = None,
