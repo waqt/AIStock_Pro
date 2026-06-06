@@ -59,6 +59,7 @@ DataTabs.Watchlist = {
                   <td style="text-align:right;width:70px;font-size:10px;color:var(--accent-gold);">${tpStr}</td>
                   <td style="text-align:center;width:110px;" onclick="event.stopPropagation();">
                     <span class="wl-obs-badge" data-code="${escHtml(s.stock_code)}" onclick="DataTabs.Watchlist.showStockObs('${escHtml(s.stock_code)}')" style="cursor:pointer;color:var(--text-dim);font-size:9px;" title="关联观察事件">...</span>
+                    <button onclick="DataTabs.Watchlist.healthCheck('${escHtml(s.stock_code)}','${escHtml(s.stock_name)}')" title="健康体检" style="background:none;border:none;color:var(--accent-green);cursor:pointer;font-size:9px;"><i class="fas fa-stethoscope"></i></button>
                     <button onclick="DataTabs.Watchlist.finDetail('${escHtml(s.stock_code)}','${escHtml(s.stock_name)}')" title="财务F10" style="background:none;border:none;color:var(--accent-gold);cursor:pointer;font-size:9px;"><i class="fas fa-file-invoice"></i></button>
                     <button onclick="DataTabs.Watchlist.syncOne('${escHtml(s.stock_code)}',this)" style="background:none;border:none;color:var(--accent-blue);cursor:pointer;font-size:9px;"><i class="fas fa-sync-alt"></i></button>
                     <button data-code="${escHtml(s.stock_code)}" onclick="DataTabs.Watchlist.edit(this.dataset.code)" title="编辑" style="background:none;border:none;color:var(--accent-gold);cursor:pointer;font-size:9px;"><i class="fas fa-edit"></i></button>
@@ -292,5 +293,25 @@ DataTabs.Watchlist = {
       html += '</table>';
       Modal.alert('观察事件 - ' + code, html);
     } catch(e) { Modal.alert('错误', '加载观察失败'); }
+  },
+
+  async healthCheck(code, name) {
+    Modal.custom({
+      title: '🔍 健康体检: ' + code + ' ' + (name || ''),
+      content: '<div id="hc-modal-body"><div style="text-align:center;padding:30px;"><i class="fas fa-spinner fa-spin" style="font-size:24px;color:var(--accent-blue);"></i><div style="margin-top:10px;color:var(--text-dim);font-size:12px;">LLM分析中...</div></div></div>'
+    });
+    try {
+      const res = await fetch(API_BASE + '/research/health-check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stock_code: code })
+      });
+      const data = await res.json();
+      if (!res.ok) { document.getElementById('hc-modal-body').innerHTML = '<div style="color:var(--accent-red);padding:20px;">请求失败: ' + (data.detail||'') + '</div>'; return; }
+      const result = data.data || data;
+      document.getElementById('hc-modal-body').innerHTML = window.renderHealthCheckHTML ? window.renderHealthCheckHTML(result) : '<pre style="font-size:10px;color:var(--text-dim);white-space:pre-wrap;">' + JSON.stringify(result, null, 2) + '</pre>';
+    } catch(e) {
+      document.getElementById('hc-modal-body').innerHTML = '<div style="color:var(--accent-red);padding:20px;">网络错误: ' + e.message + '</div>';
+    }
   }
 };

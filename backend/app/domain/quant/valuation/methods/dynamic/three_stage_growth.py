@@ -8,8 +8,11 @@
 
   所有 FCF + TV 折现 → 每股内在价值。
 
+  升级(V3): CCF 连续折现模式 (e^{-rt}) + 动态 WACC (分阶段折现率递减)
+
 适用: 高成长公司(营收增速>15%), 处于规模扩张中期
 """
+import math
 from app.domain.quant.valuation.base import ValuationMethod, register_valuation
 
 
@@ -29,8 +32,14 @@ class ThreeStageGrowthMethod(ValuationMethod):
     requires = ["mcap_yi", "total_shares"]
     requires_financial_data = True
     requires_financial_indicators = True
+    params = {
+        "use_continuous_compounding": False,
+        "wacc_phase1": 10.0,
+        "wacc_phase2": 9.0,
+        "wacc_terminal": 8.0,
+    }
 
-    judgment = "three_stage_upside_pct>20%→显著低估, >5%→略微低估, >-10%→合理, else→高估。three_stage_margin_target反映长期利润率预期; three_stage_implied_pe可交叉验证当前PE合理性"
+    judgment = "three_stage_upside_pct>20%→显著低估, >5%→略微低估, >-10%→合理, else→高估。three_stage_margin_target反映长期利润率预期; three_stage_implied_pe可交叉验证当前PE合理性。启用CCF连续折现后估值略低于离散模式, 对长存续期项目更准确"
     applicable_scenarios = "营收增速>15%的高成长公司, 处于规模扩张中期; 适合科技/新能源/生物医药等长赛道行业"
     limitations = "三阶段假设(3年高增+5年过渡)对所有公司统一, 未因行业调整; 终端价值占比大(常>50%), 对WACC和终值增速敏感; FCF计算简化未考虑营运资本变动"
 
@@ -38,12 +47,30 @@ class ThreeStageGrowthMethod(ValuationMethod):
         "three_stage_value": "三阶段价值(¥)",
         "three_stage_upside_pct": "上行空间(%)",
         "three_stage_terminal_fcf": "终端FCF(亿元)",
-        "three_stage_assumed_wacc": "折现率(%)",
+        "three_stage_assumed_wacc": "终端折现率(%)",
         "three_stage_phase1_years": "高增阶段(年)",
         "three_stage_margin_target": "目标利润率(%)",
         "three_stage_implied_pe": "隐含 PE(倍)",
         "three_stage_verdict": "判断结论",
     }
+
+    @classmethod
+    def _discount_factor(cls, t_years: float, r_pct: float, use_ccf: bool) -> float:
+        """折现因子
+
+        Args:
+            t_years: 折现年数
+            r_pct: 折现率(%)
+            use_ccf: True=连续复利 e^{-rt}, False=离散 1/(1+r)^t
+
+        连续复利: r_continuous = ln(1 + r_discrete), 确保与离散折现无套利等价。
+        """
+        r = r_pct / 100.0
+        if use_ccf:
+            r_cont = math.log(1.0 + r)
+            return math.exp(-r_cont * t_years)
+        else:
+            return 1.0 / ((1.0 + r) ** t_years)
 
     @classmethod
     def compute(cls, **kwargs) -> dict:
@@ -65,9 +92,20 @@ class ThreeStageGrowthMethod(ValuationMethod):
         p1_years = 3      # 高增期
         p2_years = 5      # 过渡期
         terminal_growth = 3.0
-        wacc = 9.0
         tax_rate = 0.25
         reinvest_rate = 0.30  # 再投资率(营收增量资本密集度)
+
+        # ★ CCF 连续折现模式
+        use_ccf = bool(kwargs.get("use_continuous_compounding", False))
+
+        # ★ 动态 WACC: 分阶段折现率 (风险随成熟度递减)
+        wacc_p1 = float(kwargs.get("wacc_phase1", 10.0))
+        wacc_p2 = float(kwargs.get("wacc_phase2", 9.0))
+        wacc_term = float(kwargs.get("wacc_terminal", 8.0))
+        # 单 WACC 覆盖: 若传入单值则各阶段统一
+        single_wacc = kwargs.get("wacc")
+        if single_wacc is not None:
+            wacc_p1 = wacc_p2 = wacc_term = float(single_wacc)
 
         # 利润率目标: 趋向行业均值 12%
         current_margin = op_margin / 100.0
@@ -75,7 +113,7 @@ class ThreeStageGrowthMethod(ValuationMethod):
 
         current_rev = float(rev_ttm_yi)
 
-        # Stage 1: 高增期
+        # Stage 1: 高增期 (用 wacc_p1)
         p1_fcf = []
         for yr in range(p1_years):
             decay = yr / p1_years
@@ -88,11 +126,11 @@ class ThreeStageGrowthMethod(ValuationMethod):
             yr_margin = current_margin + margin_improve
             yr_ebit = next_rev * yr_margin
             yr_fcf = yr_ebit * (1 - tax_rate) - rev_inc * reinvest_rate
-            pv = yr_fcf / ((1 + wacc / 100.0) ** (yr + 1))
+            pv = yr_fcf * cls._discount_factor(yr + 1, wacc_p1, use_ccf)
             p1_fcf.append(pv)
             current_rev = next_rev
 
-        # Stage 2: 过渡期
+        # Stage 2: 过渡期 (用 wacc_p2)
         p2_start_growth_rate = rev_growth * (1 - 0.35)  # 前期末的增速
         p2_fcf = []
         for yr in range(p2_years):
@@ -105,16 +143,22 @@ class ThreeStageGrowthMethod(ValuationMethod):
             yr_margin = target_margin
             yr_ebit = next_rev * yr_margin
             yr_fcf = yr_ebit * (1 - tax_rate) - rev_inc * reinvest_rate
-            pv = yr_fcf / ((1 + wacc / 100.0) ** (p1_years + t))
+            # 折现回当期: 前3年用wacc_p1, 之后用wacc_p2
+            p1_pv = cls._discount_factor(p1_years, wacc_p1, use_ccf)
+            p2_pv = cls._discount_factor(t, wacc_p2, use_ccf)
+            pv = yr_fcf * p1_pv * p2_pv
             p2_fcf.append(pv)
             current_rev = next_rev
 
-        # Stage 3: 终端价值
+        # Stage 3: 终端价值 (用 wacc_term)
         terminal_rev = current_rev * (1 + terminal_growth / 100.0)
         terminal_ebit = terminal_rev * target_margin
         terminal_fcf = terminal_ebit * (1 - tax_rate)
-        tv = terminal_fcf / ((wacc - terminal_growth) / 100.0)
-        pv_tv = tv / ((1 + wacc / 100.0) ** (p1_years + p2_years))
+        tv = terminal_fcf / ((wacc_term - terminal_growth) / 100.0)
+        # TV 折现: stage1+stage2 全部用各阶段对应 wacc
+        p1_pv = cls._discount_factor(p1_years, wacc_p1, use_ccf)
+        p2_pv = cls._discount_factor(p2_years, wacc_p2, use_ccf)
+        pv_tv = tv * p1_pv * p2_pv
 
         # 内在价值
         total_fcf_pv = sum(p1_fcf) + sum(p2_fcf) + pv_tv
@@ -135,8 +179,6 @@ class ThreeStageGrowthMethod(ValuationMethod):
         # 隐含 PE
         implied_pe = 0
         if per_share_value > 0 and current_price > 0 and mcap_yi > 0:
-            implied_eps = (op_margin * rev_ttm_yi * (1 - tax_rate) * 1e8) / total_shares / 1e8 if total_shares > 0 else 0
-            implied_eps_actual = implied_eps * 1e8 if rev_ttm_yi > 0 else 0
             pe_ttm_val = kwargs.get("pe_ttm")
             if current_price > 0 and pe_ttm_val:
                 implied_pe = per_share_value / (current_price / pe_ttm_val) if (current_price / pe_ttm_val) > 0 else 0
@@ -154,7 +196,7 @@ class ThreeStageGrowthMethod(ValuationMethod):
             "three_stage_value": round(per_share_value, 2),
             "three_stage_upside_pct": round(upside, 1),
             "three_stage_terminal_fcf": round(terminal_fcf, 2),
-            "three_stage_assumed_wacc": wacc,
+            "three_stage_assumed_wacc": wacc_term,
             "three_stage_phase1_years": p1_years,
             "three_stage_margin_target": round(target_margin * 100, 1),
             "three_stage_implied_pe": round(implied_pe, 2) if implied_pe else None,

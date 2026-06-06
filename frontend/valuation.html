@@ -87,6 +87,7 @@
             <button class="tab-btn" onclick="Valuation.switchTab('peband')" id="vt-peband">PE Band</button>
             <button class="tab-btn" onclick="Valuation.switchTab('details')" id="vt-details">方法详情</button>
             <button class="tab-btn" onclick="Valuation.switchTab('compare')" id="vt-compare">对比分析</button>
+            <button class="tab-btn" onclick="Valuation.switchTab('sim')" id="vt-sim">仿真分析</button>
         </div>
 
         <!-- Tab 1: Dashboard -->
@@ -119,6 +120,41 @@
             </div>
             <div id="cmp-result" style="font-size:11px;color:var(--text-dim);overflow-y:auto;flex:1;"></div>
         </div>
+
+        <!-- Tab 5: Simulation -->
+        <div class="tab-panel" id="vtab-sim" style="flex:1;display:none;flex-direction:column;gap:8px;overflow-y:auto;">
+            <div style="display:flex;gap:10px;flex:1;">
+                <!-- Left: Controls -->
+                <div style="width:340px;min-width:300px;display:flex;flex-direction:column;gap:6px;">
+                    <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;">
+                        <select id="sim-method" style="flex:1;background:#000;border:1px solid var(--border-color);color:#fff;padding:5px 8px;border-radius:4px;font-size:11px;"></select>
+                        <span style="font-size:9px;color:var(--text-micro);">→</span>
+                        <select id="sim-target" style="flex:1;background:#000;border:1px solid var(--border-color);color:#fff;padding:5px 8px;border-radius:4px;font-size:10px;"></select>
+                    </div>
+                    <div style="font-size:9px;color:var(--text-micro);line-height:1.4;padding:4px 6px;background:rgba(255,255,255,0.02);border-radius:3px;" id="sim-method-desc"></div>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <span style="font-size:10px;color:var(--text-dim);">迭代:</span>
+                        <input type="number" id="sim-iterations" value="5000" min="100" max="50000" style="width:80px;background:#000;border:1px solid var(--border-color);color:#fff;padding:3px 6px;border-radius:3px;font-size:10px;">
+                        <button class="btn-action btn-primary" onclick="ValuationSim.run()" id="btn-sim-run" style="font-size:10px;padding:4px 10px;">
+                            <i class="fas fa-rocket"></i> 运行仿真
+                        </button>
+                    </div>
+                    <div style="font-size:10px;color:var(--text-dim);font-weight:500;padding:4px 0;">参数分布配置</div>
+                    <div id="sim-params" style="flex:1;overflow-y:auto;"></div>
+                    <div id="sim-status" style="font-size:9px;color:var(--text-micro);text-align:center;"></div>
+                </div>
+                <!-- Right: Results -->
+                <div id="sim-result" style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;">
+                    <div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-dim);font-size:11px;">
+                        <div style="text-align:center;">
+                            <div style="font-size:40px;opacity:0.2;margin-bottom:8px;">&#9881;</div>
+                            <div>配置参数后点击「运行仿真」</div>
+                            <div style="font-size:9px;color:var(--text-micro);margin-top:4px;">对关键参数设定概率分布, 观察估值结果的分布形态</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
 </div>
@@ -132,8 +168,12 @@
 <script src="js/ui.js"></script>
 <script src="js/common.js"></script>
 <script src="js/valuation.js"></script>
+<script src="js/simulation.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() { Valuation.init(); });
+document.addEventListener('DOMContentLoaded', function() {
+    Valuation.init();
+    if (window.ValuationSim) ValuationSim.init();
+});
 window.refreshPageData = function() {};
 </script>
 </body>

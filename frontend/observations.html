@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -91,6 +91,8 @@
             <div class="tabs">
                 <div class="tab active" data-tab="extract" onclick="ExtractUI.switchTab('extract')">待提取预览</div>
                 <div class="tab" data-tab="saved" onclick="ExtractUI.switchTab('saved')">已入库观察</div>
+                <div class="tab" data-tab="plans" onclick="ExtractUI.switchTab('plans')">监控计划</div>
+                <div class="tab" data-tab="signals" onclick="ExtractUI.switchTab('signals')">信号事件 <span id="signal-badge" style="display:none;background:#ef4444;color:#fff;border-radius:8px;padding:0 6px;font-size:10px;margin-left:4px;">0</span></div>
             </div>
 
             <!-- Tab: Extract Preview -->
@@ -121,6 +123,81 @@
                         <tbody id="extract-tbody"></tbody>
                     </table>
                 </div>
+            </div>
+
+            <!-- Tab: Monitor Plans -->
+            <div class="obs-content" id="tab-plans" style="display:none;">
+                <div class="filter-bar">
+                    <button class="btn btn-primary" onclick="MonitorUI.generateFromReport()"><i class="fas fa-magic"></i> 生成监控计划</button>
+                    <button class="btn btn-outline" onclick="MonitorUI.checkAll()"><i class="fas fa-play"></i> 执行检查</button>
+                    <button class="btn btn-outline" onclick="MonitorUI.load()"><i class="fas fa-sync"></i> 刷新</button>
+                    <label>状态:</label>
+                    <select id="plan-filter-status" onchange="MonitorUI.load()">
+                        <option value="">全部</option>
+                        <option value="draft">draft</option>
+                        <option value="active">active</option>
+                        <option value="paused">paused</option>
+                        <option value="archived">archived</option>
+                    </select>
+                    <label>级别:</label>
+                    <select id="plan-filter-level" onchange="MonitorUI.load()">
+                        <option value="">全部</option>
+                        <option value="stock">个股</option>
+                        <option value="industry">行业</option>
+                    </select>
+                    <input id="plan-filter-stock" placeholder="股票代码" style="width:80px;" onchange="MonitorUI.load()">
+                    <span class="info" id="plan-count-display"></span>
+                </div>
+                <table class="obs-table" id="plans-table">
+                    <thead><tr>
+                        <th>计划名称</th>
+                        <th style="width:50px;">级别</th>
+                        <th style="width:80px;">目标</th>
+                        <th style="width:70px;">信号方向</th>
+                        <th style="width:60px;">频率</th>
+                        <th style="width:80px;">最近检查</th>
+                        <th style="width:60px;">状态</th>
+                        <th style="width:80px;">操作</th>
+                    </tr></thead>
+                    <tbody id="plans-tbody"><tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-dim);">暂无监控计划，点击「生成监控计划」从研报创建</td></tr></tbody>
+                </table>
+            </div>
+
+            <!-- Tab: Signal Events -->
+            <div class="obs-content" id="tab-signals" style="display:none;">
+                <div class="filter-bar">
+                    <button class="btn btn-outline" onclick="SignalUI.load()"><i class="fas fa-sync"></i> 刷新</button>
+                    <label>状态:</label>
+                    <select id="signal-filter-status" onchange="SignalUI.load()">
+                        <option value="">全部</option>
+                        <option value="pending_review">待审核</option>
+                        <option value="confirmed">已确认</option>
+                        <option value="dismissed">已忽略</option>
+                        <option value="acted">已执行</option>
+                    </select>
+                    <label>方向:</label>
+                    <select id="signal-filter-direction" onchange="SignalUI.load()">
+                        <option value="">全部</option>
+                        <option value="buy">买入</option>
+                        <option value="sell">卖出</option>
+                        <option value="neutral">中性</option>
+                    </select>
+                    <input id="signal-filter-stock" placeholder="股票代码" style="width:80px;" onchange="SignalUI.load()">
+                    <span class="info" id="signal-count-display"></span>
+                </div>
+                <table class="obs-table" id="signals-table">
+                    <thead><tr>
+                        <th>信号标题</th>
+                        <th style="width:50px;">方向</th>
+                        <th style="width:50px;">强度</th>
+                        <th style="width:56px;">置信度</th>
+                        <th style="width:70px;">股票/行业</th>
+                        <th style="width:80px;">触发时间</th>
+                        <th style="width:70px;">状态</th>
+                        <th style="width:80px;">操作</th>
+                    </tr></thead>
+                    <tbody id="signals-tbody"><tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-dim);">暂无信号事件</td></tr></tbody>
+                </table>
             </div>
 
             <!-- Tab: Saved Observations -->
@@ -221,7 +298,11 @@ const ExtractUI = {
         document.querySelector(`.tabs .tab[data-tab="${tab}"]`).classList.add('active');
         document.getElementById('tab-extract').style.display = tab === 'extract' ? 'block' : 'none';
         document.getElementById('tab-saved').style.display = tab === 'saved' ? 'block' : 'none';
+        document.getElementById('tab-plans').style.display = tab === 'plans' ? 'block' : 'none';
+        document.getElementById('tab-signals').style.display = tab === 'signals' ? 'block' : 'none';
         if (tab === 'saved') this.refreshSaved();
+        if (tab === 'plans') MonitorUI.load();
+        if (tab === 'signals') SignalUI.load();
     },
 
     // ── 提取预览 ────────────────────────────────
@@ -457,6 +538,418 @@ const ExtractUI = {
         }
     },
 };
+
+// ═══ MonitorUI — 监控计划管理 ═════════════════════
+const MonitorUI = {
+    async load() {
+        const tbody = document.getElementById('plans-tbody');
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text-dim);"><i class="fas fa-spinner fa-pulse"></i> 加载中...</td></tr>';
+        const params = {};
+        const status = document.getElementById('plan-filter-status').value;
+        const level = document.getElementById('plan-filter-level').value;
+        const stock = document.getElementById('plan-filter-stock').value.trim();
+        if (status) params.status = status;
+        if (level) params.level = level;
+        if (stock) params.stock_code = stock;
+        try {
+            const data = await API.get('/monitor/plans', params);
+            this.render(data.plans || []);
+            document.getElementById('plan-count-display').textContent = `共 ${data.total} 条`;
+        } catch (e) {
+            console.error('[MonitorUI] load failed:', e);
+            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:30px;color:#f87171;">加载失败: ${escHtml(e.message)}</td></tr>`;
+        }
+    },
+
+    render(plans) {
+        const tbody = document.getElementById('plans-tbody');
+        if (!plans.length) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-dim);">暂无监控计划</td></tr>';
+            return;
+        }
+        let html = '';
+        plans.forEach(p => {
+            const levelLabel = p.level === 'industry' ? '🏭' : '📈';
+            const target = p.level === 'stock' ? (p.target_stock_code || '-') : (p.target_industry || '-');
+            const dirMap = {buy: '买入↑', sell: '卖出↓', neutral: '中性—'};
+            const intervalDays = Math.round((p.check_interval_hours || 168) / 24);
+            const statusBadge = p.status === 'active' ? 'badge-step6' : p.status === 'draft' ? 'badge-step3' : '';
+            html += `<tr>
+                <td><div style="cursor:pointer;" onclick="MonitorUI.showDetail('${p.id}')" title="${escHtml(p.description || p.name)}">${escHtml((p.name || '').substring(0, 40))}</div></td>
+                <td>${levelLabel}</td>
+                <td style="font-size:10px;">${escHtml(target)}</td>
+                <td style="font-size:10px;">${dirMap[p.signal_direction] || p.signal_direction}</td>
+                <td style="font-size:10px;">${intervalDays}d</td>
+                <td style="font-size:10px;color:var(--text-micro);">${p.last_check_at ? p.last_check_at.substring(0,10) : '-'}</td>
+                <td><span class="badge ${statusBadge}" style="font-size:9px;">${p.status}</span></td>
+                <td style="font-size:10px;">
+                    <button class="btn btn-outline" style="font-size:9px;padding:2px 6px;" onclick="MonitorUI.toggleStatus('${p.id}','${p.status}')">${p.status==='active'?'暂停':'激活'}</button>
+                    <button class="btn btn-outline" style="font-size:9px;padding:2px 6px;" onclick="MonitorUI.checkOne('${p.id}')">检查</button>
+                    ${p.status === 'archived' ? `<button class="btn btn-outline" style="font-size:9px;padding:2px 6px;" onclick="MonitorUI.deletePlan('${p.id}')">删除</button>` : ''}
+                </td>
+            </tr>`;
+        });
+        tbody.innerHTML = html;
+    },
+
+    async showDetail(planId) {
+        try {
+            const p = await API.get('/monitor/plans/' + planId);
+            const signals = await API.get('/monitor/signals', {plan_id: planId, limit: 20});
+            const searchConfig = JSON.stringify(JSON.parse(p.search_config || '[]'), null, 2);
+            const triggerInst = escHtml(p.trigger_instruction || '-');
+            const cascade = JSON.stringify(JSON.parse(p.cascade_to_stocks || '[]'), null, 2);
+            const sigList = (signals.signals||[]);
+            const sigHtml = sigList.length ? sigList.map(s => '[' + s.signal_direction + '] ' + s.title + ' (' + s.status + ') ' + (s.triggered_at||'').substring(0,10)).join('\n') : '无';
+
+            let detailHtml = `
+<h3>${escHtml(p.name)}</h3>
+<table style="font-size:11px;width:100%;border-collapse:collapse;">
+  <tr><td style="padding:3px 8px;color:var(--text-micro);width:80px;">级别</td><td>${p.level}</td></tr>
+  <tr><td style="padding:3px 8px;color:var(--text-micro);">目标</td><td>${p.target_stock_code || p.target_stock_name || p.target_industry || '-'}</td></tr>
+  <tr><td style="padding:3px 8px;color:var(--text-micro);">信号</td><td>${p.signal_direction} / ${p.signal_strength}</td></tr>
+  <tr><td style="padding:3px 8px;color:var(--text-micro);">频率</td><td>${Math.round(p.check_interval_hours/24)}天 / 冷却${p.cooldown_days}天</td></tr>
+  <tr><td style="padding:3px 8px;color:var(--text-micro);">状态</td><td>${p.status} (检查${p.total_checks}次)</td></tr>
+  <tr><td style="padding:3px 8px;color:var(--text-micro);">最近检查</td><td>${p.last_check_at || '-'}</td></tr>
+  <tr><td style="padding:3px 8px;color:var(--text-micro);">最近触发</td><td>${p.last_triggered_at || '-'}</td></tr>
+  <tr><td style="padding:3px 8px;color:var(--text-micro);">来源</td><td>${p.source_report_id || '-'} / ${p.source_step || '-'}</td></tr>
+</table>
+<p style="margin-top:8px;font-size:11px;color:var(--text-dim);">${escHtml(p.description || '')}</p>
+<h4 style="margin-top:10px;font-size:12px;">触发指令</h4>
+<pre style="font-size:10px;">${triggerInst}</pre>
+<h4 style="margin-top:10px;font-size:12px;">搜索配置</h4>
+<pre style="font-size:10px;">${searchConfig}</pre>`;
+            if (cascade !== '[]') {
+                detailHtml += `<h4 style="margin-top:10px;font-size:12px;">级联股票</h4><pre style="font-size:10px;">${cascade}</pre>`;
+            }
+            detailHtml += `<h4 style="margin-top:10px;font-size:12px;">相关信号 (${sigList.length})</h4>
+<pre style="font-size:10px;">${sigHtml}</pre>`;
+
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay';
+            overlay.innerHTML = `<div class="modal-box" style="max-width:700px;">${detailHtml}<button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">关闭</button></div>`;
+            overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+            document.body.appendChild(overlay);
+        } catch (e) {
+            console.error('[MonitorUI] showDetail failed:', e);
+        }
+    },
+
+    async toggleStatus(planId, currentStatus) {
+        const newStatus = currentStatus === 'active' ? 'paused' : 'active';
+        try {
+            await API.patch('/monitor/plans/' + planId + '/status', {status: newStatus});
+            this.load();
+        } catch (e) {
+            await Modal.alert('操作失败', e.message || String(e));
+        }
+    },
+
+    async checkOne(planId) {
+        try {
+            const r = await API.post('/monitor/execute', {plan_id: planId});
+            if (r.triggered) {
+                await Modal.alert('检查完成', '信号触发: ' + (r.signal?.title || ''));
+            } else {
+                await Modal.alert('检查完成', '未触发信号');
+            }
+            this.load();
+            SignalUI.refreshBadge();
+        } catch (e) {
+            await Modal.alert('检查失败', e.message || String(e));
+        }
+    },
+
+    async checkAll() {
+        try {
+            const r = await API.post('/monitor/execute', {});
+            await Modal.alert('批量检查完成', '检查 ' + r.checked + ' 计划, 触发 ' + r.triggered + ' 信号');
+            this.load();
+            SignalUI.refreshBadge();
+        } catch (e) {
+            await Modal.alert('批量检查失败', e.message || String(e));
+        }
+    },
+
+    async deletePlan(planId) {
+        const ok = await Modal.confirm('确认删除', '删除后关联的信号事件也将被删除，确认？');
+        if (!ok) return;
+        try {
+            await API.del('/monitor/plans/' + planId);
+            this.load();
+        } catch (e) {
+            await Modal.alert('删除失败', e.message || String(e));
+        }
+    },
+
+    async generateFromReport() {
+        try {
+            const reports = await API.get('/research/reports');
+            const reportList = (reports.reports || reports.data || []);
+            if (!reportList.length) {
+                await Modal.alert('提示', '没有找到研报，请先运行投研 Pipeline');
+                return;
+            }
+            const listHtml = reportList.map(r =>
+                `<label style="display:block;padding:4px 0;cursor:pointer;">
+                    <input type="radio" name="report-select" value="${r.report_id}">
+                    ${escHtml(r.title || r.industry || r.report_id)} (${(r.created_at || '').substring(0,10)})
+                 </label>`
+            ).join('');
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay';
+            overlay.innerHTML = `<div class="modal-box">
+                <h3>选择研报生成监控计划</h3>
+                <p style="font-size:11px;color:var(--text-dim);margin-bottom:8px;">将用 LLM 分析研报内容，自动建议监控计划</p>
+                <div style="max-height:300px;overflow-y:auto;">${listHtml}</div>
+                <button class="btn btn-primary" style="margin-top:12px;" onclick="MonitorUI._doGenerate(this)"><i class="fas fa-magic"></i> 开始生成</button>
+                <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">取消</button>
+            </div>`;
+            overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+            document.body.appendChild(overlay);
+        } catch (e) {
+            console.error('[MonitorUI] generateFromReport failed:', e);
+            await Modal.alert('加载失败', e.message || String(e));
+        }
+    },
+
+    async _doGenerate(btn) {
+        const selected = document.querySelector('input[name="report-select"]:checked');
+        if (!selected) { await Modal.alert('提示', '请选择一份研报'); return; }
+        const reportId = selected.value;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-pulse"></i> LLM 分析中...';
+        try {
+            const r = await API.post('/monitor/generate', {report_id: reportId});
+            const plans = r.plans || [];
+            if (!plans.length) {
+                await Modal.alert('生成结果', 'LLM 未建议监控计划');
+                return;
+            }
+            const reviewHtml = plans.map((p, i) =>
+                `<div style="border:1px solid var(--border-color);border-radius:4px;padding:10px;margin:8px 0;">
+                    <label style="cursor:pointer;">
+                        <input type="checkbox" class="plan-approve" data-idx="${i}" checked>
+                        <strong>${escHtml(p.name || '未命名计划')}</strong>
+                    </label>
+                    <div style="font-size:10px;color:var(--text-dim);margin-top:4px;">
+                        方向: ${p.signal_direction} / 强度: ${p.signal_strength} / 频率: ${Math.round((p.check_interval_hours||168)/24)}天
+                        | 级别: ${p.level} | 目标: ${p.target_stock_code || p.target_stock_name || p.target_industry || '-'}
+                    </div>
+                    <div style="font-size:10px;margin-top:2px;">${escHtml((p.description || p.reasoning || '').substring(0, 150))}</div>
+                    <button class="btn btn-outline" style="font-size:9px;padding:2px 6px;margin-top:4px;" onclick="MonitorUI._togglePlanDetail(${i})">详情</button>
+                    <pre id="plan-detail-${i}" style="display:none;font-size:9px;margin-top:4px;">${escHtml(JSON.stringify(p, null, 2))}</pre>
+                </div>`
+            ).join('');
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay';
+            overlay.innerHTML = `<div class="modal-box" style="max-width:700px;">
+                <h3>LLM 建议的监控计划 (${plans.length})</h3>
+                <p style="font-size:11px;color:var(--text-dim);margin-bottom:8px;">请审核并勾选要保存的计划</p>
+                <div style="max-height:400px;overflow-y:auto;">${reviewHtml}</div>
+                <div style="margin-top:12px;display:flex;gap:8px;">
+                    <button class="btn btn-success" onclick="MonitorUI._saveApprovedPlans(this)"><i class="fas fa-save"></i> 保存选中计划</button>
+                    <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">取消</button>
+                </div>
+            </div>`;
+            overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+            btn.closest('.modal-overlay').remove();
+            document.body.appendChild(overlay);
+        } catch (e) {
+            console.error('[MonitorUI] _doGenerate failed:', e);
+            await Modal.alert('生成失败', e.message || String(e));
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-magic"></i> 开始生成';
+        }
+    },
+
+    _togglePlanDetail(idx) {
+        const el = document.getElementById('plan-detail-' + idx);
+        if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    },
+
+    async _saveApprovedPlans(btn) {
+        const checked = document.querySelectorAll('.plan-approve:checked');
+        if (!checked.length) { await Modal.alert('提示', '请至少勾选一个计划'); return; }
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-pulse"></i> 保存中...';
+        try {
+            const plans = [];
+            checked.forEach(cb => {
+                const idx = parseInt(cb.dataset.idx);
+                const detailEl = document.getElementById('plan-detail-' + idx);
+                if (detailEl && detailEl.textContent) {
+                    try {
+                        const p = JSON.parse(detailEl.textContent);
+                        delete p.reasoning;
+                        plans.push(p);
+                    } catch(e) { console.error('[MonitorUI] parse detail:', e); }
+                }
+            });
+            if (!plans.length) { await Modal.alert('错误', '无法获取计划数据'); return; }
+            let saved = 0;
+            for (const plan of plans) {
+                await API.post('/monitor/plans', plan);
+                saved++;
+            }
+            await Modal.alert('保存成功', '已保存 ' + saved + ' 个监控计划');
+            btn.closest('.modal-overlay').remove();
+            this.load();
+        } catch (e) {
+            console.error('[MonitorUI] _saveApprovedPlans failed:', e);
+            await Modal.alert('保存失败', e.message || String(e));
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-save"></i> 保存选中计划';
+        }
+    },
+};
+
+// ═══ SignalUI — 信号事件管理 ═════════════════════
+const SignalUI = {
+    async load() {
+        const tbody = document.getElementById('signals-tbody');
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text-dim);"><i class="fas fa-spinner fa-pulse"></i> 加载中...</td></tr>';
+        const params = {};
+        const status = document.getElementById('signal-filter-status').value;
+        const direction = document.getElementById('signal-filter-direction').value;
+        const stock = document.getElementById('signal-filter-stock').value.trim();
+        if (status) params.status = status;
+        if (direction) params.direction = direction;
+        if (stock) params.stock_code = stock;
+        params.limit = 200;
+        try {
+            const data = await API.get('/monitor/signals', params);
+            this.render(data.signals || []);
+            document.getElementById('signal-count-display').textContent = `共 ${data.total} 条`;
+            this.refreshBadge();
+        } catch (e) {
+            console.error('[SignalUI] load failed:', e);
+            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:30px;color:#f87171;">加载失败: ${escHtml(e.message)}</td></tr>`;
+        }
+    },
+
+    render(signals) {
+        const tbody = document.getElementById('signals-tbody');
+        if (!signals.length) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-dim);">暂无信号事件</td></tr>';
+            return;
+        }
+        let html = '';
+        signals.forEach(s => {
+            const dirClass = s.signal_direction === 'buy' ? 'dir-positive' :
+                s.signal_direction === 'sell' ? 'dir-negative' : 'dir-neutral';
+            const dirIcon = s.signal_direction === 'buy' ? '↑买入' :
+                s.signal_direction === 'sell' ? '↓卖出' : '—中性';
+            const strongLabel = s.signal_strength === 'strong' ? '🔴' :
+                s.signal_strength === 'medium' ? '🟡' : '🟢';
+            const target = s.related_stock_code || s.related_stock_name || s.target_industry || '-';
+            const statusBg = s.status === 'pending_review' ? 'rgba(251,191,36,0.15);color:#fbbf24' :
+                s.status === 'confirmed' ? 'rgba(52,211,153,0.15);color:#34d399' :
+                s.status === 'dismissed' ? 'rgba(100,100,100,0.15);color:#999' :
+                'rgba(96,165,250,0.15);color:#60a5fa';
+
+            html += `<tr>
+                <td><div style="cursor:pointer;" onclick="SignalUI.showDetail('${s.id}')" title="${escHtml(s.description || s.title)}">${escHtml((s.title || '').substring(0, 50))}</div></td>
+                <td class="${dirClass}" style="font-size:10px;">${dirIcon}</td>
+                <td style="font-size:10px;">${strongLabel} ${s.signal_strength}</td>
+                <td style="font-size:10px;">${s.confidence}</td>
+                <td style="font-size:10px;">${escHtml(target)}</td>
+                <td style="font-size:10px;color:var(--text-micro);">${(s.triggered_at || '').substring(0, 16)}</td>
+                <td><span class="badge" style="font-size:9px;background:${statusBg};">${s.status}</span></td>
+                <td style="font-size:10px;">
+                    ${s.status === 'pending_review' ? `
+                        <button class="btn btn-outline" style="font-size:9px;padding:2px 6px;color:#34d399;" onclick="SignalUI.confirm('${s.id}')">确认</button>
+                        <button class="btn btn-outline" style="font-size:9px;padding:2px 6px;color:#f87171;" onclick="SignalUI.dismiss('${s.id}')">忽略</button>
+                    ` : ''}
+                    <button class="btn btn-outline" style="font-size:9px;padding:2px 6px;" onclick="SignalUI.showDetail('${s.id}')">详情</button>
+                </td>
+            </tr>`;
+        });
+        tbody.innerHTML = html;
+    },
+
+    async showDetail(signalId) {
+        try {
+            const s = await API.get('/monitor/signals/' + signalId);
+            let evidence = [];
+            try { evidence = JSON.parse(s.evidence || '[]'); } catch(e) {}
+            const evidenceHtml = evidence.length ? evidence.map(e =>
+                `<div style="border:1px solid var(--border-color);border-radius:3px;padding:6px;margin:4px 0;font-size:10px;">
+                    <div>来源: ${e.source || '?'} | 相关度: ${e.relevance || '?'}</div>
+                    <div>${escHtml(e.snippet || '')}</div>
+                    ${e.url ? `<a href="${e.url}" target="_blank" style="color:#60a5fa;">${escHtml(e.url.substring(0,60))}</a>` : ''}
+                </div>`
+            ).join('') : '无';
+
+            const html = `
+<h3>${escHtml(s.title)}</h3>
+<table style="font-size:11px;width:100%;border-collapse:collapse;">
+  <tr><td style="padding:3px 8px;color:var(--text-micro);width:80px;">方向</td><td>${s.signal_direction}</td></tr>
+  <tr><td style="padding:3px 8px;color:var(--text-micro);">强度</td><td>${s.signal_strength}</td></tr>
+  <tr><td style="padding:3px 8px;color:var(--text-micro);">置信度</td><td>${s.confidence}</td></tr>
+  <tr><td style="padding:3px 8px;color:var(--text-micro);">触发时间</td><td>${s.triggered_at}</td></tr>
+  <tr><td style="padding:3px 8px;color:var(--text-micro);">股票</td><td>${s.related_stock_code || s.related_stock_name || '-'}</td></tr>
+  <tr><td style="padding:3px 8px;color:var(--text-micro);">行业</td><td>${s.target_industry || '-'}</td></tr>
+  <tr><td style="padding:3px 8px;color:var(--text-micro);">监控计划</td><td>${escHtml(s.plan_name || s.plan_id)}</td></tr>
+  <tr><td style="padding:3px 8px;color:var(--text-micro);">状态</td><td>${s.status}</td></tr>
+</table>
+<p style="margin-top:8px;font-size:11px;">${escHtml(s.description || '')}</p>
+<h4 style="margin-top:10px;font-size:12px;">证据 (${evidence.length})</h4>
+${evidenceHtml}`;
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay';
+            overlay.innerHTML = `<div class="modal-box" style="max-width:650px;">${html}<button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()" style="margin-top:12px;">关闭</button></div>`;
+            overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+            document.body.appendChild(overlay);
+        } catch (e) {
+            console.error('[SignalUI] showDetail failed:', e);
+        }
+    },
+
+    async confirm(signalId) {
+        try {
+            await API.patch('/monitor/signals/' + signalId + '/status', {status: 'confirmed'});
+            this.load();
+        } catch (e) {
+            await Modal.alert('操作失败', e.message || String(e));
+        }
+    },
+
+    async dismiss(signalId) {
+        try {
+            await API.patch('/monitor/signals/' + signalId + '/status', {status: 'dismissed'});
+            this.load();
+        } catch (e) {
+            await Modal.alert('操作失败', e.message || String(e));
+        }
+    },
+
+    async act(signalId) {
+        try {
+            await API.patch('/monitor/signals/' + signalId + '/status', {status: 'acted'});
+            this.load();
+        } catch (e) {
+            await Modal.alert('操作失败', e.message || String(e));
+        }
+    },
+
+    async refreshBadge() {
+        try {
+            const stats = await API.get('/monitor/stats/counts');
+            const pending = stats.signals?.pending_review || 0;
+            const badge = document.getElementById('signal-badge');
+            if (pending > 0) {
+                badge.style.display = 'inline';
+                badge.textContent = '' + pending;
+            } else {
+                badge.style.display = 'none';
+            }
+        } catch(e) {
+            console.error('[SignalUI] refreshBadge failed:', e);
+        }
+    },
+};
+
 
 // ── 初始化 ─────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {

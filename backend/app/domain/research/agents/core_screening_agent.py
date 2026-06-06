@@ -509,6 +509,7 @@ class CoreScreeningAgent(ResearchAgent):
                 "industry_context": analysis.get("industry_context", ""),
                 "profit_capture_thesis": analysis.get("profit_capture_thesis", ""),
                 "thesis_breakers": analysis.get("thesis_breakers", []),
+                "watch_events": analysis.get("watch_events", []),
                 "roic_note": analysis.get("roic_note", ""),
             },
         }
@@ -877,14 +878,14 @@ class CoreScreeningAgent(ResearchAgent):
             else:
                 stage_map[code] = "startup"
 
-        from app.domain.research.agents.financial_auditor import FinancialAuditor
-        auditor = FinancialAuditor(provider=self.provider)
+        from app.domain.research.services.stock_auditor import StockAuditor
+        auditor = StockAuditor(provider=self.provider)
         for c in passed[:10]:
             code = c["code"]
             try:
-                audit = await auditor.analyze({"stock_code": code, "stock_name": c.get("name", ""), "industry": industry})
-                if audit and audit.get("verdict"):
-                    c["audit"] = {"verdict": audit["verdict"], "score": audit.get("score", 0)}
+                audit = await auditor.audit_summary(code)
+                if audit and audit.get("financial_verdict"):
+                    c["audit"] = {"verdict": audit["financial_verdict"], "score": audit.get("financial_score", 0)}
             except Exception:
                 pass
 
@@ -1141,16 +1142,19 @@ class CoreScreeningAgent(ResearchAgent):
 
 {{FINANCIAL_CATALOG}}
 
-## 可选参考框架 (Serenity 5因子模型)
-以下是一套供应链瓶颈分析框架，可作为自定义分析维度的灵感来源，**不是预设要求**：
+## 可选参考 (个股级分析角度)
+以下两条是上游步骤只覆盖到"环节"级、需要在本步骤深化到"个股"级的分析角度，**不是预设要求**：
 
-1. **确定需求 (Certain Demand)** — 下游需求是否已验证？是补库还是结构性增长？
-2. **受限供给 (Constrained Supply)** — 该环节全球几家供应商？扩产周期多长？认证壁垒多高？客户切换成本？
-3. **低关注度 (Low Attention)** — 机构覆盖吗？散户听得懂吗？媒体写透了吗？定价是否充分？
-4. **价值捕获 (Value Capture)** — 公司有定价权吗？毛利率趋势？客户锁定程度？在产业链利润池中占比？
-5. **催化剂 (Catalyst)** — 近期有什么触发因素？(财报/客户量产/政策落地/产能释放/认证通过)
+1. **个股关注度差 (Stock-Level Attention Gap)** —
+   同一个瓶颈环节的不同 A 股标的，机构关注度和定价效率可能天差地别。
+   这个标的是被充分研究的，还是被市场忽略的？
 
-你可以选择其中任意因子作为分析维度的灵感，也可以完全不用。
+2. **公司级价值捕获验证 (Firm-Level Value Capture)** —
+   Step 3 指出了该环节利润池规模和定价权分布，但具体这家公司：
+   - 在环节利润池中占多少？份额在扩大还是缩小？
+   - 有没有定价权？毛利率趋势如何？
+   - 客户锁定程度多深？切换成本多高？
+
 
 ## 分析要求
 - **不要使用任何预设的分析框架或维度**。根据 {industry} 行业的竞争特征, 自主定义最能反映公司竞争力的分析维度
@@ -1176,6 +1180,14 @@ class CoreScreeningAgent(ResearchAgent):
   "category_reasoning": "分类理由",
   "profit_capture_thesis": "这家公司在这个产业链环节中, 靠什么机制把产业景气转化为自身利润",
   "thesis_breakers": ["什么条件下会推翻以上判断"],
+  "watch_events": [
+    {
+      "event": "事件描述 (如: XX客户认证通过)",
+      "trigger_condition": "触发信号 (如: 客户财报提及认证进度)",
+      "expected_timeframe": "预期时间窗口 (如: 2026-Q3)",
+      "event_type": "认证突破 | 产能释放 | 客户突破 | 政策落地 | 技术迭代"
+    }
+  ],
   "roic_note": "如查询了 ROIC/ROIIC 等资本回报率数据, 在此注明关键结论"
 }}"""
 

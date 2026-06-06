@@ -140,26 +140,30 @@ async def macro_cycle_pipeline(industry: str = "", provider=None, params: dict =
     }
 
 
-@register("founder_audit", "创始人审计", "核心团队背景、专利质量、股权激励穿透审计")
+@register("founder_audit", "创始人审计", "核心团队背景、人才能力、组织健康度审计 (StockAuditor)")
 async def founder_audit_pipeline(codes_str: str = "", provider=None, params: dict = None):
-    """创始人深度审计 — 对指定股票列表运行 HumanCapitalDetective"""
-    from app.domain.research.agents.human_capital_detective import HumanCapitalDetective
+    """创始人深度审计 — 对指定股票列表运行 StockAuditor.human_capital"""
+    from app.domain.research.services.stock_auditor import StockAuditor
 
     codes = [c.strip() for c in (codes_str or "").split(",") if c.strip()] if codes_str else []
     if not codes:
         return {"cio_report": "# 创始人审计报告\n\n未指定股票代码", "top_picks": [], "detail": {}}
 
-    detective = HumanCapitalDetective(provider=provider)
-    tasks = [detective.analyze({"stock_code": c}) for c in codes]
+    auditor = StockAuditor(provider=provider)
+    tasks = [auditor.audit_human_capital(c) for c in codes]
     results = await asyncio.gather(*tasks)
 
-    lines = ["# 创始人审计报告", ""]
+    lines = ["# 人力资本审计报告", ""]
     for r in results:
-        c = r.get("stock_code", "?")
-        fb = r.get("founder_background", {})
-        lines.append(f"## {c}")
-        if fb.get("name"): lines.append(f"创始人: {fb['name']}, {fb.get('education','?')}")
-        if fb.get("prior_experience"): lines.append(f"履历: {fb['prior_experience'][:200]}")
+        c = r.get("code", "?")
+        n = r.get("stock_name", c)
+        v = r.get("verdict", "?")
+        s = r.get("score", "?")
+        lines.append(f"## {n} ({c}) — {v} ({s}/100)")
+        for dim in r.get("dimensions_analyzed", []):
+            lines.append(f"- {dim.get('name')}: {dim.get('verdict')} — {dim.get('finding','')[:120]}")
+        if r.get("risks"):
+            lines.append("风险: " + "; ".join(r["risks"][:3]))
         lines.append("")
 
     return {
@@ -170,26 +174,29 @@ async def founder_audit_pipeline(codes_str: str = "", provider=None, params: dic
     }
 
 
-@register("valuation_scan", "估值扫描", "批量估值定价, 识别低估/高估标的")
+@register("valuation_scan", "估值扫描", "批量估值定价, 识别低估/高估标的 (StockAuditor)")
 async def valuation_scan_pipeline(codes_str: str = "", provider=None, params: dict = None):
     """估值批量扫描"""
-    from app.domain.research.agents.valuation_pricer import ValuationPricer
+    from app.domain.research.services.stock_auditor import StockAuditor
 
     codes = [c.strip() for c in (codes_str or "").split(",") if c.strip()] if codes_str else []
     if not codes:
         return {"cio_report": "# 估值扫描报告\n\n未指定股票代码", "top_picks": [], "detail": {}}
 
-    pricer = ValuationPricer(provider=provider)
-    tasks = [pricer.analyze({"stock": {"code": c, "name": c}, "financial": {}, "human_capital": {}}) for c in codes]
+    auditor = StockAuditor(provider=provider)
+    tasks = [auditor.audit_valuation(c) for c in codes]
     results = await asyncio.gather(*tasks)
 
-    lines = ["# 估值扫描报告", "", "| 代码 | 评级 | 上行空间 | 护城河(年) |", "|------|------|---------|-----------|"]
+    lines = ["# 估值扫描报告", "", "| 代码 | 名称 | 加权目标价 | 情景加权 | 方法数 |", "|------|------|-----------|---------|-------|"]
     for r in results:
         c = r.get("code", "?")
-        v = r.get("verdict", "?")
-        up = r.get("target_valuation", {}).get("upside_pct", "?")
-        mw = r.get("moat_window", {}).get("years", "?")
-        lines.append(f"| {c} | {v} | {up}% | {mw} |")
+        n = r.get("stock_name", c)
+        computed = r.get("computed", {})
+        target = computed.get("weighted_avg_target", "?")
+        sw = computed.get("scenario_weighted", {})
+        sw_price = sw.get("weighted_price", "—") if sw else "—"
+        n_methods = len(computed.get("methods_used", []))
+        lines.append(f"| {c} | {n} | {target} | {sw_price} | {n_methods} |")
 
     return {
         "cio_report": "\n".join(lines),

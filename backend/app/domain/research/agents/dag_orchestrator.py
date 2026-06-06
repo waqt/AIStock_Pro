@@ -123,39 +123,41 @@ class DAGOrchestrator(ResearchAgent):
         if not code:
             return {"code": code, "error": "No code"}
 
-        # FinancialAuditor + HumanCapitalDetective 并行
-        from app.domain.research.agents.financial_auditor import FinancialAuditor
-        from app.domain.research.agents.human_capital_detective import HumanCapitalDetective
+        from app.domain.research.services.stock_auditor import StockAuditor
+        auditor = StockAuditor(provider=self.provider)
+        result = await auditor.audit_full(code, name)
 
-        auditor = FinancialAuditor(provider=self.provider)
-        detective = HumanCapitalDetective(provider=self.provider)
-
-        fin_task = auditor.analyze({"stock_code": code, "stock_name": name})
-        hc_task = detective.analyze({"stock_code": code, "stock_name": name})
-
-        fin_result, hc_result = await asyncio.gather(fin_task, hc_task)
+        fin = result.get("financial", {})
+        hc = result.get("human_capital", {})
         logger.info(
             f"[{self.name}] {code} audited: "
-            f"FA={fin_result.get('verdict', '?')} "
-            f"HC={hc_result.get('verdict', '?')}")
+            f"FA={fin.get('verdict', '?')} "
+            f"HC={hc.get('verdict', '?')}")
 
         return {
             "code": code, "name": name,
-            "financial": fin_result,
-            "human_capital": hc_result,
+            "financial": fin,
+            "human_capital": hc,
         }
 
     # ═══ Phase C: 单股定价 ═══════════════════════
 
     async def _price_stock(self, stock: Dict, audits: Dict) -> Dict:
-        from app.domain.research.agents.valuation_pricer import ValuationPricer
-        pricer = ValuationPricer(provider=self.provider)
+        from app.domain.research.services.stock_auditor import StockAuditor
+        auditor = StockAuditor(provider=self.provider)
         try:
-            return await pricer.analyze({
-                "stock": stock,
-                "financial": audits.get("financial", {}),
-                "human_capital": audits.get("human_capital", {}),
-            })
+            result = await auditor.audit_valuation(stock.get("code", ""), stock.get("name", ""))
+            computed = result.get("computed", {})
+            return {
+                "code": stock.get("code", ""),
+                "target_valuation": {
+                    "upside_pct": result.get("upside_pct"),
+                },
+                "moat_window": {"years": None},
+                "verdict": result.get("summary", ""),
+                "target_price": computed.get("weighted_avg_target"),
+                "scenario": computed.get("scenario_weighted"),
+            }
         except Exception as e:
             logger.warning(f"[{self.name}] Pricer failed for {stock.get('code','?')}: {e}")
             return {"error": str(e), "verdict": "UNKNOWN"}

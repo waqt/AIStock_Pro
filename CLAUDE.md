@@ -54,14 +54,15 @@ backend/app/
 │   │   │   ├── capital_flow_scanner.py  # Step 1b: 全球资本流向扫描
 │   │   │   ├── market_scanner.py        # Step 2: 行业看门人 (V5.10)
 │   │   │   ├── supply_chain_hacker.py   # Step 3: 产业链拆解 (V5.9)
-│   │   │   ├── financial_auditor.py     # Step 7: 8Q剪刀差 + Beneish M-Score
-│   │   │   ├── human_capital_detective.py # Step 8: 创始人/CTO/专利审计
-│   │   │   ├── valuation_pricer.py      # Step 8: 估值定价 (未接入pipeline)
+│   │   │   ├── financial_auditor.py     # [已删除] 改用 stock_auditor
+│   │   │   ├── human_capital_detective.py # [已删除] 改用 stock_auditor
+│   │   │   ├── valuation_pricer.py      # [已删除] 改用 stock_auditor
 │   │   │   ├── dag_orchestrator.py      # 遗留: DAG 并行编排器
 │   │   │   └── coordinator.py           # V3.0 遗留编排器
 │   │   ├── services/
 │   │   │   ├── data_loader.py     #   数据加载 + Web搜索(双源:Brave∥Tavily) + 8Q财报
-│   │   │   └── report_store.py    #   研报 JSON 文件持久化
+│   │   │   ├── report_store.py    #   研报 JSON 文件持久化
+│   │   │   └── stock_auditor.py   #   ★ 股票审计工具 (LLM自主规划, 替代旧Step7/8)
 │   │   └── api/routes.py          #   /api/research/* + /api/research/pipeline/*
 │   └── quant/                     # ★ 量化模块 V5.6
 │       ├── indicators/            #   16个算子 (每文件一算子, @register 自注册)
@@ -135,18 +136,17 @@ Pipeline 整体定位为**三层递进式研究**，每层职责明确，不可�
   核心: 聚焦"产业逻辑"而非"个股研究", 产出供给刚性/利润分配/瓶颈节点。
   线索: output.asset_search_queries 是传递给 Step 6 的唯一搜索接口。
 
-第三层: 资产筛选与验证                   Step 6 (+ 可选 Step 7/8)
+第三层: 资产筛选与验证                   Step 6 (+ StockAuditor 按需调用)
   ├─ 核心资产筛选 (CoreScreeningAgent V5.15) — 四阶段: 线索汇总→搜索→先比较后验证→全局排名
   │    ├─ Phase 1: 线索汇总           (8线索源: a_stock_mapping/bottleneck_inversion/asset_search_query/human_capital)
   │    ├─ Phase 2: 搜索+LLM提取       (双源搜索+深搜a_share_equivalent)
   │    ├─ Phase 3a: 分组+筛选+比较    (_group_by_source → _llm_screen_group → compare_within_source)
   │    ├─ Phase 3b: 逐只验证          (_verify_single: LLM自主定维+tool calling, 无预设维度)
   │    └─ Phase 4: 全局排名           (CandidateComparator.global_ranking + enriched)
-  ├─ 财务审计     (FinancialAuditor)    — 8Q剪刀差+Beneish M-Score (仅 Path A/旧流程保留)
-  └─ 人力资本审计 (HumanCapitalDetective) / 估值定价 (ValuationPricer) — 可选
+  └─ StockAuditor.audit_summary()    — 轻量审计, 供 Step 6 enrichment 对候选池每只标的调用
   职责: 在前道(第二层)提供的产业线索基础上, 挖掘具体资产标的, 通过比较淘汰选出最优解。
   方法: 搜索→LLM提取→分组→Phase A快速筛→同源比较排除→逐只自由验证→全局排名。
-  关键变化(V5.15): FinancialAuditor 不再是固定步骤; 比较器不排名只排除; 验证改为LLM自主定维。
+  关键变化(V5.15+): 旧Step7/8已删除, 改为StockAuditor按需调用; 比较器不排名只排除; 验证改为LLM自主定维。
 ```
 
 **层间接口规范:**
@@ -183,9 +183,9 @@ Step 3  产业链拆解 (SupplyChainHacker V5.9)
 Step 4  系统动力学推演 (SystemDynamicsAgent, 已有)
 Step 5  跨产业关联分析 (CrossIndustryLinkageAgent, 已有)
 Step 6  核心资产筛选 (CoreScreeningAgent V5.15, 含 step2_only 模式)
-Step 7  财务质量审计 (FinancialAuditor, 存在, 但 V5.15 Path C 不再固定调用, 仅 Path A 旧流程保留)
-Step 8  人力资本审计 (HumanCapitalDetective, 可选)
-Step 8  估值定价 (ValuationPricer, 已有, 未接入 pipeline)
+Step 7  财务质量审计 → 已移除, 改用 StockAuditor.audit_financial()
+Step 8  人力资本审计 → 已移除, 改用 StockAuditor.audit_human_capital()
+Step 8  估值定价     → 已移除, 改用 StockAuditor.audit_valuation()
 Step 9  市场预期差 (📋 计划中)
 Step 10 风险分析 (📋 计划中)
 Step 11 综合报告 (📋 计划中)
@@ -202,13 +202,17 @@ Step 11 综合报告 (📋 计划中)
 | SystemDynamicsAgent | system_dynamics.py | V1.0 | 4 | ✅ 完成 |
 | CrossIndustryLinkageAgent | cross_industry_linkage.py | V1.0 | 5 | ✅ 完成 |
 | CoreScreeningAgent | core_screening_agent.py | V5.15 | 6 | ✅ 完成 (四阶段: 线索汇总→搜索→比较→验证, LLM自主验证, 含 step2_only/溢出候选/多轮淘汰) |
-| FinancialAuditor | financial_auditor.py | - | 7 | ⚠️ 已有, V5.15 Path C 不再固定调用 (仅 Path A 旧流程保留) |
-| HumanCapitalDetective | human_capital_detective.py | - | 8 | ⚠️ 已有, 可选步骤 |
-| ValuationPricer | valuation_pricer.py | V5.7 | 8 | ⚠️ 已有, 未使用 framework/finance |
 | SecondOrderExtrapolator | second_order_extrapolator.py | V1.0 | 2B | ✅ 完成 (Path B: 二阶推演) |
-| DAGOrchestrator | dag_orchestrator.py | - | 6+10+11 | ⚠️ 遗留, 未接入新 pipeline |
+| DAGOrchestrator | dag_orchestrator.py | - | 遗留 | ⚠️ 遗留, 未接入新 pipeline |
 
 V3.0 遗留 (向后兼容): SupplyChainAnalyst, IndustryAnalyst, ResearchCoordinator
+
+### Service 清单 (非 Agent)
+
+| Service | 文件 | 用途 |
+|---------|------|------|
+| StockAuditor | services/stock_auditor.py | ★ 股票审计工具 (替代旧Step7/8) — LLM自主规划financial/human_capital/valuation |
+| StockHealthChecker | agents/stock_health_checker.py | 全维度体检 (含技术分析, LLM tool calling) — 与StockAuditor互补 |
 
 ### Pipeline 基础设施
 
@@ -394,6 +398,12 @@ from app.framework.finance import (
 # 删除项目: DELETE /api/research/pipeline/{run_id}
 # Path A 直挖: POST /api/research/direct-asset-mine (CoreScreeningAgent step2_only)
 # Path B 二阶: POST /api/research/second-order-extrapolate (SecondOrderExtrapolator)
+# StockAuditor 全量审计: POST /api/research/stock-audit/{code}
+# StockAuditor 财务审计: POST /api/research/stock-audit/{code}/financial
+# StockAuditor 人力审计: POST /api/research/stock-audit/{code}/human-capital
+# StockAuditor 估值定价: POST /api/research/stock-audit/{code}/valuation
+# StockAuditor 轻量摘要: POST /api/research/stock-audit/{code}/summary
+# StockHealthChecker:    POST /api/research/health-check
 # 观察列表: GET /api/observations/stocks/{code} — 单股观察计数
 # 观察列表: GET /api/observations/steps/{step} — 按步骤筛选
 # 星标收藏: PUT /api/research/pipeline/{run_id}/star

@@ -18,6 +18,24 @@ const API = {
         if (!res.ok) throw new Error(`POST ${path}: ${res.status}`);
         return res.json();
     },
+    async patch(path, body = {}) {
+        const res = await fetch(`${API_BASE}${path}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        if (!res.ok) throw new Error(`PATCH ${path}: ${res.status}`);
+        return res.json();
+    },
+    async put(path, body = {}) {
+        const res = await fetch(`${API_BASE}${path}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        if (!res.ok) throw new Error(`PUT ${path}: ${res.status}`);
+        return res.json();
+    },
     async del(path) {
         const res = await fetch(`${API_BASE}${path}`, { method: 'DELETE' });
         if (!res.ok) throw new Error(`DELETE ${path}: ${res.status}`);

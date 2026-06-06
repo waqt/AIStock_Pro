@@ -13,6 +13,7 @@ class QualityAdjustedMethod(ValuationMethod):
     category = "advanced"
     description = "基于 ROE>15%、股息率>2%、EPS 增速>20% 对 PE 倍数进行质量溢价调整"
     output = ["adjusted_pe", "quality_detail", "quality_bonus_pct"]
+    text_output = ["quality_detail"]
     requires = ["pe_ttm", "roe", "dividend_yield", "eps_growth_3y"]
     judgment = "adjusted_pe 是经过质量调整后的合理PE上限。quality_detail 列出各项调整因子。质量调整幅度compounded可能过大, 建议参考各因子明细而非仅看最终值"
     applicable_scenarios = "适用于高质量公司(高ROE+稳定增长+良好治理); 质量因子的累加效应在蓝筹股中最明显"

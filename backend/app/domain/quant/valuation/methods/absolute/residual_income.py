@@ -22,31 +22,31 @@ class ResidualIncomeMethod(ValuationMethod):
     def compute(cls, roe: float = None, pb: float = None,
                 mcap_yi: float = None, total_shares: float = None,
                 total_equity: float = None, **kwargs) -> dict:
-        if not all([roe, total_shares, total_equity]) or total_shares <= 0:
+        # 注意: roe 可能为 0 (亏损), 用 is None 而非 not roe 判断
+        if roe is None or total_shares is None or total_equity is None or total_shares <= 0:
             return {k: None for k in cls.output}
 
         bvps = total_equity / total_shares
         price = (mcap_yi * 1e8) / total_shares if mcap_yi and total_shares > 0 else None
 
         # 权益成本 r: 5 年期国债收益率(~2.5%) + 股权风险溢价(~4%)
-        r = 6.5  # % 或直接用 0.065
+        r = 6.5  # %
 
         # 稳定增速 g: 保守假设 = GDP 增速 4%
         g = 4.0  # %
 
         # RIM = BVPS + (ROE - r) / (r - g) * BVPS
-        roe_pct = roe  # ROE 已是百分比
+        # bvps 已经是每股账面价值, rim_value 也是每股
+        roe_pct = roe  # ROE 已是百分比 (如 15)
         if roe_pct <= g:
             # ROE 低于增长假设, 没有超额收益, 按账面价值估值
-            rim = bvps
+            rim_per_share = bvps
         else:
             excess = (roe_pct / 100 - r / 100) / ((r - g) / 100)
-            rim = bvps * (1 + excess)
-
-        rim_per_share = rim / total_shares if total_shares > 0 else rim
+            rim_per_share = bvps * (1 + excess)
 
         vs_price = None
-        if price and price > 0:
+        if price and price > 0 and rim_per_share:
             vs_price = round((rim_per_share - price) / price * 100, 1)
 
         return {

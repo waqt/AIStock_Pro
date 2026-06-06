@@ -112,17 +112,31 @@
 <div class="data-tab-panel" id="tab-fundamental" style="display:none;">
     <div class="toolbar">
         <button class="btn-action" onclick="DataTabs.Fundamental.syncIndustry()" style="font-size:11px;border-color:var(--accent-green);color:var(--accent-green);"><i class="fas fa-sync-alt"></i> 同步行业</button>
-        <span style="font-size:10px;color:var(--text-micro);">从东财拉取全部持仓+自选股的行业/总股本/上市时间</span>
+        <span style="font-size:10px;color:var(--text-micro);" id="fund-summary-bar"></span>
     </div>
-    <div style="display:flex;gap:12px;flex-wrap:wrap;">
-        <div class="panel" style="flex:1;min-width:350px;max-height:55vh;overflow-y:auto;">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <div class="panel" style="flex:1;min-width:300px;">
+            <div class="panel-header"><span class="panel-title">PE分桶分布</span></div>
+            <div class="panel-body" id="fund-pe-chart" style="height:200px;"></div>
+        </div>
+        <div class="panel" style="flex:1;min-width:300px;">
+            <div class="panel-header"><span class="panel-title">PB分桶分布</span></div>
+            <div class="panel-body" id="fund-pb-chart" style="height:200px;"></div>
+        </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;">
+        <div class="panel" style="flex:1;min-width:350px;max-height:35vh;overflow-y:auto;">
             <div class="panel-header"><span class="panel-title">行业分布</span></div>
             <div class="panel-body" id="fund-industry-table"></div>
         </div>
-        <div class="panel" style="flex:2;min-width:500px;max-height:55vh;overflow-y:auto;">
-            <div class="panel-header"><span class="panel-title">估值一览</span></div>
-            <div class="panel-body" id="fund-valuation-table"></div>
+        <div class="panel" style="flex:1;min-width:350px;max-height:35vh;overflow-y:auto;">
+            <div class="panel-header"><span class="panel-title">ROE排行 (Top 30)</span></div>
+            <div class="panel-body" id="fund-roe-table"></div>
         </div>
+    </div>
+    <div class="panel" style="margin-top:8px;">
+        <div class="panel-header"><span class="panel-title">估值一览</span></div>
+        <div class="panel-body" id="fund-valuation-table" style="max-height:30vh;overflow-y:auto;"></div>
     </div>
 </div>
 
@@ -134,9 +148,37 @@
         </select>
         <button class="btn-action" onclick="DataTabs.Financial.syncSelected()" style="font-size:11px;border-color:var(--accent-green);color:var(--accent-green);"><i class="fas fa-sync-alt"></i> 拉取财报</button>
         <button class="btn-action" onclick="DataTabs.Financial.batchSync()" style="font-size:11px;"><i class="fas fa-layer-group"></i> 批量同步全部</button>
+        <span style="font-size:10px;color:var(--text-micro);" id="fin-summary-bar"></span>
     </div>
-    <div id="financial-content" style="max-height:65vh;overflow-y:auto;">
-        <div style="color:var(--text-micro);padding:40px;text-align:center;">从自选股下拉列表中选择</div>
+    <div id="financial-content">
+        <!-- 指标卡片行 -->
+        <div id="fin-kpi-cards" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;"></div>
+        <!-- 趋势图行 -->
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px;">
+            <div class="panel" style="flex:2;min-width:350px;">
+                <div class="panel-header"><span class="panel-title">营收 & 净利润趋势</span></div>
+                <div class="panel-body" id="fin-revenue-chart" style="height:220px;"></div>
+            </div>
+            <div class="panel" style="flex:1;min-width:280px;">
+                <div class="panel-header"><span class="panel-title">毛利率 & 净利率</span></div>
+                <div class="panel-body" id="fin-margin-chart" style="height:220px;"></div>
+            </div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px;">
+            <div class="panel" style="flex:1;min-width:280px;">
+                <div class="panel-header"><span class="panel-title">经营现金流</span></div>
+                <div class="panel-body" id="fin-cf-chart" style="height:180px;"></div>
+            </div>
+            <div class="panel" style="flex:1;min-width:280px;">
+                <div class="panel-header"><span class="panel-title">研发费用</span></div>
+                <div class="panel-body" id="fin-rd-chart" style="height:180px;"></div>
+            </div>
+        </div>
+        <!-- 明细表 -->
+        <div class="panel">
+            <div class="panel-header"><span class="panel-title">季度明细</span></div>
+            <div class="panel-body" id="financial-table" style="max-height:35vh;overflow-y:auto;"></div>
+        </div>
     </div>
 </div>
 

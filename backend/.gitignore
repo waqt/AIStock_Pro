@@ -1,4 +1,9 @@
-﻿logs/*.log
+logs/*.log
 __pycache__/
 .env
 .vscode/
+
+# SQLite databases (auto-generated)
+backend/data/*.db
+backend/data/pipeline_checkpoints/
+backend/data/research_reports/

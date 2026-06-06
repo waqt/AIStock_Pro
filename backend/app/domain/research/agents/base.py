@@ -77,6 +77,56 @@ DEFAULT_TOOL_DEFINITIONS = [QUERY_FINANCIAL_DATA_TOOL]
 # web_search 已在 TOOL_REGISTRY 注册, 但不加入默认工具列表。
 # 只在特定环节（如 Step 6 Phase 3b 6维权力画像）显式传入使用。
 
+# ═══ 技术指标工具定义 ═══════════════════════════════
+
+TECHNICAL_INDICATORS_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "query_technical_indicators",
+        "description": "查询股票的技术指标时序数据。支持 RSI(强弱), MACD(趋势), KDJ(超买超卖), CCI(动量), BB_WIDTH(波动率), MA5/MA10/MA20(均线), OBV(量能), crowding_ratio(拥挤度), chip_concentration(筹码集中度) 等。返回时间序列 + 最新快照。",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "description": "6位股票代码，如 '688012'",
+                },
+                "fields": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "需要获取的技术指标列表（可选, 不传则返回全部可用字段）",
+                },
+                "days": {
+                    "type": "integer",
+                    "description": "返回最近 N 个交易日的数据, 默认 120, 最大 500",
+                },
+            },
+            "required": ["code"],
+        },
+    },
+}
+
+FUNDAMENTALS_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "query_fundamentals",
+        "description": "查询股票的基本面估值快照。返回 PE_TTM, PB, 市值, ROE, 股息率, 营收/利润增速(3年复合), 行业分类等。适合快速了解股票当前估值水平和基本面画像。",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "description": "6位股票代码，如 '688012'",
+                },
+            },
+            "required": ["code"],
+        },
+    },
+}
+
+HEALTH_CHECK_TOOLS = [QUERY_FINANCIAL_DATA_TOOL, WEB_SEARCH_TOOL, TECHNICAL_INDICATORS_TOOL, FUNDAMENTALS_TOOL]
+"""StockHealthChecker 使用的完整工具集"""
+
 
 # ═══ 注册内置工具 ═══════════════════════════════════
 
@@ -86,10 +136,34 @@ async def _tool_query_financial_data(
     indicators: Optional[List[str]] = None,
     raw_fields: Optional[List[str]] = None,
 ) -> dict:
-    """query_financial_data 的实际执行函数"""
+    """query_financial_data 的实际执行函数 (含数据保鲜检查 + 自动同步)"""
+    from app.domain.quant.engine import indicator_store as _ind_store
+
+    # ── 保鲜度检查 ──
+    fresh = _ind_store.check_financial_freshness(code)
+    if not fresh["has_data"]:
+        logger.info(f"[Tool:query_financial_data] {code}: no cached data, triggering compute...")
+        try:
+            from app.domain.quant.engine.financial_compute import compute_financial_for_codes
+            sync_result = await compute_financial_for_codes([code], mode="local")
+            if sync_result.get(code, {}).get("error"):
+                logger.warning(f"[Tool:query_financial_data] {code}: compute reported error: {sync_result[code]['error']}")
+        except Exception as e:
+            logger.warning(f"[Tool:query_financial_data] {code}: auto-sync failed: {e}")
+    elif not fresh["is_fresh"]:
+        logger.info(f"[Tool:query_financial_data] {code}: stale ({fresh['quarters']}Q), triggering re-compute...")
+        try:
+            from app.domain.quant.engine.financial_compute import compute_financial_for_codes
+            await compute_financial_for_codes([code], mode="local")
+        except Exception as e:
+            logger.warning(f"[Tool:query_financial_data] {code}: auto-recompute failed: {e}")
+
+    # ── 查询 ──
     from app.domain.quant.engine.financial_query_service import FinancialQueryService
     svc = FinancialQueryService()
-    return await svc.query(code, indicators=indicators, raw_fields=raw_fields)
+    data = await svc.query(code, indicators=indicators, raw_fields=raw_fields)
+    data["_data_freshness"] = fresh
+    return data
 
 
 register_tool("query_financial_data")(_tool_query_financial_data)
@@ -115,6 +189,85 @@ async def _tool_web_search(query: str, num: int = 5) -> list:
 
 
 register_tool("web_search")(_tool_web_search)
+
+
+async def _tool_query_technical_indicators(
+    code: str,
+    fields: list = None,
+    days: int = 120,
+) -> dict:
+    """query_technical_indicators 的实际执行函数 (含数据保鲜检查 + 自动同步)"""
+    from app.domain.quant.engine import indicator_store as _ind_store
+
+    # ── 保鲜度检查 ──
+    fresh = _ind_store.check_technical_freshness(code)
+    if not fresh["has_data"]:
+        logger.info(f"[Tool:query_technical_indicators] {code}: no cached data, triggering compute...")
+        try:
+            from app.domain.quant.engine.indicator_runner import IndicatorRunner
+            await IndicatorRunner.compute_historical(code)
+        except Exception as e:
+            logger.warning(f"[Tool:query_technical_indicators] {code}: auto-sync failed: {e}")
+    elif not fresh["is_fresh"] and fresh["days"] < 60:
+        logger.info(f"[Tool:query_technical_indicators] {code}: stale ({fresh['days']}d), triggering increment...")
+        try:
+            from app.domain.quant.engine.indicator_runner import IndicatorRunner
+            await IndicatorRunner.compute_incremental(code)
+        except Exception as e:
+            logger.warning(f"[Tool:query_technical_indicators] {code}: auto-increment failed: {e}")
+
+    # ── 查询 ──
+    try:
+        latest = _ind_store.get_latest(code)
+        if fields and len(fields) > 0:
+            fields_clean = [f for f in fields if f not in ('trade_date', 'stock_code')]
+            hist = _ind_store.get_history(code, fields=fields_clean, days=min(days, 500))
+        else:
+            default_fields = ["price","rsi","macd","macd_signal","macd_hist",
+                              "k","d","j","cci","bb_width","obv",
+                              "ma5","ma20","ma60","crowding_ratio","sharpe_60d",
+                              "chip_concentration","chip_pattern"]
+            hist = _ind_store.get_history(code, fields=default_fields, days=min(days, 500))
+        result = {
+            "stock_code": code,
+            "latest": {k: v for k, v in (latest or {}).items() if not k.startswith('_')},
+            "history": hist,
+            "_data_freshness": fresh,
+        }
+        return result
+    except Exception as e:
+        return {"stock_code": code, "error": str(e), "_data_freshness": fresh}
+
+
+register_tool("query_technical_indicators")(_tool_query_technical_indicators)
+
+
+async def _tool_query_fundamentals(code: str) -> dict:
+    """query_fundamentals 的实际执行函数 (含数据保鲜检查 + 自动同步)"""
+    # ── 保鲜度检查 ──
+    from app.domain.market_data.services.valuation import check_fundamentals_freshness, sync_valuation, sync_stock_info
+    fresh = await check_fundamentals_freshness(code)
+    if not fresh["has_data"] or not fresh["has_name"]:
+        logger.info(f"[Tool:query_fundamentals] {code}: missing data (data={fresh['has_data']}, name={fresh['has_name']}), syncing...")
+        try:
+            if not fresh["has_name"]:
+                await sync_stock_info(code)
+            await sync_valuation(target_codes=[code])
+        except Exception as e:
+            logger.warning(f"[Tool:query_fundamentals] {code}: auto-sync failed: {e}")
+
+    # ── 查询 (通过 research domain data_loader, 这是 research 工具的合法入口) ──
+    from app.domain.research.services.data_loader import data_loader
+    try:
+        result = await data_loader.load_fundamentals([code])
+        data = result.get(code, {})
+        data["_data_freshness"] = fresh
+        return data
+    except Exception as e:
+        return {"code": code, "error": str(e), "_data_freshness": fresh}
+
+
+register_tool("query_fundamentals")(_tool_query_fundamentals)
 
 
 class ResearchAgent(BaseAgent):

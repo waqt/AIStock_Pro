@@ -512,6 +512,46 @@ def get_financial_coverage_batch(codes: List[str]) -> Dict[str, dict]:
     return {r["stock_code"]: {"count": r["cnt"], "latest": r["max_d"]} for r in rows}
 
 
+# ═══ 数据保鲜度检查 ═══════════════════════════════
+
+def check_technical_freshness(stock_code: str) -> dict:
+    """检查技术指标(价量)数据新鲜度
+
+    Returns:
+        has_data: 是否有数据
+        days: 可用交易日数
+        latest_date: 最新数据日期 (str or None)
+        is_fresh: 是否 >= 20 个交易日
+    """
+    cov = get_indicator_coverage_batch([stock_code])
+    info = cov.get(stock_code, {"count": 0, "latest": None})
+    return {
+        "has_data": info["count"] > 0,
+        "days": info["count"],
+        "latest_date": info.get("latest"),
+        "is_fresh": info["count"] >= 20,
+    }
+
+
+def check_financial_freshness(stock_code: str) -> dict:
+    """检查财务指标数据新鲜度
+
+    Returns:
+        has_data: 是否有数据
+        quarters: 可用季度数
+        latest_report_date: 最新报告期 (str or None)
+        is_fresh: 是否 >= 4 个季度
+    """
+    cov = get_financial_coverage_batch([stock_code])
+    info = cov.get(stock_code, {"count": 0, "latest": None})
+    return {
+        "has_data": info["count"] > 0,
+        "quarters": info["count"],
+        "latest_report_date": info.get("latest"),
+        "is_fresh": info["count"] >= 4,
+    }
+
+
 def get_indicator_coverage_batch(codes: List[str]) -> Dict[str, dict]:
     """批量查询价量指标覆盖: {code: {count, latest_date}}"""
     if not codes:

@@ -1,8 +1,8 @@
 """观察事件提取器 — 从 Pipeline Step 输出提取结构化观察事件"""
 import re, json
-from datetime import datetime, timedelta
+from datetime import datetime
+from typing import List
 from dateutil.relativedelta import relativedelta
-from typing import List, Optional, Dict, Any
 
 from app.framework.logger import logger
 
@@ -685,7 +685,11 @@ def extract_step6_observations(output: dict, run_id: str, run_created_at: str) -
         code = stock.get('code', '')
         name = stock.get('name', '')
         score = stock.get('total_score', stock.get('score', ''))
-        for tb in stock.get('thesis_breakers', []):
+        verification = stock.get('verification', {})
+
+        # thesis_breakers: 优先从 verification 子结构读取, 兼容顶层级
+        thesis_breakers = verification.get('thesis_breakers', stock.get('thesis_breakers', []))
+        for tb in thesis_breakers:
             thesis = tb.get('thesis', tb) if isinstance(tb, dict) else str(tb)
             if not thesis or thesis == '无':
                 continue
@@ -712,7 +716,7 @@ def extract_step6_observations(output: dict, run_id: str, run_created_at: str) -
                 'source_step': 'step6',
                 'level': 'stock',
                 'title': f"{name}({code}): 阶段={stage}",
-                'description': f"股票: {name}({code})\n公司阶段: {stage}\n指标: {stock.get('stage_indicators', '')}\n审计结论: {stock.get('audit', {}).get('verdict', '')}",
+                'description': f"股票: {name}({code})\n公司阶段: {stage}\n审计结论: {verification.get('roic_note', stock.get('audit', {}).get('verdict', ''))}",
                 'category': '基本面类/生命周期',
                 'direction': 'neutral',
                 'confidence': 'medium',
@@ -721,6 +725,36 @@ def extract_step6_observations(output: dict, run_id: str, run_created_at: str) -
                 'metadata': json.dumps({"source": "company_stage", "stock_name": name, "stage": stage}, ensure_ascii=False),
                 'source_info': _make_source_info('pipeline', run_id=run_id, step='step6', field='company_stage'),
                 'status': 'active',
+            }
+            observations.append(obs)
+
+        # ═══ watch_events (V5.16) ═════════════════════
+        for we in verification.get('watch_events', []):
+            event = we.get('event', '')
+            if not event:
+                continue
+            trigger = we.get('trigger_condition', '')
+            timeframe = we.get('expected_timeframe', '')
+            event_type = we.get('event_type', '')
+            resolved = resolve_relative_time(timeframe, anchor) if timeframe else resolve_relative_time('immediate', anchor)
+            obs = {
+                'source_step': 'step6',
+                'level': 'stock',
+                'title': f"{name}({code}): {event[:60]}",
+                'description': f"股票: {name}({code})\n事件: {event}\n触发信号: {trigger}\n时间窗口: {timeframe}\n事件类型: {event_type}",
+                'category': '事件类/' + (event_type.split('|')[0].strip() if event_type else '待分类'),
+                'direction': 'neutral',
+                'confidence': 'medium',
+                'window_description': resolved['window_description'],
+                'window_start': resolved['window_start'],
+                'window_end': resolved['window_end'],
+                'monitor_metric': trigger,
+                'search_query': trigger or event[:60],
+                'industry': industry,
+                'related_stock_code': code,
+                'metadata': json.dumps({"source": "watch_event", "stock_name": name, "event_type": event_type, "event": event}, ensure_ascii=False),
+                'source_info': _make_source_info('pipeline', run_id=run_id, step='step6', field='watch_events'),
+                'status': 'draft',
             }
             observations.append(obs)
 

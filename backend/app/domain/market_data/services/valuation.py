@@ -273,3 +273,48 @@ async def sync_financial_factors(target_codes: list = None):
 
     logger.info(f"[FinancialFactors] Synced {updated}/{len(a_codes)} stocks")
     return updated
+
+
+# ═══ 基本面估值数据保鲜度检查 ═══════════════════
+
+async def check_fundamentals_freshness(code: str) -> dict:
+    """检查基本面估值数据 (PE/PB/市值/ROE) 存在性
+
+    不阻塞, 仅检查 StockValuation 表是否有该股票记录。
+
+    Returns:
+        has_data: 是否有 PE/PB 等估值数据
+        has_name: StockMaster 中是否有名称
+        pe_ttm: 当前 PE (或 None)
+        pb: 当前 PB (或 None)
+        mcap_yi: 市值(亿元) (或 None)
+        roe: ROE% (或 None)
+    """
+    async with async_session() as db:
+        try:
+            from sqlalchemy import outerjoin
+            j = outerjoin(StockMaster, StockValuation,
+                          StockMaster.stock_code == StockValuation.stock_code)
+            row = await db.execute(
+                select(StockMaster, StockValuation)
+                .select_from(j)
+                .where(StockMaster.stock_code == code)
+            )
+            r = row.first()
+            if r is None:
+                return {"has_data": False, "has_name": False,
+                        "pe_ttm": None, "pb": None, "mcap_yi": None, "roe": None}
+            m, v = r
+            return {
+                "has_data": v is not None and v.pe_ttm is not None,
+                "has_name": m.stock_name is not None,
+                "name": m.stock_name,
+                "industry": m.industry,
+                "pe_ttm": v.pe_ttm if v else None,
+                "pb": v.pb if v else None,
+                "mcap_yi": v.mcap_yi if v else None,
+                "roe": v.roe if v else None,
+            }
+        except Exception:
+            return {"has_data": False, "has_name": False,
+                    "pe_ttm": None, "pb": None, "mcap_yi": None, "roe": None}

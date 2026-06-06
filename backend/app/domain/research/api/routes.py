@@ -9,8 +9,7 @@ from app.domain.research.agents.coordinator import ResearchCoordinator
 from app.domain.research.agents.industry_analyst import IndustryAnalyst
 from app.domain.research.agents.supply_chain_analyst import SupplyChainAnalyst
 from app.domain.research.agents.supply_chain_hacker import SupplyChainHacker
-from app.domain.research.agents.financial_auditor import FinancialAuditor
-from app.domain.research.agents.human_capital_detective import HumanCapitalDetective
+from app.domain.research.services.stock_auditor import StockAuditor
 from app.domain.research.agents.global_capex_scanner import GlobalCapexScanner
 from app.domain.research.agents.dag_orchestrator import DAGOrchestrator
 from app.domain.research.agents.market_scanner import MarketScanner
@@ -441,32 +440,7 @@ async def supply_chain_level_analysis(req: LevelAnalysisRequest):
 # (旧的 /supply-chain-hacker 已迁移至 V5.8 版本 — 见下方 @router.post("/supply-chain-hacker"))
 
 
-@router.post("/audit/human-capital")
-async def audit_human_capital(req: ResearchRequest):
-    """V4.0 人力资本审计 — 单只股票研发团队背景穿透"""
-    code = (req.stock_codes or [None])[0]
-    if not code:
-        raise HTTPException(status_code=400, detail="需要至少一个 stock_code")
-    try:
-        from app.framework.ai.providers.deepseek import DeepSeekProvider
-        detective = HumanCapitalDetective(provider=DeepSeekProvider())
-        result = await detective.analyze({"stock_code": code, "stock_name": req.industry or code})
-        return {"success": True, "data": result, "freshness": ResearchAgent.freshness_stamp()}
-    except Exception as e:
-        logger.error(f"[❌] Human capital audit failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/audit/financial/{stock_code}")
-async def audit_financial(stock_code: str):
-    """V4.0 财务审计 — 单只股票 8Q 剪刀差 + 四连击 (无需 AI)"""
-    try:
-        auditor = FinancialAuditor()
-        result = await auditor.analyze({"stock_code": stock_code, "stock_name": stock_code})
-        return {"success": True, "data": result, "freshness": ResearchAgent.freshness_stamp()}
-    except Exception as e:
-        logger.error(f"[❌] Financial audit failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+# (旧的 /audit/human-capital + /audit/financial 已移除 — 改用 /stock-audit/*)
 
 
 @router.post("/capex-scan")
@@ -1835,3 +1809,119 @@ async def delete_research_report(report_id: str):
     if not ok:
         raise HTTPException(status_code=404, detail=f"Report {report_id} not found")
     return {"success": True, "message": f"Deleted {report_id}"}
+
+
+# ═══════════════════════════════════════════════════════
+# StockHealthChecker — 个股全方位健康体检
+# ═══════════════════════════════════════════════════════
+
+
+class HealthCheckRequest(BaseModel):
+    stock_code: str
+    stock_name: Optional[str] = None
+    industry: Optional[str] = None
+    dimensions: Optional[List[str]] = None  # ["financial","technical","talent","valuation"]
+
+
+@router.post("/health-check")
+async def stock_health_check(req: HealthCheckRequest):
+    """个股全方位健康体检 — LLM 自主工具编排
+
+    系统提供财务指标、技术指标、网络搜索、基本面快照等工具,
+    LLM 自行规划分析路径: 先查什么 → 再查什么 → 综合判断
+
+    Args:
+        stock_code: 6位股票代码
+        stock_name: 股票名称（可选，自动补全）
+        industry: 所属行业（可选）
+        dimensions: 限定分析维度（可选，默认全维度）
+
+    Returns:
+        结构化体检报告 (四维度: 财务/技术/人才/估值)
+    """
+    code = req.stock_code
+    logger.info(f"[HealthCheck] Requested: {code} dims={req.dimensions}")
+
+    from app.framework.ai.providers.deepseek import DeepSeekProvider
+    from app.domain.research.agents.stock_health_checker import StockHealthChecker
+
+    try:
+        provider = DeepSeekProvider()
+        checker = StockHealthChecker(provider=provider)
+
+        ctx = {
+            "stock_code": code,
+            "stock_name": req.stock_name or "",
+            "industry": req.industry or "",
+        }
+        if req.dimensions and len(req.dimensions) > 0:
+            ctx["dimensions"] = req.dimensions
+
+        result = await checker.analyze(ctx=ctx)
+
+        return {
+            "success": True,
+            "data": result,
+            "message": "Health check complete",
+        }
+    except Exception as e:
+        logger.error(f"[HealthCheck] Failed: {code} | {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ═══════════════════════════════════════════════════════
+# StockAuditor — 个股审计工具 (替代旧 Step7+Step8)
+# ═══════════════════════════════════════════════════════
+
+
+class AuditRequest(BaseModel):
+    stock_code: str
+    stock_name: Optional[str] = None
+
+
+@router.post("/stock-audit/{code}")
+async def stock_audit_full(code: str, name: Optional[str] = Query(None)):
+    """全量审计: financial + human_capital + valuation"""
+    auditor = StockAuditor()
+    result = await auditor.audit_full(code, name or "")
+    return {"success": True, "data": result}
+
+
+@router.post("/stock-audit/{code}/financial")
+async def stock_audit_financial(code: str):
+    """仅财务审计"""
+    auditor = StockAuditor()
+    result = await auditor.audit_financial(code)
+    return {"success": True, "data": result}
+
+
+@router.post("/stock-audit/{code}/human-capital")
+async def stock_audit_human_capital(code: str, name: Optional[str] = Query(None)):
+    """仅人力资本审计 (Web搜索+LLM, 较贵)"""
+    auditor = StockAuditor()
+    result = await auditor.audit_human_capital(code, name or "")
+    return {"success": True, "data": result}
+
+
+@router.post("/stock-audit/{code}/valuation")
+async def stock_audit_valuation(code: str, name: Optional[str] = Query(None)):
+    """仅估值定价 (LLM规划方法 + 框架计算)"""
+    auditor = StockAuditor()
+    result = await auditor.audit_valuation(code, name or "")
+    return {"success": True, "data": result}
+
+
+@router.post("/stock-audit/{code}/summary")
+async def stock_audit_summary(code: str):
+    """轻量审计摘要 (不跑 human capital, 供 Step 6 enrichment)"""
+    auditor = StockAuditor()
+    result = await auditor.audit_summary(code)
+    return {"success": True, "data": result}
+
+
+@router.post("/stock-audit")
+async def stock_audit_json(req: AuditRequest):
+    """全量审计 (JSON body)"""
+    auditor = StockAuditor()
+    result = await auditor.audit_full(req.stock_code, req.stock_name or "")
+    return {"success": True, "data": result}

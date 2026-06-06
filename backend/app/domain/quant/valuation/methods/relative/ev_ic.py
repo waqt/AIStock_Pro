@@ -23,13 +23,17 @@ class EVICMethod(ValuationMethod):
         if mcap_yi is None or total_liabilities is None:
             return {k: None for k in cls.output}
 
+        # total_liabilities / total_equity / cash 来自 FinancialStatement (原始元)
+        # 统一转换为亿元
+        tl_yi = (total_liabilities or 0) / 1e8
+        cash_yi = (cash or 0) / 1e8
+        te_yi = (total_equity or 0) / 1e8
+
         # EV = 市值 + 总负债 - 现金 (亿元)
-        ev = mcap_yi + (total_liabilities or 0)
-        if cash:
-            ev -= cash / 1e8  # cash 是元, 转亿
+        ev = mcap_yi + tl_yi - cash_yi
 
         # IC = 总权益 + 总负债 - 现金 (简化, 类似 invested capital)
-        ic = (total_equity or 0) / 1e8 + (total_liabilities or 0) - (cash or 0) / 1e8
+        ic = te_yi + tl_yi - cash_yi
         if ic <= 0:
             ic = ev  # 兜底
 

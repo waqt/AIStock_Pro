@@ -3,7 +3,7 @@
 与 /api/quant/indicators/* 风格一致: {"success": true, "data": ...}
 """
 from fastapi import APIRouter, Query
-from typing import Optional, List
+from typing import Optional, List, Dict
 from pydantic import BaseModel
 from app.domain.quant.valuation import VALUATION_REGISTRY
 from app.framework.logger import logger
@@ -128,6 +128,60 @@ async def get_percentile_chart(stock_code: str):
         result["valuation_verdict"] = row.get("valuation_verdict")
 
     return {"success": True, "data": result}
+
+
+# ═══ Monte Carlo 仿真 ═════════════════════════
+
+class _SimulateParam(BaseModel):
+    """单个参数的分布配置"""
+    dist: str = "normal"  # normal, uniform, triangular, lognormal, fixed
+    mean: Optional[float] = None
+    std: Optional[float] = None
+    min: Optional[float] = None
+    max: Optional[float] = None
+    mode: Optional[float] = None
+    value: Optional[float] = None
+
+class _SimulateRequest(BaseModel):
+    stock_code: str
+    method_name: str = "three_stage_growth"
+    n_iterations: int = 5000
+    target_field: Optional[str] = None
+    params: Optional[Dict[str, _SimulateParam]] = None
+
+@router.post("/simulate")
+async def run_simulation(req: _SimulateRequest):
+    """Monte Carlo 仿真: 对估值方法的关键参数做不确定性分析
+
+    示例:
+    POST /api/quant/valuation/simulate
+    {
+        "stock_code": "688012",
+        "method_name": "three_stage_growth",
+        "n_iterations": 5000,
+        "params": {
+            "rev_yoy_ttm": {"dist": "normal", "mean": 25, "std": 5, "min": 5, "max": 50},
+            "operating_margin_pct": {"dist": "normal", "mean": 15, "std": 3, "min": 5, "max": 30}
+        }
+    }
+    """
+    from app.domain.quant.valuation.engine.simulation import monte_carlo
+    try:
+        param_defs = None
+        if req.params:
+            param_defs = {k: v.model_dump(exclude_none=True) for k, v in req.params.items()}
+
+        result = await monte_carlo.run(
+            stock_code=req.stock_code,
+            method_name=req.method_name,
+            n_iterations=req.n_iterations,
+            param_defs=param_defs,
+            target_field=req.target_field,
+        )
+        return {"success": True, "data": result}
+    except Exception as e:
+        logger.error(f"[ValuationAPI] Simulate failed: {e}")
+        return {"success": False, "error": str(e)}
 
 
 # ═══ 对比 ═══════════════════════════════════════

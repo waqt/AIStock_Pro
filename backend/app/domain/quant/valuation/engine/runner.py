@@ -73,11 +73,14 @@ class ValuationRunner:
         profit_ttm = sum(q.parent_profit or 0 for q in recent_4) if len(recent_4) >= 4 else None
         ocf_ttm = sum(q.op_cashflow or 0 for q in recent_4) if len(recent_4) >= 4 else None
 
+        rd_ttm = sum(q.rd_expense or 0 for q in recent_4) if len(recent_4) >= 4 else None
+
         latest = quarters[0]
         return {
             "revenue_ttm": rev_ttm,
             "profit_ttm": profit_ttm,
             "ocf_ttm": ocf_ttm,
+            "rd_expense_ttm": rd_ttm,
             "total_assets": latest.total_assets,
             "total_liabilities": latest.total_liabilities,
             "total_equity": latest.total_equity,
@@ -199,6 +202,29 @@ class ValuationRunner:
             logger.warning(f"[ValuationRunner] {code}: failed to load fin_indicators: {e}")
             return {}
 
+    # ═══ 行业 PE 中位数查询 ══════════════════════
+
+    async def _load_industry_pe_median(self, industry: str) -> Optional[float]:
+        """查询同行业所有股票的 PE TTM 中位数"""
+        if not industry:
+            return None
+        try:
+            async with async_session() as db:
+                rows = await db.execute(
+                    select(StockValuation.pe_ttm)
+                    .join(StockMaster, StockMaster.stock_code == StockValuation.stock_code)
+                    .where(StockMaster.industry == industry)
+                    .where(StockValuation.pe_ttm.isnot(None))
+                    .where(StockValuation.pe_ttm > 0)
+                )
+                pe_values = [r[0] for r in rows.all()]
+            if not pe_values:
+                return None
+            return float(np.median(pe_values))
+        except Exception as e:
+            logger.warning(f"[ValuationRunner] industry_pe_median failed for {industry}: {e}")
+            return None
+
     # ═══ 主计算入口 ═════════════════════════════
 
     async def compute(self, stock_code: str, mode: str = "snapshot") -> dict:
@@ -229,6 +255,7 @@ class ValuationRunner:
         pe_history = None
         pb_history = None
         price_history = None
+        industry_pe_median = None
 
         # 2b. 加载财务指标 (用于动态方法)
         fin_ind_data = None
@@ -241,12 +268,15 @@ class ValuationRunner:
             if fin_ind_data:
                 logger.info(f"[ValuationRunner] {stock_code}: loaded {len(fin_ind_data)} fin_indicators")
 
-        # 3. 遍历所有注册方法
+        # 3. 两轮遍历: 先跑非 composite 方法, 再跑 composite 方法
         results = {}
         errors = []
         methods_run = []
 
         for name, cls in VALUATION_REGISTRY.items():
+            # composite 方法(如 valuation_health)在第二轮单独处理
+            if getattr(cls, 'category', '') == 'composite':
+                continue
             try:
                 kwargs = {
                     **val_data,
@@ -276,11 +306,39 @@ class ValuationRunner:
                     errors.append(f"{name}: no financial data")
                     continue
 
+                # 行业 PE 中位数 (懒加载)
+                if "industry_pe_median" in cls.requires and industry_pe_median is None:
+                    industry = info.get("industry")
+                    if industry:
+                        industry_pe_median = await self._load_industry_pe_median(industry)
+                if "industry_pe_median" in cls.requires:
+                    kwargs["industry_pe_median"] = industry_pe_median
+
+                # 检查方法是否适用于当前股票 (如 rNPV 仅适用生物医药)
+                if hasattr(cls, 'is_applicable') and not cls.is_applicable(**kwargs):
+                    logger.info(f"[ValuationRunner] {stock_code}: {name} skipped (not applicable)")
+                    methods_run.append(name)
+                    continue
+
                 output = cls.compute(**kwargs)
                 if output:
                     results.update(output)
                 methods_run.append(name)
 
+            except Exception as e:
+                logger.warning(f"[ValuationRunner] {stock_code} {name} failed: {e}")
+                errors.append(f"{name}: {e}")
+
+        # 3b. 第二轮: composite 方法 (依赖其他方法的输出)
+        for name, cls in VALUATION_REGISTRY.items():
+            if getattr(cls, 'category', '') != 'composite':
+                continue
+            try:
+                # 将第一轮结果作为 kwargs 注入
+                output = cls.compute(**results)
+                if output:
+                    results.update(output)
+                methods_run.append(name)
             except Exception as e:
                 logger.warning(f"[ValuationRunner] {stock_code} {name} failed: {e}")
                 errors.append(f"{name}: {e}")

@@ -79,6 +79,15 @@ class ValuationMethod:
     """字段名 → 详细含义说明 (覆盖自动生成的默认含义)"""
 
     @classmethod
+    def is_applicable(cls, **kwargs) -> bool:
+        """判断该方法是否适用于当前股票 (Runner 在 compute 前调用)
+
+        默认返回 True。特定情景方法 (如生物医药 rNPV) 可重写此方法
+        在 kwargs 中检查行业/数据特征后选择性跳过。
+        """
+        return True
+
+    @classmethod
     def compute(cls, **kwargs) -> dict:
         """纯函数: 输入参数 → 输出 dict (字段名→值)
 

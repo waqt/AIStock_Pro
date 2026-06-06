@@ -948,6 +948,55 @@ async def get_fundamental_overview():
         return {"success": True, "data": {"industries": industries, "stocks": stocks}}
 
 
+@router.get("/fundamental/distribution")
+async def get_fundamental_distribution():
+    """基本面分布: PE/PB分桶 + ROE排行 (用于ECharts图表)"""
+    async with async_session() as db:
+        res = await db.execute(
+            select(StockMaster.stock_code, StockMaster.stock_name, StockMaster.industry,
+                   StockValuation.pe_ttm, StockValuation.pb, StockValuation.mcap_yi,
+                   StockValuation.roe, StockValuation.dividend_yield)
+            .outerjoin(StockValuation, StockMaster.stock_code == StockValuation.stock_code)
+            .where(StockValuation.pe_ttm.isnot(None))
+            .order_by(StockValuation.mcap_yi.desc().nullslast()).limit(100))
+        rows = res.all()
+
+    pe_buckets = {"0-10": 0, "10-20": 0, "20-30": 0, "30-50": 0, "50+": 0, "负PE": 0}
+    pb_buckets = {"0-1": 0, "1-2": 0, "2-3": 0, "3-5": 0, "5-10": 0, "10+": 0}
+    roe_stocks = []
+    for r in rows:
+        pe = r.pe_ttm
+        pb = r.pb
+        if pe is not None:
+            if pe < 0: pe_buckets["负PE"] += 1
+            elif pe <= 10: pe_buckets["0-10"] += 1
+            elif pe <= 20: pe_buckets["10-20"] += 1
+            elif pe <= 30: pe_buckets["20-30"] += 1
+            elif pe <= 50: pe_buckets["30-50"] += 1
+            else: pe_buckets["50+"] += 1
+        if pb is not None:
+            if pb <= 1: pb_buckets["0-1"] += 1
+            elif pb <= 2: pb_buckets["1-2"] += 1
+            elif pb <= 3: pb_buckets["2-3"] += 1
+            elif pb <= 5: pb_buckets["3-5"] += 1
+            elif pb <= 10: pb_buckets["5-10"] += 1
+            else: pb_buckets["10+"] += 1
+        if r.roe is not None:
+            roe_stocks.append({
+                "code": r.stock_code, "name": r.stock_name,
+                "industry": r.industry or "未知", "roe": r.roe,
+                "pe_ttm": r.pe_ttm, "pb": r.pb,
+            })
+
+    roe_stocks.sort(key=lambda x: x["roe"] or 0, reverse=True)
+    return {"success": True, "data": {
+        "pe_buckets": [{"range": k, "count": v} for k, v in pe_buckets.items()],
+        "pb_buckets": [{"range": k, "count": v} for k, v in pb_buckets.items()],
+        "roe_top": roe_stocks[:30],
+        "total_stocks": len(rows),
+    }}
+
+
 # ═══════════════════════════════════════════
 # 另类数据中心
 # ═══════════════════════════════════════════
