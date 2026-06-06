@@ -83,7 +83,7 @@
 | B2.8 | DAGOrchestrator | Phase A(并行扫描) → B(并行审计) → C(定价) → D(CIO合成) | industry | final_summary + top_picks + portfolio_allocation + risks | ⚠️ 遗留, 未接入新 pipeline |
 | B2.9 | 研报持久化 | JSON文件存储到 data/research_reports/ | - | save/list/get/delete | ✅ |
 | B2.10 | 数据新鲜度戳 | 每个API响应附带 ResearchAgent.freshness_stamp() | - | generated_at + data_sources 说明 | ✅ |
-| B2.11 | CoreScreeningAgent | Step 6: 标签→A股映射 + 财务/人力审计 + 护城河评分 + 排名 | industry + supply_chain_map (或 step2_output) | ranked_stocks[] + future_strong[] + thesis_breakers | ✅ |
+| B2.11 | CoreScreeningAgent | Step 6 V5.16: 线索汇总→搜索→同源比较→逐只验证→全局排名; LLM自主分析维度, lifecycle_stage LLM判定 | industry + supply_chain_map (或 step2_output) | ranked_stocks[] + future_strong[] + watchlist + eliminated + comparisons[] | ✅ V5.16 |
 | B2.12 | SecondOrderExtrapolator | Path B: 从 Step 2 外推相邻产业预期差 | industry + step2_output | adjacent_industries[] + recommended_drilldown[] | ✅ |
 | B2.13 | SystemDynamicsAgent | Step 4: 供给/需求/政策三维动力学推演 | supply_chain_map | dynamics_report + scenarios[] | ✅ |
 | B2.14 | CrossIndustryLinkageAgent | Step 5: 跨产业关联 + 溢出效应分析 | supply_chain_map + dynamics | cross_industry_links[] + spillover_map | ✅ |

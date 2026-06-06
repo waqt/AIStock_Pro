@@ -47,7 +47,7 @@ backend/app/
 │   │   ├── sources/               # Sina/AkShare/Tencent/Push2
 │   │   ├── services/              # valuation.py (PE/PB/市值), stock_list.py
 │   │   └── api/                   # (路由在 app/api/data.py)
-│   ├── research/                  # ★ AI 投研 V5.10 Pipeline
+│   ├── research/                  # ★ AI 投研 V5.16 Pipeline
 │   │   ├── agents/
 │   │   │   ├── base.py            #   ResearchAgent + parse_json()
 │   │   │   ├── global_capex_scanner.py  # Step 1a: 宏观周期分析
@@ -113,7 +113,7 @@ backend/data/                      # ★ 数据文件 (单目录统一管理)
 └── research_reports/              #   研报 JSON 输出
 ```
 
-## V5.10 投研 Pipeline 架构
+## V5.16 投研 Pipeline 架构
 
 ### Pipeline 三层设计纲领 (V5.16)
 

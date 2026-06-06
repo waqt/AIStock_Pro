@@ -310,29 +310,17 @@ class CoreScreeningAgent(ResearchAgent):
 
     # ═══ 搜索线索去重 ═════════════════════════════
 
-    @staticmethod
-    def _dedup_search_clues(search_clues: List[Dict]) -> List[Dict]:
-        """对搜索线索做语义去重，取代硬上限截断。
+    async def _dedup_search_clues(self, search_clues: List[Dict]) -> List[Dict]:
+        """对搜索线索做 LLM 语义去重，取代 Jaccard 硬阈值。
 
-        - asset_search_query: 按 query 关键词 Jaccard 相似度去重 (阈值 0.6)
-        - human_capital: 按 leader 名去重
-        - 保留 priority 更高的那条
+        - asset_search_query: LLM 判断语义相似度，保留 priority 更高的
+        - human_capital: 按 leader 名去重 (精确匹配)
         """
         if not search_clues:
             return []
 
-        def _tokenize(q: str) -> set:
-            # 提取中英文关键词（去停用词）
-            import re
-            tokens = set()
-            for t in re.findall(r'[a-zA-Z0-9]+|[一-鿿]+', q.lower()):
-                if len(t) > 1:  # 过滤单字
-                    tokens.add(t)
-            stopwords = {"a股", "上市公司", "2026", "2025", "公司", "中国", "股票"}
-            return tokens - stopwords
-
+        # 1. human_capital: 按 leader 名去重 (精确匹配, 无需 LLM)
         kept = []
-        # 1. human_capital: 按 leader 名去重
         seen_leaders = set()
         for clue in search_clues:
             if clue.get("_source_type") == "human_capital":
@@ -340,47 +328,81 @@ class CoreScreeningAgent(ResearchAgent):
                 if leader and leader not in seen_leaders:
                     seen_leaders.add(leader)
                     kept.append(clue)
-                else:
-                    continue  # 跳过重复 leader
             else:
                 kept.append(clue)
 
-        # 2. asset_search_query: 按语义去重
-        final = []
-        seen_queries = []  # (tokenized_set, priority)
-        for clue in kept:
-            if clue.get("_source_type") != "asset_search_query":
-                final.append(clue)
-                continue
-            q = clue.get("query", "")
-            tokens = _tokenize(q)
-            if not tokens:
-                final.append(clue)
-                continue
-            priority = clue.get("priority", "medium")
-            p_val = {"high": 2, "medium": 1, "low": 0}.get(priority, 1)
+        # 2. asset_search_query: LLM 语义去重
+        asset_queries = [c for c in kept if c.get("_source_type") == "asset_search_query"]
+        non_asset = [c for c in kept if c.get("_source_type") != "asset_search_query"]
 
-            # 检查是否与已有线索相似
-            dup = False
-            for i, (existing_tokens, existing_p) in enumerate(seen_queries):
-                if not tokens or not existing_tokens:
+        if not asset_queries or len(asset_queries) <= 2:
+            final = non_asset + asset_queries
+            logger.info(f"[CoreScreeningAgent] Dedup clues: {len(search_clues)} -> {len(final)} (skip LLM, too few)")
+            return final
+
+        # 构建 LLM prompt
+        prompt_lines = []
+        for i, c in enumerate(asset_queries):
+            q = c.get("query", "")
+            priority = c.get("priority", "medium")
+            context = c.get("rationale", "") or c.get("source_node", "") or c.get("source", "")
+            prompt_lines.append(f"[{i}] query={q} | priority={priority} | context={context}")
+
+        prompt = f"""你是一个搜索线索去重专家。以下是从产业链分析中提取的 A 股搜索线索，请找出语义重复的线索并去重。
+
+语义重复的定义：两条搜索查询虽然用词不同，但搜索意图相同或高度重叠。
+例如 "A股 MLCC 陶瓷粉体 龙头 2026" 和 "高纯钛酸钡 供应商 上市公司" 都指向 MLCC 上游材料环节，应视为重复。
+
+每条线索格式: [序号] query=搜索词 | priority=优先级 | context=来源上下文
+
+线索列表:
+{chr(10).join(prompt_lines)}
+
+去重要求:
+1. 两条 query 搜索意图相同 → 视为重复，保留 priority 更高的那条
+2. priority 相同时，保留 query 信息更完整、更具体的那条
+3. 主题不同（如"AI芯片" vs "MLCC材料"）即使部分关键词重叠也不去重
+4. 不确定时宁可多留，不要误删
+
+输出 JSON:
+{{"dedup_map": {{"保留的序号": ["被合并的序号1", "被合并的序号2", ...]}}, "reasoning": "简要说明主要合并判断"}}
+只输出 JSON。"""
+
+        try:
+            text = await self.provider.chat_flash(prompt, max_tokens=1024, timeout=30)
+            parsed = self.parse_json(text)
+            dedup_map = {}
+            if isinstance(parsed, dict):
+                dedup_map = parsed.get("dedup_map", {})
+
+            kept_indices = set()
+            removed_indices = set()
+            for keep_str, remove_list in dedup_map.items():
+                try:
+                    keep_idx = int(keep_str)
+                    kept_indices.add(keep_idx)
+                    for r in (remove_list or []):
+                        removed_indices.add(int(r))
+                except (ValueError, TypeError):
                     continue
-                jaccard = len(tokens & existing_tokens) / len(tokens | existing_tokens)
-                if jaccard > 0.6:
-                    # 保留 priority 更高的
-                    if p_val > existing_p:
-                        seen_queries[i] = (tokens, p_val)
-                        # 替换 final 中对应的条目
-                        # 简单处理: 追加新的, 旧的后面删
-                    else:
-                        dup = True
-                    break
-            if not dup:
-                seen_queries.append((tokens, p_val))
-                final.append(clue)
 
-        logger.info(f"[CoreScreeningAgent] Dedup clues: {len(search_clues)} -> {len(final)}")
-        return final
+            # LLM 输出异常时全保留
+            if not kept_indices or len(removed_indices) >= len(asset_queries):
+                logger.warning(f"[CoreScreeningAgent] LLM dedup abnormal, keeping all {len(asset_queries)}")
+                final = non_asset + asset_queries
+                return final
+
+            final = list(non_asset)
+            for i, c in enumerate(asset_queries):
+                if i not in removed_indices:
+                    final.append(c)
+
+            logger.info(f"[CoreScreeningAgent] Dedup clues: {len(search_clues)} -> {len(final)} (LLM)")
+            return final
+
+        except Exception as e:
+            logger.warning(f"[CoreScreeningAgent] LLM dedup failed: {e}, keeping all")
+            return non_asset + asset_queries
 
     # ═══ Phase 3a: 同源比较 ═════════════════════════
 
@@ -626,7 +648,7 @@ class CoreScreeningAgent(ResearchAgent):
             # a_share_equivalent 需要深度搜索, 排在最前面
             mapping_bonus = -1 if mt == "a_share_equivalent" else 0
             return (base + mapping_bonus)
-        search_clues = self._dedup_search_clues(sorted(clues["search_clues"], key=_sort_key))
+        search_clues = await self._dedup_search_clues(sorted(clues["search_clues"], key=_sort_key))
         search_candidates = await self._execute_search_clues(search_clues, trace)
         all_candidates = clues["direct_candidates"] + search_candidates
 
