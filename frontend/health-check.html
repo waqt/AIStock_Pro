@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>AIStock | 健康体检</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .workspace { display: flex; gap: 14px; padding: 14px; height: calc(100vh - 110px); }
+        .left-panel { width: 340px; min-width: 320px; display: flex; flex-direction: column; gap: 8px; }
+        .right-panel { flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; overflow-y: auto; }
+
+        .hc-header { display: flex; gap: 8px; align-items: center; }
+        .hc-header input { flex: 1; background: #000; border: 1px solid var(--border-color); color: #fff; padding: 8px 10px; border-radius: 4px; font-size: 13px; }
+
+        .hc-dims { display: flex; gap: 14px; flex-wrap: wrap; padding: 4px 0; }
+        .hc-dims label { color: var(--text-dim); font-size: 11px; display: flex; align-items: center; gap: 5px; cursor: pointer; }
+
+        .hc-summary-box { padding: 10px 14px; border-left: 3px solid var(--accent-blue); background: rgba(0,0,0,0.2); border-radius: 2px; font-size: 12px; color: #ddd; margin-bottom: 12px; }
+        .hc-verdict-badge { font-size: 16px; font-weight: 700; padding: 4px 16px; border-radius: 4px; }
+
+        .hc-dim-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+        .hc-dim-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 12px; }
+        .hc-dim-card .title { font-size: 11px; color: #ddd; margin-bottom: 4px; }
+        .hc-dim-card .verdict { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 3px; display: inline-block; }
+        .hc-dim-card .evidence { font-size: 10px; color: var(--text-dim); margin-top: 6px; }
+        .hc-dim-card .evidence ul { margin: 0; padding-left: 14px; }
+        .hc-dim-card .analysis { font-size: 9px; color: var(--text-micro); border-top: 1px solid rgba(255,255,255,0.05); padding-top: 4px; margin-top: 4px; }
+
+        .hc-risks-grid { display: flex; gap: 12px; margin-bottom: 8px; }
+        .hc-risks-grid .col { flex: 1; }
+        .hc-risks-grid .col-title { font-size: 10px; margin-bottom: 4px; }
+        .hc-risks-grid ul { margin: 0; padding-left: 14px; font-size: 10px; color: var(--text-dim); }
+
+        .hc-analysis-text { font-size: 10px; color: var(--text-dim); border-top: 1px solid rgba(255,255,255,0.06); padding-top: 8px; line-height: 1.6; }
+
+        .hc-status-bar { font-size: 10px; color: var(--text-micro); text-align: center; }
+
+        #hc-result { flex: 1; }
+        #hc-result .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; min-height: 300px; color: var(--text-micro); }
+        #hc-result .empty-state .icon { font-size: 48px; margin-bottom: 12px; opacity: 0.3; }
+    </style>
+</head>
+<body data-page-id="health-check">
+<div class="app-container">
+<aside class="sidebar"></aside>
+<main class="main-content">
+<div class="top-bar"></div>
+<div class="workspace">
+
+    <!-- ═══ Left Panel: Input + Controls ═══ -->
+    <div class="left-panel">
+        <div class="panel">
+            <div class="panel-body" style="display:flex;flex-direction:column;gap:8px;">
+                <div class="hc-header">
+                    <input type="text" id="hc-code" placeholder="股票代码 (如 688012, 中微公司)">
+                    <button class="btn-action btn-primary" onclick="HealthCheck.run()" id="btn-hc" style="white-space:nowrap;">
+                        <i class="fas fa-stethoscope"></i> 开始体检
+                    </button>
+                </div>
+                <div class="hc-dims">
+                    <label><input type="checkbox" id="hc-dim-financial" checked> <span>财务健康</span></label>
+                    <label><input type="checkbox" id="hc-dim-technical" checked> <span>技术面</span></label>
+                    <label><input type="checkbox" id="hc-dim-talent" checked> <span>人才与专利</span></label>
+                    <label><input type="checkbox" id="hc-dim-valuation" checked> <span>估值合理性</span></label>
+                </div>
+                <div class="hc-status-bar" id="hc-status">输入股票代码后开始体检</div>
+            </div>
+        </div>
+        <div class="panel" style="flex:1;">
+            <div class="panel-header"><span class="panel-title">功能说明</span></div>
+            <div class="panel-body" style="font-size:10px;color:var(--text-dim);line-height:1.6;">
+                <p>个股全方位健康体检 — LLM 自主分析</p>
+                <ul style="padding-left:14px;margin:4px 0;">
+                    <li>选择分析维度后点击「开始体检」</li>
+                    <li>LLM 自动编排分析路径: 查指标 → 搜资料 → 综合判断</li>
+                    <li>输出总体 verdict + 各维度评分 + 关键风险/催化剂</li>
+                    <li>分析耗时约 30-60 秒</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ Right Panel: Results ═══ -->
+    <div class="right-panel">
+        <div id="hc-result">
+            <div class="empty-state">
+                <div class="icon">&#128138;</div>
+                <div>输入股票代码，开始全方位健康体检</div>
+            </div>
+        </div>
+    </div>
+
+</div>
+</main>
+</div>
+
+<script src="js/framework/api.js"></script>
+<script src="js/framework/modal.js"></script>
+<script src="js/framework/task_monitor.js"></script>
+<script src="js/framework/markdown.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/common.js"></script>
+<script src="js/health-check.js"></script>
+</body>
+</html>

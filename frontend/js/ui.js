@@ -22,6 +22,8 @@ const UI_COMPONENTS = {
               subs: [
                 { id: 'financial', icon: 'fas fa-calculator', label: '财务指标', url: 'financial.html' },
                 { id: 'indicators', icon: 'fas fa-table', label: '价量指标', url: 'indicators.html' },
+                { id: 'valuation', icon: 'fas fa-balance-scale', label: '定量估值', url: 'valuation.html' },
+                { id: 'health-check', icon: 'fas fa-stethoscope', label: '健康体检', url: 'health-check.html' },
               ]
             },
             { id: 'data', icon: 'fas fa-globe', label: '市场分析', url: 'data.html' },
