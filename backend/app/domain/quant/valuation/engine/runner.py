@@ -106,6 +106,19 @@ class ValuationRunner:
                 "stock_name": row.stock_name,
             }
 
+    async def _load_latest_price(self, code: str) -> Optional[float]:
+        """从 MarketData 读最新收盘价 (唯一权威源)"""
+        from sqlalchemy import select as _select
+        async with async_session() as db:
+            row = await db.execute(
+                _select(MarketData.close)
+                .where(MarketData.stock_code == code)
+                .order_by(MarketData.trade_date.desc())
+                .limit(1)
+            )
+            price = row.scalar()
+            return float(price) if price else None
+
     async def _load_pe_history(self, code: str, lookback_days: int = 1095) -> list:
         """加载历史 PE 序列用于百分位计算 (从 StockValuation 的变化历史)
 
@@ -246,6 +259,8 @@ class ValuationRunner:
         val_data = await self._load_valuation_data(stock_code)
         fin_data = await self._load_financial_data(stock_code)
         info = await self._load_stock_info(stock_code)
+        # price 从 MarketData.close 获取 (唯一权威源)
+        current_price = await self._load_latest_price(stock_code)
 
         if not val_data:
             logger.warning(f"[ValuationRunner] {stock_code}: no valuation data, sync first")
@@ -282,6 +297,7 @@ class ValuationRunner:
                     **val_data,
                     **fin_data,
                     **info,
+                    "price": current_price,
                     **cls.params,
                 }
 
@@ -343,12 +359,8 @@ class ValuationRunner:
                 logger.warning(f"[ValuationRunner] {stock_code} {name} failed: {e}")
                 errors.append(f"{name}: {e}")
 
-        # 4. 写入存储
+        # 4. 写入存储 (只存估值方法输出, price/pe_ttm/pb 从 MySQL 实时读)
         if results:
-            # 加入当前价格
-            if val_data.get("mcap_yi") and info.get("total_shares"):
-                price_est = (val_data["mcap_yi"] * 1e8) / info["total_shares"]
-                results.setdefault("price", round(price_est, 2))
             self.store.upsert_snapshot(stock_code, today, results)
 
         logger.info(f"[ValuationRunner] {stock_code}: {len(methods_run)} methods run, {len(errors)} errors")

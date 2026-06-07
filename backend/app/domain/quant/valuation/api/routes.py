@@ -79,12 +79,47 @@ async def compute_batch(
 
 @router.get("/{stock_code}")
 async def get_valuation(stock_code: str):
-    """获取单只股票的最新估值快照"""
+    """获取单只股票的最新估值快照 (含 price/pe_ttm/pb 等 MySQL 实时字段)"""
     from app.domain.quant.valuation.engine import store as vstore
+    from app.models.models import StockMaster, StockValuation, MarketData
+    from sqlalchemy import select as _select
+
+    # SQLite: 估值方法输出
     row = vstore.get_latest(stock_code)
-    if not row:
-        return {"success": True, "data": {"stock_code": stock_code, "message": "暂无估值数据, 请先 POST /compute"}}
-    return {"success": True, "data": dict(row)}
+    result = dict(row) if row else {"stock_code": stock_code}
+
+    # MySQL: 补充 price/pe_ttm/pb/mcap/total_shares (统一从权威源读取)
+    async with async_session() as db:
+        master = await db.get(StockMaster, stock_code)
+        if master:
+            result["stock_name"] = master.stock_name
+            result["total_shares"] = master.total_shares
+            result["industry"] = master.industry
+
+        val = await db.get(StockValuation, stock_code)
+        if val:
+            result["pe_ttm"] = val.pe_ttm
+            result["pb"] = val.pb
+            result["mcap_yi"] = val.mcap_yi
+            result["float_mcap_yi"] = val.float_mcap_yi
+            result["roe"] = val.roe
+            result["dividend_yield"] = val.dividend_yield
+            result["eps_growth_3y"] = val.eps_growth_3y
+
+        # price 从 MarketData 最新收盘价取 (唯一权威源)
+        md = await db.execute(
+            _select(MarketData.close)
+            .where(MarketData.stock_code == stock_code)
+            .order_by(MarketData.trade_date.desc())
+            .limit(1)
+        )
+        if price := md.scalar():
+            result["price"] = float(price)
+
+    if not row and not result.get("stock_name"):
+        return {"success": True, "data": {"stock_code": stock_code, "message": "暂无估值数据"}}
+
+    return {"success": True, "data": result}
 
 
 @router.get("/history/{stock_code}")

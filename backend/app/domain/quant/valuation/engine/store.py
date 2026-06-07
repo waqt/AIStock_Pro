@@ -33,7 +33,8 @@ def _get_conn() -> sqlite3.Connection:
 
 # ═══ 列推导 ═════════════════════════════════════
 
-VALUATION_BASE_NUMERIC_COLS = ["price"]
+# price 不存 SQLite, 从 MarketData.close 实时读 (routes.py 补充)
+VALUATION_BASE_NUMERIC_COLS = []
 VALUATION_BASE_TEXT_COLS = []
 
 def _get_dynamic_cols() -> tuple:
