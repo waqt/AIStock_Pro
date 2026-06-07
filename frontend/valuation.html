@@ -41,6 +41,39 @@
         .v-table td { padding: 4px 8px; border-bottom: 1px solid rgba(255,255,255,0.04); }
         .v-table tr:hover td { background: rgba(255,255,255,0.03); }
         .detail-section { font-size: 11px; color: var(--text-dim); line-height: 1.6; }
+        /* Dashboard field rows */
+        .val-group { border: 1px solid rgba(255,255,255,0.06); border-radius: 4px; margin-bottom: 6px; overflow: hidden; }
+        .val-group-header { display: flex; align-items: center; padding: 6px 10px; cursor: pointer; font-size: 10px; color: var(--text-dim); background: rgba(255,255,255,0.02); user-select: none; gap: 6px; }
+        .val-group-header:hover { background: rgba(255,255,255,0.04); }
+        .val-group-header .arrow { transition: transform 0.2s; font-size: 8px; }
+        .val-group-header .arrow.collapsed { transform: rotate(-90deg); }
+        .val-group-header .count { font-size: 9px; color: var(--text-micro); margin-left: auto; }
+        .val-group-body { padding: 6px 8px; }
+        .val-group-body.hidden { display: none; }
+        .val-method-row { display: flex; align-items: center; padding: 4px 6px; border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 11px; gap: 8px; }
+        .val-method-row:last-child { border-bottom: none; }
+        .val-method-row .ml { color: #aaa; min-width: 90px; font-size: 10px; }
+        .val-method-row .mv { font-family: var(--font-mono); font-weight: 600; min-width: 60px; text-align: right; }
+        .val-method-row .mcap { font-size: 9px; color: var(--text-micro); min-width: 70px; text-align: right; }
+        .val-method-row .ms { font-size: 9px; min-width: 40px; text-align: center; }
+        .val-method-row .null-placeholder { color: var(--text-micro); font-style: italic; }
+        /* (?) icon for field help */
+        .hlp-icon { cursor: pointer; color: var(--text-micro); font-size: 11px; margin-left: 2px; padding: 2px 4px; vertical-align: middle; user-select: none; }
+        .hlp-icon:hover { color: var(--accent-blue); }
+        /* Help section styles */
+        .help-section { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 6px; padding: 10px 12px; font-size: 10px; color: var(--text-dim); line-height: 1.6; }
+        .help-section .help-title { color: #ccc; font-weight: 600; font-size: 11px; margin-bottom: 6px; }
+        .help-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+        .help-card { background: rgba(255,255,255,0.02); border-radius: 4px; padding: 6px 8px; }
+        .help-card .h-icon { font-size: 14px; margin-right: 4px; }
+        .help-card .h-label { color: #aaa; font-size: 10px; font-weight: 500; }
+        .help-card .h-text { color: var(--text-dim); font-size: 9px; margin-top: 2px; }
+        .sim-help-toggle { cursor: pointer; user-select: none; padding: 6px 8px; border-radius: 4px; background: rgba(112,161,255,0.06); border: 1px solid rgba(112,161,255,0.1); display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--accent-blue); }
+        .sim-help-toggle:hover { background: rgba(112,161,255,0.1); }
+        .sim-help-body { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 6px; padding: 10px 12px; margin-top: 4px; font-size: 10px; color: var(--text-dim); line-height: 1.7; }
+        .sim-help-body h5 { color: #ccc; font-size: 11px; margin: 8px 0 4px; }
+        .sim-help-body h5:first-child { margin-top: 0; }
+        .sim-help-body code { background: rgba(255,255,255,0.05); padding: 1px 4px; border-radius: 2px; font-size: 9px; color: var(--accent-blue); }
     </style>
 </head>
 <body data-page-id="valuation">
@@ -50,23 +83,20 @@
 <div class="top-bar"></div>
 <div class="workspace">
 
-    <!-- ═══ Left Panel: Stock Input + Method List ═══ -->
+    <!-- ── Left Panel: Stock Input + Method List ── -->
     <div class="left-panel">
         <div class="panel">
             <div class="panel-body" style="display:flex;flex-direction:column;gap:8px;">
                 <div style="display:flex;gap:6px;">
                     <input type="text" id="val-code" placeholder="股票代码 (如 688012)"
-                        style="flex:1;background:#000;border:1px solid var(--border-color);color:#fff;padding:8px 10px;border-radius:4px;font-size:13px;">
+                        style="flex:1;background:#000;border:1px solid var(--border-color);color:#fff;padding:8px 10px;border-radius:4px;font-size:13px;" list="val-stock-list">
+                    <datalist id="val-stock-list"></datalist>
                     <button class="btn-action btn-primary" onclick="Valuation.run()" id="btn-val" style="white-space:nowrap;">
                         <i class="fas fa-calculator"></i> 计算
                     </button>
                 </div>
                 <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-                    <select id="val-mode" style="background:#000;border:1px solid var(--border-color);color:#fff;padding:4px 8px;border-radius:4px;font-size:10px;">
-                        <option value="snapshot">快照</option>
-                        <option value="historical">全量</option>
-                        <option value="incremental">增量</option>
-                    </select>
+                    <span style="color:var(--text-micro);font-size:10px;">点计算=全量重算</span>
                     <span id="val-status" style="font-size:10px;color:var(--text-micro);">输入代码后计算</span>
                 </div>
             </div>
@@ -80,7 +110,7 @@
         </div>
     </div>
 
-    <!-- ═══ Right Panel: 4 Tabs ═══ -->
+    <!-- ── Right Panel: 5 Tabs ── -->
     <div class="right-panel">
         <div style="display:flex;gap:0;border-bottom:1px solid var(--border-color);">
             <button class="tab-btn active" onclick="Valuation.switchTab('dashboard')" id="vt-dashboard">估值仪表盘</button>
@@ -94,7 +124,7 @@
         <div class="tab-panel active" id="vtab-dashboard" style="flex:1;display:flex;flex-direction:column;gap:8px;overflow-y:auto;">
             <div id="val-result" style="display:none;flex-direction:column;gap:10px;"></div>
             <div id="val-empty" style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--text-dim);font-size:12px;">
-                输入股票代码后点击「计算」查看估值仪表盘
+                输入股票代码后点击"计算"查看估值仪表盘
             </div>
         </div>
 
@@ -102,6 +132,28 @@
         <div class="tab-panel" id="vtab-peband" style="flex:1;display:none;flex-direction:column;gap:8px;">
             <div id="peband-chart" class="chart-container"></div>
             <div id="peband-info" style="font-size:10px;color:var(--text-micro);text-align:center;"></div>
+            <!-- PE Band 帮助说明 -->
+            <div class="help-section" id="peband-help" style="display:none;">
+                <div class="help-title">📊 PE 百分位使用说明</div>
+                <div class="help-grid">
+                    <div class="help-card">
+                        <div><span class="h-icon">📌</span><span class="h-label">概念</span></div>
+                        <div class="h-text">PE 百分位 = 当前市盈率在近 3 年历史中的位置。<br>例如 20% = PE 比过去 80% 的时间都低（便宜）。</div>
+                    </div>
+                    <div class="help-card">
+                        <div><span class="h-icon">🎨</span><span class="h-label">色区含义</span></div>
+                        <div class="h-text">
+                            <span style="color:var(--accent-green);">绿色 (0-20%)</span> = 低估区<br>
+                            <span style="color:var(--accent-gold);">黄色 (20-80%)</span> = 合理区<br>
+                            <span style="color:var(--accent-red);">红色 (80-100%)</span> = 高估区
+                        </div>
+                    </div>
+                    <div class="help-card" style="grid-column:1/-1;">
+                        <div><span class="h-icon">💡</span><span class="h-label">注意事项</span></div>
+                        <div class="h-text">百分位仅反映历史位置，不绝对代表贵贱。周期股在底部 PE 反而最高，需结合行业阶段判断。历史数据时间越长，百分位参考价值越大。</div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Tab 3: Method Details -->
@@ -123,6 +175,36 @@
 
         <!-- Tab 5: Simulation -->
         <div class="tab-panel" id="vtab-sim" style="flex:1;display:none;flex-direction:column;gap:8px;overflow-y:auto;">
+            <!-- 仿真帮助 -->
+            <div>
+                <div class="sim-help-toggle" onclick="ValuationSim.toggleHelp()">
+                    <span id="sim-help-arrow">&#9654;</span>
+                    <span>📘 使用说明 (点击展开)</span>
+                </div>
+                <div class="sim-help-body" id="sim-help-body" style="display:none;">
+                    <h5>📘 什么是蒙特卡洛仿真？</h5>
+                    <div>对估值模型的关键输入参数（营收增速、WACC、毛利率等）设定概率分布，计算机随机采样 N 次，观察输出结果的分布形态。帮助理解"估值的不确定性有多大"。</div>
+
+                    <h5>🎯 操作步骤</h5>
+                    <div>
+                        1. 选择估值方法 — 先在估值仪表盘计算过某股票<br>
+                        2. 选择关注的输出字段（如 <code>weighted_target</code>）<br>
+                        3. 对每个参数设定分布类型：
+                        &nbsp; 正态分布：最常用，参数围绕均值浮动
+                        &nbsp; 均匀分布：只知道大致范围时用
+                        &nbsp; 三角分布：知道乐观/悲观/最可能值时用<br>
+                        4. 点 "运行仿真" 观察结果分布
+                    </div>
+
+                    <h5>📊 结果解读</h5>
+                    <div>
+                        - 直方图：横轴 = 估值价格，纵轴 = 出现频率<br>
+                        - 均值/中位数：最可能的估值中枢<br>
+                        - P10/P90：90%/10% 的概率估值落在此值以上/以下<br>
+                        - 偏度：均值 > 中位数 = 右偏，上行空间大于下行风险
+                    </div>
+                </div>
+            </div>
             <div style="display:flex;gap:10px;flex:1;">
                 <!-- Left: Controls -->
                 <div style="width:340px;min-width:300px;display:flex;flex-direction:column;gap:6px;">
@@ -148,8 +230,8 @@
                     <div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-dim);font-size:11px;">
                         <div style="text-align:center;">
                             <div style="font-size:40px;opacity:0.2;margin-bottom:8px;">&#9881;</div>
-                            <div>配置参数后点击「运行仿真」</div>
-                            <div style="font-size:9px;color:var(--text-micro);margin-top:4px;">对关键参数设定概率分布, 观察估值结果的分布形态</div>
+                            <div>配置参数后点击"运行仿真"</div>
+                            <div style="font-size:9px;color:var(--text-micro);margin-top:4px;">对关键参数设定概率分布，观察估值结果的分布形态</div>
                         </div>
                     </div>
                 </div>

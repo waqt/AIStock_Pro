@@ -1,17 +1,19 @@
 /**
- * 技术指标前端模块 (TechInd) — V3
+ * 技术指标前端模块 (TechInd) — V4
  *
- * 功能:
- *   - 按股票: 自动分组显示(价格&均线/MACD/RSI/KDJ/布林带/…), 每组独立渲染
- *   - 按指标: 可排序排名表 + 阈值筛选 + 统计摘要 + CSV导出
- *   - 交叉比较: 多股票×多指标矩阵 + CSV导出 + localStorage持久化
+ * 三层展示架构:
+ *   Tier 1: 主图 (K线+成交量+叠加层)   ← 始终显示
+ *   Tier 2: 副图 (Tab 切换, 一次一图)   ← 用户选择
+ *   Tier 3: 筹码信息卡片                 ← 始终显示
+ * + Field Mode: 排序排名表 + 筛选 + CSV
+ * + Compare Mode: 多股票×多指标交叉比较
  */
 window.TechInd = (function() {
     'use strict';
 
     var API = window.API_BASE || '/api';
 
-    // ── 常量 ──
+    // ── 分类名称 (保留给 indicator value 列表用) ──
     var CAT_NAMES = {
         trend: '趋势', momentum: '动量', volatility: '波动',
         volume: '量能', crowding: '拥挤度', chip: '筹码'
@@ -20,32 +22,43 @@ window.TechInd = (function() {
 
     var SERIES_COLORS = ['#60a5fa', '#2ed573', '#ff4757', '#ffa502', '#a29bfe', '#fb6da7', '#00d2d3', '#f368e0'];
 
-    // ── 指标分组定义 (★ V3: 按逻辑分组, 不同渲染方式) ──
-    var FIELD_GROUPS = {
-        price_ma:     { label: '价格与均线', fields: ['price','ma5','ma10','ma20','ma60','ma120','ma250'], style: 'multi_line' },
-        bollinger:    { label: '布林带',     fields: ['bb_upper','bb_mid','bb_lower'],                    style: 'band' },
-        vwap:         { label: 'VWAP',       fields: ['vwap'],                                           style: 'overlay', overlay: 'price_ma' },
-        macd:         { label: 'MACD',       fields: ['macd','macd_signal','macd_hist'],                  style: 'macd' },
-        kdj:          { label: 'KDJ',        fields: ['k','d','j'],                                      style: 'ranged', min: 0, max: 100 },
-        rsi:          { label: 'RSI',        fields: ['rsi'],                                            style: 'rsi' },
-        atr:          { label: 'ATR',        fields: ['atr'],                                            style: 'line' },
-        cci:          { label: 'CCI',        fields: ['cci'],                                            style: 'line' },
-        obv:          { label: 'OBV',        fields: ['obv'],                                            style: 'line' },
-        volume_ma:    { label: '均量线',     fields: ['v_ma5','v_ma10','v_ma20'],                       style: 'line' },
-        bb_width:     { label: '布林带宽',   fields: ['bb_width'],                                      style: 'line' },
-        crowing_rat:  { label: '拥挤度',     fields: ['crowding_ratio'],                                 style: 'line' },
-        sharpe:       { label: '夏普比',     fields: ['sharpe_60d'],                                     style: 'line' },
-        turnover:     { label: '换手率',     fields: ['turnover_20d','turnover_120d'],                   style: 'line' },
-        chip_conc:    { label: '筹码集中度', fields: ['chip_concentration'],                             style: 'line' },
-        chip_price:   { label: '筹码价格',   fields: ['chip_peak_price','chip_avg_cost'],                style: 'line' },
+    // ── 主图叠加层定义 (K线同量纲) ──
+    var OVERLAY_DEFS = {
+        // 均线 (逐个展开)
+        'ma5':   { label: 'MA5',  color: '#60a5fa', fields: ['ma5'],   type: 'line' },
+        'ma10':  { label: 'MA10', color: '#2ed573', fields: ['ma10'],  type: 'line' },
+        'ma20':  { label: 'MA20', color: '#ffa502', fields: ['ma20'],  type: 'line' },
+        'ma60':  { label: 'MA60', color: '#ff4757', fields: ['ma60'],  type: 'line' },
+        'ma120': { label: 'MA120',color: '#a29bfe', fields: ['ma120'], type: 'line' },
+        'ma250': { label: 'MA250',color: '#00d2d3', fields: ['ma250'], type: 'line' },
+        // 组叠加
+        'bollinger':  { label: '布林带',  fields: ['bb_upper','bb_mid','bb_lower'],               type: 'band' },
+        'vwap':       { label: 'VWAP',    color: '#f368e0',     fields: ['vwap'],                  type: 'line' },
+        'chip_price': { label: '筹码价格', fields: ['chip_peak_price','chip_avg_cost'],            type: 'multi_line',
+                        colors: {'chip_peak_price':'#22d3ee','chip_avg_cost':'#fb6da7'} },
     };
+    // 均线排列顺序 (UI 用)
+    var MA_KEYS = ['ma5','ma10','ma20','ma60','ma120','ma250'];
+    // 组叠加重定向 (渲染时展开)
+    var GROUP_OVERLAY_KEYS = ['bollinger','vwap','chip_price'];
 
-    var FIELD_TO_GROUP = {};
-    (function buildMap() {
-        for (var g in FIELD_GROUPS) {
-            FIELD_GROUPS[g].fields.forEach(function(f) { FIELD_TO_GROUP[f] = g; });
-        }
-    })();
+    // ── 副图定义 (Tab 切换, 一次一个) ──
+    var SUB_CHART_DEFS = {
+        'macd':  { label: 'MACD',     fields: ['macd','macd_signal','macd_hist'],              style: 'macd' },
+        'kdj':   { label: 'KDJ',      fields: ['k','d','j'],                                    style: 'ranged', min: 0, max: 100 },
+        'rsi':   { label: 'RSI',      fields: ['rsi'],                                          style: 'rsi' },
+        'atr':   { label: 'ATR',      fields: ['atr'],                                          style: 'line' },
+        'cci':   { label: 'CCI',      fields: ['cci'],                                          style: 'line' },
+        'obv':   { label: 'OBV',      fields: ['obv'],                                          style: 'line' },
+        'volma': { label: '均量线',    fields: ['v_ma5','v_ma10','v_ma20'],                     style: 'line' },
+        'bbw':   { label: '布林带宽',  fields: ['bb_width'],                                    style: 'line' },
+        'turn':  { label: '换手率',    fields: ['turnover_20d','turnover_120d'],                 style: 'line' },
+        'crowd': { label: '拥挤度',    fields: ['crowding_ratio'],                               style: 'line' },
+        'sharpe':{ label: '夏普比',    fields: ['sharpe_60d'],                                   style: 'line' },
+        'chipc': { label: '筹码集中度',fields: ['chip_concentration'],                           style: 'line' },
+        'chipd': { label: '筹码分布',  fields: [],                                                style: 'chip_dist' },
+    };
+    var SUB_CHART_ORDER = ['macd','kdj','rsi','atr','cci','obv','volma','bbw','turn','crowd','sharpe','chipc','chipd'];
 
     // ── 状态 ──
     var currentMode = 'stock';       // 'stock' | 'field' | 'compare'
@@ -62,9 +75,13 @@ window.TechInd = (function() {
     var compareIndicators = JSON.parse(localStorage.getItem('ti_compare_inds') || '[]');
     var allStocksForCompare = [];
 
-    // 图表状态
-    var _chartFields = [];           // 当前勾选的指标字段
-    var _chartDays = 180;           // 当前时间范围（默认近6个月）
+    // ★ V4 新增状态
+    var _dailyData = null;           // 日线 OHLC [{trade_date,open,high,low,close,volume}...]
+    var _indicatorHistory = null;    // 指标历史 {dates, fields:{...}}
+    var _cachedSnapshot = null;      // 最新指标快照 (用于左面板数值显示)
+    var _overlayState = {};           // { ma5: true, ma10: true, ..., bollinger: false, ... }
+    var _activeSubChart = 'macd';    // 当前副图 key
+    var _chartDays = 180;            // 当前时间范围
 
     // 排序/筛选状态 (field mode)
     var _fieldItems = [];
@@ -73,10 +90,10 @@ window.TechInd = (function() {
     var _filterOp = '';
     var _filterVal = '';
 
-    var _chartInstances = [];        // 当前所有 ECharts 实例
+    var _chartInstances = [];
     var _resizeHandler = null;
 
-    // ── 工具函数 ──
+    // ── 工具 ──
     function escHtml(s) { if (!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
     function getStockName(code) { return stockNameMap[code] || code; }
     function getFieldLabel(field) {
@@ -88,12 +105,6 @@ window.TechInd = (function() {
         }
         return field;
     }
-    function isPriceField(f) {
-        var priceFields = ['price','ma5','ma10','ma20','ma60','ma120','ma250',
-            'bb_upper','bb_mid','bb_lower','vwap','chip_avg_cost','chip_peak_price'];
-        return priceFields.indexOf(f) >= 0;
-    }
-
     function _fmtValue(v, indName) {
         if (v == null || v === '' || v === undefined) return '—';
         if (typeof v === 'string') return v;
@@ -105,13 +116,11 @@ window.TechInd = (function() {
         if (abs >= 0.01) return n.toFixed(4);
         return n.toExponential(2);
     }
-
     function _valueColor(field, v) {
         if (v == null || v === '') return 'var(--text-micro)';
         if (typeof v === 'string') return 'var(--text-dim)';
         var n = Number(v);
         if (isNaN(n)) return 'var(--text-dim)';
-
         if (field === 'rsi' || field === 'k' || field === 'd') {
             if (n > 70) return 'var(--accent-red)';
             if (n < 30) return 'var(--accent-green)';
@@ -126,8 +135,18 @@ window.TechInd = (function() {
         if (n < 0) return 'var(--accent-red)';
         return 'var(--text-dim)';
     }
-
     function _isETF(code) { return /^(159|510|512|513|560|588)/.test(code); }
+    function _toDateStr() {
+        var d = new Date();
+        return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    }
+    function _downloadCSV(content, filename) {
+        var blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+        var link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = filename;
+        link.click();
+    }
 
     // ── 初始化 ──
     async function init() {
@@ -158,8 +177,11 @@ window.TechInd = (function() {
             var posData = await posRes.json();
             var wlData = await wlRes.json();
             var map = {};
-            (posData.data || []).forEach(function(p) { map[p.stock_code] = p.stock_name || ''; });
-            (wlData.data || []).forEach(function(w) { map[w.stock_code] = w.stock_name || ''; });
+            // positions API 返回扁平数组, watchlist API 返回 {success, data}
+            var posList = Array.isArray(posData) ? posData : (posData.data || []);
+            var wlList = Array.isArray(wlData) ? wlData : (wlData.data || []);
+            posList.forEach(function(p) { map[p.stock_code] = p.stock_name || ''; });
+            wlList.forEach(function(w) { map[w.stock_code] = w.stock_name || ''; });
             stockList = Object.keys(map).filter(function(code) { return !_isETF(code); }).map(function(code) {
                 return { stock_code: code, stock_name: map[code] };
             });
@@ -182,9 +204,9 @@ window.TechInd = (function() {
         window.addEventListener('resize', _resizeHandler);
     }
 
-    // ══════════════════════════════════════════════════════════
+    // ══════════════════════════════════════════════════════════════
     // Mode Switching
-    // ══════════════════════════════════════════════════════════
+    // ══════════════════════════════════════════════════════════════
     function switchMode(mode) {
         currentMode = mode;
         var btns = { stock: 'btn-stock', field: 'btn-field', compare: 'btn-compare' };
@@ -201,110 +223,237 @@ window.TechInd = (function() {
         if (mode === 'compare') _updateCompareUI();
     }
 
-    // ══════════════════════════════════════════════════════════
-    // Stock Mode
-    // ══════════════════════════════════════════════════════════
+    // ══════════════════════════════════════════════════════════════
+    // ★ V4: Stock Mode — K线主图 + 副图Tab + 筹码卡片
+    // ══════════════════════════════════════════════════════════════
+
+    // ── 选择股票 ──
     function selectStock() {
         var code = document.getElementById('stock-select').value;
         if (!code) return;
         currentStock = code;
-        _chartFields = [];
+
+        // 重置状态
+        _disposeAllCharts();
+        _dailyData = null;
+        _indicatorHistory = null;
+        _cachedSnapshot = null;
+
+        // 初始化叠加层默认状态 (ma5/10/20/60 默认开启)
+        _overlayState = {};
+        MA_KEYS.forEach(function(k) { _overlayState[k] = ['ma5','ma10','ma20','ma60'].indexOf(k) >= 0; });
+        GROUP_OVERLAY_KEYS.forEach(function(k) { _overlayState[k] = false; });
+        _activeSubChart = 'macd';
+
+        document.getElementById('stock-info-text').textContent = '加载中...';
         document.getElementById('indicator-cards').innerHTML = '<div style="color:var(--text-micro);padding:20px;">加载中...</div>';
 
-        fetch(API + '/quant/indicators/' + code).then(function(r) { return r.json(); }).then(function(d) {
-            var ind = (d.data && d.data.indicators) ? d.data.indicators : null;
-            if (!ind) {
-                document.getElementById('indicator-cards').innerHTML = '<div style="color:var(--text-micro);padding:20px;">无指标数据</div>';
+        // 并行加载: 日线数据 + 指标历史 + 指标快照
+        var allFields = _getAllFieldNames();
+        // days=0 → 取全部数据, 用最大值
+        var apiDays = _chartDays || 2000;
+        Promise.all([
+            fetch(API + '/data/daily/' + code + '?limit=' + apiDays).then(function(r) { return r.json(); }),
+            fetch(API + '/quant/indicators/history/' + code + '?fields=' + allFields.join(',') + '&days=' + apiDays).then(function(r) { return r.json(); }),
+            fetch(API + '/quant/indicators/' + code).then(function(r) { return r.json(); })
+        ])
+        .then(function(results) {
+            // Daily API returns flat array (not wrapped in {value}), indicator APIs use {success, data}
+            var dailyResp = results[0];
+            _dailyData = (Array.isArray(dailyResp) ? dailyResp : (dailyResp.value || [])).filter(function(r) { return r.open > 0; });
+            _indicatorHistory = results[1].data;
+            _cachedSnapshot = (results[2].data && results[2].data.indicators) ? results[2].data.indicators : null;
+
+            if (!_dailyData.length && (!_indicatorHistory || !_indicatorHistory.dates || !_indicatorHistory.dates.length)) {
+                document.getElementById('stock-info-text').textContent = code + ' — 无数据';
+                document.getElementById('indicator-cards').innerHTML = '<div style="color:var(--text-micro);padding:20px;text-align:center;">暂无该股票的数据</div>';
                 return;
             }
-            document.getElementById('stock-info-text').textContent = '最新: ' + (d.data.analysis_date || '?') + ' | 现价: ' + (ind.price ? ind.price.toFixed(2) : '?');
-            _renderCards(ind);
 
-            // ★ V3: 默认显示价格 + MA (price, ma5, ma10, ma20, ma60)
-            var defaults = ['price', 'ma5', 'ma10', 'ma20', 'ma60'];
-            _chartFields = defaults.filter(function(f) { return f in ind && ind[f] != null; });
-            var cbs = document.querySelectorAll('.ind-checkbox');
-            cbs.forEach(function(cb) {
-                cb.checked = _chartFields.indexOf(cb.dataset.field) >= 0;
-            });
-            if (_chartFields.length) {
-                _showMultiChart();
+            var infoText = '';
+            if (_cachedSnapshot && _cachedSnapshot.price) {
+                infoText = '现价: ' + _cachedSnapshot.price.toFixed(2);
             }
-        }).catch(function(e) {
-            document.getElementById('indicator-cards').innerHTML = '<div style="color:var(--accent-red);">加载失败</div>';
+            if (_dailyData.length) {
+                var latest = _dailyData[_dailyData.length - 1];
+                infoText += ' | 日期: ' + latest.trade_date + '  O:' + latest.open.toFixed(2) + ' H:' + latest.high.toFixed(2) + ' L:' + latest.low.toFixed(2) + ' C:' + latest.close.toFixed(2) + '  Vol:' + (latest.volume/1e4).toFixed(0) + '万股';
+            }
+            document.getElementById('stock-info-text').textContent = infoText || (code + ' — 数据已加载');
+
+            // 渲染左侧面板
+            _renderCards();
+            // 渲染主图
+            _renderMainChart();
+            // 渲染副图
+            _renderSubChart();
+            // 渲染筹码卡片
+            _renderChipCard();
+        })
+        .catch(function(e) {
+            console.error('[TechInd] load error:', e);
+            document.getElementById('stock-info-text').textContent = '加载失败: ' + e.message;
+            document.getElementById('indicator-cards').innerHTML = '<div style="color:var(--accent-red);padding:20px;">加载失败，请重试</div>';
         });
     }
 
-    function _renderCards(ind) {
-        var grouped = {};
-        registry.forEach(function(ir) {
-            var cat = ir.category;
-            if (!grouped[cat]) grouped[cat] = [];
-            ir.output.forEach(function(field) {
-                if (field in ind && ind[field] != null && !field.startsWith('_')) {
-                    grouped[cat].push({ name: field, label: ir.label || field, value: ind[field] });
-                }
+    // ── 获取所有可能需要的字段名 ──
+    function _getAllFieldNames() {
+        var fields = [];
+        // 叠加层
+        for (var k in OVERLAY_DEFS) {
+            OVERLAY_DEFS[k].fields.forEach(function(f) { if (fields.indexOf(f) < 0) fields.push(f); });
+        }
+        // 副图
+        for (var sk in SUB_CHART_DEFS) {
+            SUB_CHART_DEFS[sk].fields.forEach(function(f) { if (fields.indexOf(f) < 0) fields.push(f); });
+        }
+        return fields;
+    }
+
+    // ── 拼接日线与指标数据 ──
+    function _getMergedData() {
+        if (!_dailyData || !_dailyData.length) return null;
+
+        // _dailyData 来自 API: 正序 (chronological, oldest-first)
+        var dates = _dailyData.map(function(r) { return r.trade_date; });
+        var ohlc = _dailyData.map(function(r) { return [r.open, r.close, r.low, r.high]; });
+        var volumes = _dailyData.map(function(r) { return r.volume; });
+
+        // 若没有指标历史, 返回纯 K线数据
+        if (!_indicatorHistory || !_indicatorHistory.dates) {
+            return { dates: dates, ohlc: ohlc, volumes: volumes, aligned: {} };
+        }
+
+        // 指标历史是 newest-first, 反转以对齐日线正序
+        var indDates = _indicatorHistory.dates.slice().reverse();
+        var indFields = {};
+        for (var f in _indicatorHistory.fields) {
+            indFields[f] = _indicatorHistory.fields[f].slice().reverse();
+        }
+
+        // 指标日期 → 索引映射 (now chronological)
+        var dateToIdx = {};
+        indDates.forEach(function(d, i) { dateToIdx[d] = i; });
+
+        // 对齐每个指标字段到日线日期
+        var aligned = {};
+        for (var field in indFields) {
+            aligned[field] = dates.map(function(d) {
+                var idx = dateToIdx[d];
+                return idx !== undefined ? indFields[field][idx] : null;
             });
-        });
+        }
+
+        return { dates: dates, ohlc: ohlc, volumes: volumes, aligned: aligned };
+    }
+
+    // ── 渲染左面板 ──
+    function _renderCards() {
+        // 不再沿用 category 分组, 改为三区域:
+        // 1. 主图叠加 (均线 + 组叠加)
+        // 2. 副图选择
+        // 3. (筹码卡片独立渲染到右侧)
+        var ind = _cachedSnapshot;
+        if (!ind) {
+            document.getElementById('indicator-cards').innerHTML = '<div style="color:var(--text-micro);padding:10px;">暂无指标数据</div>';
+            return;
+        }
 
         var html = '';
-        // Multi-select button bar
-        html += '<div style="display:flex;gap:4px;padding:4px 10px 6px;align-items:center;border-bottom:1px solid rgba(255,255,255,0.04);">';
-        html += '<span style="font-size:9px;color:var(--text-micro);">勾选指标分组显示:</span>';
-        html += '<button onclick="TechInd._showMultiChart()" style="margin-left:auto;background:transparent;border:1px solid var(--accent-blue);color:var(--accent-blue);padding:3px 10px;border-radius:3px;cursor:pointer;font-size:10px;">📊 显示</button>';
-        html += '<button onclick="TechInd._clearChecked()" style="background:transparent;border:1px solid var(--text-micro);color:var(--text-micro);padding:3px 10px;border-radius:3px;cursor:pointer;font-size:10px;">清除</button>';
+
+        // ── 区域1: 主图叠加 ──
+        html += '<div class="cat-title" style="margin-top:0;">📈 主图叠加</div>';
+        html += '<div style="padding:4px 6px 2px;display:flex;flex-wrap:wrap;gap:3px;">';
+        // 均线
+        MA_KEYS.forEach(function(k) {
+            var def = OVERLAY_DEFS[k];
+            if (!def) return;
+            var checked = _overlayState[k] ? ' checked' : '';
+            var val = ind[k] != null ? def.label : '';
+            html += '<label style="display:inline-flex;align-items:center;gap:2px;font-size:9px;cursor:pointer;padding:1px 4px;border-radius:2px;background:rgba(255,255,255,0.03);">';
+            html += '<input type="checkbox" ' + checked + ' onchange="TechInd._toggleOverlay(\'' + k + '\')" style="margin:0;cursor:pointer;">';
+            html += '<span style="color:' + (def.color || '#ccc') + ';">' + def.label + '</span>';
+            html += '</label>';
+        });
         html += '</div>';
 
-        for (var ci = 0; ci < CAT_ORDER.length; ci++) {
-            var cat = CAT_ORDER[ci];
-            var items = grouped[cat];
-            if (!items || !items.length) continue;
-            html += '<div class="cat-group"><div class="cat-title">' + (CAT_NAMES[cat] || cat) + ' (' + items.length + ')</div>';
-            items.forEach(function(f) {
-                var isNum = typeof f.value === 'number';
-                var vs = isNum ? _fmtValue(f.value, f.name) : String(f.value).substring(0, 20);
-                var isText = textFields[f.name];
-                var checked = _chartFields.indexOf(f.name) >= 0 ? ' checked' : '';
+        // 组叠加
+        html += '<div style="padding:2px 6px 6px;display:flex;flex-wrap:wrap;gap:3px;">';
+        GROUP_OVERLAY_KEYS.forEach(function(k) {
+            var def = OVERLAY_DEFS[k];
+            if (!def) return;
+            var checked = _overlayState[k] ? ' checked' : '';
+            var allNull = def.fields.every(function(f) { return ind[f] == null; });
+            html += '<label style="display:inline-flex;align-items:center;gap:2px;font-size:9px;cursor:pointer;padding:1px 4px;border-radius:2px;background:rgba(255,255,255,0.03);' + (allNull ? 'opacity:0.3;' : '') + '">';
+            html += '<input type="checkbox" ' + checked + ' onchange="TechInd._toggleOverlay(\'' + k + '\')" style="margin:0;cursor:pointer;">';
+            html += '<span>' + def.label + '</span>';
+            html += '</label>';
+        });
+        html += '</div>';
 
-                html += '<div class="ind-row" data-field="' + f.name + '">';
-                html += '<input type="checkbox" class="ind-checkbox" data-field="' + f.name + '"' + checked + ' onchange="TechInd._toggleCheckbox(this)" style="margin:0;cursor:pointer;">';
-                html += '<span class="name" style="margin-left:4px;' + (isText ? 'color:#a78bfa;' : '') + '">' + f.name + '</span>';
-                html += '<span class="val" style="' + (isText ? 'color:#a78bfa;' : '') + '">' + vs + '</span>';
-                html += '</div>';
+        // ── 区域2: 副图选择 (Tab 风格) ──
+        html += '<div class="cat-title" style="margin-top:4px;">📊 副图</div>';
+        html += '<div style="padding:2px 6px 4px;display:flex;flex-wrap:wrap;gap:2px;">';
+        SUB_CHART_ORDER.forEach(function(k) {
+            var def = SUB_CHART_DEFS[k];
+            if (!def) return;
+            var isActive = _activeSubChart === k;
+            var hasData = def.fields.some(function(f) { return ind[f] != null; });
+            html += '<span onclick="TechInd._selectSubChart(\'' + k + '\')" style="display:inline-block;padding:2px 6px;font-size:9px;border-radius:3px;cursor:pointer;' +
+                (isActive ? 'background:var(--accent-blue);color:#fff;' : 'background:rgba(255,255,255,0.04);color:var(--text-dim);') +
+                (hasData ? '' : 'opacity:0.35;') + '">' + def.label + '</span>';
+        });
+        html += '</div>';
+
+        // ── 区域3: 当前副图指标值 ──
+        var activeDef = SUB_CHART_DEFS[_activeSubChart];
+        if (activeDef) {
+            html += '<div class="cat-title" style="margin-top:2px;">🔹 ' + activeDef.label + ' 当前值</div>';
+            html += '<div style="padding:4px 8px;font-size:9px;display:flex;flex-wrap:wrap;gap:4px 8px;">';
+            activeDef.fields.forEach(function(f) {
+                var v = ind[f];
+                var isText = textFields[f];
+                var color = isText ? '#a78bfa' : (_valueColor(f, v));
+                var vs = _fmtValue(v, f);
+                html += '<span><span style="color:var(--text-micro);">' + f + ':</span> <span style="color:' + color + ';font-family:var(--font-mono);">' + vs + '</span></span>';
             });
             html += '</div>';
         }
+
         document.getElementById('indicator-cards').innerHTML = html || '<div style="color:var(--text-micro);padding:10px;">暂无指标数据</div>';
     }
 
-    function _toggleCheckbox(cb) {
-        var field = cb.dataset.field;
-        if (cb.checked) {
-            if (_chartFields.indexOf(field) < 0) _chartFields.push(field);
-        } else {
-            _chartFields = _chartFields.filter(function(f) { return f !== field; });
-        }
+    // ── 叠加层切换 ──
+    function _toggleOverlay(key) {
+        _overlayState[key] = !_overlayState[key];
+        _renderMainChart();
+        // 只更新左面板的 checkbox 视觉, 不重建整个左面板
+        var cbs = document.querySelectorAll('.ind-checkbox-overlay');
+        cbs.forEach(function(cb) {
+            if (cb.dataset.key === key) cb.checked = _overlayState[key];
+        });
     }
 
-    function _clearChecked() {
-        _chartFields = [];
-        var cbs = document.querySelectorAll('.ind-checkbox');
-        cbs.forEach(function(cb) { cb.checked = false; });
-        _disposeAllCharts();
-        document.getElementById('main-chart').innerHTML = '<div style="color:var(--text-micro);padding:40px;text-align:center;">勾选左侧指标后点击"显示"</div>';
+    // ── 副图切换 ──
+    function _selectSubChart(key) {
+        if (!SUB_CHART_DEFS[key]) return;
+        _activeSubChart = key;
+        // 更新左面板: 重新渲染 (或纯 tab 切换)
+        _renderCards();
+        _renderSubChart();
     }
 
-    // ═══ Chart Controls ═══
+    // ── 时间范围 ──
     function _setTimeRange(days) {
         _chartDays = days;
-        if (currentMode === 'stock' && currentStock && _chartFields.length) {
-            _showMultiChart();
+        if (currentMode === 'stock' && currentStock) {
+            selectStock(); // 重新加载
         }
     }
 
     function _renderChartControls() {
         var html = '<div class="chart-controls" style="display:flex;gap:6px;align-items:center;padding:4px 0;">';
-        html += '<span style="font-size:9px;color:var(--text-micro);">时间范围:</span>';
+        html += '<span style="font-size:9px;color:var(--text-micro);">时间:</span>';
         var ranges = [7, 30, 90, 180, 365, 0];
         var rangeLabels = ['7d', '30d', '90d', '180d', '365d', 'Max'];
         ranges.forEach(function(d, idx) {
@@ -315,299 +464,350 @@ window.TechInd = (function() {
         return html;
     }
 
-    // ══════════════════════════════════════════════════════════
-    // ★ V3: 分组多图渲染 (取代旧的单图叠加)
-    // ══════════════════════════════════════════════════════════
-    function _showMultiChart() {
-        if (!_chartFields.length) {
-            Modal.alert('提示', '请勾选至少一个指标');
-            return;
-        }
-        // 过滤掉文本字段（如 chip_pattern/chip_signal）, 无法绘制图表
-        var chartableFields = _chartFields.filter(function(f) { return !textFields[f]; });
-        if (chartableFields.length !== _chartFields.length) {
-            var filteredCount = _chartFields.length - chartableFields.length;
-            console.log('[TechInd] filtered ' + filteredCount + ' text fields');
-        }
-        if (!chartableFields.length) {
-            Modal.alert('提示', '所选指标均为文本类型，无法绘制图表，请勾选数值类指标');
-            return;
-        }
-        var code = currentStock;
-        if (!code) return;
+    // ═══ ★ V4: 主图渲染 (K线 + 成交量 + 叠加层) ═══
 
+    function _renderMainChart() {
         var container = document.getElementById('main-chart');
         var titleEl = document.getElementById('chart-title');
-        var infoEl = document.getElementById('chart-info');
+        if (!container) return;
 
-        titleEl.innerHTML = code + ' — 指标分组视图' + _renderChartControls();
-        infoEl.textContent = '加载中...';
-        _disposeAllCharts();
+        var merged = _getMergedData();
+        if (!merged || !merged.dates.length) {
+            titleEl.innerHTML = (currentStock || '') + ' — 指标时间序列';
+            container.innerHTML = '<div style="color:var(--text-micro);padding:40px;text-align:center;">无 K 线数据' +
+                (_indicatorHistory && _indicatorHistory.dates ? '，但指标数据可用，请切换副图查看' : '') + '</div>';
+            return;
+        }
 
-        // 分组: chartableFields → 按 field group 归类
-        var groups = {};
-        chartableFields.forEach(function(f) {
-            var g = FIELD_TO_GROUP[f];
-            if (!g) { groups[f] = { groupKey: f, label: f, fields: [f], style: 'line' }; return; }
-            if (!groups[g]) {
-                groups[g] = { groupKey: g, label: FIELD_GROUPS[g].label, fields: [], style: FIELD_GROUPS[g].style };
-            }
-            groups[g].fields.push(f);
+        titleEl.innerHTML = (currentStock || '') + ' — 主图' + _renderChartControls();
+
+        // Dispose old chart
+        var old = echarts.getInstanceByDom(container);
+        if (old) old.dispose();
+
+        var dates = merged.dates;
+        var ohlc = merged.ohlc;
+        var volumes = merged.volumes;
+        var aligned = merged.aligned;
+
+        var chart = echarts.init(container);
+        _chartInstances.push(chart);
+
+        // ── 构建 series ──
+        var series = [];
+
+        // 1. K线 (始终显示)
+        series.push({
+            name: 'K线', type: 'candlestick',
+            data: ohlc,
+            xAxisIndex: 0, yAxisIndex: 0,
+            itemStyle: {
+                color: '#2ed573',
+                color0: '#ff4757',
+                borderColor: '#2ed573',
+                borderColor0: '#ff4757'
+            },
+            barWidth: '60%'
         });
 
-        var fields = chartableFields.join(',');
-        fetch(API + '/quant/indicators/history/' + code + '?fields=' + fields + '&days=' + _chartDays)
-        .then(function(r) { return r.json(); })
-        .then(function(d) {
-            var data = d.data;
-            if (!data || !data.dates || !data.dates.length) {
-                infoEl.textContent = '无历史数据';
-                return;
-            }
-            infoEl.textContent = data.dates.length + ' 天 | ' + chartableFields.length + ' 指标 | ' + Object.keys(groups).length + ' 组';
+        // 2. 成交量 (始终显示)
+        series.push({
+            name: '成交量', type: 'bar',
+            data: volumes,
+            xAxisIndex: 1, yAxisIndex: 1,
+            itemStyle: {
+                color: function(p) {
+                    var daily = _dailyData[p.dataIndex];
+                    return daily && daily.close >= daily.open ? 'rgba(46,213,115,0.35)' : 'rgba(255,71,87,0.35)';
+                }
+            },
+            barWidth: '60%'
+        });
 
-            // 按分组排序: price_ma 优先第一张图
-            var groupOrder = Object.keys(FIELD_GROUPS);
-            var sortedGroups = Object.keys(groups).sort(function(a, b) {
-                var ia = groupOrder.indexOf(a);
-                var ib = groupOrder.indexOf(b);
-                return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib);
-            });
+        // 3. 叠加层 (按 _overlayState)
+        series = series.concat(_buildOverlaySeries(aligned));
 
-            // 动态渲染每个分组
-            var chartsHtml = '';
-            sortedGroups.forEach(function(g) {
-                var grp = groups[g];
-                var style = grp.style;
-                var height = (style === 'macd' || style === 'multi_line') ? 240 : 180;
-                chartsHtml += '<div class="chart-section" style="margin-bottom:2px;">' +
-                    '<div style="font-size:10px;color:var(--text-dim);padding:3px 8px;background:rgba(255,255,255,0.02);border-radius:3px 3px 0 0;border-bottom:1px solid var(--border-thin);">' +
-                    '<span style="font-weight:600;color:#ccc;">' + escHtml(grp.label) + '</span></div>' +
-                    '<div id="chart-' + g.replace(/[^a-z0-9_]/g,'') + '" style="height:' + height + 'px;width:100%;"></div></div>';
-            });
-            container.innerHTML = chartsHtml;
+        // ── 生成 option ──
+        var option = {
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: { type: 'cross' },
+                // 自定义 K 线 tooltip
+                formatter: function(params) {
+                    var kLine = params[0];
+                    if (!kLine || !kLine.data) return '';
+                    var dIdx = kLine.dataIndex;
+                    var dateStr = dates[dIdx] || '';
+                    var o = ohlc[dIdx][0], c = ohlc[dIdx][1], l = ohlc[dIdx][2], h = ohlc[dIdx][3];
+                    var vol = volumes[dIdx] || 0;
+                    var changePct = o > 0 ? ((c - o) / o * 100).toFixed(2) : '—';
+                    var html = '<div style="font-size:11px;">' + dateStr + '</div>';
+                    html += '开: ' + o.toFixed(2) + ' 收: ' + c.toFixed(2) + ' 低: ' + l.toFixed(2) + ' 高: ' + h.toFixed(2) + ' (' + changePct + '%)<br/>';
+                    html += '成交量: ' + (vol / 1e4).toFixed(0) + '万股';
+                    // 叠加层数值
+                    for (var i = 1; i < params.length; i++) {
+                        var p = params[i];
+                        if (p && p.value != null && p.seriesName) {
+                            html += '<br/>' + p.seriesName + ': ' + _fmtValue(p.value);
+                        }
+                    }
+                    return html;
+                }
+            },
+            legend: {
+                data: _getLegendData(series),
+                textStyle: { color: '#999', fontSize: 9 },
+                bottom: 0, type: 'scroll'
+            },
+            grid: [
+                { left: '8%', right: '5%', top: '3%', height: '55%' },
+                { left: '8%', right: '5%', top: '63%', height: '15%' }
+            ],
+            xAxis: [
+                { type: 'category', data: dates, gridIndex: 0, axisLabel: { show: false }, axisLine: { lineStyle: { color: '#333' } } },
+                { type: 'category', data: dates, gridIndex: 1, axisLabel: { fontSize: 8, rotate: 30, color: '#999' }, axisLine: { lineStyle: { color: '#333' } } }
+            ],
+            yAxis: [
+                { type: 'value', scale: true, gridIndex: 0, splitLine: { lineStyle: { color: '#1a1a1a' } }, axisLabel: { fontSize: 9 } },
+                { type: 'value', scale: true, gridIndex: 1, splitLine: { show: false }, axisLabel: { fontSize: 8, color: '#999' } }
+            ],
+            dataZoom: [
+                { type: 'inside', xAxisIndex: [0, 1] }
+            ],
+            series: series
+        };
 
-            // 渲染每个分组的图
-            sortedGroups.forEach(function(g) {
-                var grp = groups[g];
-                var el = document.getElementById('chart-' + g.replace(/[^a-z0-9_]/g,''));
-                if (!el) return;
-                _renderGroupChart(el, grp, data);
-            });
-        })
-        .catch(function() { infoEl.textContent = '加载失败'; });
+        chart.setOption(option);
     }
 
-    function _renderGroupChart(el, grp, data) {
+    // ── 构建叠加层 line series ──
+    function _buildOverlaySeries(aligned) {
+        var series = [];
+
+        MA_KEYS.forEach(function(k) {
+            if (!_overlayState[k]) return;
+            var def = OVERLAY_DEFS[k];
+            if (!def) return;
+            var data = aligned[def.fields[0]];
+            if (!data) return;
+            series.push({
+                name: def.label, type: 'line',
+                data: data, xAxisIndex: 0, yAxisIndex: 0,
+                smooth: true, symbol: 'none',
+                lineStyle: { color: def.color, width: 1.2 }
+            });
+        });
+
+        GROUP_OVERLAY_KEYS.forEach(function(k) {
+            if (!_overlayState[k]) return;
+            switch (k) {
+                case 'bollinger':
+                    var upper = aligned['bb_upper'];
+                    var mid = aligned['bb_mid'];
+                    var lower = aligned['bb_lower'];
+                    if (upper && mid && lower) {
+                        series.push({
+                            name: '布林上轨', type: 'line',
+                            data: upper, xAxisIndex: 0, yAxisIndex: 0,
+                            smooth: true, symbol: 'none',
+                            lineStyle: { color: 'rgba(255,71,87,0.5)', width: 1 }
+                        });
+                        series.push({
+                            name: '布林中轨', type: 'line',
+                            data: mid, xAxisIndex: 0, yAxisIndex: 0,
+                            smooth: true, symbol: 'none',
+                            lineStyle: { color: '#ffa502', width: 1, type: 'dashed' }
+                        });
+                        series.push({
+                            name: '布林下轨', type: 'line',
+                            data: lower, xAxisIndex: 0, yAxisIndex: 0,
+                            smooth: true, symbol: 'none',
+                            lineStyle: { color: 'rgba(46,213,115,0.5)', width: 1 }
+                        });
+                    }
+                    break;
+                case 'vwap':
+                    var vwapData = aligned['vwap'];
+                    if (vwapData) {
+                        series.push({
+                            name: 'VWAP', type: 'line',
+                            data: vwapData, xAxisIndex: 0, yAxisIndex: 0,
+                            smooth: true, symbol: 'none',
+                            lineStyle: { color: '#f368e0', width: 1, type: 'dotted' }
+                        });
+                    }
+                    break;
+                case 'chip_price':
+                    var peak = aligned['chip_peak_price'];
+                    var cost = aligned['chip_avg_cost'];
+                    if (peak) {
+                        series.push({
+                            name: '筹码峰值', type: 'line',
+                            data: peak, xAxisIndex: 0, yAxisIndex: 0,
+                            smooth: true, symbol: 'none',
+                            lineStyle: { color: '#22d3ee', width: 1, type: 'dashed' }
+                        });
+                    }
+                    if (cost) {
+                        series.push({
+                            name: '筹码成本', type: 'line',
+                            data: cost, xAxisIndex: 0, yAxisIndex: 0,
+                            smooth: true, symbol: 'none',
+                            lineStyle: { color: '#fb6da7', width: 1, type: 'dashed' }
+                        });
+                    }
+                    break;
+            }
+        });
+
+        return series;
+    }
+
+    function _getLegendData(series) {
+        return series.filter(function(s) { return s.name; }).map(function(s) { return s.name; });
+    }
+
+    // ═══ ★ V4: 副图渲染 (Tab 切换, 一次一图) ═══
+
+    function _renderSubChart() {
+        var container = document.getElementById('sub-chart');
+        if (!container) return;
+
+        var old = echarts.getInstanceByDom(container);
+        if (old) old.dispose();
+
+        var def = SUB_CHART_DEFS[_activeSubChart];
+        if (!def) {
+            container.innerHTML = '<div style="color:var(--text-micro);padding:20px;text-align:center;">选择副图指标</div>';
+            return;
+        }
+
+        // 筹码分布图是特殊子图: 取单日快照, 非时间序列
+        if (def.style === 'chip_dist') {
+            _renderChipDistSubChart(container);
+            return;
+        }
+
+        // 从合并数据中提取副图字段
+        var merged = _getMergedData();
+        if (!merged || !merged.dates || !merged.dates.length) {
+            // 可能只有指标数据没有日线数据
+            if (_indicatorHistory && _indicatorHistory.dates && _indicatorHistory.dates.length) {
+                // _indicatorHistory is newest-first, reverse to chronological
+                var dates = _indicatorHistory.dates.slice().reverse();
+                var fields = {};
+                for (var f in _indicatorHistory.fields) {
+                    fields[f] = _indicatorHistory.fields[f].slice().reverse();
+                }
+                merged = { dates: dates, aligned: fields };
+            } else {
+                container.innerHTML = '<div style="color:var(--text-micro);padding:20px;text-align:center;">无指标历史数据</div>';
+                return;
+            }
+        }
+
+        // 检查数据是否存在
+        var hasAnyData = def.fields.some(function(f) {
+            return merged.aligned[f] && merged.aligned[f].some(function(v) { return v != null; });
+        });
+
+        if (!hasAnyData) {
+            container.innerHTML = '<div style="color:var(--text-micro);padding:20px;text-align:center;">暂无 ' + def.label + ' 历史数据</div>';
+            return;
+        }
+
+        // 构建简化的 data 结构供渲染器使用
+        var subData = {
+            dates: merged.dates,
+            fields: {}
+        };
+        def.fields.forEach(function(f) {
+            subData.fields[f] = merged.aligned[f] || [];
+        });
+
+        // 用现成的渲染器
+        var chart = echarts.init(container);
+        _chartInstances.push(chart);
+        _renderGroupChart(chart, def, subData);
+    }
+
+    function _renderGroupChart(chart, def, data) {
         var dates = data.dates;
-        var fields = grp.fields;
-        var style = grp.style;
+        var fields = def.fields;
+        var style = def.style;
 
         switch (style) {
-            case 'macd':  _renderMACD(el, dates, data, fields); break;
-            case 'rsi':   _renderRSI(el, dates, data, fields); break;
-            case 'ranged': _renderRanged(el, dates, data, fields, 0, 100); break;
-            case 'band':  _renderBand(el, dates, data, fields); break;
-            case 'multi_line': _renderMultiLine(el, dates, data, fields); break;
-            default:      _renderLines(el, dates, data, fields); break;
+            case 'macd':  _renderMACD(chart, dates, data, fields); break;
+            case 'rsi':   _renderRSI(chart, dates, data, fields); break;
+            case 'ranged': _renderRanged(chart, dates, data, fields, def.min || 0, def.max || 100); break;
+            default:      _renderLines(chart, dates, data, fields); break;
         }
     }
 
-    // ── 专用渲染器: MACD (柱 + 线) ──
-    function _renderMACD(el, dates, data, fields) {
+    // ── MACD ──
+    function _renderMACD(chart, dates, data, fields) {
         var hist = data.fields['macd_hist'] || [];
         var macd = data.fields['macd'] || [];
         var signal = data.fields['macd_signal'] || [];
-
-        var chart = echarts.init(el);
-        _chartInstances.push(chart);
-
-        var option = {
+        chart.setOption({
             tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
             grid: { left: '8%', right: '5%', top: '8%', bottom: '10%' },
             xAxis: { type: 'category', data: dates, axisLabel: { fontSize: 8, rotate: 30, show: true } },
             yAxis: { type: 'value', scale: true, splitLine: { lineStyle: { color: '#1a1a1a' } }, axisLabel: { fontSize: 9 } },
             series: [
-                {
-                    name: 'MACD Hist',
-                    type: 'bar',
-                    data: hist,
-                    itemStyle: {
-                        color: function(p) { return p.value >= 0 ? 'rgba(46,213,115,0.7)' : 'rgba(255,71,87,0.7)'; }
-                    }
-                },
-                {
-                    name: 'MACD',
-                    type: 'line', data: macd,
-                    smooth: true, symbol: 'none',
-                    lineStyle: { color: '#60a5fa', width: 1.5 }
-                },
-                {
-                    name: 'Signal',
-                    type: 'line', data: signal,
-                    smooth: true, symbol: 'none',
-                    lineStyle: { color: '#ffa502', width: 1.5 }
-                }
+                { name: 'MACD Hist', type: 'bar', data: hist,
+                    itemStyle: { color: function(p) { return p.value >= 0 ? 'rgba(46,213,115,0.7)' : 'rgba(255,71,87,0.7)'; } } },
+                { name: 'MACD', type: 'line', data: macd, smooth: true, symbol: 'none', lineStyle: { color: '#60a5fa', width: 1.5 } },
+                { name: 'Signal', type: 'line', data: signal, smooth: true, symbol: 'none', lineStyle: { color: '#ffa502', width: 1.5 } }
             ]
-        };
-        chart.setOption(option);
+        });
     }
 
-    // ── 专用渲染器: RSI (30/70 参考线) ──
-    function _renderRSI(el, dates, data, fields) {
+    // ── RSI ──
+    function _renderRSI(chart, dates, data, fields) {
         var values = data.fields['rsi'] || [];
-        var chart = echarts.init(el);
-        _chartInstances.push(chart);
-
         chart.setOption({
             tooltip: { trigger: 'axis' },
             grid: { left: '8%', right: '5%', top: '8%', bottom: '10%' },
             xAxis: { type: 'category', data: dates, axisLabel: { fontSize: 8, rotate: 30 } },
-            yAxis: { type: 'value', min: 0, max: 100,
-                splitLine: { lineStyle: { color: '#1a1a1a' } },
-                axisLabel: { fontSize: 9 } },
-            visualMap: { show: false },
-            series: [
-                {
-                    name: 'RSI', type: 'line', data: values,
-                    smooth: true, symbol: 'none',
-                    lineStyle: { color: '#a29bfe', width: 2 },
-                    markLine: {
-                        silent: true,
-                        data: [
-                            { yAxis: 70, label: { formatter: '超买 70', color: '#ff4757', fontSize: 9 }, lineStyle: { color: '#ff4757', type: 'dashed', width: 1 } },
-                            { yAxis: 30, label: { formatter: '超卖 30', color: '#2ed573', fontSize: 9 }, lineStyle: { color: '#2ed573', type: 'dashed', width: 1 } },
-                            { yAxis: 50, label: { formatter: '50', color: '#666', fontSize: 8 }, lineStyle: { color: '#333', type: 'dotted', width: 1 } }
-                        ]
-                    }
+            yAxis: { type: 'value', min: 0, max: 100, splitLine: { lineStyle: { color: '#1a1a1a' } }, axisLabel: { fontSize: 9 } },
+            series: [{
+                name: 'RSI', type: 'line', data: values,
+                smooth: true, symbol: 'none', lineStyle: { color: '#a29bfe', width: 2 },
+                markLine: {
+                    silent: true,
+                    data: [
+                        { yAxis: 70, label: { formatter: '超买 70', color: '#ff4757', fontSize: 9 }, lineStyle: { color: '#ff4757', type: 'dashed', width: 1 } },
+                        { yAxis: 30, label: { formatter: '超卖 30', color: '#2ed573', fontSize: 9 }, lineStyle: { color: '#2ed573', type: 'dashed', width: 1 } },
+                        { yAxis: 50, label: { formatter: '50', color: '#666', fontSize: 8 }, lineStyle: { color: '#333', type: 'dotted', width: 1 } }
+                    ]
                 }
-            ]
+            }]
         });
     }
 
-    // ── 专用渲染器: 0-100 范围 (KDJ) ──
-    function _renderRanged(el, dates, data, fields, minV, maxV) {
-        var chart = echarts.init(el);
-        _chartInstances.push(chart);
-
+    // ── 0-100 范围 (KDJ) ──
+    function _renderRanged(chart, dates, data, fields, minV, maxV) {
         var series = fields.map(function(f, i) {
             var color = ['#60a5fa', '#2ed573', '#ffa502'][i % 3];
-            return {
-                name: f, type: 'line', data: data.fields[f] || [],
-                smooth: true, symbol: 'none',
-                lineStyle: { color: color, width: 1.5 }
-            };
+            return { name: f, type: 'line', data: data.fields[f] || [], smooth: true, symbol: 'none', lineStyle: { color: color, width: 1.5 } };
         });
-
         chart.setOption({
             tooltip: { trigger: 'axis' },
             legend: { data: fields, textStyle: { color: '#999' }, bottom: 0 },
             grid: { left: '8%', right: '5%', top: '8%', bottom: '22%' },
             xAxis: { type: 'category', data: dates, axisLabel: { fontSize: 8, rotate: 30 } },
-            yAxis: {
-                type: 'value', min: minV, max: maxV,
-                splitLine: { lineStyle: { color: '#1a1a1a' } },
-                axisLabel: { fontSize: 9 }
-            },
+            yAxis: { type: 'value', min: minV, max: maxV, splitLine: { lineStyle: { color: '#1a1a1a' } }, axisLabel: { fontSize: 9 } },
             series: series
         });
     }
 
-    // ── 专用渲染器: 布林带 (带带宽填充) ──
-    function _renderBand(el, dates, data, fields) {
-        var upper = data.fields['bb_upper'] || [];
-        var mid = data.fields['bb_mid'] || [];
-        var lower = data.fields['bb_lower'] || [];
-
-        var chart = echarts.init(el);
-        _chartInstances.push(chart);
-
-        // 填充区间: upper ~ lower
-        var fillData = dates.map(function(_, i) {
-            return [lower[i], upper[i]];
-        });
-
-        chart.setOption({
-            tooltip: { trigger: 'axis' },
-            legend: { data: ['上轨', '中轨', '下轨'], textStyle: { color: '#999' }, bottom: 0 },
-            grid: { left: '8%', right: '5%', top: '8%', bottom: '22%' },
-            xAxis: { type: 'category', data: dates, axisLabel: { fontSize: 8, rotate: 30 } },
-            yAxis: { type: 'value', scale: true, splitLine: { lineStyle: { color: '#1a1a1a' } }, axisLabel: { fontSize: 9 } },
-            series: [
-                {
-                    name: '上轨', type: 'line', data: upper,
-                    smooth: true, symbol: 'none',
-                    lineStyle: { color: 'rgba(255,71,87,0.5)', width: 1 },
-                    areaStyle: { color: 'rgba(255,71,87,0.03)' }
-                },
-                {
-                    name: '中轨', type: 'line', data: mid,
-                    smooth: true, symbol: 'none',
-                    lineStyle: { color: '#ffa502', width: 1.5 }
-                },
-                {
-                    name: '下轨', type: 'line', data: lower,
-                    smooth: true, symbol: 'none',
-                    lineStyle: { color: 'rgba(46,213,115,0.5)', width: 1 },
-                    areaStyle: { color: 'rgba(46,213,115,0.03)' }
-                }
-            ]
-        });
-    }
-
-    // ── 多线叠加 (价格+均线) ──
-    function _renderMultiLine(el, dates, data, fields) {
-        var chart = echarts.init(el);
-        _chartInstances.push(chart);
-
-        var fieldColors = {
-            'price': '#ffffff',
-            'ma5': '#60a5fa',
-            'ma10': '#2ed573',
-            'ma20': '#ffa502',
-            'ma60': '#ff4757',
-            'ma120': '#a29bfe',
-            'ma250': '#00d2d3'
-        };
-
-        var series = fields.map(function(f, i) {
-            var color = fieldColors[f] || SERIES_COLORS[i % SERIES_COLORS.length];
-            var isPrice = f === 'price';
-            return {
-                name: f, type: 'line', data: data.fields[f] || [],
-                smooth: true, symbol: 'none',
-                lineStyle: { color: color, width: isPrice ? 2 : 1, type: isPrice ? 'solid' : 'solid' },
-                emphasis: { lineStyle: { width: isPrice ? 3 : 2 } }
-            };
-        });
-
-        chart.setOption({
-            tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
-            legend: { data: fields, textStyle: { color: '#999' }, bottom: 0, type: 'scroll' },
-            grid: { left: '8%', right: '5%', top: '8%', bottom: '22%' },
-            dataZoom: [
-                { type: 'inside' }
-            ],
-            xAxis: { type: 'category', data: dates, axisLabel: { fontSize: 8, rotate: 30 } },
-            yAxis: { type: 'value', scale: true, splitLine: { lineStyle: { color: '#1a1a1a' } }, axisLabel: { fontSize: 9 } },
-            series: series
-        });
-    }
-
-    // ── 普通线图 (通用) ──
-    function _renderLines(el, dates, data, fields) {
-        var chart = echarts.init(el);
-        _chartInstances.push(chart);
-
+    // ── 普通线图 ──
+    function _renderLines(chart, dates, data, fields) {
         var series = fields.map(function(f, i) {
             var color = SERIES_COLORS[i % SERIES_COLORS.length];
-            return {
-                name: f, type: 'line', data: data.fields[f] || [],
-                smooth: true, symbol: 'none',
-                lineStyle: { color: color, width: 1.5 }
-            };
+            return { name: f, type: 'line', data: data.fields[f] || [], smooth: true, symbol: 'none', lineStyle: { color: color, width: 1.5 } };
         });
-
         chart.setOption({
             tooltip: { trigger: 'axis' },
             legend: { data: fields, textStyle: { color: '#999' }, bottom: 0 },
@@ -615,6 +815,150 @@ window.TechInd = (function() {
             xAxis: { type: 'category', data: dates, axisLabel: { fontSize: 8, rotate: 30 } },
             yAxis: { type: 'value', scale: true, splitLine: { lineStyle: { color: '#1a1a1a' } }, axisLabel: { fontSize: 9 } },
             series: series
+        });
+    }
+
+    // ═══ ★ V4: 筹码信息卡片 ═══
+
+    function _renderChipCard() {
+        var container = document.getElementById('chip-card');
+        if (!container) return;
+        var ind = _cachedSnapshot;
+        if (!ind) {
+            container.style.display = 'none';
+            return;
+        }
+        container.style.display = '';
+
+        var pattern = ind['chip_pattern'];
+        var signal = ind['chip_signal'];
+        var concen = ind['chip_concentration'];
+        var peakPx = ind['chip_peak_price'];
+        var avgCost = ind['chip_avg_cost'];
+        var isSingle = ind['chip_is_single_peak'];
+
+        var signalLabel = '';
+        var signalColor = '';
+        if (signal === 'BUY') { signalLabel = '买入'; signalColor = 'var(--accent-green)'; }
+        else if (signal === 'SELL') { signalLabel = '卖出'; signalColor = 'var(--accent-red)'; }
+        else { signalLabel = signal || '—'; signalColor = 'var(--text-dim)'; }
+
+        var concenLabel = (concen != null) ? concen.toFixed(4) : '—';
+        var concenDesc = '';
+        if (concen != null) {
+            concenDesc = concen < 0.12 ? '密集' : (concen > 0.20 ? '发散' : '较集中');
+        }
+
+        var html = '<div style="display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;font-size:10px;padding:4px 0;">';
+        if (pattern) {
+            html += '<span><span style="color:var(--text-micro);">形态:</span> <span style="color:#a78bfa;">' + escHtml(pattern) + '</span></span>';
+        }
+        html += '<span><span style="color:var(--text-micro);">信号:</span> <span style="color:' + signalColor + ';font-weight:600;">' + signalLabel + '</span></span>';
+        html += '<span><span style="color:var(--text-micro);">集中度:</span> <span style="color:var(--text-dim);font-family:var(--font-mono);">' + concenLabel + '</span> <span style="color:' + (concen < 0.12 ? 'var(--accent-green)' : 'var(--accent-red)') + ';font-size:8px;">(' + concenDesc + ')</span></span>';
+        if (peakPx != null) {
+            html += '<span><span style="color:var(--text-micro);">峰值:</span> <span style="color:var(--text-dim);font-family:var(--font-mono);">' + peakPx.toFixed(2) + '</span></span>';
+        }
+        if (avgCost != null) {
+            html += '<span><span style="color:var(--text-micro);">均价:</span> <span style="color:var(--text-dim);font-family:var(--font-mono);">' + avgCost.toFixed(2) + '</span></span>';
+        }
+        if (isSingle != null) {
+            html += '<span><span style="color:var(--text-micro);">单峰:</span> <span style="color:' + (isSingle ? 'var(--accent-green)' : 'var(--text-dim)') + ';">' + (isSingle ? '✓' : '—') + '</span></span>';
+        }
+
+        // chip_distribution 查看按钮
+        html += '<span style="margin-left:auto;"><button onclick="TechInd._showChipDist(\'' + currentStock + '\')" style="background:transparent;border:1px solid var(--border-color);color:var(--text-dim);padding:2px 8px;border-radius:3px;cursor:pointer;font-size:9px;">📊 筹码分布图</button></span>';
+
+        html += '</div>';
+        container.innerHTML = html;
+    }
+
+    // ── 筹码分布图 (水平条形 + 峰谷标记) ──
+    function _showChipDist(code) {
+        _disposeAllCharts();
+        document.getElementById('chart-title').innerHTML = code + ' — 筹码分布 <span onclick="TechInd.selectStock()" style="color:var(--accent-blue);cursor:pointer;font-size:10px;margin-left:12px;">← 返回主图</span>';
+        document.getElementById('chart-info').textContent = '加载中...';
+
+        var container = document.getElementById('main-chart');
+        fetch(API + '/quant/indicators/chip-dist/' + code).then(function(r) { return r.json(); }).then(function(d) {
+            var data = d.data;
+            if (!data) { document.getElementById('chart-info').textContent = '无数据'; return; }
+
+            // 峰值检测 (局部极大值)
+            var pcts = data.chip_pct;
+            var prices = data.prices;
+            var peaks = [];
+            var valleys = [];
+            var maxPct = Math.max.apply(null, pcts);
+            var pkThreshold = maxPct * 0.35;
+            for (var i = 1; i < pcts.length - 1; i++) {
+                if (pcts[i] > pcts[i-1] && pcts[i] > pcts[i+1] && pcts[i] > pkThreshold) {
+                    peaks.push({ price: prices[i], pct: pcts[i], index: i });
+                }
+                if (pcts[i] < pcts[i-1] && pcts[i] < pcts[i+1] && pcts[i] < 1.0 && maxPct > 3) {
+                    valleys.push({ price: prices[i], pct: pcts[i], index: i });
+                }
+            }
+            peaks.sort(function(a, b) { return b.pct - a.pct; });
+            peaks = peaks.slice(0, 6);
+            peaks.sort(function(a, b) { return a.index - b.index; });
+
+            document.getElementById('chart-info').textContent = '获利' + data.winner_close + '% | 均成本' + data.avg_cost +
+                ' | 集中度' + data.concentration_90 + '% | 峰值' + peaks.length + '个 | 现价' + data.close.toFixed(2);
+
+            var chart = echarts.init(container);
+            _chartInstances.push(chart);
+
+            // markLines: 峰值 + 成本 + 现价 + 5%/95% 分位
+            var markLines = peaks.map(function(pk) { return {
+                xAxis: parseFloat(pk.price),
+                label: { formatter: '峰值 ' + pk.price + ' (' + pk.pct.toFixed(1) + '%)', color: '#22d3ee', fontSize: 8, position: 'insideEndTop' },
+                lineStyle: { color: '#22d3ee', type: 'dashed', width: 0.8 }
+            }; });
+            markLines.push({ xAxis: data.avg_cost, label: { formatter: '成本 ' + data.avg_cost, color: '#fb6da7', fontSize: 8, position: 'insideEndTop' }, lineStyle: { color: '#fb6da7', type: 'solid', width: 1.5 } });
+            markLines.push({ xAxis: data.close, label: { formatter: '现价 ' + data.close.toFixed(2), color: '#fff', fontSize: 8, position: 'insideEndTop' }, lineStyle: { color: '#fff', type: 'solid', width: 1.5 } });
+
+            chart.setOption({
+                tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' },
+                    formatter: function(params) {
+                        var p = params[0]; if (!p) return '';
+                        var idx = p.dataIndex;
+                        var isPeak = peaks.some(function(pk) { return Math.abs(pk.index - idx) < 2; });
+                        var isValley = valleys.some(function(v) { return Math.abs(v.index - idx) < 2; });
+                        var h = '<div style="font-size:11px;">价格: <b>' + prices[idx] + '</b></div>';
+                        h += '筹码占比: ' + pcts[idx].toFixed(2) + '%';
+                        if (isPeak) h += ' <span style="color:#22d3ee;">★峰值</span>';
+                        if (isValley) h += ' <span style="color:#ffa502;">▽谷值</span>';
+                        return h;
+                    }
+                },
+                grid: { left: '10%', right: '10%', top: '8%', bottom: '8%' },
+                xAxis: { type: 'value', splitLine: { lineStyle: { color: '#1a1a1a' } }, axisLabel: { fontSize: 9 } },
+                yAxis: { type: 'category', data: prices, axisLabel: { fontSize: 8 }, splitLine: { show: false } },
+                series: [{
+                    type: 'bar', data: pcts, barWidth: '80%',
+                    itemStyle: {
+                        color: function(p) {
+                            var idx = p.dataIndex;
+                            var price = parseFloat(prices[idx]);
+                            if (peaks.some(function(pk) { return Math.abs(pk.index - idx) < 2; })) return '#22d3ee';
+                            if (valleys.some(function(v) { return Math.abs(v.index - idx) < 2; })) return '#ffa502';
+                            return price < data.avg_cost ? 'rgba(20,177,67,0.7)' : 'rgba(239,35,42,0.7)';
+                        }
+                    },
+                    markLine: { silent: true, symbol: 'none', data: markLines }
+                }],
+                graphic: [{
+                    type: 'group', left: 8, bottom: 22,
+                    children: [
+                        { type: 'text', left: 0, style: { text: '■ 峰值', fill: '#22d3ee', fontSize: 9 } },
+                        { type: 'text', left: 55, style: { text: '■ 谷值', fill: '#ffa502', fontSize: 9 } },
+                        { type: 'text', left: 110, style: { text: '▲ 获利盘', fill: 'rgba(20,177,67,0.7)', fontSize: 9 } },
+                        { type: 'text', left: 175, style: { text: '▼ 套牢盘', fill: 'rgba(239,35,42,0.7)', fontSize: 9 } },
+                    ]
+                }]
+            });
+        }).catch(function() {
+            document.getElementById('chart-info').textContent = '加载失败';
         });
     }
 
@@ -623,38 +967,92 @@ window.TechInd = (function() {
         _chartInstances = [];
     }
 
-    // ══════════════════════════════════════════════════════════
-    // Chip Distribution Chart (独立, 不从属分组)
-    // ══════════════════════════════════════════════════════════
-    function showChipChart(code) {
-        document.getElementById('chart-title').textContent = code + ' — 筹码分布';
-        document.getElementById('chart-info').textContent = '加载中...';
-        _disposeAllCharts();
-
-        fetch(API + '/quant/indicators/chip-dist/' + code).then(function(r) { return r.json(); }).then(function(d) {
+    // ── 副图中的筹码分布 (单日切片, 纵轴价格, 横轴量) ──
+    function _renderChipDistSubChart(container) {
+        if (!currentStock) {
+            container.innerHTML = '<div style="color:var(--text-micro);padding:20px;text-align:center;">请先选择股票</div>';
+            return;
+        }
+        container.innerHTML = '<div style="color:var(--text-micro);padding:20px;text-align:center;">加载中...</div>';
+        fetch(API + '/quant/indicators/chip-dist/' + currentStock).then(function(r) { return r.json(); }).then(function(d) {
             var data = d.data;
-            if (!data) { document.getElementById('chart-info').textContent = '无数据'; return; }
-            document.getElementById('chart-info').textContent = '获利' + data.winner_close + '% | 均成本' + data.avg_cost + ' | 集中度' + data.concentration_90 + '%';
-            var chart = echarts.init(document.getElementById('main-chart'));
+            if (!data) { container.innerHTML = '<div style="color:var(--text-micro);padding:20px;text-align:center;">暂无筹码分布数据</div>'; return; }
+
+            // 下采样: 200 个价格点对副图太密, 降采样到约 60 点
+            var binCount = data.prices.length;
+            var step = Math.max(1, Math.floor(binCount / 60));
+            var prices = [], pcts = [];
+            for (var i = 0; i < binCount; i += step) {
+                prices.push(data.prices[i]);
+                var sum = 0;
+                for (var j = 0; j < step && i + j < binCount; j++) sum += data.chip_pct[i + j];
+                pcts.push(sum);
+            }
+
+            // 峰值检测 (原始数据上检测, 索引映射到下采样后)
+            var peakThreshold = Math.max.apply(null, data.chip_pct) * 0.35;
+            var rawPeaks = [];
+            for (var i = 1; i < data.chip_pct.length - 1; i++) {
+                if (data.chip_pct[i] > data.chip_pct[i-1] && data.chip_pct[i] > data.chip_pct[i+1] && data.chip_pct[i] > peakThreshold)
+                    rawPeaks.push({ price: data.prices[i], pct: data.chip_pct[i], index: Math.floor(i / step) });
+            }
+            rawPeaks.sort(function(a,b) { return b.pct - a.pct; });
+            rawPeaks = rawPeaks.slice(0, 5);
+            var peaks = rawPeaks;
+
+            var chart = echarts.init(container);
             _chartInstances.push(chart);
+
+            var markLines = peaks.map(function(pk) { return {
+                xAxis: parseFloat(pk.price),
+                label: { formatter: '峰值 ' + pk.price + ' (' + pk.pct.toFixed(1) + '%)', color: '#22d3ee', fontSize: 7, position: 'insideEndTop' },
+                lineStyle: { color: '#22d3ee', type: 'dashed', width: 0.6 }
+            }; });
+            markLines.push({ xAxis: data.avg_cost, label: { formatter: '成本', color: '#fb6da7', fontSize: 7 }, lineStyle: { color: '#fb6da7', type: 'solid', width: 1 } });
+            markLines.push({ xAxis: data.close, label: { formatter: '现价', color: '#fff', fontSize: 7 }, lineStyle: { color: '#fff', type: 'solid', width: 1 } });
+
             chart.setOption({
-                tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-                grid: { left: '12%', right: '5%', top: '5%', bottom: '5%' },
-                xAxis: { type: 'value', splitLine: { lineStyle: { color: '#1a1a1a' } } },
-                yAxis: { type: 'category', data: data.prices, axisLabel: { fontSize: 9 } },
-                series: [{
-                    type: 'bar', data: data.chip_pct, barWidth: '90%',
-                    itemStyle: {
-                        color: function(p) { return parseFloat(data.prices[p.dataIndex]) < data.avg_cost ? '#14b143' : '#ef232a'; }
+                tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' },
+                    formatter: function(params) {
+                        var p = params[0]; if (!p) return '';
+                        var idx = p.dataIndex;
+                        var html = '<div style="font-size:10px;">价格: <b>' + prices[idx] + '</b></div>';
+                        html += '筹码占比: ' + pcts[idx].toFixed(2) + '%';
+                        if (peaks.some(function(pk) { return Math.abs(pk.index - idx) < 2; })) html += ' <span style="color:#22d3ee;">★峰值</span>';
+                        return html;
                     }
+                },
+                grid: { left: '12%', right: '10%', top: '6%', bottom: '8%' },
+                xAxis: { type: 'value', splitLine: { lineStyle: { color: '#1a1a1a' } }, axisLabel: { fontSize: 8 } },
+                yAxis: { type: 'category', data: prices, axisLabel: { fontSize: 7 }, splitLine: { show: false } },
+                series: [{
+                    type: 'bar', data: pcts, barWidth: '75%',
+                    itemStyle: {
+                        color: function(p) {
+                            var idx = p.dataIndex;
+                            if (peaks.some(function(pk) { return Math.abs(pk.index - idx) < 2; })) return '#22d3ee';
+                            return parseFloat(prices[idx]) < data.avg_cost ? 'rgba(20,177,67,0.6)' : 'rgba(239,35,42,0.6)';
+                        }
+                    },
+                    markLine: { silent: true, symbol: 'none', data: markLines }
+                }],
+                graphic: [{
+                    type: 'group', left: 8, bottom: 20,
+                    children: [
+                        { type: 'text', left: 0, style: { text: '■峰', fill: '#22d3ee', fontSize: 8 } },
+                        { type: 'text', left: 30, style: { text: '获利' + data.winner_close + '%', fill: 'rgba(20,177,67,0.6)', fontSize: 8 } },
+                        { type: 'text', left: 80, style: { text: '集中度' + data.concentration_90 + '%', fill: '#999', fontSize: 8 } },
+                    ]
                 }]
             });
+        }).catch(function() {
+            container.innerHTML = '<div style="color:var(--text-micro);padding:20px;text-align:center;">筹码分布加载失败</div>';
         });
     }
 
-    // ══════════════════════════════════════════════════════════
+    // ══════════════════════════════════════════════════════════════
     // Field Mode (Enhanced: sortable table + filter + stats + CSV)
-    // ══════════════════════════════════════════════════════════
+    // ══════════════════════════════════════════════════════════════
     function selectField() {
         var field = document.getElementById('field-select').value;
         if (!field) return;
@@ -850,7 +1248,6 @@ window.TechInd = (function() {
         _downloadCSV(lines.join('\n'), 'tech_field_' + field + '_' + _toDateStr() + '.csv');
     }
 
-    // ═══ Field Bar Chart ═══
     function _renderFieldChart(field, items) {
         var container = document.getElementById('field-chart-container');
         if (!container) return;
@@ -872,21 +1269,14 @@ window.TechInd = (function() {
             yAxis: { type: 'category', data: names, inverse: true, axisLabel: { fontSize: 9 } },
             series: [{
                 type: 'bar', data: values,
-                itemStyle: {
-                    color: function(p) {
-                        return new echarts.graphic.LinearGradient(0, 0, 1, 0, [
-                            { offset: 0, color: '#60a5fa' },
-                            { offset: 1, color: '#a78bfa' }
-                        ]);
-                    }
-                }
+                itemStyle: { color: function(p) { return new echarts.graphic.LinearGradient(0, 0, 1, 0, [{ offset: 0, color: '#60a5fa' }, { offset: 1, color: '#a78bfa' }]); } }
             }]
         });
     }
 
-    // ══════════════════════════════════════════════════════════
+    // ══════════════════════════════════════════════════════════════
     // Cross Comparison (Tab 3)
-    // ══════════════════════════════════════════════════════════
+    // ══════════════════════════════════════════════════════════════
     function _updateCompareUI() {
         var stockEl = document.getElementById('ti-compare-stocks');
         var indEl = document.getElementById('ti-compare-inds');
@@ -1097,33 +1487,18 @@ window.TechInd = (function() {
         _downloadCSV(csv.join('\n'), 'tech_compare_' + _toDateStr() + '.csv');
     }
 
-    // ═══ Utilities ═══
-    function _toDateStr() {
-        var d = new Date();
-        return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-    }
-
-    function _downloadCSV(content, filename) {
-        var blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
-        var link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = filename;
-        link.click();
-    }
-
-    // ══════════════════════════════════════════════════════════
+    // ══════════════════════════════════════════════════════════════
     // Public API
-    // ══════════════════════════════════════════════════════════
+    // ══════════════════════════════════════════════════════════════
     return {
         init: init,
         switchMode: switchMode,
         selectStock: selectStock,
         selectField: selectField,
-        showChipChart: showChipChart,
-        _showMultiChart: _showMultiChart,
+        _toggleOverlay: _toggleOverlay,
+        _selectSubChart: _selectSubChart,
         _setTimeRange: _setTimeRange,
-        _toggleCheckbox: _toggleCheckbox,
-        _clearChecked: _clearChecked,
+        _showChipDist: _showChipDist,
         _onSortClick: _onSortClick,
         _applyFilter: _applyFilter,
         _resetFilter: _resetFilter,
