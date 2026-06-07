@@ -7,6 +7,7 @@ from typing import Optional, List, Dict
 from pydantic import BaseModel
 from app.domain.quant.valuation import VALUATION_REGISTRY
 from app.framework.logger import logger
+from app.framework.database.session import async_session
 
 router = APIRouter(prefix="/api/quant/valuation", tags=["Quant-Valuation"])
 
