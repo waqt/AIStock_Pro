@@ -1543,5 +1543,19 @@ async def stock_center_batch_sync(req: BatchSyncRequest):
             await sync_stock_info(code)
         except Exception:
             pass
+    # 估值指标计算 (写入 SQLite valuation_metrics, 供估值模块展示 price/pe_percentile 等)
+    try:
+        from app.domain.quant.valuation.engine.runner import valuation_runner
+        for code in codes:
+            try:
+                await valuation_runner.compute(code, mode="snapshot")
+            except Exception as e:
+                logger.warning(f"[StockCenter] {code} valuation compute fail: {e}")
+        logger.info(f"[StockCenter] Valuation computed: {len(codes)} codes")
+    except ImportError:
+        logger.warning("[StockCenter] valuation_runner not available")
+    except Exception as e:
+        logger.warning(f"[StockCenter] Valuation compute failed: {e}")
+
     logger.info(f"[StockCenter] Batch sync done: {len(codes)} codes, {total_rows} rows")
     return {"success": True, "synced": len(codes), "rows": total_rows}
