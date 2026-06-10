@@ -333,6 +333,23 @@ DataTabs.StockCenter = {
     this.load(this.currentPage);
   },
 
+  async batchSyncStockInfo() {
+    const codes = this.getSelected();
+    if (codes.length === 0) { await Modal.alert('提示', '请先勾选需要同步的股票'); return; }
+    const ok = await Modal.confirm('同步基本信息', `确认对 ${codes.length} 只同步基本信息? (名称/总股本/上市日期)`);
+    if (!ok) return;
+    DataTabs.Core.addLog(`[StockCenter] 开始同步基本信息: ${codes.length} 只...`);
+    try {
+      const r = await SyncAPI.stockInfo(codes, 'smart');
+      DataTabs.Core.addLog(`[StockCenter] 基本信息同步: ${r.synced || 0} 只`);
+      await Modal.alert('同步完成', `${r.synced || 0} 只基本信息已同步`);
+    } catch (e) {
+      console.error('[StockCenter] StockInfo sync fail:', e);
+      await Modal.alert('同步失败', e.message);
+    }
+    this.load(this.currentPage);
+  },
+
   async batchComputeIndicators() {
     const codes = this.getSelected();
     if (codes.length === 0) { await Modal.alert('提示', '请先勾选需要计算的股票'); return; }

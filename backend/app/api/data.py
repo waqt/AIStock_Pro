@@ -127,6 +127,74 @@ async def sync_industry_endpoint(req: SyncCodesRequest):
     return {"success": True, "codes": len(codes), "synced": done}
 
 
+@router.post("/sync/stock-info")
+async def sync_stock_info_endpoint(req: SyncMarketRequest):
+    """统一基本信息同步 (名称/总股本/流通股本/上市日期)
+
+    mode=smart: 仅填充 StockMaster 中缺失的字段
+    mode=full:  强制重新拉取所有字段
+    """
+    from app.domain.market_data.services.valuation import sync_basic_info, resolve_sync_codes
+
+    codes = await resolve_sync_codes(req.codes)
+    if not codes:
+        return {"success": True, "synced": 0, "message": "empty codes"}
+
+    # smart 模式: 跳过已完整的股票
+    if req.mode == "smart":
+        async with async_session() as db:
+            from sqlalchemy import select as sa_select
+            existing = await db.execute(
+                sa_select(StockMaster.stock_code, StockMaster.stock_name,
+                          StockMaster.total_shares, StockMaster.list_date)
+                .where(StockMaster.stock_code.in_(codes))
+            )
+            complete = set()
+            for r in existing.all():
+                if r.stock_name and r.total_shares and r.list_date:
+                    complete.add(r.stock_code)
+            codes = [c for c in codes if c not in complete]
+
+    done = 0
+    for code in codes:
+        try:
+            if await sync_basic_info(code):
+                done += 1
+        except Exception as e:
+            logger.warning(f"[Sync/StockInfo] {code}: {e}")
+
+    logger.info(f"[Sync/StockInfo] {req.mode}: {done}/{len(codes)} synced")
+    return {"success": True, "codes": len(codes), "synced": done, "mode": req.mode}
+
+
+class SyncMacroRequest(BaseModel):
+    codes: Optional[List[str]] = None  # 宏观指标代码, null=全部
+    mode: str = "smart"  # smart | full
+
+
+@router.post("/sync/macro")
+async def sync_macro_endpoint(req: SyncMacroRequest):
+    """统一宏观同步
+
+    codes 为宏观指标代码 (如 US10YT/CN_PMI_MFG/DXY), null=全部指标。
+    mode=smart: ExchangeRate 覆盖最新值, MacroHistory 差量同步
+    mode=full:  ExchangeRate 覆盖最新值, MacroHistory 全量重新拉取
+    """
+    from app.domain.market_data.services.macro_sync import sync_macro_data
+
+    # sync_macro_data 总是拉最新值 (ExchangeRate覆盖) + 差量历史 (MacroHistory)
+    # full 模式暂时用同样逻辑 (宏观历史全量重拉需要额外支持)
+    result = await sync_macro_data()
+    synced = list(result.keys())
+
+    # 如果指定了 codes, 只返回指定的子集
+    if req.codes:
+        synced = [k for k in synced if k in req.codes]
+
+    logger.info(f"[Sync/Macro] {req.mode}: {len(synced)} indicators")
+    return {"success": True, "synced": len(synced), "indicators": synced, "mode": req.mode}
+
+
 # ═══════════════════════════════════════════
 # 行情数据
 # ═══════════════════════════════════════════

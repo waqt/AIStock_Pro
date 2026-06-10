@@ -1,7 +1,8 @@
 """持仓估值同步 — 从腾讯行情获取 PE/PB/市值 + 从东财获取行业等基本信息
 
-表拆分（V5.16）:
-  - sync_stock_info  → StockMaster（静态：名称/行业/上市日/总股本）
+表拆分（V5.17）:
+  - sync_basic_info  → StockMaster（静态：名称/总股本/流通股本/上市日期）
+  - sync_industry    → StockMaster.industry（行业分类，独立缓存+多源链）
   - sync_valuation   → StockValuation（动态：PE/PB/市值/换手率）
   - sync_financial_factors → StockValuation（动态：ROE/股息率/盈利增速）
 """
@@ -157,110 +158,95 @@ def _infer_exchange(code: str) -> str:
     return "SH" if code.startswith(("6", "9")) else "SZ"
 
 
-async def sync_stock_info(code: str) -> bool:
-    """同步单只股票的基本信息 (行业/总股本/上市时间/名称) → StockMaster
+async def sync_basic_info(code: str) -> bool:
+    """同步单只股票的基本信息 (名称/总股本/流通股本/上市日期) → StockMaster
 
-    数据源链: 本地缓存 → Tushare → EM push2 → 腾讯
+    专注静态信息，不含行业分类（行业由 sync_industry 独立负责）。
+    数据源链: 腾讯(名称) → EM push2(总股本/流通股本/上市日期) → Tushare(上市日期回退)
     """
     loop = asyncio.get_event_loop()
     info = {}
 
-    # ── 数据源 0: 本地行业映射缓存 ──
-    cache = await _ensure_industry_cache()
-    industry = cache.get(code)
-    if industry:
-        info['industry'] = industry
-        # 再从 Tencent 拿名称 (轻量)
-        try:
-            quotes = await get_tencent_quotes([code])
-            if quotes and code in quotes:
-                q = quotes[code]
-                if q.get("name"):
-                    info['name'] = q["name"]
-        except Exception:
-            pass
-        # 落到 DB 层
-        return await _save_stock_master(code, info)
+    # ── 数据源 1: 腾讯行情 (名称) ──
+    try:
+        quotes = await get_tencent_quotes([code])
+        if quotes and code in quotes:
+            q = quotes[code]
+            if q.get("name"):
+                info['name'] = q["name"]
+    except Exception as e:
+        logger.warning(f"[StockMaster] {code}: Tencent failed ({e})")
 
-    # ── 数据源 1: Tushare (单只) ──
-    if not info:
+    # ── 数据源 2: httpx → 东方财富 push2 API (总股本/流通股本/上市日期, 带重试) ──
+    for attempt in range(3):
+        if info.get('total_shares') and info.get('list_date'):
+            break
+        for proxy, protocol in [(None, "http"), ("http://127.0.0.1:7890", "https")]:
+            try:
+                market_code = 1 if code.startswith("6") else 0
+                async with httpx.AsyncClient(proxy=proxy, timeout=8,
+                                              headers={"User-Agent": "Mozilla/5.0"}) as client:
+                    resp = await client.get(
+                        f"{protocol}://push2.eastmoney.com/api/qt/stock/get",
+                        params={"fltt": "2", "invt": "2",
+                                "fields": "f57,f58,f84,f85,f189",
+                                "secid": f"{market_code}.{code}"}
+                    )
+                    data = resp.json()
+                    if data.get("data"):
+                        d = data["data"]
+                        if not info.get('name') and d.get("f58"):
+                            info['name'] = str(d["f58"])
+                        if d.get("f84"):
+                            try: info['total_shares'] = float(d["f84"])
+                            except: pass
+                        if d.get("f85"):
+                            try: info['float_shares'] = float(d["f85"])
+                            except: pass
+                        if d.get("f189"):
+                            try:
+                                val_str = str(int(d["f189"]))
+                                info['list_date'] = date(int(val_str[:4]), int(val_str[4:6]), int(val_str[6:8]))
+                            except: pass
+                        if info.get('total_shares') and info.get('list_date'): break
+            except Exception as e:
+                logger.warning(f"[StockMaster] {code}: EM push2 {proxy} attempt {attempt+1} failed ({e})")
+        if not info.get('total_shares'):
+            await asyncio.sleep(0.5)
+
+    # ── 数据源 3: Tushare (列表日期回退) ──
+    if not info.get('list_date'):
         try:
             from app.domain.market_data.sources.tushare_provider import TushareProvider
             if TushareProvider.available():
                 ts_info = await loop.run_in_executor(None, TushareProvider._fetch_stock_info, code)
-                if ts_info.get('name'):
-                    info['name'] = ts_info['name']
-                if ts_info.get('industry'):
-                    info['industry'] = ts_info['industry']
-                    _INDUSTRY_CACHE[code] = ts_info['industry']
-                    _save_industry_cache()
                 if ts_info.get('list_date'):
                     try:
                         info['list_date'] = date.fromisoformat(str(ts_info['list_date']))
                     except: pass
         except Exception as e:
-            logger.warning(f"[StockMaster] {code}: Tushare failed ({e})")
-
-    # ── 数据源 2: httpx → 东方财富 push2 API (带重试, 因为间歇性可用) ──
-    if not info:
-        for attempt in range(3):
-            if info:
-                break
-            for proxy, protocol in [(None, "http"), ("http://127.0.0.1:7890", "https")]:
-                try:
-                    market_code = 1 if code.startswith("6") else 0
-                    async with httpx.AsyncClient(proxy=proxy, timeout=8,
-                                                  headers={"User-Agent": "Mozilla/5.0"}) as client:
-                        resp = await client.get(
-                            f"{protocol}://push2.eastmoney.com/api/qt/stock/get",
-                            params={"fltt": "2", "invt": "2",
-                                    "fields": "f57,f58,f84,f85,f127,f189,f43",
-                                    "secid": f"{market_code}.{code}"}
-                        )
-                        data = resp.json()
-                        if data.get("data"):
-                            d = data["data"]
-                            if d.get("f58"):
-                                info['name'] = str(d.get("f58", ""))
-                            if d.get("f127"):
-                                info['industry'] = str(d.get("f127", ""))
-                                _INDUSTRY_CACHE[code] = str(d["f127"])
-                                _save_industry_cache()
-                            if d.get("f84"):
-                                try: info['total_shares'] = float(d["f84"])
-                                except: pass
-                            if d.get("f85"):
-                                try: info['float_shares'] = float(d["f85"])
-                                except: pass
-                            if d.get("f189"):
-                                try:
-                                    val_str = str(int(d["f189"]))
-                                    info['list_date'] = date(int(val_str[:4]), int(val_str[4:6]), int(val_str[6:8]))
-                                except: pass
-                            if info: break
-                except Exception as e:
-                    logger.warning(f"[StockMaster] {code}: EM push2 {proxy} attempt {attempt+1} failed ({e})")
-            if not info:
-                await asyncio.sleep(0.5)  # 重试前等待
-
-    # ── 数据源 3: 腾讯行情 (至少拿名称) ──
-    if not info:
-        try:
-            quotes = await get_tencent_quotes([code])
-            if quotes and code in quotes:
-                q = quotes[code]
-                if q.get("name"):
-                    info['name'] = q["name"]
-                if q.get("mcap_yi"):
-                    info['total_shares'] = q["mcap_yi"] * 1e8
-        except Exception as e:
-            logger.warning(f"[StockMaster] {code}: Tencent failed ({e})")
+            logger.warning(f"[StockMaster] {code}: Tushare list_date fallback failed ({e})")
 
     if not info:
         logger.warning(f"[StockMaster] {code}: all data sources failed, skipping")
         return False
 
     return await _save_stock_master(code, info)
+
+
+async def sync_stock_info(code: str) -> bool:
+    """[向后兼容] 同步单只股票基本信息+行业 → StockMaster
+
+    内部调用 sync_basic_info() + sync_industry()。
+    V5.17+ 新增: 推荐直接调用 sync_basic_info / sync_industry。
+    """
+    ok = await sync_basic_info(code)
+    # 单独同步行业（sync_industry 有独立缓存和多源链）
+    try:
+        await sync_industry(code)
+    except Exception as e:
+        logger.warning(f"[StockMaster] {code}: industry sync failed ({e})")
+    return ok
 
 
 async def sync_industry(code: str) -> str:

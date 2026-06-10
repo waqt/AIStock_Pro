@@ -28,7 +28,7 @@ DataTabs.Macro = {
     var label = mode === 'historical' ? '补齐历史' : '同步当日';
     DataTabs.Core.addLog('宏观' + label + '...', 'info');
     try {
-      await fetch(API_BASE + '/data/macro/sync?mode=' + mode, { method: 'POST' });
+      await SyncAPI.macro(null, mode === 'historical' ? 'full' : 'smart');
       DataTabs.Core.addLog('宏观' + label + '完成', 'success');
       this.load();
     } catch (e) { DataTabs.Core.addLog('宏观同步失败: ' + e.message, 'error'); }

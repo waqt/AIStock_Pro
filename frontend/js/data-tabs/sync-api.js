@@ -35,6 +35,18 @@ window.SyncAPI = {
     return r;
   },
 
+  /** 股票基本信息同步 (名称/总股本/流通股本/上市日期) — mode: "smart" | "full" */
+  async stockInfo(codes, mode = 'smart') {
+    const r = await API.post('/data/sync/stock-info', { codes, mode });
+    return r;
+  },
+
+  /** 宏观数据同步 — mode: "smart" | "full" */
+  async macro(codes, mode = 'smart') {
+    const r = await API.post('/data/sync/macro', { codes, mode });
+    return r;
+  },
+
   // ── 便捷: 获取全部股票代码 (Position ∪ WatchlistItem) ──
   async _getAllCodes() {
     try {
