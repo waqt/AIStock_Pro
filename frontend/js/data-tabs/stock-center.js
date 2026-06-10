@@ -9,6 +9,8 @@ DataTabs.StockCenter = {
   currentPage: 1,
   totalStocks: 0,
   selectedCodes: new Set(),
+  _dimStates: {},      // { dim: '' | 'has' | 'missing' }
+  _wlFilter: '',       // '' | 'watchlist' | 'non_watchlist'
 
   /** 加载并渲染 (服务端排序/筛选/分页) */
   async load(page) {
@@ -62,19 +64,19 @@ DataTabs.StockCenter = {
     const industry = document.getElementById('sc-industry-filter')?.value;
     if (industry) params.industry = industry;
 
-    // 维度筛选: 有/缺 → has_* 参数
-    const dimFilter = document.getElementById('sc-dim-filter')?.value || '';
-    if (dimFilter) {
-      if (dimFilter.startsWith('has_')) {
-        params[dimFilter] = 'true';
-      } else if (dimFilter.startsWith('missing_')) {
-        params[dimFilter.replace('missing_', 'has_')] = 'false';
-      }
+    // 维度复选: 从 toggle chips 读取
+    var hasAny = false;
+    for (const [dim, state] of Object.entries(this._dimStates)) {
+      if (state === 'has') { params[`has_${dim}`] = 'true'; hasAny = true; }
+      else if (state === 'missing') { params[`has_${dim}`] = 'false'; hasAny = true; }
     }
 
-    // "仅显示缺数据的" 快捷开关 → 全部缺
+    // 自选股筛选
+    if (this._wlFilter) params.watchlist_filter = this._wlFilter;
+
+    // "仅显示缺数据的" 快捷开关 → 全部缺 (仅在未设置任何维度时生效)
     const onlyMissing = document.getElementById('sc-only-missing')?.checked;
-    if (onlyMissing && !dimFilter) {
+    if (onlyMissing && !hasAny) {
       const DIMS = ['basic_finance', 'financial_indicators', 'dynamic_info',
                     'market_data', 'price_indicators', 'industry'];
       DIMS.forEach(d => { params[`has_${d}`] = 'false'; });
@@ -265,15 +267,32 @@ DataTabs.StockCenter = {
   async batchSyncMarket() {
     const codes = this.getSelected();
     if (codes.length === 0) { await Modal.alert('提示', '请先勾选需要同步的股票'); return; }
-    const ok = await Modal.confirm('同步行情', `确认对 ${codes.length} 只股票执行行情+估值同步?`);
+    const ok = await Modal.confirm('同步行情', `确认对 ${codes.length} 只股票执行行情同步?`);
     if (!ok) return;
-    DataTabs.Core.addLog(`[StockCenter] 开始批量同步: ${codes.length} 只...`);
+    DataTabs.Core.addLog(`[StockCenter] 开始同步行情: ${codes.length} 只...`);
     try {
-      await API.post('/data/stock-center/batch-sync', { codes, mode: 'daily' });
-      DataTabs.Core.addLog('[StockCenter] 批量同步完成');
-      await Modal.alert('同步完成', `${codes.length} 只股票已提交同步`);
+      const r = await SyncAPI.market(codes, 'smart');
+      DataTabs.Core.addLog(`[StockCenter] 同步行情完成: ${r.synced || 0} 条新记录`);
+      await Modal.alert('同步完成', `${codes.length} 只, ${r.synced || 0} 条新K线`);
     } catch (e) {
-      console.error('[StockCenter] Batch sync fail:', e);
+      console.error('[StockCenter] Market sync fail:', e);
+      await Modal.alert('同步失败', e.message);
+    }
+    this.load(this.currentPage);
+  },
+
+  async batchSyncMarketFull() {
+    const codes = this.getSelected();
+    if (codes.length === 0) { await Modal.alert('提示', '请先勾选需要同步的股票'); return; }
+    const ok = await Modal.confirm('覆盖同步', `确认对 ${codes.length} 只执行全量覆盖? 将删除历史数据重新插入。`);
+    if (!ok) return;
+    DataTabs.Core.addLog(`[StockCenter] 覆盖同步行情: ${codes.length} 只...`);
+    try {
+      const r = await SyncAPI.market(codes, 'full');
+      DataTabs.Core.addLog(`[StockCenter] 覆盖同步完成: ${r.synced || 0} 条记录`);
+      await Modal.alert('覆盖完成', `${codes.length} 只, ${r.synced || 0} 条K线`);
+    } catch (e) {
+      console.error('[StockCenter] Market full sync fail:', e);
       await Modal.alert('同步失败', e.message);
     }
     this.load(this.currentPage);
@@ -285,29 +304,32 @@ DataTabs.StockCenter = {
     const ok = await Modal.confirm('同步估值', `确认对 ${codes.length} 只同步估值?`);
     if (!ok) return;
     DataTabs.Core.addLog(`[StockCenter] 开始同步估值: ${codes.length} 只...`);
-    let done = 0;
-    for (const code of codes) {
-      try { await API.post('/data/valuation/sync', { target_codes: [code] }); done++; }
-      catch (e) { console.error(`[StockCenter] ${code} val sync fail:`, e); }
+    try {
+      const r = await SyncAPI.valuation(codes);
+      DataTabs.Core.addLog(`[StockCenter] 估值同步: ${r.synced || 0}只`);
+      await Modal.alert('同步完成', `${r.synced || 0} 只已同步`);
+    } catch (e) {
+      console.error('[StockCenter] Valuation sync fail:', e);
+      await Modal.alert('同步失败', e.message);
     }
-    DataTabs.Core.addLog(`[StockCenter] 估值同步: ${done}只`);
-    await Modal.alert('同步完成', `${done} 只已同步`);
     this.load(this.currentPage);
   },
 
   async batchSyncFinance() {
     const codes = this.getSelected();
     if (codes.length === 0) { await Modal.alert('提示', '请先勾选需要同步的股票'); return; }
-    const ok = await Modal.confirm('同步财务', `确认对 ${codes.length} 只逐个同步财报?`);
+    const ok = await Modal.confirm('同步财务', `确认对 ${codes.length} 只同步财报?`);
     if (!ok) return;
     DataTabs.Core.addLog(`[StockCenter] 开始同步财务: ${codes.length} 只...`);
-    let done = 0;
-    for (const code of codes) {
-      try { await API.post(`/data/financial/sync/${code}`); done++; }
-      catch (e) { console.error(`[StockCenter] ${code} fin sync fail:`, e); }
+    try {
+      const r = await SyncAPI.financial(codes, 'smart');
+      const stored = r.stored || 0;
+      DataTabs.Core.addLog(`[StockCenter] 财务同步: ${stored} 季度`);
+      await Modal.alert('同步完成', `${codes.length} 只, ${stored} 季度`);
+    } catch (e) {
+      console.error('[StockCenter] Financial sync fail:', e);
+      await Modal.alert('同步失败', e.message);
     }
-    DataTabs.Core.addLog(`[StockCenter] 财务同步: ${done}只`);
-    await Modal.alert('同步完成', `${done} 只已同步`);
     this.load(this.currentPage);
   },
 
@@ -360,6 +382,68 @@ DataTabs.StockCenter = {
       DataTabs.Core.addLog(`[StockCenter] 财务指标计算失败: ${e.message}`, 'error');
       await Modal.alert('计算失败', e.message);
     }
+  },
+
+  /** ═══ 维度 toggle: 不限 → 有 → 缺 → 不限 ═══ */
+  toggleDim(dim) {
+    console.log('[StockCenter] toggleDim called:', dim);
+    const cur = this._dimStates[dim] || '';
+    const next = cur === '' ? 'has' : cur === 'has' ? 'missing' : '';
+    this._dimStates[dim] = next;
+    console.log('[StockCenter] _dimStates:', JSON.stringify(this._dimStates));
+
+    // 更新 chip 样式
+    const chip = document.querySelector(`.sc-dim-chip[data-dim="${dim}"]`);
+    if (chip) {
+      chip.classList.toggle('has', next === 'has');
+      chip.classList.toggle('missing', next === 'missing');
+    } else {
+      console.warn('[StockCenter] chip not found for dim:', dim);
+    }
+    this.applyFilter();
+  },
+
+  /** ═══ 自选股筛选 ═══ */
+  setWatchlistFilter(val) {
+    console.log('[StockCenter] setWatchlistFilter called:', val);
+    this._wlFilter = val;
+    document.querySelectorAll('#sc-wl-filter span').forEach(function(el) {
+      el.classList.toggle('active', el.dataset.v === val);
+    });
+    this.applyFilter();
+  },
+
+  /** ═══ 重置所有筛选 (供外部调用) ═══ */
+  resetFilters() {
+    this._dimStates = {};
+    this._wlFilter = '';
+    document.querySelectorAll('.sc-dim-chip').forEach(function(el) {
+      el.classList.remove('has', 'missing');
+    });
+    document.querySelectorAll('#sc-wl-filter span').forEach(function(el) {
+      el.classList.toggle('active', el.dataset.v === '');
+    });
+    document.getElementById('sc-industry-filter').value = '';
+    document.getElementById('sc-only-missing').checked = false;
+    document.getElementById('sc-search').value = '';
+  },
+
+  /** ═══ 批量同步行业 ═══ */
+  async batchSyncIndustry() {
+    const codes = this.getSelected();
+    if (codes.length === 0) { await Modal.alert('提示', '请先勾选需要同步的股票'); return; }
+    const ok = await Modal.confirm('同步行业', `确认对 ${codes.length} 只同步行业分类?`);
+    if (!ok) return;
+    DataTabs.Core.addLog(`[StockCenter] 开始同步行业: ${codes.length} 只...`);
+    try {
+      const r = await SyncAPI.industry(codes);
+      DataTabs.Core.addLog(`[StockCenter] 行业同步: ${r.synced || 0}/${codes.length} 完成`);
+      await Modal.alert('同步完成', `${r.synced || 0}/${codes.length} 只行业已同步`);
+    } catch (e) {
+      console.error('[StockCenter] Industry sync fail:', e);
+      DataTabs.Core.addLog(`[StockCenter] 行业同步失败: ${e.message}`, 'error');
+    }
+    this.load(this.currentPage);
   },
 
   _esc(s) {

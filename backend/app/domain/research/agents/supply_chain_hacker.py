@@ -553,7 +553,6 @@ all_assets >= 5家, moat_level: absolute_monopoly/strong/medium/weak"""
     async def load_context(self, ctx: Dict[str, Any]) -> Dict[str, Any]:
         ctx = await super().load_context(ctx)
         ctx["macro"] = await self.data_loader.load_macro()
-        ctx["positions"] = await self.data_loader.load_positions()
         return ctx
 
     @staticmethod

@@ -394,48 +394,114 @@ class AIImportService:
             results.append(item)
         return results
 
+    # ── AI Excel Prompts ─────────────────────────
+
+    AI_EXCEL_POSITION_PROMPT = """你是一个股票持仓数据提取助手。下面是一个 Excel 表格数据，请智能识别并提取所有持仓记录。
+
+表格列名可能不固定，请根据列名语义判断：
+- 股票代码: 可能是 6位数字代码、或 4-5位数字、或含交易所前缀
+- 股票名称: 公司简称/全称
+- 持仓数量/股数: 持有的股票数量
+- 成本价: 买入均价/持仓成本
+- 现价/市价: 当前价格
+
+返回纯 JSON 数组（不要 Markdown 代码块），每条记录：
+{"stock_code":"600519","stock_name":"贵州茅台","shares":100,"cost_price":1750.00,"current_price":1820.50}
+
+注意：
+- stock_code 只保留数字部分，去掉交易所前缀（如 SH600519 → 600519）
+- 如果某字段明显缺失，用 0 或空字符串代替
+- shares 必须是整数
+- 只返回 JSON 数组，不要多余说明"""
+
+    AI_EXCEL_TRADE_PROMPT = """你是一个股票交易记录提取助手。下面是一个 Excel 表格数据，请智能识别并提取所有成交记录。
+
+表格列名可能不固定，请根据列名语义判断：
+- 股票代码: 6位数字代码
+- 股票名称: 公司简称
+- 交易类型: 买入/卖出/BUY/SELL
+- 数量/股数: 成交数量
+- 成交价/价格: 成交价格
+- 交易日期: 成交日期
+
+返回纯 JSON 数组（不要 Markdown 代码块），每条记录：
+{"stock_code":"600519","stock_name":"贵州茅台","trade_type":"BUY","shares":100,"price":1800.00,"trade_date":"2026-03-15"}
+
+注意：
+- stock_code 只保留数字部分
+- trade_type 用 BUY 或 SELL
+- trade_date 格式 YYYY-MM-DD
+- shares 必须是整数
+- 只返回 JSON 数组，不要多余说明"""
+
     # ── Excel Parsing ────────────────────────────
 
     _COLUMN_MAP_POSITION = {
-        "stock_code": ["股票代码", "代码", "code", "stock_code", "symbol"],
-        "stock_name": ["股票名称", "名称", "name", "stock_name", "证券名称"],
-        "shares": ["持仓数量", "数量", "shares", "volume", "股数", "持仓"],
-        "cost_price": ["成本价", "持仓成本", "买入均价", "cost_price", "avg_cost", "成本"],
-        "current_price": ["现价", "最新价", "当前价", "current_price", "price", "市价"],
+        "stock_code": ["股票代码", "代码", "code", "stock_code", "symbol", "证券代码", "证券编码", "股票编号"],
+        "stock_name": ["股票名称", "名称", "name", "stock_name", "证券名称", "股票简称"],
+        "shares": ["持仓数量", "数量", "shares", "volume", "股数", "持仓", "持仓股数", "持有数量", "持股数量"],
+        "cost_price": ["成本价", "持仓成本", "买入均价", "cost_price", "avg_cost", "成本", "持仓均价", "买入成本"],
+        "current_price": ["现价", "最新价", "当前价", "current_price", "price", "市价", "最新市值价", "现价(元)"],
     }
 
     _COLUMN_MAP_TRADE = {
-        "stock_code": ["股票代码", "代码", "code", "stock_code", "symbol"],
-        "stock_name": ["股票名称", "名称", "name", "stock_name", "证券名称"],
-        "trade_type": ["交易类型", "买卖", "trade_type", "action", "方向", "操作"],
-        "shares": ["交易数量", "数量", "shares", "volume", "股数"],
-        "price": ["成交价", "价格", "price", "成交价格"],
-        "trade_date": ["交易日期", "日期", "trade_date", "date", "成交日期"],
+        "stock_code": ["股票代码", "代码", "code", "stock_code", "symbol", "证券代码", "证券编码", "股票编号"],
+        "stock_name": ["股票名称", "名称", "name", "stock_name", "证券名称", "股票简称"],
+        "trade_type": ["交易类型", "买卖", "trade_type", "action", "方向", "操作", "买卖方向"],
+        "shares": ["交易数量", "数量", "shares", "volume", "股数", "成交数量"],
+        "price": ["成交价", "价格", "price", "成交价格", "成交均价"],
+        "trade_date": ["交易日期", "日期", "trade_date", "date", "成交日期", "委托日期"],
     }
+
+    @staticmethod
+    def _read_excel_bytes(file_bytes: bytes, sheet_name=0):
+        """从 BytesIO 读取 Excel, 依次尝试 openpyxl/xlrd/calamine 引擎"""
+        import pandas as pd
+        engines = ["openpyxl", "xlrd", "calamine", None]
+        last_err = None
+        for eng in engines:
+            try:
+                return pd.read_excel(io.BytesIO(file_bytes), engine=eng, sheet_name=sheet_name)
+            except Exception as e:
+                last_err = e
+                continue
+        raise last_err or ValueError("无法解析 Excel 文件，请确认文件格式为 .xlsx 或 .xls")
 
     @classmethod
     def parse_excel(cls, file_bytes: bytes, filename: str, sheet_type: str = "position") -> List[Dict]:
         """解析 Excel 文件, 灵活匹配列名"""
         import pandas as pd
-        try:
-            df = pd.read_excel(io.BytesIO(file_bytes), engine="openpyxl")
-        except Exception:
-            df = pd.read_excel(io.BytesIO(file_bytes))  # fallback
+        df = cls._read_excel_bytes(file_bytes)
 
         if df.empty or len(df.columns) == 0:
             return []
 
-        # 列名映射
+        # 列名映射 — 精确匹配 + 子串匹配双模式
         col_map = cls._COLUMN_MAP_POSITION if sheet_type == "position" else cls._COLUMN_MAP_TRADE
         header = {}
         for i, col_name in enumerate(df.columns):
-            col_lower = str(col_name).strip().lower()
+            col_str = str(col_name).strip()
+            col_lower = col_str.lower()
+            matched = None
+            # 精确匹配
             for target, aliases in col_map.items():
                 if col_lower in aliases or col_lower in [a.lower() for a in aliases]:
-                    header[target] = i
+                    matched = target
                     break
+            # 子串匹配 (如 "成本价(元)" → "成本价")
+            if not matched:
+                for target, aliases in col_map.items():
+                    for alias in aliases:
+                        if alias in col_str or col_str in alias:
+                            matched = target
+                            break
+                    if matched:
+                        break
+            if matched:
+                header[matched] = i
 
         if "stock_code" not in header:
+            logger.warning(f"[Excel] No stock_code column found. Columns: {list(df.columns)}")
             return []  # 找不到股票代码列则返回空
 
         results = []
@@ -448,7 +514,7 @@ class AIImportService:
                         val = 0 if field in ("shares", "cost_price", "current_price", "price") else ""
                     item[field] = val
                 # 类型转换
-                item["stock_code"] = str(item["stock_code"]).zfill(5) if len(str(item["stock_code"])) <= 5 else str(item["stock_code"])
+                item["stock_code"] = cls._normalize_code(str(item.get("stock_code", "")))
                 item["stock_name"] = str(item.get("stock_name", ""))
                 item["shares"] = int(float(item.get("shares", 0))) if item.get("shares") else 0
                 if sheet_type == "position":
@@ -464,6 +530,39 @@ class AIImportService:
             except Exception as e:
                 logger.warning(f"[⚠️] Excel row parse error: {e}")
         return results
+
+    @classmethod
+    async def ai_parse_excel(cls, file_bytes: bytes, sheet_type: str = "position") -> List[Dict]:
+        """AI 智能解析 Excel — 用 LLM 理解任意格式的表格, 返回结构化数据"""
+        import pandas as pd
+        df = cls._read_excel_bytes(file_bytes)
+        if df.empty or len(df.columns) == 0:
+            return []
+
+        # 转成文本表格 (前 50 行 + 列名)
+        rows_out = []
+        rows_out.append(" | ".join(str(c) for c in df.columns))
+        rows_out.append(" | ".join(["---"] * len(df.columns)))
+        for _, row in df.head(50).iterrows():
+            vals = []
+            for v in row:
+                if pd.isna(v):
+                    vals.append("")
+                else:
+                    vals.append(str(v))
+            rows_out.append(" | ".join(vals))
+        table_text = "\n".join(rows_out)
+
+        prompt_text = cls.AI_EXCEL_POSITION_PROMPT if sheet_type == "position" else cls.AI_EXCEL_TRADE_PROMPT
+        full_prompt = f"{prompt_text}\n\n## 表格数据\n\n{table_text}"
+
+        result = await cls._call_deepseek_text(full_prompt)
+        if result:
+            logger.info(f"[✅] AI parsed {len(result)} records from Excel ({sheet_type})")
+            return result
+
+        logger.warning("[⚠️] AI Excel parsing failed, falling back to column mapping")
+        return cls.parse_excel(file_bytes, "ai_fallback.xlsx", sheet_type)
 
     # ── Stock Code Normalization ─────────────────
 

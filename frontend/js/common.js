@@ -65,7 +65,11 @@ async function triggerSync() {
     const origHTML = btn.innerHTML;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 同步中...';
     try {
-        await API.post('/data/sync/daily/auto', { type: 'AUTO' });
+        if (typeof SyncAPI !== 'undefined') {
+            await SyncAPI.market(null, 'smart');
+        } else {
+            await API.post('/data/sync/daily/auto', { type: 'AUTO' });
+        }
         updateAccountSummary();
         if (typeof window.refreshPageData === 'function') window.refreshPageData();
     } catch (e) {

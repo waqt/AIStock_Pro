@@ -29,9 +29,8 @@ DataTabs.Financial = {
     if (!code) { DataTabs.Core.addLog('请先选择自选股', 'warn'); return; }
     DataTabs.Core.addLog(`拉取 ${code} 财报...`, 'info');
     try {
-      const r = await fetch(`${API_BASE}/data/financial/sync/${code}`, { method: 'POST' });
-      const d = await r.json();
-      DataTabs.Core.addLog(`${code}: ${d.data?.stored || 0} 季度已存储`, 'success');
+      const r = await SyncAPI.financial([code], 'smart');
+      DataTabs.Core.addLog(`${code}: ${r.stored || 0} 季度已存储`, 'success');
       this.load(code);
     } catch (e) { DataTabs.Core.addLog(`失败: ${e.message}`, 'error'); }
   },
@@ -39,9 +38,8 @@ DataTabs.Financial = {
   async batchSync() {
     DataTabs.Core.addLog('批量拉取自选股财报...', 'info');
     try {
-      const r = await fetch(`${API_BASE}/data/financial/sync`, { method: 'POST' });
-      const d = await r.json();
-      DataTabs.Core.addLog(`完成: ${d.data?.synced_stocks || 0}只 ${d.data?.total_quarters || 0}季度`, 'success');
+      const r = await SyncAPI.financial(null, 'smart');
+      DataTabs.Core.addLog(`完成: ${r.stored || 0} 季度`, 'success');
     } catch (e) { DataTabs.Core.addLog(`失败: ${e.message}`, 'error'); }
   },
 

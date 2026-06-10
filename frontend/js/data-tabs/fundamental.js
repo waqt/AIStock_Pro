@@ -121,9 +121,8 @@ DataTabs.Fundamental = {
   async syncIndustry() {
     DataTabs.Core.addLog('同步行业信息...', 'info');
     try {
-      const r = await fetch(`${API_BASE}/data/stock-info/sync`, { method: 'POST' });
-      const d = await r.json();
-      DataTabs.Core.addLog(`行业同步完成: ${d.synced || 0}/${d.total || 0}只`, 'success');
+      const r = await SyncAPI.industry(null);
+      DataTabs.Core.addLog(`行业同步完成: ${r.synced || 0} 只`, 'success');
       this.load();
     } catch (e) { DataTabs.Core.addLog(`行业同步失败: ${e.message}`, 'error'); }
   }

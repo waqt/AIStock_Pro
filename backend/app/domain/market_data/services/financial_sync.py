@@ -45,6 +45,70 @@ async def sync_financials_batch(codes: List[str]) -> dict:
     return {"synced_stocks": len(codes), "total_quarters": total}
 
 
+async def sync_financials_smart(code: str) -> dict:
+    """智能同步: 查最新报告期→拉数据→只Upsert新季度"""
+    prefix = _to_prefix(code)
+    if not prefix:
+        return {"code": code, "error": "Unsupported code format"}
+
+    # 查 DB 最新报告期
+    async with async_session() as db:
+        res = await db.execute(
+            select(FinancialStatement.report_date)
+            .where(FinancialStatement.stock_code == code)
+            .order_by(FinancialStatement.report_date.desc())
+            .limit(1)
+        )
+        latest_in_db = res.scalars().first()
+
+    loop = asyncio.get_event_loop()
+    try:
+        income_df = await loop.run_in_executor(None, _fetch_income, prefix)
+        cashflow_df = await loop.run_in_executor(None, _fetch_cashflow, prefix)
+        balance_df = await loop.run_in_executor(None, _fetch_balance, prefix)
+    except Exception as e:
+        logger.warning(f"[FinSync] Fetch failed for {code}: {e}")
+        return {"code": code, "error": str(e)}
+
+    if income_df is None or income_df.empty:
+        return {"code": code, "error": "No income data"}
+
+    merged = _merge(income_df, cashflow_df, balance_df)
+    if merged.empty:
+        return {"code": code, "error": "Merge failed"}
+
+    # 只保留比 DB 更新的行
+    if latest_in_db:
+        merged = merged[merged["REPORT_DATE"] > pd.Timestamp(latest_in_db)]
+        if merged.empty:
+            logger.info(f"[FinSync] {code}: already up to date (latest={latest_in_db})")
+            return {"code": code, "stored": 0, "status": "uptodate"}
+
+    stored = await _upsert(code, merged)
+    logger.info(f"[FinSync] {code}: {stored} new quarters stored")
+    return {"code": code, "stored": stored, "status": "ok"}
+
+
+async def sync_financials_full(code: str) -> dict:
+    """全量覆盖: 删除历史数据, 重新全量插入"""
+    prefix = _to_prefix(code)
+    if not prefix:
+        return {"code": code, "error": "Unsupported code format"}
+
+    # 删除已有数据
+    async with async_session() as db:
+        from sqlalchemy import delete as sa_delete
+        await db.execute(
+            sa_delete(FinancialStatement).where(FinancialStatement.stock_code == code)
+        )
+        await db.commit()
+
+    # 重新全量拉取并插入 (复用 sync_financials)
+    result = await sync_financials(code)
+    result["status"] = "full"
+    return result
+
+
 # ═══ 内部方法 ═══════════════════════════════
 
 def _to_prefix(code: str) -> Optional[str]:

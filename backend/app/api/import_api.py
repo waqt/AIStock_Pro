@@ -114,7 +114,7 @@ async def upload_excel(
         raise HTTPException(status_code=400, detail="仅支持 .xlsx / .xls 格式")
     try:
         contents = await file.read()
-        results = AIImportService.parse_excel(contents, file.filename, sheet_type)
+        results = await AIImportService.ai_parse_excel(contents, sheet_type)
         return {"success": True, "data": results, "count": len(results)}
     except Exception as e:
         logger.error(f"[❌] Excel parse error: {e}")

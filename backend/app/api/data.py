@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Query, UploadFile, File, Body
 from typing import Optional, List
-from sqlalchemy import select, func
+from sqlalchemy import select, func, collate
 from datetime import date, timedelta
 import re
 
@@ -16,6 +16,115 @@ router = APIRouter(prefix="/api/data", tags=["数据管理"])
 
 class SyncRequest(BaseModel):
     type: str = "AUTO"
+
+
+# ═══════════════════════════════════════════
+# ★ 统一同步接口 (V5.17)
+# ═══════════════════════════════════════════
+
+class SyncMarketRequest(BaseModel):
+    codes: Optional[List[str]] = None
+    mode: str = "smart"  # smart | full
+
+class SyncFinancialRequest(BaseModel):
+    codes: Optional[List[str]] = None
+    mode: str = "smart"  # smart | full
+
+class SyncCodesRequest(BaseModel):
+    codes: Optional[List[str]] = None
+
+
+@router.post("/sync/market")
+async def sync_market(req: SyncMarketRequest):
+    """统一行情同步: mode=smart(补缺失) | full(全量覆盖)"""
+    from app.domain.quant.engine.engine import QuantEngine
+    from app.domain.market_data.services.valuation import resolve_sync_codes
+
+    codes = await resolve_sync_codes(req.codes)
+    if not codes:
+        return {"success": True, "synced": 0, "message": "empty codes"}
+
+    total_rows = 0
+    async with async_session() as db:
+        engine = QuantEngine(db)
+        sync_mode = "FULL" if req.mode == "full" else "AUTO"
+        for code in codes:
+            try:
+                rows = await engine.sync_market_data(code, mode=sync_mode)
+                total_rows += rows
+            except Exception as e:
+                logger.warning(f"[Sync/Market] {code}: {e}")
+        await db.commit()
+
+    logger.info(f"[Sync/Market] {req.mode}: {len(codes)} codes, {total_rows} rows")
+    return {"success": True, "codes": len(codes), "synced": total_rows, "mode": req.mode}
+
+
+@router.post("/sync/financial")
+async def sync_financial(req: SyncFinancialRequest):
+    """统一财务同步: mode=smart(仅新季度) | full(全量覆盖)"""
+    from app.domain.market_data.services.financial_sync import sync_financials_smart, sync_financials_full
+    from app.domain.market_data.services.valuation import resolve_sync_codes
+
+    codes = await resolve_sync_codes(req.codes)
+    if not codes:
+        return {"success": True, "synced": 0, "message": "empty codes"}
+
+    total_stored = 0
+    results = []
+    for code in codes:
+        try:
+            if req.mode == "full":
+                r = await sync_financials_full(code)
+            else:
+                r = await sync_financials_smart(code)
+            total_stored += r.get("stored", 0)
+            results.append({"code": code, "stored": r.get("stored", 0), "status": r.get("status", "ok")})
+        except Exception as e:
+            logger.warning(f"[Sync/Financial] {code}: {e}")
+            results.append({"code": code, "stored": 0, "status": "error", "reason": str(e)})
+
+    logger.info(f"[Sync/Financial] {req.mode}: {len(codes)} codes, {total_stored} quarters")
+    return {"success": True, "codes": len(codes), "stored": total_stored, "mode": req.mode, "results": results}
+
+
+@router.post("/sync/valuation")
+async def sync_valuation_endpoint(req: SyncCodesRequest):
+    """统一估值同步 (PE/PB/市值) — 带质量保护: 返回值无效时不覆盖"""
+    from app.domain.market_data.services.valuation import sync_valuation as sv, resolve_sync_codes
+
+    codes = await resolve_sync_codes(req.codes)
+    if not codes:
+        return {"success": True, "synced": 0}
+
+    count = await sv(target_codes=codes)
+    logger.info(f"[Sync/Valuation] {len(codes)} codes, {count} updated")
+    return {"success": True, "codes": len(codes), "synced": count}
+
+
+@router.post("/sync/industry")
+async def sync_industry_endpoint(req: SyncCodesRequest):
+    """统一行业同步 — 缓存优先 → EM push2"""
+    from app.domain.market_data.services.valuation import sync_industry as si, resolve_sync_codes
+
+    codes = await resolve_sync_codes(req.codes)
+    if not codes:
+        return {"success": True, "synced": 0}
+
+    done = 0
+    results = []
+    for code in codes:
+        try:
+            ind = await si(code)
+            if ind:
+                done += 1
+            results.append({"code": code, "industry": ind or ""})
+        except Exception as e:
+            logger.warning(f"[Sync/Industry] {code}: {e}")
+            results.append({"code": code, "industry": "", "error": str(e)})
+
+    logger.info(f"[Sync/Industry] {len(codes)} codes, {done} synced")
+    return {"success": True, "codes": len(codes), "synced": done}
 
 
 # ═══════════════════════════════════════════
@@ -58,7 +167,7 @@ async def get_daily_data(stock_code: str, limit: int = Query(default=500, le=100
 
 @router.post("/sync/daily/auto")
 async def trigger_auto_sync(request: SyncRequest):
-    """触发全量/增量同步任务 (经由 TaskEngine)"""
+    """触发全量/增量同步任务 (经由 TaskEngine)  # TODO V5.17: deprecated, use POST /sync/market"""
     try:
         exec_id = await task_manager.run_task("sync_market", {"mode": request.type})
         return {"message": "任务已加入执行队列", "task_id": exec_id}
@@ -68,7 +177,7 @@ async def trigger_auto_sync(request: SyncRequest):
 
 @router.post("/sync/daily/{stock_code}")
 async def trigger_single_sync(stock_code: str, mode: str = "daily"):
-    """单股同步 — mode=daily(当日最新-含盘中实时价) | historical(2年补齐缺失)"""
+    """单股同步 — mode=daily(当日最新-含盘中实时价) | historical(2年补齐缺失)  # TODO V5.17: deprecated, use POST /sync/market"""
     from app.domain.quant.engine.engine import QuantEngine
     from app.domain.market_data.services.valuation import sync_valuation
     from app.models.models import WatchlistItem, MarketData
@@ -409,7 +518,7 @@ async def get_position_valuation():
                    StockValuation.pe_ttm, StockValuation.pb,
                    StockValuation.mcap_yi, StockValuation.float_mcap_yi,
                    StockValuation.turnover_pct, StockValuation.updated_at)
-            .outerjoin(StockValuation, StockMaster.stock_code == StockValuation.stock_code)
+            .outerjoin(StockValuation, StockMaster.stock_code == collate(StockValuation.stock_code, 'utf8mb4_unicode_ci'))
             .where(StockValuation.pe_ttm.isnot(None))
         )
         return [
@@ -931,7 +1040,7 @@ async def get_fundamental_overview():
         # 行业分布 (from StockMaster)
         ind_res = await db.execute(
             select(StockMaster.industry, func.count(), func.avg(StockValuation.pe_ttm), func.avg(StockValuation.mcap_yi))
-            .outerjoin(StockValuation, StockMaster.stock_code == StockValuation.stock_code)
+            .outerjoin(StockValuation, StockMaster.stock_code == collate(StockValuation.stock_code, 'utf8mb4_unicode_ci'))
             .where(StockMaster.industry.isnot(None), StockMaster.industry != '')
             .group_by(StockMaster.industry).order_by(func.count().desc()))
         industries = [{"name": r[0], "count": r[1], "avg_pe": round(float(r[2] or 0),1), "avg_mcap": round(float(r[3] or 0),1)} for r in ind_res.all()]
@@ -940,7 +1049,7 @@ async def get_fundamental_overview():
         pe_res = await db.execute(
             select(StockMaster.stock_code, StockMaster.stock_name, StockMaster.industry,
                    StockValuation.pe_ttm, StockValuation.pb, StockValuation.mcap_yi)
-            .outerjoin(StockValuation, StockMaster.stock_code == StockValuation.stock_code)
+            .outerjoin(StockValuation, StockMaster.stock_code == collate(StockValuation.stock_code, 'utf8mb4_unicode_ci'))
             .where(StockValuation.pe_ttm.isnot(None))
             .order_by(StockValuation.pe_ttm.asc()).limit(50))
         stocks = [{"code": r[0], "name": r[1], "pe_ttm": r[3], "pb": r[4], "mcap_yi": r[5], "industry": r[2] or "未知"} for r in pe_res.all()]
@@ -956,7 +1065,7 @@ async def get_fundamental_distribution():
             select(StockMaster.stock_code, StockMaster.stock_name, StockMaster.industry,
                    StockValuation.pe_ttm, StockValuation.pb, StockValuation.mcap_yi,
                    StockValuation.roe, StockValuation.dividend_yield)
-            .outerjoin(StockValuation, StockMaster.stock_code == StockValuation.stock_code)
+            .outerjoin(StockValuation, StockMaster.stock_code == collate(StockValuation.stock_code, 'utf8mb4_unicode_ci'))
             .where(StockValuation.pe_ttm.isnot(None))
             .order_by(StockValuation.mcap_yi.desc().nullslast()).limit(100))
         rows = res.all()
@@ -1229,6 +1338,7 @@ async def get_stock_center_list(
     has_price_indicators: Optional[bool] = Query(default=None),
     has_industry: Optional[bool] = Query(default=None),
     industry: str = Query(default=None, description="按行业名称筛选"),
+    watchlist_filter: str = Query(default=None, description="watchlist|non_watchlist"),
 ):
     """股票中心: 全部股票 + 6 维数据完整度。支持排序和维度筛选。"""
     from app.domain.quant.engine.indicator_store import (
@@ -1245,8 +1355,8 @@ async def get_stock_center_list(
         if v is not None:
             has_filters[dim] = v
 
-    # 是否需要全量拉取 (非 code/name 排序 或 有 has_* 筛选 或 有行业筛选)
-    need_full = bool(has_filters) or sort_by not in ("code", "name") or bool(industry)
+    # 是否需要全量拉取 (非 code/name 排序 或 有 has_* 筛选 或 有行业筛选 或 自选股筛选)
+    need_full = bool(has_filters) or sort_by not in ("code", "name") or bool(industry) or bool(watchlist_filter)
 
     async with async_session() as db:
         # 构建基础查询 + 搜索 + 行业条件
@@ -1289,6 +1399,14 @@ async def get_stock_center_list(
                 )]
                 total = len(assembled)
 
+            # 自选股筛选
+            if watchlist_filter == "watchlist":
+                assembled = [s for s in assembled if s.get("in_watchlist")]
+                total = len(assembled)
+            elif watchlist_filter == "non_watchlist":
+                assembled = [s for s in assembled if not s.get("in_watchlist")]
+                total = len(assembled)
+
             # 排序
             sort_desc = sort_order.lower() == "desc"
             if sort_by == "completeness":
@@ -1319,17 +1437,17 @@ async def get_stock_center_list(
             page_stocks = _assemble_stocks(masters, val_map, pos_set, wl_set,
                                            md_map, fs_map, fin_cov, ind_cov)
 
-    # 计算完整度分数 (用于前端显示)
-    for s in page_stocks:
-        s["completeness"] = sum(1 for d in s["status"].values() if d.get("ok"))
+        # 计算完整度分数 (用于前端显示)
+        for s in page_stocks:
+            s["completeness"] = sum(1 for d in s["status"].values() if d.get("ok"))
 
-    # 统计概览 (一次聚合查询)
-    summary = await _compute_stock_center_summary(db)
+        # 统计概览 (一次聚合查询)
+        summary = await _compute_stock_center_summary(db)
 
-    return {"success": True, "data": {
-        "total": total, "page": page, "page_size": limit,
-        "summary": summary, "stocks": page_stocks,
-    }}
+        return {"success": True, "data": {
+            "total": total, "page": page, "page_size": limit,
+            "summary": summary, "stocks": page_stocks,
+        }}
 
 
 async def _compute_stock_center_summary(db):
@@ -1488,7 +1606,7 @@ class BatchSyncRequest(BaseModel):
 
 @router.post("/stock-center/batch-sync")
 async def stock_center_batch_sync(req: BatchSyncRequest):
-    """股票中心批量同步 — 按 codes 同步行情 + 估值 + 基本信息"""
+    """股票中心批量同步 — 按 codes 同步行情 + 估值 + 基本信息  # TODO V5.17: deprecated inline logic, use multiple POST /sync/*"""
     from app.domain.quant.engine.engine import QuantEngine
     from app.domain.market_data.services.valuation import sync_valuation, sync_stock_info
     from datetime import date as dt_date

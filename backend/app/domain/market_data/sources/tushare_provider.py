@@ -86,6 +86,36 @@ class TushareProvider:
             'list_date': row.get('list_date', ''),
         }
 
+    @staticmethod
+    def fetch_all_stock_basic() -> dict:
+        """批量获取全部A股基本信息 (一次调用, 缓存友好)
+
+        返回: {stock_code: {name, industry, list_date}, ...}
+        """
+        pro = _get_pro()
+        try:
+            df = pro.stock_basic(fields='ts_code,name,industry,list_date,market')
+            if df is None or df.empty:
+                logger.warning("[Tushare] fetch_all_stock_basic returned empty")
+                return {}
+            result = {}
+            for _, row in df.iterrows():
+                ts_code = str(row.get('ts_code', ''))
+                if not ts_code:
+                    continue
+                # ts_code 格式: "000001.SZ" → "000001"
+                code = ts_code.split('.')[0].strip()
+                result[code] = {
+                    'name': str(row.get('name', '')),
+                    'industry': str(row.get('industry', '')),
+                    'list_date': str(row.get('list_date', '')),
+                }
+            logger.info(f"[Tushare] fetch_all_stock_basic: {len(result)} stocks")
+            return result
+        except Exception as e:
+            logger.warning(f"[Tushare] fetch_all_stock_basic failed: {e}")
+            return {}
+
     # ── 财务数据 ──────────────────────────────
 
     @staticmethod

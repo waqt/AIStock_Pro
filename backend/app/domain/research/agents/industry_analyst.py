@@ -25,6 +25,9 @@ class IndustryAnalyst(ResearchAgent):
         ctx = await super().load_context(ctx)
         # 额外加载宏观数据 (用于行业判断)
         ctx["macro"] = await self.data_loader.load_macro()
+        # 行业估值概览 (来自 DB, 仅 IndustryAnalyst 使用)
+        if not ctx.get("sector_overview") and ctx.get("industry"):
+            ctx["sector_overview"] = await self.data_loader.load_sector_overview(ctx["industry"])
         return ctx
 
     def build_prompt(self, ctx: Dict[str, Any]) -> str:

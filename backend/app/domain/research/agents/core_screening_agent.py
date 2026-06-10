@@ -458,8 +458,9 @@ class CoreScreeningAgent(ResearchAgent):
 
         # 注入动态财务数据字典
         from app.domain.quant.engine.financial_query_service import FinancialQueryService
+        # 注意: f-string 中 {{X}} 会转义为 {X}, 所以替换目标用单大括号
         catalog = FinancialQueryService.format_catalog_for_prompt()
-        prompt = prompt.replace("{{FINANCIAL_CATALOG}}", catalog)
+        prompt = prompt.replace("{FINANCIAL_CATALOG}", catalog)
 
         analysis = {}  # LLM 输出的完整结构化结果
         lifecycle_stage = "startup"  # 默认: 由 LLM 自主判定

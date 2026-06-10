@@ -5,15 +5,16 @@
 window.DataTabs = window.DataTabs || {};
 
 DataTabs.Health = {
-  quickSync(mode) {
+  async quickSync(mode) {
     const code = document.getElementById('quick-stock-input').value.trim();
     if (!code) { DataTabs.Core.addLog('请输入代码', 'warn'); return; }
     const label = mode === 'historical' ? '补齐历史' : '同步当日';
     DataTabs.Core.addLog(`${label}: ${code}...`, 'info');
-    fetch(`${API_BASE}/data/sync/daily/${code}?mode=${mode}`, { method: 'POST' }).then(r => r.json()).then(d => {
-      DataTabs.Core.addLog(`${code} | 名称:${d.name || '--'} | 价格:${d.price || '--'} | +${d.new_rows || 0}行`, 'success');
+    try {
+      const r = await SyncAPI.market([code], mode === 'historical' ? 'full' : 'smart');
+      DataTabs.Core.addLog(`${code}: +${r.synced || 0} 条新记录`, 'success');
       DataTabs.Health.update();
-    }).catch(e => DataTabs.Core.addLog(`${code} 失败: ${e.message}`, 'error'));
+    } catch (e) { DataTabs.Core.addLog(`${code} 失败: ${e.message}`, 'error'); }
   },
 
   quickCompute() {
@@ -47,12 +48,13 @@ DataTabs.Health = {
     } catch (e) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--accent-red);">加载失败</td></tr>'; }
   },
 
-  quickSyncCode(code) {
+  async quickSyncCode(code) {
     DataTabs.Core.addLog(`同步 ${code}...`, 'info');
-    fetch(`${API_BASE}/data/sync/daily/${code}`, { method: 'POST' }).then(r => r.json()).then(d => {
+    try {
+      await SyncAPI.market([code], 'smart');
       DataTabs.Core.addLog(`${code} 完成`, 'success');
       DataTabs.Health.update();
-    }).catch(e => DataTabs.Core.addLog(`${code} 失败: ${e.message}`, 'error'));
+    } catch (e) { DataTabs.Core.addLog(`${code} 失败: ${e.message}`, 'error'); }
   },
 
   async viewDetail(code) {

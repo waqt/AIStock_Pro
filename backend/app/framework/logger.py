@@ -18,8 +18,11 @@ def setup_logger():
         colorize=True
     )
 
+    import os
+    _log_dir = os.path.join(os.path.dirname(__file__), "..", "..", "..", "logs")
+    os.makedirs(_log_dir, exist_ok=True)
     logger.add(
-        "logs/app_{time:YYYY-MM-DD}.log",
+        os.path.join(_log_dir, "app_{time:YYYY-MM-DD}.log"),
         rotation="500 MB",
         retention="10 days",
         level="INFO",

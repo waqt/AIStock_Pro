@@ -445,7 +445,7 @@ class ResearchAgent(BaseAgent):
         # 如果有行业关键词
         industry = ctx.get("industry")
         if industry:
-            result["sector_overview"] = await self.data_loader.load_sector_overview(industry)
+            pass  # sector_overview 已在 V5.16 移除: 数据库行业分类太粗, 活跃 Agent 均通过 web search 获取行业数据
 
         # 如果有持仓分析需求
         if ctx.get("include_portfolio"):

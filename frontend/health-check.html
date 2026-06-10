@@ -39,6 +39,38 @@
         #hc-result { flex: 1; }
         #hc-result .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; min-height: 300px; color: var(--text-micro); }
         #hc-result .empty-state .icon { font-size: 48px; margin-bottom: 12px; opacity: 0.3; }
+
+        /* ═══ 历史记录 Tab ═══ */
+        .hc-tab-bar { display: flex; border-bottom: 1px solid var(--border-color); margin-bottom: 8px; }
+        .hc-tab { padding: 6px 14px; font-size: 11px; cursor: pointer; color: var(--text-dim); border-bottom: 2px solid transparent; transition: all .15s; user-select: none; }
+        .hc-tab:hover { color: #fff; }
+        .hc-tab.active { color: var(--accent-blue); border-bottom-color: var(--accent-blue); }
+        .hc-tab-content { display: none; flex-direction: column; gap: 6px; flex: 1; }
+        .hc-tab-content.active { display: flex; }
+
+        .hc-history-search { display: flex; gap: 6px; }
+        .hc-history-search input { flex: 1; background: #000; border: 1px solid var(--border-color); color: #fff; padding: 6px 8px; border-radius: 4px; font-size: 12px; }
+        .hc-history-search button { padding: 6px 10px; font-size: 11px; }
+
+        .hc-history-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; min-height: 0; }
+        .hc-history-item { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 4px; cursor: pointer; transition: background .12s; border: 1px solid transparent; }
+        .hc-history-item:hover { background: rgba(255,255,255,0.04); }
+        .hc-history-item.active { background: rgba(33,150,243,0.1); border-color: rgba(33,150,243,0.25); }
+        .hc-history-item .hci-code { font-size: 12px; font-weight: 600; color: var(--accent-blue); min-width: 65px; }
+        .hc-history-item .hci-name { font-size: 11px; color: var(--text-dim); min-width: 50px; max-width: 60px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .hc-history-item .hci-verdict { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 3px; min-width: 44px; text-align: center; }
+        .hc-history-item .hci-time { font-size: 10px; color: var(--text-micro); margin-left: auto; white-space: nowrap; }
+        .hc-history-item .hci-del { font-size: 12px; color: var(--text-micro); padding: 2px 6px; border-radius: 3px; cursor: pointer; opacity: 0; transition: opacity .12s; }
+        .hc-history-item:hover .hci-del { opacity: 1; }
+        .hc-history-item .hci-del:hover { color: var(--accent-red); background: rgba(244,67,54,0.12); }
+
+        .hc-history-footer { font-size: 10px; color: var(--text-micro); text-align: center; padding: 4px 0; }
+        .hc-history-footer button { background: none; border: none; color: var(--accent-blue); cursor: pointer; font-size: 10px; padding: 2px 8px; }
+        .hc-history-footer button:hover { text-decoration: underline; }
+        .hc-history-footer button:disabled { color: var(--text-dim); cursor: default; text-decoration: none; }
+
+        .hc-back-link { font-size: 11px; color: var(--accent-blue); cursor: pointer; margin-bottom: 8px; display: inline-block; }
+        .hc-back-link:hover { text-decoration: underline; }
     </style>
 </head>
 <body data-page-id="health-check">
@@ -48,10 +80,20 @@
 <div class="top-bar"></div>
 <div class="workspace">
 
-    <!-- ═══ Left Panel: Input + Controls ═══ -->
+    <!-- ═══ Left Panel: Tabs (体检 / 历史记录) ═══ -->
     <div class="left-panel">
-        <div class="panel">
-            <div class="panel-body" style="display:flex;flex-direction:column;gap:8px;">
+        <div class="panel" style="flex:1;display:flex;flex-direction:column;min-height:0;">
+            <div class="hc-tab-bar">
+                <div class="hc-tab active" data-tab="check" onclick="HealthCheck.switchTab('check')">
+                    <i class="fas fa-stethoscope"></i> 体检
+                </div>
+                <div class="hc-tab" data-tab="history" onclick="HealthCheck.switchTab('history')">
+                    <i class="fas fa-history"></i> 历史记录
+                </div>
+            </div>
+
+            <!-- Tab: 体检 -->
+            <div class="hc-tab-content active" id="hc-tab-check">
                 <div class="hc-header">
                     <input type="text" id="hc-code" placeholder="股票代码 (如 688012, 中微公司)">
                     <button class="btn-action btn-primary" onclick="HealthCheck.run()" id="btn-hc" style="white-space:nowrap;">
@@ -65,18 +107,42 @@
                     <label><input type="checkbox" id="hc-dim-valuation" checked> <span>估值合理性</span></label>
                 </div>
                 <div class="hc-status-bar" id="hc-status">输入股票代码后开始体检</div>
+                <div class="panel" style="flex:1;">
+                    <div class="panel-header"><span class="panel-title">功能说明</span></div>
+                    <div class="panel-body" style="font-size:10px;color:var(--text-dim);line-height:1.6;">
+                        <p>个股全方位健康体检 — LLM 自主分析</p>
+                        <ul style="padding-left:14px;margin:4px 0;">
+                            <li>选择分析维度后点击「开始体检」</li>
+                            <li>LLM 自动编排分析路径: 查指标 → 搜资料 → 综合判断</li>
+                            <li>输出总体 verdict + 各维度评分 + 关键风险/催化剂</li>
+                            <li>分析耗时约 30-60 秒</li>
+                        </ul>
+                    </div>
+                </div>
             </div>
-        </div>
-        <div class="panel" style="flex:1;">
-            <div class="panel-header"><span class="panel-title">功能说明</span></div>
-            <div class="panel-body" style="font-size:10px;color:var(--text-dim);line-height:1.6;">
-                <p>个股全方位健康体检 — LLM 自主分析</p>
-                <ul style="padding-left:14px;margin:4px 0;">
-                    <li>选择分析维度后点击「开始体检」</li>
-                    <li>LLM 自动编排分析路径: 查指标 → 搜资料 → 综合判断</li>
-                    <li>输出总体 verdict + 各维度评分 + 关键风险/催化剂</li>
-                    <li>分析耗时约 30-60 秒</li>
-                </ul>
+
+            <!-- Tab: 历史记录 -->
+            <div class="hc-tab-content" id="hc-tab-history">
+                <div class="hc-history-search">
+                    <input type="text" id="hc-history-filter" placeholder="股票代码筛选 (留空=全部)" onkeydown="if(event.key==='Enter') HealthCheck.loadHistory()">
+                    <button class="btn-action btn-primary" onclick="HealthCheck.loadHistory()" style="font-size:11px;">
+                        <i class="fas fa-search"></i> 搜索
+                    </button>
+                    <button class="btn-action" onclick="HealthCheck.loadHistory()" title="刷新" style="font-size:11px;">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+                <div class="hc-history-list" id="hc-history-list">
+                    <div style="text-align:center;padding:20px;color:var(--text-micro);font-size:11px;">
+                        <i class="fas fa-search" style="font-size:20px;margin-bottom:8px;display:block;opacity:0.3;"></i>
+                        点击搜索加载历史记录
+                    </div>
+                </div>
+                <div class="hc-history-footer" id="hc-history-footer" style="display:none;">
+                    <button id="hc-history-prev" onclick="HealthCheck.prevPage()"><i class="fas fa-chevron-left"></i> 上一页</button>
+                    <span id="hc-history-page-info"></span>
+                    <button id="hc-history-next" onclick="HealthCheck.nextPage()">下一页 <i class="fas fa-chevron-right"></i></button>
+                </div>
             </div>
         </div>
     </div>

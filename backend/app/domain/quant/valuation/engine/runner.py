@@ -19,7 +19,7 @@ from typing import Optional
 from app.framework.logger import logger
 from app.framework.database.session import async_session
 from app.models.models import StockValuation, FinancialStatement, MarketData, StockMaster
-from sqlalchemy import select, func
+from sqlalchemy import select, func, collate
 import numpy as np
 
 try:
@@ -225,7 +225,7 @@ class ValuationRunner:
             async with async_session() as db:
                 rows = await db.execute(
                     select(StockValuation.pe_ttm)
-                    .join(StockMaster, StockMaster.stock_code == StockValuation.stock_code)
+                    .join(StockMaster, collate(StockMaster.stock_code, 'utf8mb4_unicode_ci') == StockValuation.stock_code)
                     .where(StockMaster.industry == industry)
                     .where(StockValuation.pe_ttm.isnot(None))
                     .where(StockValuation.pe_ttm > 0)

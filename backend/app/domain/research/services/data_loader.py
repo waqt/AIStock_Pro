@@ -1,10 +1,11 @@
 """投研数据加载器 — 为 Agent 提供统一的数据查询接口"""
+import asyncio
 from typing import List, Dict, Any, Optional
 from app.framework.database.session import async_session
 from app.models.models import (
     StockMaster, StockValuation, MarketData, Position, ExchangeRate, MacroHistory
 )
-from sqlalchemy import select, func, desc
+from sqlalchemy import select, func, desc, collate
 from app.framework.logger import logger
 
 
@@ -75,7 +76,7 @@ class ResearchDataLoader:
         async with async_session() as db:
             from sqlalchemy import outerjoin
             j = outerjoin(StockMaster, StockValuation,
-                          StockMaster.stock_code == StockValuation.stock_code)
+                          StockMaster.stock_code == collate(StockValuation.stock_code, 'utf8mb4_unicode_ci'))
             rows = await db.execute(
                 select(StockMaster, StockValuation)
                 .select_from(j)
@@ -169,9 +170,10 @@ class ResearchDataLoader:
     async def load_positions(self) -> List[Dict]:
         """加载当前持仓 (名称从 StockMaster 获取)"""
         async with async_session() as db:
+            from sqlalchemy import collate
             rows = await db.execute(
                 select(Position, StockMaster.stock_name)
-                .outerjoin(StockMaster, Position.stock_code == StockMaster.stock_code)
+                .outerjoin(StockMaster, collate(Position.stock_code, 'utf8mb4_unicode_ci') == StockMaster.stock_code)
             )
             return [
                 {
@@ -188,7 +190,7 @@ class ResearchDataLoader:
         async with async_session() as db:
             from sqlalchemy import outerjoin
             j = outerjoin(StockMaster, StockValuation,
-                          StockMaster.stock_code == StockValuation.stock_code)
+                          StockMaster.stock_code == collate(StockValuation.stock_code, 'utf8mb4_unicode_ci'))
             rows = await db.execute(
                 select(StockMaster, StockValuation)
                 .select_from(j)
@@ -240,8 +242,9 @@ class ResearchDataLoader:
         """搜索行业内所有标的 — from StockMaster + StockValuation"""
         async with async_session() as db:
             from sqlalchemy import outerjoin
+            from sqlalchemy import collate
             j = outerjoin(StockMaster, StockValuation,
-                          StockMaster.stock_code == StockValuation.stock_code)
+                          StockMaster.stock_code == collate(StockValuation.stock_code, 'utf8mb4_unicode_ci'))
             rows = await db.execute(
                 select(StockMaster, StockValuation)
                 .select_from(j)
@@ -464,84 +467,111 @@ class ResearchDataLoader:
             return []
 
 
+    # Brave 连接信号量 (Clash 代理并发 SSL 连接数过高时 WRONG_VERSION_NUMBER)
+    _brave_sem = asyncio.Semaphore(1)
+
     async def search_web(self, query: str, num: int = 5) -> List[Dict]:
         """网络搜索 — Brave + Tavily 双源并行 → DDG (免费兜底)
-        通过 Clash 代理 (127.0.0.1:7890) 访问海外服务。
-        Brave: 英文/全球视野, 速度快, 独立30B+索引
-        Tavily: AI优化, 结构化输出, 免费1000次/月
-        """
+        代理策略: 先走 Clash, SSL 错误时自动降级直连"""
         from app.framework.config import settings
-        import asyncio
-        CLASH_PROXY = "http://127.0.0.1:7890"
+        PROXIES = [None, "http://127.0.0.1:7890"]
+        # 按优先级: 直连优先 (避免 Clash SSL 问题), Clash 兜底 (直连失败时)
+        # 如果直连成功就不走代理, 更快更稳定
         all_results = []
+
+        async def _req(proxy, source, method, url, **kwargs):
+            import httpx
+            async with httpx.AsyncClient(proxy=proxy, timeout=kwargs.pop('timeout', 15.0)) as client:
+                if method == "GET":
+                    return await client.get(url, **kwargs)
+                return await client.post(url, **kwargs)
+
+        async def _try_proxies(source, query_prefix, make_req):
+            """依次尝试直连 → Clash, 返回 (results, used_proxy)"""
+            for proxy in PROXIES:
+                try:
+                    if source == "Brave":
+                        async with self._brave_sem:
+                            resp = await make_req(proxy)
+                    else:
+                        resp = await make_req(proxy)
+                    return resp, proxy
+                except Exception as e:
+                    if "WRONG_VERSION_NUMBER" in str(e):
+                        label = "direct" if proxy is None else f"proxy ({proxy})"
+                        logger.warning(f"[{source}] SSL error via {label}, {'trying next...' if proxy != PROXIES[-1] else 'all failed'}")
+                        continue
+                    # 非 SSL 错误, 不重试
+                    return None, proxy
+            return None, None
 
         async def _search_brave():
             if not settings.BRAVE_API_KEY:
                 return []
-            try:
-                import httpx
-                url = "https://api.search.brave.com/res/v1/web/search"
-                headers = {
-                    "Accept": "application/json",
-                    "Accept-Encoding": "gzip",
-                    "X-Subscription-Token": settings.BRAVE_API_KEY,
-                }
-                params = {"q": query, "count": min(num, 10)}
-                async with httpx.AsyncClient(proxy=CLASH_PROXY, timeout=15.0) as client:
-                    resp = await client.get(url, headers=headers, params=params)
-                    if resp.status_code == 200:
-                        data = resp.json()
-                        results = []
-                        for r in (data.get("web", {}).get("results", []) or [])[:num]:
-                            results.append({
-                                "title": r.get("title", "")[:150],
-                                "url": r.get("url", ""),
-                                "snippet": r.get("description", "")[:400],
-                                "source": "brave",
-                            })
-                        if results:
-                            logger.info(f"[Brave] {len(results)} results for '{query[:40]}'")
-                        return results
-                    else:
-                        logger.warning(f"[Brave] HTTP {resp.status_code}: {resp.text[:100]}")
-            except Exception as e:
-                logger.warning(f"[Brave] Failed: {type(e).__name__}: {e}")
-            return []
+            url = "https://api.search.brave.com/res/v1/web/search"
+            headers = {
+                "Accept": "application/json",
+                "Accept-Encoding": "gzip",
+                "X-Subscription-Token": settings.BRAVE_API_KEY,
+            }
+            params = {"q": query, "count": min(num, 10)}
+
+            resp, used = await _try_proxies("Brave", query[:30],
+                lambda p: _req(p, "Brave", "GET", url, headers=headers, params=params, timeout=15.0))
+            if resp is None:
+                return []
+
+            if resp.status_code != 200:
+                logger.warning(f"[Brave] HTTP {resp.status_code}: {resp.text[:100]}")
+                return []
+            data = resp.json()
+            results = []
+            for r in (data.get("web", {}).get("results", []) or [])[:num]:
+                results.append({
+                    "title": r.get("title", "")[:150],
+                    "url": r.get("url", ""),
+                    "snippet": r.get("description", "")[:400],
+                    "source": "brave",
+                })
+            if results:
+                via = "direct" if used is None else "clash"
+                logger.info(f"[Brave] {len(results)} results via {via} for '{query[:40]}'")
+            return results
 
         async def _search_tavily():
             if not settings.TAVILY_API_KEY:
                 return []
-            try:
-                import httpx
-                url = "https://api.tavily.com/search"
-                headers = {"Content-Type": "application/json"}
-                body = {
-                    "api_key": settings.TAVILY_API_KEY,
-                    "query": query,
-                    "max_results": min(num, 10),
-                    "search_depth": "basic",
-                    "include_answer": False,
-                }
-                async with httpx.AsyncClient(proxy=CLASH_PROXY, timeout=20.0) as client:
-                    resp = await client.post(url, headers=headers, json=body)
-                    if resp.status_code == 200:
-                        data = resp.json()
-                        results = []
-                        for r in (data.get("results", []) or [])[:num]:
-                            results.append({
-                                "title": r.get("title", "")[:150],
-                                "url": r.get("url", ""),
-                                "snippet": r.get("content", "")[:400],
-                                "source": "tavily",
-                            })
-                        if results:
-                            logger.info(f"[Tavily] {len(results)} results for '{query[:40]}'")
-                        return results
-                    else:
-                        logger.warning(f"[Tavily] HTTP {resp.status_code}: {resp.text[:100]}")
-            except Exception as e:
-                logger.warning(f"[Tavily] Failed: {type(e).__name__}: {e}")
-            return []
+            url = "https://api.tavily.com/search"
+            headers = {"Content-Type": "application/json"}
+            body = {
+                "api_key": settings.TAVILY_API_KEY,
+                "query": query,
+                "max_results": min(num, 10),
+                "search_depth": "basic",
+                "include_answer": False,
+            }
+
+            resp, used = await _try_proxies("Tavily", query[:30],
+                lambda p: _req(p, "Tavily", "POST", url, headers=headers, timeout=20.0, json=body))
+            if resp is None:
+                return []
+
+            if resp.status_code != 200:
+                logger.warning(f"[Tavily] HTTP {resp.status_code}: {resp.text[:100]}")
+                return []
+            data = resp.json()
+            results = []
+            for r in (data.get("results", []) or [])[:num]:
+                results.append({
+                    "title": r.get("title", "")[:150],
+                    "url": r.get("url", ""),
+                    "snippet": r.get("content", "")[:400],
+                    "source": "tavily",
+                })
+            if results:
+                via = "direct" if used is None else "clash"
+                logger.info(f"[Tavily] {len(results)} results via {via} for '{query[:40]}'")
+            return results
 
         # 双源并行搜索
         brave_results, tavily_results = await asyncio.gather(
@@ -561,29 +591,34 @@ class ResearchDataLoader:
             return all_results[:num]
 
         # 2. DDG 兜底 (Brave+Tavily 均失败时)
-        try:
-            import re, httpx
-            url = "https://html.duckduckgo.com/html/"
-            data = {"q": query}
-            async with httpx.AsyncClient(proxy=CLASH_PROXY, timeout=15.0,
-                    headers={"User-Agent": "Mozilla/5.0"}) as client:
-                resp = await client.post(url, data=data)
-                if resp.status_code == 200:
-                    results = []
-                    links = re.findall(r'<a[^>]*class="result__a"[^>]*href="([^"]*)"[^>]*>(.*?)</a>', resp.text)
-                    snippets = re.findall(r'<a[^>]*class="result__snippet"[^>]*>(.*?)</a>', resp.text)
-                    for i, (url, title) in enumerate(links[:num]):
-                        title_clean = re.sub(r'<[^>]+>', '', title).strip()
-                        snippet = re.sub(r'<[^>]+>', '', snippets[i]).strip() if i < len(snippets) else ""
-                        if title_clean:
-                            results.append({"title": title_clean[:150], "url": url, "snippet": snippet[:300]})
-                    if results:
-                        logger.info(f"[DDG search OK: {len(results)} results for '{query[:40]}']")
-                        return results
-                else:
-                    logger.warning(f"[DDG returned {resp.status_code}]")
-        except Exception as e:
-            logger.warning(f"[DDG search failed: {type(e).__name__}: {e}]")
+        import re
+        for proxy in PROXIES:
+            try:
+                url = "https://html.duckduckgo.com/html/"
+                data = {"q": query}
+                async with httpx.AsyncClient(proxy=proxy, timeout=15.0,
+                        headers={"User-Agent": "Mozilla/5.0"}) as client:
+                    resp = await client.post(url, data=data)
+                    if resp.status_code == 200:
+                        results = []
+                        links = re.findall(r'<a[^>]*class="result__a"[^>]*href="([^"]*)"[^>]*>(.*?)</a>', resp.text)
+                        snippets = re.findall(r'<a[^>]*class="result__snippet"[^>]*>(.*?)</a>', resp.text)
+                        for i, (url, title) in enumerate(links[:num]):
+                            title_clean = re.sub(r'<[^>]+>', '', title).strip()
+                            snippet = re.sub(r'<[^>]+>', '', snippets[i]).strip() if i < len(snippets) else ""
+                            if title_clean:
+                                results.append({"title": title_clean[:150], "url": url, "snippet": snippet[:300]})
+                        if results:
+                            via = "direct" if proxy is None else "clash"
+                            logger.info(f"[DDG] {len(results)} results via {via} for '{query[:40]}'")
+                            return results
+                    else:
+                        logger.warning(f"[DDG returned {resp.status_code} via {'direct' if proxy is None else 'clash'}]")
+            except Exception as e:
+                if "WRONG_VERSION_NUMBER" in str(e):
+                    continue  # try next proxy
+                logger.warning(f"[DDG] Failed via {'direct' if proxy is None else 'clash'}: {e}")
+                break
 
         return []
 

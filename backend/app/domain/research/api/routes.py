@@ -15,6 +15,9 @@ from app.domain.research.agents.dag_orchestrator import DAGOrchestrator
 from app.domain.research.agents.market_scanner import MarketScanner
 from app.domain.research.agents.system_dynamics_agent import SystemDynamicsAgent
 from app.domain.research.agents.core_screening_agent import CoreScreeningAgent
+from app.domain.research.agents.expectation_gap_agent import ExpectationGapAgent
+from app.domain.research.agents.risk_analysis_agent import RiskAnalysisAgent
+from app.domain.research.agents.report_synthesis_agent import ReportSynthesisAgent
 from app.domain.research.pipelines import PIPELINES
 from app.domain.research.services.data_loader import data_loader
 from app.domain.research.services.report_store import save_report, list_reports, get_report, delete_report
@@ -59,7 +62,8 @@ FULL_PIPELINE = [
 # 已实现的步骤
 IMPLEMENTED_STEPS = {
     "step1_macro", "step1b_capital_flow", "step2_gatekeeper", "step3_sc_hacker", "step4_system_dynamics",
-    "step5_cross_industry", "step6_core_screening"
+    "step5_cross_industry", "step6_core_screening",
+    "step9_expectation_gap", "step10_risk_analysis", "step11_report",
 }
 
 # 可选步骤（不阻塞 pipeline）
@@ -748,6 +752,65 @@ async def supply_chain_hacker(req: SupplyChainRequest = SupplyChainRequest(),
         raise HTTPException(status_code=500, detail=str(e))
 
 
+async def _synthesize_step11(run_id: str, industry: str, provider=None, trace_label="auto"):
+    """Step 11 综合报告合成 — 收集所有 step outputs → ReportSynthesisAgent
+
+    这是一个可复用函数, 在多个 auto-chain 场景中调用。
+    """
+    import json as _json
+    from app.framework.pipeline.checkpoint import find_checkpoint_file, save_checkpoint
+    from app.framework.pipeline.trace import TraceContext
+    if not provider:
+        from app.framework.ai.providers.deepseek import DeepSeekProvider
+        provider = DeepSeekProvider()
+
+    # 收集所有可用的 step outputs
+    step_checkpoints = {
+        "step1b_capital_flow": "step1b_capital_flow",
+        "step2_gatekeeper": "step2_gatekeeper",
+        "step3_sc_hacker": "step3_sc_hacker",
+        "step4_system_dynamics": "step4_system_dynamics",
+        "step6_core_screening": "step6_core_screening",
+        "step9_expectation_gap": "step9_expectation_gap",
+        "step10_risk_analysis": "step10_risk_analysis",
+    }
+    steps = {}
+    present = 0
+    for step_name, cp_step in step_checkpoints.items():
+        cp_file = find_checkpoint_file(run_id, cp_step)
+        if cp_file:
+            try:
+                with open(cp_file, "r", encoding="utf-8") as f:
+                    record = _json.load(f)
+                output = record.get("output", {})
+                if output:
+                    steps[step_name] = output
+                    present += 1
+                else:
+                    steps[step_name] = {"note": "empty output"}
+            except Exception as e:
+                steps[step_name] = {"note": f"read failed: {e}"}
+        else:
+            steps[step_name] = {"note": "not found"}
+
+    logger.info(f"[SynthesizeStep11] {industry}: {present} steps found")
+
+    if present < 3:
+        logger.warning(f"[SynthesizeStep11] {industry}: only {present} steps, report may be thin")
+
+    rs_agent = ReportSynthesisAgent(provider=provider)
+    rs_ctx = {"industry": industry, "steps": steps}
+    rs_trace = TraceContext(run_id)
+    step11_result = await rs_agent.analyze(rs_ctx, trace=rs_trace)
+
+    save_checkpoint("step11_report", run_id, trace_label, step11_result, {"elapsed": 0})
+    rs_trace.write("step11_report")
+
+    n_sections = len(step11_result.get("report", {}).get("sections", []))
+    logger.info(f"[SynthesizeStep11] Done: {industry} → {n_sections} sections")
+    return step11_result
+
+
 class IndustryDrilldownRequest(BaseModel):
     parent_run_id: str = ""
     industry_name: str = ""
@@ -836,6 +899,43 @@ async def industry_drilldown(req: IndustryDrilldownRequest):
                         screen_trace.write("step6_core_screening")
                         # DISABLED: await save_step_observations(run_id, "step6_core_screening", step6_result, datetime.now().isoformat())
                         logger.info(f"[Drilldown] Step6 done: {len(step6_result.get('ranked_stocks',[]))} strong + {len(step6_result.get('future_strong_candidates',[]))} future")
+
+                        # Step 9: 市场预期差
+                        try:
+                            eg_agent = ExpectationGapAgent(provider=DeepSeekProvider())
+                            eg_ctx = {"industry": req.industry_name, "step6_output": step6_result}
+                            eg_trace = TraceContext(run_id)
+                            step9_result = await eg_agent.analyze(eg_ctx, trace=eg_trace)
+                            save_checkpoint("step9_expectation_gap", run_id, "drilldown", step9_result, {"elapsed": 0})
+                            eg_trace.write("step9_expectation_gap")
+                            logger.info(f"[Drilldown] Step9 done: {len(step9_result.get('expectation_gaps',[]))} gaps")
+
+                            # Step 10: 风险分析
+                            try:
+                                ra_agent = RiskAnalysisAgent(provider=DeepSeekProvider())
+                                ra_ctx = {
+                                    "industry": req.industry_name,
+                                    "step6_output": step6_result,
+                                    "step9_output": step9_result,
+                                    "step4_output": {"system_dynamics": sd_out} if sd_out else {},
+                                }
+                                ra_trace = TraceContext(run_id)
+                                step10_result = await ra_agent.analyze(ra_ctx, trace=ra_trace)
+                                save_checkpoint("step10_risk_analysis", run_id, "drilldown", step10_result, {"elapsed": 0})
+                                ra_trace.write("step10_risk_analysis")
+                                logger.info(f"[Drilldown] Step10 done: {len(step10_result.get('risks',[]))} risks")
+
+                                # ── 自动链 Step 11: 综合报告 ──
+                                try:
+                                    await _synthesize_step11(run_id, req.industry_name, provider=DeepSeekProvider(), trace_label="drilldown")
+                                except Exception as e:
+                                    logger.warning(f"[Drilldown] Step11 failed (non-fatal): {e}")
+
+                            except Exception as e:
+                                logger.warning(f"[Drilldown] Step10 failed (non-fatal): {e}")
+                        except Exception as e:
+                            logger.warning(f"[Drilldown] Step9 failed (non-fatal): {e}")
+
                     except Exception as e:
                         logger.warning(f"[Drilldown] Step6 failed (non-fatal): {e}")
             except Exception as e:
@@ -909,6 +1009,44 @@ async def system_dynamics_analysis(req: SystemDynamicsRequest = SystemDynamicsRe
                 screen_trace.write("step6_core_screening")
                 # DISABLED: await save_step_observations(run_id, "step6_core_screening", step6_result, datetime.now().isoformat())
                 logger.info(f"[SystemDynamics] Step6 auto-chain done: {len(step6_result.get('ranked_stocks',[]))} strong, {len(step6_result.get('future_strong_candidates',[]))} future")
+
+                # ── Step 9: 市场预期差 ──
+                try:
+                    eg_agent = ExpectationGapAgent(provider=DeepSeekProvider())
+                    eg_ctx = {"industry": industry, "step6_output": step6_result}
+                    eg_trace = TraceContext(run_id)
+                    step9_result = await eg_agent.analyze(eg_ctx, trace=eg_trace)
+                    save_checkpoint("step9_expectation_gap", run_id, "auto", step9_result, {"elapsed": 0})
+                    eg_trace.write("step9_expectation_gap")
+                    logger.info(f"[SystemDynamics] Step9 auto-chain done: {len(step9_result.get('expectation_gaps',[]))} gaps")
+
+                    # ── Step 10: 风险分析 ──
+                    try:
+                        ra_agent = RiskAnalysisAgent(provider=DeepSeekProvider())
+                        ra_ctx = {
+                            "industry": industry,
+                            "step6_output": step6_result,
+                            "step9_output": step9_result,
+                            "step4_output": {"system_dynamics": sd_out},
+                        }
+                        ra_trace = TraceContext(run_id)
+                        step10_result = await ra_agent.analyze(ra_ctx, trace=ra_trace)
+                        save_checkpoint("step10_risk_analysis", run_id, "auto", step10_result, {"elapsed": 0})
+                        ra_trace.write("step10_risk_analysis")
+                        logger.info(f"[SystemDynamics] Step10 auto-chain done: {len(step10_result.get('risks',[]))} risks")
+
+                        # ── 自动链 Step 11: 综合报告 ──
+                        if industry:
+                            try:
+                                await _synthesize_step11(run_id, industry, provider=DeepSeekProvider(), trace_label="auto")
+                            except Exception as e:
+                                logger.warning(f"[SystemDynamics] Step11 auto-chain failed: {e}")
+
+                    except Exception as e:
+                        logger.warning(f"[SystemDynamics] Step10 auto-chain failed: {e}")
+                except Exception as e:
+                    logger.warning(f"[SystemDynamics] Step9 auto-chain failed: {e}")
+
             except Exception as e:
                 logger.warning(f"[SystemDynamics] Step6 auto-chain failed: {e}")
 
@@ -1139,7 +1277,164 @@ async def continue_pipeline_step(run_id: str, step: str):
             save_checkpoint("step6_core_screening", run_id, "continue", result, {"elapsed": 0})
             trace.write("step6_core_screening")
             # DISABLED: await save_step_observations(run_id, "step6_core_screening", result, datetime.now().isoformat())
+
+            # ── 自动链 Step 9: 市场预期差 ──
+            try:
+                s6_industry = s3_out.get("industry", "")
+                logger.info(f"[ContinueStep] Chaining Step9: {s6_industry}")
+                eg_agent = ExpectationGapAgent(provider=DeepSeekProvider())
+                eg_ctx = {"industry": s6_industry, "step6_output": result}
+                eg_trace = TraceContext(run_id)
+                step9_result = await eg_agent.analyze(eg_ctx, trace=eg_trace)
+                save_checkpoint("step9_expectation_gap", run_id, "continue", step9_result, {"elapsed": 0})
+                eg_trace.write("step9_expectation_gap")
+                logger.info(f"[ContinueStep] Step9 done: {len(step9_result.get('expectation_gaps',[]))} gaps")
+
+                # ── 自动链 Step 10: 风险分析 ──
+                try:
+                    step4_sd = {}
+                    if s4_file:
+                        with open(s4_file, "r", encoding="utf-8") as f:
+                            step4_sd = _json.load(f).get("output", {})
+                    ra_agent = RiskAnalysisAgent(provider=DeepSeekProvider())
+                    ra_ctx = {
+                        "industry": s6_industry,
+                        "step6_output": result,
+                        "step9_output": step9_result,
+                        "step4_output": step4_sd,
+                    }
+                    ra_trace = TraceContext(run_id)
+                    step10_result = await ra_agent.analyze(ra_ctx, trace=ra_trace)
+                    save_checkpoint("step10_risk_analysis", run_id, "continue", step10_result, {"elapsed": 0})
+                    ra_trace.write("step10_risk_analysis")
+                    logger.info(f"[ContinueStep] Step10 done: {len(step10_result.get('risks',[]))} risks")
+
+                    # ── 自动链 Step 11: 综合报告 ──
+                    if s6_industry:
+                        try:
+                            await _synthesize_step11(run_id, s6_industry, provider=DeepSeekProvider(), trace_label="continue")
+                        except Exception as e:
+                            logger.warning(f"[ContinueStep] Step11 chain failed (non-fatal): {e}")
+
+                except Exception as e:
+                    logger.warning(f"[ContinueStep] Step10 chain failed (non-fatal): {e}")
+            except Exception as e:
+                logger.warning(f"[ContinueStep] Step9 chain failed (non-fatal): {e}")
+
             return {"success": True, "data": result, "run_id": run_id}
+
+        elif step == "step9_expectation_gap":
+            s6_file = find_checkpoint_file(run_id, "step6_core_screening")
+            if not s6_file:
+                raise HTTPException(status_code=404, detail="Step 6 checkpoint not found. Run Step 6 first.")
+            import json as _json
+            with open(s6_file, "r", encoding="utf-8") as f:
+                s6 = _json.load(f)
+            s6_out = s6.get("output", {})
+
+            eg_agent = ExpectationGapAgent(provider=DeepSeekProvider())
+            ctx = {
+                "industry": s6_out.get("industry", ""),
+                "step6_output": s6_out,
+            }
+            trace = TraceContext(run_id)
+            result = await eg_agent.analyze(ctx, trace=trace)
+            save_checkpoint("step9_expectation_gap", run_id, "continue", result, {"elapsed": 0})
+            trace.write("step9_expectation_gap")
+
+            # 自动链 Step 10
+            try:
+                ra_agent = RiskAnalysisAgent(provider=DeepSeekProvider())
+                ra_ctx = {
+                    "industry": s6_out.get("industry", ""),
+                    "step6_output": s6_out,
+                    "step9_output": result,
+                }
+                ra_trace = TraceContext(run_id)
+                step10_result = await ra_agent.analyze(ra_ctx, trace=ra_trace)
+                save_checkpoint("step10_risk_analysis", run_id, "continue", step10_result, {"elapsed": 0})
+                ra_trace.write("step10_risk_analysis")
+                logger.info(f"[ContinueStep] Step10 auto-chain done: {len(step10_result.get('risks',[]))} risks")
+            except Exception as e:
+                logger.warning(f"[ContinueStep] Step10 auto-chain failed (non-fatal): {e}")
+
+            return {"success": True, "data": result, "run_id": run_id}
+
+        elif step == "step10_risk_analysis":
+            s6_file = find_checkpoint_file(run_id, "step6_core_screening")
+            s9_file = find_checkpoint_file(run_id, "step9_expectation_gap")
+            if not s6_file:
+                raise HTTPException(status_code=404, detail="Step 6 checkpoint not found. Run Step 6 first.")
+            import json as _json
+            with open(s6_file, "r", encoding="utf-8") as f:
+                s6 = _json.load(f)
+            s6_out = s6.get("output", {})
+            s9_out = {}
+            if s9_file:
+                with open(s9_file, "r", encoding="utf-8") as f:
+                    s9_out = _json.load(f).get("output", {})
+
+            ra_agent = RiskAnalysisAgent(provider=DeepSeekProvider())
+            ctx = {
+                "industry": s6_out.get("industry", ""),
+                "step6_output": s6_out,
+                "step9_output": s9_out,
+            }
+            trace = TraceContext(run_id)
+            result = await ra_agent.analyze(ctx, trace=trace)
+            save_checkpoint("step10_risk_analysis", run_id, "continue", result, {"elapsed": 0})
+            trace.write("step10_risk_analysis")
+
+            # ── 自动链 Step 11: 综合报告 ──
+            try:
+                s6_industry = s6_out.get("industry", "")
+                if s6_industry:
+                    await _synthesize_step11(run_id, s6_industry, provider=DeepSeekProvider(), trace_label="continue")
+            except Exception as e:
+                logger.warning(f"[ContinueStep] Step11 chain failed (non-fatal): {e}")
+
+            return {"success": True, "data": result, "run_id": run_id}
+
+        elif step == "step11_report":
+            # Step 11: 综合报告 — 收集所有可用 step 输出, 调用 ReportSynthesisAgent
+            from app.framework.pipeline.checkpoint import find_checkpoint_file, load_checkpoint
+            import json as _json
+
+            # 收集所有步骤
+            step_checkpoints_map = {
+                "step1b_capital_flow": "step1b_capital_flow",
+                "step2_gatekeeper": "step2_gatekeeper",
+                "step3_sc_hacker": "step3_sc_hacker",
+                "step4_system_dynamics": "step4_system_dynamics",
+                "step6_core_screening": "step6_core_screening",
+                "step9_expectation_gap": "step9_expectation_gap",
+                "step10_risk_analysis": "step10_risk_analysis",
+            }
+            steps = {}
+            # 先用 industry 变量
+            industry_hint = ""
+
+            for step_name, cp_step in step_checkpoints_map.items():
+                cp_file = find_checkpoint_file(run_id, cp_step)
+                if cp_file:
+                    with open(cp_file, "r", encoding="utf-8") as f:
+                        record = _json.load(f)
+                    output = record.get("output", {})
+                    if output:
+                        steps[step_name] = output
+                        if not industry_hint and isinstance(output, dict):
+                            for key in ("industry",):
+                                industry_hint = output.get(key, "") or industry_hint
+
+            if not industry_hint:
+                # 从 manifest 获取
+                from app.framework.pipeline.checkpoint import load_manifest
+                manifest = load_manifest(run_id)
+                industry_hint = (manifest or {}).get("industry", "未指定")
+
+            result = await _synthesize_step11(run_id, industry_hint, provider=DeepSeekProvider(), trace_label="continue")
+            return {"success": True, "data": result, "run_id": run_id}
+
         else:
             raise HTTPException(status_code=400, detail=f"Unknown or unsupported step: {step}")
     except HTTPException:
@@ -1302,10 +1597,10 @@ async def batch_stock_info(codes: List[str]):
         return {"success": True, "data": []}
     from app.framework.database.session import async_session
     from app.models.models import StockMaster, StockValuation
-    from sqlalchemy import select, outerjoin
+    from sqlalchemy import select, outerjoin, collate
     async with async_session() as db:
         j = outerjoin(StockMaster, StockValuation,
-                      StockMaster.stock_code == StockValuation.stock_code)
+                      StockMaster.stock_code == collate(StockValuation.stock_code, 'utf8mb4_unicode_ci'))
         res = await db.execute(
             select(StockMaster, StockValuation)
             .select_from(j)
@@ -1837,13 +2132,14 @@ async def stock_health_check(req: HealthCheckRequest):
         dimensions: 限定分析维度（可选，默认全维度）
 
     Returns:
-        结构化体检报告 (四维度: 财务/技术/人才/估值)
+        结构化体检报告 (四维度: 财务/技术/人才/估值), 自动保存快照
     """
     code = req.stock_code
     logger.info(f"[HealthCheck] Requested: {code} dims={req.dimensions}")
 
     from app.framework.ai.providers.deepseek import DeepSeekProvider
     from app.domain.research.agents.stock_health_checker import StockHealthChecker
+    from app.framework.pipeline.health_check_store import save_snapshot
 
     try:
         provider = DeepSeekProvider()
@@ -1859,14 +2155,51 @@ async def stock_health_check(req: HealthCheckRequest):
 
         result = await checker.analyze(ctx=ctx)
 
+        # 自动保存快照
+        try:
+            name = req.stock_name or result.get("stock_name", "")
+            record_id = save_snapshot(code, name, result)
+        except Exception as e:
+            logger.warning(f"[HealthCheck] Snapshot save failed (non-fatal): {e}")
+            record_id = None
+
         return {
             "success": True,
             "data": result,
+            "record_id": record_id,
             "message": "Health check complete",
         }
     except Exception as e:
         logger.error(f"[HealthCheck] Failed: {code} | {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/health-check/history")
+async def health_check_history(stock_code: Optional[str] = None, limit: int = 50, offset: int = 0):
+    """查询体检历史，可按股票代码筛选"""
+    from app.framework.pipeline.health_check_store import get_history
+    records, total = get_history(stock_code=stock_code, limit=limit, offset=offset)
+    return {"success": True, "total": total, "records": records}
+
+
+@router.get("/health-check/history/{record_id}")
+async def health_check_detail(record_id: str):
+    """获取单条体检结果详情"""
+    from app.framework.pipeline.health_check_store import get_snapshot
+    record = get_snapshot(record_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Record not found")
+    return {"success": True, "data": record}
+
+
+@router.delete("/health-check/history/{record_id}")
+async def health_check_delete(record_id: str):
+    """删除体检记录"""
+    from app.framework.pipeline.health_check_store import delete_snapshot
+    ok = delete_snapshot(record_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Record not found")
+    return {"success": True, "message": "Record deleted"}
 
 
 # ═══════════════════════════════════════════════════════

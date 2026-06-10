@@ -38,6 +38,18 @@
         .sc-badge-ok { color: var(--accent-green); background: rgba(34,197,94,0.1); }
         .sc-badge-missing { color: var(--accent-red); background: rgba(239,68,68,0.1); }
         .sc-badge-info { font-size: 9px; color: var(--text-micro); display: block; }
+
+        .sc-dim-toggles { display: flex; gap: 4px; flex-wrap: wrap; font-size: 10px; }
+        .sc-dim-chip { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 10px; cursor: pointer; user-select: none; transition: all .12s; border: 1px solid var(--border-color); background: transparent; color: var(--text-dim); }
+        .sc-dim-chip:hover { border-color: var(--text-micro); }
+        .sc-dim-chip.has { color: var(--accent-green); border-color: var(--accent-green); background: rgba(76,175,80,0.1); }
+        .sc-dim-chip.missing { color: var(--accent-red); border-color: var(--accent-red); background: rgba(244,67,54,0.1); }
+
+        .sc-wl-filter { display: inline-flex; border-radius: 4px; overflow: hidden; border: 1px solid var(--border-color); font-size: 10px; }
+        .sc-wl-filter span { padding: 3px 10px; cursor: pointer; color: var(--text-dim); transition: all .1s; border-right: 1px solid var(--border-color); }
+        .sc-wl-filter span:last-child { border-right: none; }
+        .sc-wl-filter span:hover { background: rgba(255,255,255,0.04); }
+        .sc-wl-filter span.active { color: var(--accent-blue); background: rgba(33,150,243,0.12); }
     </style>
 </head>
 <body data-page-id="data">
@@ -277,25 +289,19 @@
         <select id="sc-industry-filter" onchange="DataTabs.StockCenter.applyFilter()" style="background:#000;border:1px solid var(--border-color);color:#fff;padding:4px 8px;border-radius:4px;font-size:11px;min-width:120px;">
             <option value="">全部行业</option>
         </select>
-        <select id="sc-dim-filter" onchange="DataTabs.StockCenter.applyFilter()" style="background:#000;border:1px solid var(--border-color);color:#fff;padding:4px 8px;border-radius:4px;font-size:11px;">
-            <option value="">数据维度不限</option>
-            <optgroup label="—— 有数据 ——">
-                <option value="has_basic_finance">有基础财务</option>
-                <option value="has_financial_indicators">有财务指标</option>
-                <option value="has_dynamic_info">有动态信息(PE/PB)</option>
-                <option value="has_market_data">有行情数据</option>
-                <option value="has_price_indicators">有价量指标</option>
-                <option value="has_industry">有行业分类</option>
-            </optgroup>
-            <optgroup label="—— 缺数据 ——">
-                <option value="missing_basic_finance">缺基础财务</option>
-                <option value="missing_financial_indicators">缺财务指标</option>
-                <option value="missing_dynamic_info">缺动态信息</option>
-                <option value="missing_market_data">缺行情数据</option>
-                <option value="missing_price_indicators">缺价量指标</option>
-                <option value="missing_industry">缺行业分类</option>
-            </optgroup>
-        </select>
+        <div class="sc-dim-toggles" id="sc-dim-toggles">
+            <span class="sc-dim-chip" data-dim="market_data" onclick="DataTabs.StockCenter.toggleDim('market_data')">行情</span>
+            <span class="sc-dim-chip" data-dim="industry" onclick="DataTabs.StockCenter.toggleDim('industry')">行业</span>
+            <span class="sc-dim-chip" data-dim="basic_finance" onclick="DataTabs.StockCenter.toggleDim('basic_finance')">财务</span>
+            <span class="sc-dim-chip" data-dim="financial_indicators" onclick="DataTabs.StockCenter.toggleDim('financial_indicators')">财务指标</span>
+            <span class="sc-dim-chip" data-dim="dynamic_info" onclick="DataTabs.StockCenter.toggleDim('dynamic_info')">动态信息</span>
+            <span class="sc-dim-chip" data-dim="price_indicators" onclick="DataTabs.StockCenter.toggleDim('price_indicators')">价量指标</span>
+        </div>
+        <div class="sc-wl-filter" id="sc-wl-filter">
+            <span data-v="" class="active" onclick="DataTabs.StockCenter.setWatchlistFilter('')">全部</span>
+            <span data-v="watchlist" onclick="DataTabs.StockCenter.setWatchlistFilter('watchlist')">仅自选</span>
+            <span data-v="non_watchlist" onclick="DataTabs.StockCenter.setWatchlistFilter('non_watchlist')">非自选</span>
+        </div>
         <label style="font-size:10px;color:var(--text-dim);display:flex;align-items:center;gap:4px;">
             <input type="checkbox" id="sc-only-missing" onchange="DataTabs.StockCenter.applyFilter()">仅显示缺数据的
         </label>
@@ -307,6 +313,8 @@
             <input type="checkbox" id="sc-select-all" onchange="DataTabs.StockCenter.selectAll()">全选
         </label>
         <button class="btn-action" onclick="DataTabs.StockCenter.batchSyncMarket()" style="font-size:10px;border-color:var(--accent-green);color:var(--accent-green);"><i class="fas fa-sync-alt"></i> 同步行情</button>
+        <button class="btn-action" onclick="DataTabs.StockCenter.batchSyncMarketFull()" style="font-size:10px;border-color:var(--accent-red);color:var(--accent-red);"><i class="fas fa-sync-alt"></i> 覆盖同步</button>
+        <button class="btn-action" onclick="DataTabs.StockCenter.batchSyncIndustry()" style="font-size:10px;"><i class="fas fa-building"></i> 同步行业</button>
         <button class="btn-action" onclick="DataTabs.StockCenter.batchSyncValuation()" style="font-size:10px;border-color:var(--accent-cyan);color:var(--accent-cyan);"><i class="fas fa-chart-line"></i> 同步估值</button>
         <button class="btn-action" onclick="DataTabs.StockCenter.batchSyncFinance()" style="font-size:10px;border-color:var(--accent-gold);color:var(--accent-gold);"><i class="fas fa-file-invoice"></i> 同步财务</button>
         <button class="btn-action" onclick="DataTabs.StockCenter.batchComputeIndicators()" style="font-size:10px;border-color:var(--accent-blue);color:var(--accent-blue);"><i class="fas fa-microchip"></i> 计算价量指标</button>
@@ -360,12 +368,13 @@
 <script src="js/ui.js"></script>
 <script src="js/common.js"></script>
 <script src="js/data-tabs/core.js"></script>
+<script src="js/data-tabs/sync-api.js"></script>
 <script src="js/data-tabs/macro.js"></script>
 <script src="js/data-tabs/watchlist.js"></script>
 <script src="js/data-tabs/health.js"></script>
 <script src="js/data-tabs/financial.js"></script>
 <script src="js/data-tabs/fundamental.js"></script>
 <script src="js/data-tabs/alt.js"></script>
-<script src="js/data-tabs/stock-center.js"></script>
+<script src="js/data-tabs/stock-center.js?v=20260609"></script>
 </body>
 </html>

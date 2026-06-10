@@ -281,6 +281,21 @@ def step4_glossary() -> str:
     ])
 
 
+def step9_glossary() -> str:
+    """Step 9 (Expectation Gap) 需要的术语"""
+    return inject_glossary("", [
+        "market_repricing_stage", "attention_quality", "future_outlook",
+        "demand_quality", "payoff_asymmetry", "thesis_killers",
+    ])
+
+
+def step10_glossary() -> str:
+    """Step 10 (Risk Analysis) 需要的术语"""
+    return inject_glossary("", [
+        "thesis_killers", "cycle_phase", "bottleneck_severity", "future_outlook",
+    ])
+
+
 def financial_glossary() -> str:
     """财务数据字典 — 供 Step 6/CoreScreening Agent 等需要财务分析的步骤注入"""
     from app.domain.quant.engine.financial_query_service import FinancialQueryService

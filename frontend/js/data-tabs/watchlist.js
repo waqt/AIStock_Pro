@@ -171,16 +171,17 @@ DataTabs.Watchlist = {
   async sync(mode) {
     DataTabs.Core.addLog('自选股' + (mode === 'daily' ? '当日' : '历史') + '同步中...', 'info');
     try {
-      const res = await fetch(API_BASE + '/data/watchlist/sync?mode=' + mode, { method: 'POST' });
-      const d = await res.json();
-      DataTabs.Core.addLog('同步完成: ' + (d.synced || 0) + ' 只', 'success');
+      const wl = await API.get('/data/watchlist');
+      const codes = (wl.data || []).map(function(i) { return i.stock_code; });
+      const r = await SyncAPI.market(codes, mode === 'historical' ? 'full' : 'smart');
+      DataTabs.Core.addLog('同步完成: ' + (r.synced || 0) + ' 条新记录', 'success');
       DataTabs.Watchlist.load();
     } catch (e) { DataTabs.Core.addLog('同步失败', 'error'); }
   },
 
   async syncOne(code, btn) {
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
-    try { await fetch(API_BASE + '/data/sync/daily/' + code, { method: 'POST' }); }
+    try { await SyncAPI.market([code], 'smart'); }
     catch (e) { /* ignore */ }
     DataTabs.Watchlist.load();
   },

@@ -15,12 +15,12 @@ cd /d %~dp0backend
 :: 4. Start using the ABSOLUTE path to the environment's python
 echo [+] Using Python: %CONDA_ENV_PATH%\python.exe
 echo [+] System is starting on http://127.0.0.1:8000
-"%CONDA_ENV_PATH%\python.exe" -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload 2> logs/startup_error.log
+"%CONDA_ENV_PATH%\python.exe" -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload 2> "%~dp0logs\startup_error.log"
 
 :: If failed, show log
 if %ERRORLEVEL% NEQ 0 (
     echo [!] Startup failed. Error details:
-    type logs\startup_error.log
+    type "%~dp0logs\startup_error.log"
 )
 
 pause

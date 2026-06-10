@@ -25,11 +25,20 @@ class QuantEngine:
         """
         同步单股日线数据 (支持增量/全量感知)
         返回: 新增记录数
+
+        mode:
+          AUTO  — 智能增量: 查最新日期→算gap→补缺失
+          FORCE — 强制拉取最近10天, 不检查gap
+          FULL  — 全量覆盖: 删除该标的历史数据, 从2019年起重插
         """
         # 1. 判断同步模式
         days_to_fetch = 500
+        is_full = False
         if mode == "FORCE":
             days_to_fetch = 10  # 强制拉取最近10天, 不检查gap
+        elif mode == "FULL":
+            is_full = True
+            days_to_fetch = 2500  # 2500交易日 ≈ 10年
         elif mode == "AUTO":
             res = await self.db.execute(
                 select(MarketData.trade_date)
@@ -42,14 +51,18 @@ class QuantEngine:
                 gap = (date.today() - latest_date).days
                 weekday = date.today().weekday()
                 # 跳过逻辑 (考虑周末):
-                # gap<=1: 今天/昨天数据, 总是最新
-                # 周一 gap<=2: 周六/日数据(实际不存在), 周五数据gap=3需同步
                 if gap <= 1:
                     return 0
                 if weekday == 0 and gap <= 2:
                     return 0
                 days_to_fetch = max(gap + 5, 10)
             # else: 无历史数据 → 全量抓取 (days=500)
+
+        # 2. 全量覆盖模式: 先删除历史数据
+        if is_full:
+            await self.db.execute(
+                delete(MarketData).where(MarketData.stock_code == stock_code)
+            )
 
         # 2. 抓取行情
         df = await data_router.get_daily_data(stock_code, days=days_to_fetch)
