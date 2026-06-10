@@ -23,22 +23,24 @@ DataTabs.Financial = {
     if (code) this.load(code);
   },
 
-  async syncSelected() {
+  async syncSelected(mode) {
     const sel = document.getElementById('fin-select');
     const code = sel.value;
     if (!code) { DataTabs.Core.addLog('请先选择自选股', 'warn'); return; }
-    DataTabs.Core.addLog(`拉取 ${code} 财报...`, 'info');
+    var label = mode === 'full' ? '全量' : '智能';
+    DataTabs.Core.addLog(label + `同步 ${code} 财报...`, 'info');
     try {
-      const r = await SyncAPI.financial([code], 'smart');
+      const r = await SyncAPI.financial([code], mode);
       DataTabs.Core.addLog(`${code}: ${r.stored || 0} 季度已存储`, 'success');
       this.load(code);
     } catch (e) { DataTabs.Core.addLog(`失败: ${e.message}`, 'error'); }
   },
 
-  async batchSync() {
-    DataTabs.Core.addLog('批量拉取自选股财报...', 'info');
+  async batchSync(mode) {
+    var label = mode === 'full' ? '全量' : '智能';
+    DataTabs.Core.addLog('批量' + label + '同步自选股财报...', 'info');
     try {
-      const r = await SyncAPI.financial(null, 'smart');
+      const r = await SyncAPI.financial(null, mode);
       DataTabs.Core.addLog(`完成: ${r.stored || 0} 季度`, 'success');
     } catch (e) { DataTabs.Core.addLog(`失败: ${e.message}`, 'error'); }
   },

@@ -169,11 +169,11 @@ DataTabs.Watchlist = {
   },
 
   async sync(mode) {
-    DataTabs.Core.addLog('自选股' + (mode === 'daily' ? '当日' : '历史') + '同步中...', 'info');
+    DataTabs.Core.addLog('自选股' + (mode === 'full' ? '全量' : '智能') + '同步中...', 'info');
     try {
       const wl = await API.get('/data/watchlist');
       const codes = (wl.data || []).map(function(i) { return i.stock_code; });
-      const r = await SyncAPI.market(codes, mode === 'historical' ? 'full' : 'smart');
+      const r = await SyncAPI.market(codes, mode);
       DataTabs.Core.addLog('同步完成: ' + (r.synced || 0) + ' 条新记录', 'success');
       DataTabs.Watchlist.load();
     } catch (e) { DataTabs.Core.addLog('同步失败', 'error'); }
@@ -181,7 +181,7 @@ DataTabs.Watchlist = {
 
   async syncOne(code, btn) {
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
-    try { await SyncAPI.market([code], 'smart'); }
+    try { await SyncAPI.market([code], 'full'); }
     catch (e) { /* ignore */ }
     DataTabs.Watchlist.load();
   },

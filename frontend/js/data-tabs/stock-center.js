@@ -264,35 +264,19 @@ DataTabs.StockCenter = {
 
   // ═══ 批量操作 ═══════════════════════════
 
-  async batchSyncMarket() {
+  async batchSyncMarket(mode) {
     const codes = this.getSelected();
     if (codes.length === 0) { await Modal.alert('提示', '请先勾选需要同步的股票'); return; }
-    const ok = await Modal.confirm('同步行情', `确认对 ${codes.length} 只股票执行行情同步?`);
+    var label = mode === 'full' ? '全量' : '智能';
+    const ok = await Modal.confirm(label + '同步行情', `确认对 ${codes.length} 只股票执行${label}行情同步?`);
     if (!ok) return;
-    DataTabs.Core.addLog(`[StockCenter] 开始同步行情: ${codes.length} 只...`);
+    DataTabs.Core.addLog(`[StockCenter] ${label}同步行情: ${codes.length} 只...`);
     try {
-      const r = await SyncAPI.market(codes, 'smart');
-      DataTabs.Core.addLog(`[StockCenter] 同步行情完成: ${r.synced || 0} 条新记录`);
-      await Modal.alert('同步完成', `${codes.length} 只, ${r.synced || 0} 条新K线`);
+      const r = await SyncAPI.market(codes, mode);
+      DataTabs.Core.addLog(`[StockCenter] ${label}同步行情完成: ${r.synced || 0} 条记录`);
+      await Modal.alert(label + '同步完成', `${codes.length} 只, ${r.synced || 0} 条K线`);
     } catch (e) {
       console.error('[StockCenter] Market sync fail:', e);
-      await Modal.alert('同步失败', e.message);
-    }
-    this.load(this.currentPage);
-  },
-
-  async batchSyncMarketFull() {
-    const codes = this.getSelected();
-    if (codes.length === 0) { await Modal.alert('提示', '请先勾选需要同步的股票'); return; }
-    const ok = await Modal.confirm('覆盖同步', `确认对 ${codes.length} 只执行全量覆盖? 将删除历史数据重新插入。`);
-    if (!ok) return;
-    DataTabs.Core.addLog(`[StockCenter] 覆盖同步行情: ${codes.length} 只...`);
-    try {
-      const r = await SyncAPI.market(codes, 'full');
-      DataTabs.Core.addLog(`[StockCenter] 覆盖同步完成: ${r.synced || 0} 条记录`);
-      await Modal.alert('覆盖完成', `${codes.length} 只, ${r.synced || 0} 条K线`);
-    } catch (e) {
-      console.error('[StockCenter] Market full sync fail:', e);
       await Modal.alert('同步失败', e.message);
     }
     this.load(this.currentPage);
@@ -315,17 +299,18 @@ DataTabs.StockCenter = {
     this.load(this.currentPage);
   },
 
-  async batchSyncFinance() {
+  async batchSyncFinance(mode) {
     const codes = this.getSelected();
     if (codes.length === 0) { await Modal.alert('提示', '请先勾选需要同步的股票'); return; }
-    const ok = await Modal.confirm('同步财务', `确认对 ${codes.length} 只同步财报?`);
+    var label = mode === 'full' ? '全量' : '智能';
+    const ok = await Modal.confirm(label + '同步财务', `确认对 ${codes.length} 只执行${label}财报同步?`);
     if (!ok) return;
-    DataTabs.Core.addLog(`[StockCenter] 开始同步财务: ${codes.length} 只...`);
+    DataTabs.Core.addLog(`[StockCenter] ${label}同步财务: ${codes.length} 只...`);
     try {
-      const r = await SyncAPI.financial(codes, 'smart');
+      const r = await SyncAPI.financial(codes, mode);
       const stored = r.stored || 0;
       DataTabs.Core.addLog(`[StockCenter] 财务同步: ${stored} 季度`);
-      await Modal.alert('同步完成', `${codes.length} 只, ${stored} 季度`);
+      await Modal.alert(label + '同步完成', `${codes.length} 只, ${stored} 季度`);
     } catch (e) {
       console.error('[StockCenter] Financial sync fail:', e);
       await Modal.alert('同步失败', e.message);

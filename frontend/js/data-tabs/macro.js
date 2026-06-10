@@ -25,10 +25,10 @@ DataTabs.Macro = {
   },
 
   async sync(mode) {
-    var label = mode === 'historical' ? '补齐历史' : '同步当日';
+    var label = mode === 'full' ? '全量同步' : '智能同步';
     DataTabs.Core.addLog('宏观' + label + '...', 'info');
     try {
-      await SyncAPI.macro(null, mode === 'historical' ? 'full' : 'smart');
+      await SyncAPI.macro(null, mode);
       DataTabs.Core.addLog('宏观' + label + '完成', 'success');
       this.load();
     } catch (e) { DataTabs.Core.addLog('宏观同步失败: ' + e.message, 'error'); }

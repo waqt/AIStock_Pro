@@ -8,10 +8,10 @@ DataTabs.Health = {
   async quickSync(mode) {
     const code = document.getElementById('quick-stock-input').value.trim();
     if (!code) { DataTabs.Core.addLog('请输入代码', 'warn'); return; }
-    const label = mode === 'historical' ? '补齐历史' : '同步当日';
+    const label = mode === 'full' ? '全量同步' : '智能同步';
     DataTabs.Core.addLog(`${label}: ${code}...`, 'info');
     try {
-      const r = await SyncAPI.market([code], mode === 'historical' ? 'full' : 'smart');
+      const r = await SyncAPI.market([code], mode);
       DataTabs.Core.addLog(`${code}: +${r.synced || 0} 条新记录`, 'success');
       DataTabs.Health.update();
     } catch (e) { DataTabs.Core.addLog(`${code} 失败: ${e.message}`, 'error'); }
@@ -51,7 +51,7 @@ DataTabs.Health = {
   async quickSyncCode(code) {
     DataTabs.Core.addLog(`同步 ${code}...`, 'info');
     try {
-      await SyncAPI.market([code], 'smart');
+      await SyncAPI.market([code], 'full');
       DataTabs.Core.addLog(`${code} 完成`, 'success');
       DataTabs.Health.update();
     } catch (e) { DataTabs.Core.addLog(`${code} 失败: ${e.message}`, 'error'); }
