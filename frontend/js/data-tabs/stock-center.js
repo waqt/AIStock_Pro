@@ -405,7 +405,17 @@ DataTabs.StockCenter = {
     this.applyFilter();
   },
 
-  /** ═══ 自选股筛选 ═══ */
+  /** ═══ 下拉菜单 ═══ */
+  toggleDD(name) {
+    var menu = document.querySelector('.sync-dd[data-dd="' + name + '"] .sync-dd-menu');
+    if (!menu) return;
+    // close others
+    document.querySelectorAll('.sync-dd-menu').forEach(function(m) {
+      if (m !== menu) m.style.display = 'none';
+    });
+    menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+  },
+
   setWatchlistFilter(val) {
     console.log('[StockCenter] setWatchlistFilter called:', val);
     this._wlFilter = val;
@@ -469,3 +479,10 @@ DataTabs.StockCenter = {
     };
   }
 })();
+
+// 点击下拉菜单外部自动关闭
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.sync-dd')) {
+    document.querySelectorAll('.sync-dd-menu').forEach(function(m) { m.style.display = 'none'; });
+  }
+});
