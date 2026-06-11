@@ -2,6 +2,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete, insert
 from sqlalchemy.dialects.mysql import insert as mysql_insert
 from datetime import date, datetime, timedelta
+
+# 行情同步起始日期 (AUTO 模式无历史数据时从此日期起拉取)
+_SYNC_START_DATE = date(2019, 1, 1)
 import asyncio
 
 from app.framework.database.session import async_session
@@ -56,7 +59,10 @@ class QuantEngine:
                 if weekday == 0 and gap <= 2:
                     return 0
                 days_to_fetch = max(gap + 5, 10)
-            # else: 无历史数据 → 全量抓取 (days=500)
+            else:
+                # 无历史数据 → 从 _SYNC_START_DATE 起全量拉取
+                cal_days = (date.today() - _SYNC_START_DATE).days
+                days_to_fetch = min(int(cal_days * 1.4), 2500)
 
         # 2. 全量覆盖模式: 先删除历史数据
         if is_full:
