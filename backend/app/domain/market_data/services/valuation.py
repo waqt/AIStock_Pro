@@ -260,6 +260,13 @@ async def sync_industry(code: str) -> str:
     industry = cache.get(code)
     if industry:
         logger.info(f"[Industry] {code}: cache hit → {industry}")
+        # 缓存命中也要写入 DB（可能首次同步或 DB 缺失）
+        async with async_session() as db:
+            master = await db.get(StockMaster, code)
+            if master and not master.industry:
+                master.industry = industry
+                await db.commit()
+                logger.info(f"[Industry] {code}: written to StockMaster from cache")
         return industry
 
     # ── 数据源 1: httpx → 东方财富 push2 API (带重试) ──
