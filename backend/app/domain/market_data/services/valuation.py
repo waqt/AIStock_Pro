@@ -13,8 +13,10 @@ from app.domain.market_data.sources.tencent import get_tencent_quotes
 from app.framework.logger import logger
 from sqlalchemy import select
 import os, json
-import httpx
+import requests
 import asyncio
+import urllib3
+urllib3.disable_warnings()  # push2 HTTPS verify=False 需要
 
 # ── 行业映射缓存 ──
 _INDUSTRY_CACHE = {}
@@ -162,7 +164,8 @@ async def sync_basic_info(code: str) -> bool:
     """同步单只股票的基本信息 (名称/总股本/流通股本/上市日期) → StockMaster
 
     专注静态信息，不含行业分类（行业由 sync_industry 独立负责）。
-    数据源链: 腾讯(名称) → EM push2(总股本/流通股本/上市日期) → Tushare(上市日期回退)
+    数据源链: 腾讯(名称) → StockInfoAdapter(总股本/流通股本, 多源交叉验证)
+             → akshare(上市日期) → EM push2(上市日期) → Tushare(上市日期回退)
     """
     loop = asyncio.get_event_loop()
     info = {}
@@ -177,44 +180,65 @@ async def sync_basic_info(code: str) -> bool:
     except Exception as e:
         logger.warning(f"[StockMaster] {code}: Tencent failed ({e})")
 
-    # ── 数据源 2: httpx → 东方财富 push2 API (总股本/流通股本/上市日期, 带重试) ──
-    for attempt in range(3):
-        if info.get('total_shares') and info.get('list_date'):
-            break
-        for proxy, protocol in [(None, "http"), ("http://127.0.0.1:7890", "https")]:
-            try:
-                market_code = 1 if code.startswith("6") else 0
-                async with httpx.AsyncClient(proxy=proxy, timeout=8,
-                                              headers={"User-Agent": "Mozilla/5.0"}) as client:
-                    resp = await client.get(
-                        f"{protocol}://push2.eastmoney.com/api/qt/stock/get",
-                        params={"fltt": "2", "invt": "2",
-                                "fields": "f57,f58,f84,f85,f189",
-                                "secid": f"{market_code}.{code}"}
-                    )
-                    data = resp.json()
-                    if data.get("data"):
-                        d = data["data"]
-                        if not info.get('name') and d.get("f58"):
-                            info['name'] = str(d["f58"])
-                        if d.get("f84"):
-                            try: info['total_shares'] = float(d["f84"])
-                            except: pass
-                        if d.get("f85"):
-                            try: info['float_shares'] = float(d["f85"])
-                            except: pass
-                        if d.get("f189"):
-                            try:
-                                val_str = str(int(d["f189"]))
-                                info['list_date'] = date(int(val_str[:4]), int(val_str[4:6]), int(val_str[6:8]))
-                            except: pass
-                        if info.get('total_shares') and info.get('list_date'): break
-            except Exception as e:
-                logger.warning(f"[StockMaster] {code}: EM push2 {proxy} attempt {attempt+1} failed ({e})")
-        if not info.get('total_shares'):
-            await asyncio.sleep(0.5)
+    # ── 数据源 2: StockInfoAdapter (总股本/流通股本, V6.0) ──
+    # 多源交叉验证，自动处理 f84 返回市值而非股数的问题
+    from app.domain.market_data.services.stock_info_adapter import (
+        get_total_shares, get_float_shares)
 
-    # ── 数据源 3: Tushare (列表日期回退) ──
+    ts = await get_total_shares(code)
+    if ts is not None:
+        info['total_shares'] = ts
+
+    fs = await get_float_shares(code)
+    if fs is not None:
+        info['float_shares'] = fs
+
+    # ── 数据源 3: akshare 个股信息 (仅上市日期) ──
+    if len(code) == 6 and not info.get('list_date'):
+        try:
+            import akshare as ak
+            df = await asyncio.to_thread(ak.stock_individual_info_em, symbol=code)
+            if df is not None and not df.empty:
+                items = dict(zip(df['item'], df['value']))
+                if items.get('上市时间'):
+                    val_str = str(int(items['上市时间']))
+                    info['list_date'] = date(int(val_str[:4]), int(val_str[4:6]), int(val_str[6:8]))
+        except Exception as e:
+            logger.warning(f"[StockMaster] {code}: akshare list_date failed ({e})")
+
+    # ── 数据源 4: EM push2 (仅上市日期回退) ──
+    # f189=上市日期
+    if not info.get('list_date'):
+        CLASH_PROXIES = {"http": "http://127.0.0.1:7890", "https": "http://127.0.0.1:7890"}
+        for attempt in range(2):
+            for proxies in (None, CLASH_PROXIES):
+                try:
+                    market_code = 1 if code.startswith("6") else 0
+                    url = f"https://push2.eastmoney.com/api/qt/stock/get"
+                    params = {"fltt": "2", "invt": "2",
+                              "fields": "f57,f189",
+                              "ut": "fa5fd1943c7b386f172d6893dbfba10b",
+                              "secid": f"{market_code}.{code}"}
+                    resp = await asyncio.to_thread(
+                        requests.get, url,
+                        params=params, timeout=8, verify=False,
+                        proxies=proxies,
+                        headers={"User-Agent": "Mozilla/5.0"}
+                    )
+                    if resp.status_code != 200:
+                        continue
+                    data = resp.json()
+                    if data.get("data") and data["data"].get("f189"):
+                        val_str = str(int(data["data"]["f189"]))
+                        info['list_date'] = date(int(val_str[:4]), int(val_str[4:6]), int(val_str[6:8]))
+                        break
+                except Exception as e:
+                    logger.warning(f"[StockMaster] {code}: EM push2 list_date failed ({e})")
+            if info.get('list_date'):
+                break
+            await asyncio.sleep(0.3)
+
+    # ── 数据源 5: Tushare (上市日期回退) ──
     if not info.get('list_date'):
         try:
             from app.domain.market_data.sources.tushare_provider import TushareProvider
@@ -269,31 +293,37 @@ async def sync_industry(code: str) -> str:
                 logger.info(f"[Industry] {code}: written to StockMaster from cache")
         return industry
 
-    # ── 数据源 1: httpx → 东方财富 push2 API (带重试) ──
-    for attempt in range(3):
+    # ── 数据源 1: requests → 东方财富 push2 API (HTTPS 直连, verify=False) ──
+    CLASH_PROXIES = {"http": "http://127.0.0.1:7890", "https": "http://127.0.0.1:7890"}
+    for attempt in range(2):
         if industry:
             break
-        for proxy, protocol in [(None, "http"), ("http://127.0.0.1:7890", "https")]:
+        for proxies in (None, CLASH_PROXIES):
             try:
                 market_code = 1 if code.startswith("6") else 0
-                async with httpx.AsyncClient(proxy=proxy, timeout=8,
-                                              headers={"User-Agent": "Mozilla/5.0"}) as client:
-                    resp = await client.get(
-                        f"{protocol}://push2.eastmoney.com/api/qt/stock/get",
-                        params={"fltt": "2", "invt": "2",
-                                "fields": "f57,f127",
-                                "secid": f"{market_code}.{code}"}
-                    )
-                    data = resp.json()
-                    if data.get("data") and data["data"].get("f127"):
-                        industry = str(data["data"]["f127"])
-                        _INDUSTRY_CACHE[code] = industry
-                        _save_industry_cache()
-                        break
+                url = f"https://push2.eastmoney.com/api/qt/stock/get"
+                params = {"fltt": "2", "invt": "2",
+                          "fields": "f57,f127",
+                          "ut": "fa5fd1943c7b386f172d6893dbfba10b",
+                          "secid": f"{market_code}.{code}"}
+                resp = await asyncio.to_thread(
+                    requests.get, url,
+                    params=params, timeout=8, verify=False,
+                    proxies=proxies,
+                    headers={"User-Agent": "Mozilla/5.0"}
+                )
+                if resp.status_code != 200:
+                    continue
+                data = resp.json()
+                if data.get("data") and data["data"].get("f127"):
+                    industry = str(data["data"]["f127"])
+                    _INDUSTRY_CACHE[code] = industry
+                    _save_industry_cache()
+                    break
             except Exception as e:
                 logger.warning(f"[Industry] {code}: EM push2 attempt {attempt+1} failed ({e})")
         if not industry:
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(0.3)
 
     # 写入 StockMaster
     if industry:
@@ -420,8 +450,8 @@ async def sync_financial_factors(target_codes: list = None):
                 except Exception:
                     pass
 
-                # ── eps_growth_3y ──
-                eps_growth = None
+                # ── profit_growth_2y (TTM归母净利润2年复合增速, 原eps_growth_3y有误) ──
+                profit_growth = None
                 try:
                     rows = await db.execute(
                         select(FinancialStatement.report_date, FinancialStatement.parent_profit)
@@ -435,7 +465,7 @@ async def sync_financial_factors(target_codes: list = None):
                         old_ttm = sum(p[1] for p in profits[8:12]) if len(profits) >= 12 else sum(p[1] for p in profits[4:8])
                         if old_ttm and old_ttm > 0:
                             years = 2 if len(profits) >= 12 else 1
-                            eps_growth = round(((recent_ttm / old_ttm) ** (1 / years) - 1) * 100, 2)
+                            profit_growth = round(((recent_ttm / old_ttm) ** (1 / years) - 1) * 100, 2)
                 except Exception:
                     pass
 
@@ -449,8 +479,8 @@ async def sync_financial_factors(target_codes: list = None):
                 if roe_val is not None:
                     val.roe = round(roe_val, 2)
                     dirty = True
-                if eps_growth is not None:
-                    val.eps_growth_3y = eps_growth
+                if profit_growth is not None:
+                    val.eps_growth_3y = profit_growth
                     dirty = True
                 if div_val is not None:
                     val.dividend_yield = round(div_val, 2)

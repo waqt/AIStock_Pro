@@ -278,7 +278,7 @@ class ResearchDataLoader:
                             result[code] = {
                                 'pe_ttm': float(latest.get('pe_ttm', 0) or 0),
                                 'pb': float(latest.get('pb', 0) or 0),
-                                'mcap_yi': float(latest.get('total_mv', 0) or 0) / 1e4,
+                                'mcap_yi': float(latest.get('total_mv', 0) or 0) / 1e8,
                             }
                     except Exception:
                         pass

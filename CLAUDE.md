@@ -114,6 +114,139 @@ backend/data/                      # ★ 数据文件 (单目录统一管理)
 └── research_reports/              #   研报 JSON 输出
 ```
 
+## 数据同步架构 — 四层设计
+
+### 总体架构
+
+```
+用户 / 前端 / 定时器
+    │
+┌─── API 触发层 ─────────────────────────────────────┐
+│  POST /sync/market │ /sync/valuation               │
+│  POST /sync/financial │ /sync/industry              │
+│  POST /sync/stock-info │ /sync/macro                │
+│  POST /sync/daily/auto │ /watchlist/sync            │
+└───────┬────────────────────────────────────────────┘
+        │
+┌───────▼────────────────────────────────────────────┐
+│ ① 调度层 — 策略模式 + 信号量                          │
+│                                                      │
+│  QuantEngine.sync_market_data(code, mode)            │
+│    mode = AUTO(智能增量) / FORCE(近10天) / FULL(全量) │
+│    AUTO 核心: gap = today - latest_date               │
+│      gap<=0 → 跳过(今日已有)                          │
+│      周末 gap<=1 → 跳过                               │
+│      否则 days_to_fetch = max(gap+5, 10)             │
+│                                                      │
+│  TaskEngine 异步任务:                                 │
+│    sync_market / calc_indicators / ai_recognize      │
+│    calc_financial_indicators                         │
+│    按类别信号量控制并发, 同类别任务排队不互殴            │
+│                                                      │
+│  sync_valuation(target_codes) — 估值写入(带质量保护)   │
+│  sync_financials_smart/full — 财报季度同步             │
+└───────┬────────────────────────────────────────────┘
+        │
+┌───────▼────────────────────────────────────────────┐
+│ ② 网络层 — 职责链 + 断路器                           │
+│                                                      │
+│  DataRouter                                          │
+│  ├─ 优先顺序: SinaSource(pri=1) → AkShareSource(2)   │
+│  ├─ 连续失败 2 次 → 标记 OFFLINE → 跳过              │
+│  ├─ 每 5 分钟 probe_all() 探测恢复                    │
+│  └─ get_daily_data(code, days) → 遍历源→返回首个非空 │
+└───────┬────────────────────────────────────────────┘
+        │
+┌───────▼────────────────────────────────────────────┐
+│ ③ 适配层 — 协议抽象 + 统一 Schema                    │
+│                                                      │
+│  DataSourceProtocol (ABC)                            │
+│  ├─ get_daily_data(code, days) → pd.DataFrame        │
+│  ├─ health_check() → bool                            │
+│  └─ source_name() / priority() → 元信息              │
+│                                                      │
+│  实现:                                                │
+│  ├─ SinaSource                                       │
+│  │   A股: 新浪 money.finance (scale=240 日线)        │
+│  │   港股: akshare → 腾讯日线                        │
+│  │   输出列: trade_date, open/high/low/close,        │
+│  │          volume, amount, change_pct               │
+│  └─ AkShareSource (与Sina同源, 备降)                 │
+│                                                      │
+│  ★ 外部数据源辅助适配器 (非 DataSourceProtocol):      │
+│  ├─ Tencent 实时行情 (qt.gtimg.cn)                   │
+│  │   股本/流通股本/总市值/流通市值/PE/PB              │
+│  │   A股6位: sh/sz前缀 → field 73(总)/72(流通)       │
+│  │   港股5位: hk前缀 → field 69(总)/70(流通)         │
+│  └─ push2.eastmoney.com (需 ut 参数)                 │
+│      估值/行业/上市日期/股本                          │
+└───────┬────────────────────────────────────────────┘
+        │
+┌───────▼────────────────────────────────────────────┐
+│ ④ 持久化 — 双引擎 + CQRS 读写分离                    │
+│                                                      │
+│  ├─ MySQL (事务数据, aiomysql)                       │
+│  │  market_data / stock_info / stock_valuation       │
+│  │  financial_statements / positions / watchlist     │
+│  │  写入: async_session → executemany IGNORE         │
+│  │  查询: select → ORM 对象                           │
+│  │                                                       │
+│  └─ SQLite (指标宽表, 每字段一列)                     │
+│     indicators.db — 技术指标 (52列)                   │
+│     financial_indicators.db — 财务指标 (50列)         │
+│     写入: upsert (INSERT OR REPLACE)                 │
+│     查询: indicator_store 工具函数                    │
+│       ├─ get_latest(code) — 最新快照                 │
+│       ├─ get_history(code, fields, days) — 时间序列  │
+│       ├─ get_field_latest(field) — 全股票排名        │
+│       └─ get_coverage(codes) — 覆盖检测              │
+└────────────────────────────────────────────────────┘
+```
+
+### 同步链路清单
+
+| 同步类型 | API端点 | 核心函数 | 数据源 | 目标表 |
+|---------|---------|---------|-------|-------|
+| 行情同步 | POST /sync/market | QuantEngine.sync_market_data | Sina/AkShare → 新浪日线 | market_data |
+| 估值同步 | POST /sync/valuation | sync_valuation | Tencent + push2 | stock_info |
+| 财务同步 | POST /sync/financial | sync_financials_smart/full | akshare | financial_statements |
+| 行业同步 | POST /sync/industry | sync_valuation (内联) | push2 | stock_info.industry |
+| 股票列表 | POST /stock-list/sync | sync_stock_list | akshare | stock_masters |
+| 宏观同步 | POST /sync/macro | sync_macro | 新浪期货/外汇API | macro_history |
+| 汇率同步 | POST /forex/sync | sync_forex | 新浪外汇API | exchange_rates |
+
+### 质量保护机制
+
+每层都有独立防护，防止脏数据穿透：
+
+```
+调度层: try/except 包裹每只股票, 单只失败不影响全局
+          gap<=0 才跳过(需今天数据已存在), 不保守跳过
+
+网络层: 数据源连续失败2次→自动降级到下一优先级源
+          定时探测恢复→自动回升高优先级源
+
+适配层: 空DF返回, 不抛异常到上层
+          港股/A股自动识别(5位=港股, 6位=A股)
+
+持久化: executemany IGNORE (不覆盖已有正确数据)
+          upsert ON CONFLICT (部分重算不删旧行)
+          同步函数内独立db session, 异常自动回滚
+```
+
+### 设计评价
+
+**优点:**
+- 四层各司其职，改动一层不影响其他层
+- 多源自动切换是免费API场景下的务实选择（每日请求上限、网络波动等实际问题）
+- CQRS 读写分离得当：MySQL 承业务事务，SQLite 承分析查询
+- 信号量按类别隔离，避免大盘同步阻塞指标计算
+
+**值得改进的点:**
+1. **双源同构**: SinaSource 和 AkShareSource 对 A股都走新浪接口，不是真正独立的冗余源。如果新浪挂了，两条路都走不通。理想情况是引入一个真正独立的日线源（如腾讯日线或东方财富）
+2. **混用 sync/async**: push2 适配器用 `requests.get`（同步）+ `asyncio.to_thread`，而 Sina 用 `httpx.AsyncClient`（异步）。这是演进遗留的 tech debt，统一为 httpx 异步会更干净
+3. **串行循环**: 40只股票逐只 sync，网络IO密集时浪费了异步能力。适合当前规模（40只），扩展到数百只需加 `asyncio.gather` + 信号量
+
 ## V5.16 投研 Pipeline 架构
 
 ### Pipeline 三层设计纲领 (V5.16)

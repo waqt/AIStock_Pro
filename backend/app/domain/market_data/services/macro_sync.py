@@ -47,7 +47,7 @@ def _calc_latest_and_change(df: pd.DataFrame, date_col: str, val_col: str):
         if len(df_clean) >= 2:
             prev_val = float(df_clean.iloc[-2][val_col])
             if prev_val != 0:
-                change_pct = round((val - prev_val) / abs(prev_val) * 100, 4)
+                change_pct = round((val - prev_val) / prev_val * 100, 4)
                 
         return val, change_pct, biz_d
     except Exception as e:

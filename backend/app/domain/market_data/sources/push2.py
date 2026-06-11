@@ -17,6 +17,7 @@ async def get_stock_fundamentals(codes: List[str]) -> Dict[str, dict]:
         secids.append(f"{mkt}.{c}")
     url = "https://push2.eastmoney.com/api/qt/stock/get"
     params = {
+        "ut": "fa5fd1943c7b386f172d6893dbfba10b",
         "secid": ",".join(secids),
         "fields": "f57,f58,f84,f85,f116,f117,f127,f189,f43,f169,f170",
     }

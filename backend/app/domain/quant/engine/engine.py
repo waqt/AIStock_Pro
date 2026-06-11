@@ -53,10 +53,11 @@ class QuantEngine:
             if latest_date:
                 gap = (date.today() - latest_date).days
                 weekday = date.today().weekday()
-                # 跳过逻辑 (考虑周末):
-                if gap <= 1:
+                # 跳过逻辑: 只有今天的数据已存在才跳过
+                if gap <= 0:
                     return 0
-                if weekday == 0 and gap <= 2:
+                # 周末: 周六日不交易, 跳过
+                if weekday >= 5 and gap <= 1:
                     return 0
                 days_to_fetch = max(gap + 5, 10)
             else:
@@ -98,7 +99,7 @@ class QuantEngine:
                     "close": float(row['close']),
                     "volume": float(row['volume']),
                     "amount": float(row.get('amount', 0)),
-                    "change_pct": float(row.get('change_pct', 0)) if row.get('change_pct') and str(row.get('change_pct')) != 'nan' else None
+                    "change_pct": float(row['change_pct']) if 'change_pct' in row and row['change_pct'] is not None and str(row['change_pct']) != 'nan' else None
                 })
 
         # 4. 批量 upsert
