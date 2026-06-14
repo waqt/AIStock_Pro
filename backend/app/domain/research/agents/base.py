@@ -124,6 +124,38 @@ FUNDAMENTALS_TOOL = {
     },
 }
 
+CALCULATE_VALUATION_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "calculate_valuation",
+        "description": "对股票进行定量估值计算。支持 PE/PB/PS/EV-EBITDA/PEG/FCF 六种方法+情景加权。"
+                       "LLM 选择估值方法+设定参数，系统执行计算返回目标价+当前价+涨跌幅空间。"
+                       "适用于需要量化判断估值高低、测算上涨/下跌空间的场景。",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "description": "6位股票代码, 如 '688012'",
+                },
+                "methods": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "所选估值方法列表: pe, pb, ps, ev_ebitda, peg, fcf_yield",
+                },
+                "params": {
+                    "type": "object",
+                    "description": "参数, 如 {\"eps\": 2.5, \"pe_multiple\": 20, \"growth_rate_pct\": 25}",
+                },
+            },
+            "required": ["code", "methods"],
+        },
+    },
+}
+
+RESEARCH_TOOL_DEFINITIONS = [QUERY_FINANCIAL_DATA_TOOL, WEB_SEARCH_TOOL, FUNDAMENTALS_TOOL, CALCULATE_VALUATION_TOOL]
+"""投研 Agent 可用工具集 — 不含技术指标(非投研用途)"""
+
 HEALTH_CHECK_TOOLS = [QUERY_FINANCIAL_DATA_TOOL, WEB_SEARCH_TOOL, TECHNICAL_INDICATORS_TOOL, FUNDAMENTALS_TOOL]
 """StockHealthChecker 使用的完整工具集"""
 
@@ -270,6 +302,60 @@ async def _tool_query_fundamentals(code: str) -> dict:
 register_tool("query_fundamentals")(_tool_query_fundamentals)
 
 
+async def _tool_calculate_valuation(
+    code: str,
+    methods: list = None,
+    params: dict = None,
+) -> dict:
+    """calculate_valuation 的实际执行函数 — 加载数据 → 执行估值计算 → 返回目标价
+
+    不需要 LLM 规划 (Phase 1 已经完成), 直接执行计算。
+    """
+    from app.domain.research.services.stock_auditor import StockAuditor
+    auditor = StockAuditor()
+    val_data = await auditor._load_valuation_data(code)
+    fund = val_data["fundamentals"]
+    ttm = val_data["ttm"]
+
+    # 获取当前价格
+    current_price = fund.get("price") or fund.get("pe_ttm", 0)
+
+    # 构建 plan dict 给 _execute_valuation
+    plan = {
+        "chosen_methods": [],
+        "scenario_analysis": {},
+    }
+
+    results = []
+    weighted_prices = []
+    m_params = params or {}
+
+    for method in (methods or []):
+        method_params = m_params.get(method, {})
+        plan["chosen_methods"].append({
+            "method": method,
+            "params": method_params,
+            "weight": method_params.get("weight", 1.0),
+        })
+
+    computed = auditor._execute_valuation(plan, ttm)
+
+    return {
+        "stock_code": code,
+        "stock_name": fund.get("name", code),
+        "current_price": fund.get("price"),
+        "industry": fund.get("industry"),
+        "computed": computed,
+        "upside_pct": round(
+            (computed.get("weighted_avg_target", 0) - float(fund.get("price", 0) or 0))
+            / float(fund.get("price", 1) or 1) * 100, 1
+        ) if computed.get("weighted_avg_target") and fund.get("price") else None,
+    }
+
+
+register_tool("calculate_valuation")(_tool_calculate_valuation)
+
+
 class ResearchAgent(BaseAgent):
     """投研分析智能体 — 公共基础: 数据加载 + 搜索 + LLM分析"""
 
@@ -321,7 +407,8 @@ class ResearchAgent(BaseAgent):
             except ImportError:
                 logger.warning(f"[{self.name}] FinancialQueryService not available, skipping catalog injection")
             except Exception as e:
-                logger.warning(f"[{self.name}] Catalog injection failed: {e}")
+                import traceback
+                logger.warning(f"[{self.name}] Catalog injection failed: {e}\n{traceback.format_exc()}")
 
             if not self.provider:
                 return {"error": "No AI provider configured", "agent": self.name}

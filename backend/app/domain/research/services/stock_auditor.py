@@ -246,6 +246,19 @@ class StockAuditor:
     #   audit_valuation — 估值定价
     # ═══════════════════════════════════════════════════
 
+    async def _load_valuation_data(self, code: str) -> Dict[str, Any]:
+        """加载估值所需数据 (fundamentals + 8Q + TTM)"""
+        fundamentals = await self.data_loader.load_fundamentals([code])
+        fund = fundamentals.get(code, {})
+        fin = await self.data_loader.load_financial_statements(code, periods=8)
+        quarters = fin.get("quarters", [])
+        ttm = self._compute_ttm(quarters)
+        return {
+            "fundamentals": fund,
+            "quarters": quarters,
+            "ttm": ttm,
+        }
+
     async def audit_valuation(self, code: str, name: str = "") -> Dict[str, Any]:
         """估值定价 — LLM 选择估值方法 + 框架函数执行计算
 
@@ -254,19 +267,14 @@ class StockAuditor:
         logger.info(f"[StockAuditor] Valuation audit: {code} {name}")
 
         # 1. 加载数据
-        fundamentals = await self.data_loader.load_fundamentals([code])
-        fund = fundamentals.get(code, {})
+        val_data = await self._load_valuation_data(code)
+        fund = val_data["fundamentals"]
+        ttm = val_data["ttm"]
 
         if not name:
             name = fund.get("name", code)
 
-        fin = await self.data_loader.load_financial_statements(code, periods=8)
-        quarters = fin.get("quarters", [])
-
-        # 2. 计算 TTM 聚合数据
-        ttm = self._compute_ttm(quarters)
-
-        # 3. 可用估值方法清单 (给 LLM 参考)
+        # 2. 可用估值方法清单 (给 LLM 参考)
         from app.framework.finance import (
             pe_valuation, pb_valuation, ps_valuation,
             ev_ebitda_valuation, peg_valuation, fcf_yield_valuation,

@@ -440,58 +440,48 @@ class CoreScreeningAgent(ResearchAgent):
 
     async def _verify_single(self, candidate: Dict, industry: str,
                               stock_info_map: Dict, trace=None) -> Dict:
-        """对单只候选做自由竞争分析 — LLM 自主定义维度、自选工具查数据、输出结构化结论
+        """V3 Plan-Execute-Synthesize — LLM 策划 → 系统执行 → LLM 综合研判
 
-        不再硬编码 FinancialAudit / ROIC / 6维权力 / ValuationPricer 等步骤。
-        LLM 在单个对话中自主决定查什么财务数据、搜什么市场信息、比什么维度。
+        Phase 1 (PLAN):   LLM 收到标的+产业链角色+概念能力目录 → 策划验证计划
+        Phase 2 (EXECUTE): 系统确定性执行 plan, 并行调用工具/服务 → 收集证据包
+        Phase 3 (SYNTHESIZE): LLM 收到规划+真实证据 → 综合研判输出结构化结论
         """
         code = candidate["code"]
         name = candidate.get("name", code)
 
-        logger.info(f"[{self.name}] Verifying {code} {name}")
+        logger.info(f"[{self.name}] Verifying {code} {name} (v3 PES)")
 
-        # 1. LLM 驱动的自由竞争分析 (自主调用 query_financial_data + web_search)
         src_info = candidate.get("source_node_info", {})
-        prompt = self._build_competitive_analysis_prompt(
-            name, code, industry, candidate.get("source", []),
-            node_context=src_info)
+        source_context = self._fmt_source_context(candidate.get("source", []))
 
-        # 注入动态财务数据字典
-        from app.domain.quant.engine.financial_query_service import FinancialQueryService
-        # 注意: f-string 中 {{X}} 会转义为 {X}, 所以替换目标用单大括号
-        catalog = FinancialQueryService.format_catalog_for_prompt()
-        prompt = prompt.replace("{FINANCIAL_CATALOG}", catalog)
+        # ═══ Phase 1: PLAN ════════════════════════════
+        plan = await self._plan_verification(name, code, industry, src_info, source_context)
+        if trace:
+            trace.record_llm(f"Phase1_plan_{code}", str(plan)[:300], model="deepseek-v4-pro")
 
-        analysis = {}  # LLM 输出的完整结构化结果
-        lifecycle_stage = "startup"  # 默认: 由 LLM 自主判定
-        category = "future_strong"  # 默认: 保留在 pipeline 中
-        try:
-            from app.domain.research.agents.base import WEB_SEARCH_TOOL, DEFAULT_TOOL_DEFINITIONS
-            text = await self.call_with_tools(prompt,
-                tool_defs=DEFAULT_TOOL_DEFINITIONS + [WEB_SEARCH_TOOL],
-                max_rounds=8)
-            if trace: trace.record_llm(prompt, text, model="deepseek-v4-pro")
-            result = self.parse_json(text)
-            if isinstance(result, dict) and result.get("analysis_dimensions"):
-                analysis = result
-                # 从 LLM 输出提取 lifecycle_stage
-                raw_stage = (result.get("lifecycle_stage") or "").lower().strip()
-                valid_stages = ("startup", "inflection", "growth", "mature", "cyclical_bottom", "cyclical_decline")
-                if raw_stage in valid_stages:
-                    lifecycle_stage = raw_stage
-                else:
-                    logger.info(f"[{self.name}] {code}: unclear lifecycle_stage '{raw_stage}', defaulting to startup")
-                    lifecycle_stage = "startup"
-                # 从 LLM 输出提取 category_suggestion
-                cat = (result.get("category_suggestion") or "").lower().strip()
-                if cat in ("current_strong", "future_strong", "watchlist"):
-                    category = cat
-                else:
-                    logger.info(f"[{self.name}] {code}: unclear category_suggestion '{cat}', defaulting to future_strong")
-            else:
-                logger.warning(f"[{self.name}] {code}: LLM output missing analysis_dimensions")
-        except Exception as e:
-            logger.warning(f"[{self.name}] Competitive analysis failed for {code}: {e}")
+        # ═══ Phase 2: EXECUTE ═════════════════════════
+        evidence = await self._execute_verification_plan(code, plan)
+        if trace:
+            trace.record_llm(f"Phase2_evidence_{code}", str(list(evidence.keys())), model="system")
+
+        # ═══ Phase 3: SYNTHESIZE ══════════════════════
+        analysis = await self._synthesize_verdict(name, code, industry, plan, evidence)
+        if trace:
+            trace.record_llm(f"Phase3_synthesis_{code}", str(analysis)[:200], model="deepseek-v4-pro")
+
+        # ═══ 解析输出 (兼容旧 schema) ═════════════════
+        lifecycle_stage = "startup"
+        category = "future_strong"
+        if isinstance(analysis, dict):
+            raw_stage = (analysis.get("lifecycle_stage") or "").lower().strip()
+            valid_stages = ("startup", "inflection", "growth", "mature",
+                            "cyclical_bottom", "cyclical_decline")
+            if raw_stage in valid_stages:
+                lifecycle_stage = raw_stage
+
+            cat = (analysis.get("category_suggestion") or "").lower().strip()
+            if cat in ("current_strong", "future_strong", "watchlist"):
+                category = cat
 
         result_dict = {
             "code": code,
@@ -502,23 +492,174 @@ class CoreScreeningAgent(ResearchAgent):
             "node_context": candidate.get("source_node_info", {}),
             "source": candidate.get("source", []),
             "flags": candidate.get("flags", []),
-            "company_stage": lifecycle_stage,  # LLM 自主判定
-
+            "company_stage": lifecycle_stage,
             "category": category,
             "verification": {
-                "analysis_dimensions": analysis.get("analysis_dimensions", []),
-                "industry_context": analysis.get("industry_context", ""),
-                "profit_capture_thesis": analysis.get("profit_capture_thesis", ""),
-                "thesis_breakers": analysis.get("thesis_breakers", []),
-                "watch_events": analysis.get("watch_events", []),
-                "roic_note": analysis.get("roic_note", ""),
+                "analysis_dimensions": (analysis or {}).get("analysis_dimensions", []),
+                "industry_context": (analysis or {}).get("industry_context", ""),
+                "profit_capture_thesis": (analysis or {}).get("profit_capture_thesis", ""),
+                "thesis_breakers": (analysis or {}).get("thesis_breakers", []),
+                "watch_events": (analysis or {}).get("watch_events", []),
+                "roic_note": (analysis or {}).get("roic_note", ""),
             },
         }
 
-        dim_count = len(analysis.get("analysis_dimensions", []))
+        dim_count = len((analysis or {}).get("analysis_dimensions", []))
         logger.info(f"[{self.name}] Verified {code}: category={category}, "
                     f"dimensions={dim_count}")
         return result_dict
+
+    # ═══ V3 PES 子方法 ═══════════════════════════════
+
+    async def _plan_verification(self, name: str, code: str, industry: str,
+                                  node_context: Dict, source_context: str) -> Dict:
+        """Phase 1: LLM 策划验证计划"""
+        from app.domain.research.agents.research_tools import build_plan_prompt
+        prompt = build_plan_prompt(name, code, industry, node_context, source_context)
+        try:
+            text = await self.provider.chat_pro(prompt, max_tokens=3072, timeout=120)
+            plan = self.parse_json(text)
+            if isinstance(plan, dict) and plan.get("investigations"):
+                logger.info(f"[{self.name}] Plan {code}: {len(plan['investigations'])} investigations")
+                return plan
+            logger.warning(f"[{self.name}] Plan {code}: missing investigations, using defaults")
+            return self._default_plan(code)
+        except Exception as e:
+            logger.warning(f"[{self.name}] Plan {code} failed: {e}, using defaults")
+            return self._default_plan(code)
+
+    async def _execute_verification_plan(self, code: str, plan: Dict) -> Dict:
+        """Phase 2: 系统确定性执行验证计划
+
+        读取 LLM 策划的 plan JSON, 调用对应 TOOL_REGISTRY handler。
+        不走 tool calling, 直接调异步函数, 并行执行, 异常隔离。
+        """
+        from app.domain.research.agents.base import TOOL_REGISTRY
+        import asyncio
+
+        evidence = {}
+
+        # 1. 执行 investigations (财务数据查询)
+        fin_tasks = []
+        for inv in plan.get("investigations", []):
+            tool_name = inv.get("tool", "query_financial_data")
+            params = inv.get("params", {})
+            params.setdefault("code", code)
+            handler = TOOL_REGISTRY.get(tool_name)
+            if handler:
+                fin_tasks.append(_safe_tool_call(handler, tool_name, params))
+
+        # 2. 执行估值 (如需要)
+        val_needed = plan.get("valuation", {}).get("needed", False)
+        val_future = None
+        if val_needed:
+            val_params = {
+                "code": code,
+                "methods": plan["valuation"].get("methods", ["peg", "pe"]),
+                "params": plan["valuation"].get("params", {}),
+            }
+            val_handler = TOOL_REGISTRY.get("calculate_valuation")
+            if val_handler:
+                val_future = asyncio.ensure_future(
+                    _safe_tool_call(val_handler, "calculate_valuation", val_params)
+                )
+
+        # 3. 执行搜索
+        search_tasks = []
+        for sq in plan.get("search_queries", []):
+            query = sq.get("query", "")
+            if query:
+                search_handler = TOOL_REGISTRY.get("web_search")
+                if search_handler:
+                    search_tasks.append(
+                        _safe_tool_call(search_handler, "web_search",
+                                        {"query": query, "num": 5})
+                    )
+
+        # 4. 保底: 确保至少有一次 financial data 查询
+        if not fin_tasks:
+            fin_handler = TOOL_REGISTRY.get("query_financial_data")
+            if fin_handler:
+                fin_tasks.append(
+                    _safe_tool_call(fin_handler, "query_financial_data", {"code": code})
+                )
+
+        # 5. 并行执行所有任务
+        fin_results = await asyncio.gather(*fin_tasks, return_exceptions=True) if fin_tasks else []
+        search_results = await asyncio.gather(*search_tasks, return_exceptions=True) if search_tasks else []
+        val_result = await val_future if val_future else None
+
+        # 按概念分组整理证据
+        for i, inv in enumerate(plan.get("investigations", [])):
+            concept = inv.get("concept", f"dim_{i}")
+            concept_data = {"financial": None, "search": []}
+
+            if i < len(fin_results) and not isinstance(fin_results[i], Exception):
+                concept_data["financial"] = _truncate_dict(fin_results[i])
+
+            # 关联搜索结果 (按关键词匹配)
+            query_keywords = inv.get("rationale", "")[:20]
+            for sr in search_results:
+                if isinstance(sr, Exception):
+                    continue
+                if isinstance(sr, list):
+                    for item in sr:
+                        if isinstance(item, dict) and query_keywords in str(item):
+                            concept_data["search"].append(item.get("snippet", "")[:200])
+
+            evidence[concept] = concept_data
+
+        # 估值结果
+        if val_result and not isinstance(val_result, Exception):
+            evidence["valuation_result"] = val_result
+
+        logger.info(f"[{self.name}] Execute {code}: "
+                    f"{len(fin_tasks)} fin, {len(search_tasks)} search, val={val_needed}")
+        return evidence
+
+    async def _synthesize_verdict(self, name: str, code: str, industry: str,
+                                   plan: Dict, evidence: Dict) -> Dict:
+        """Phase 3: LLM 基于证据做综合研判"""
+        from app.domain.research.agents.research_tools import build_synthesis_prompt
+        prompt = build_synthesis_prompt(name, code, industry, plan, evidence)
+        try:
+            text = await self.provider.chat_pro(prompt, max_tokens=4096, timeout=180)
+            result = self.parse_json(text)
+            if isinstance(result, dict) and result.get("analysis_dimensions"):
+                logger.info(f"[{self.name}] Synthesis {code}: {len(result['analysis_dimensions'])} dims")
+                return result
+            logger.warning(f"[{self.name}] Synthesis {code}: missing analysis_dimensions")
+            return {}
+        except Exception as e:
+            logger.warning(f"[{self.name}] Synthesis {code} failed: {e}")
+            return {}
+
+    def _default_plan(self, code: str) -> Dict:
+        """Plan 失败时的兜底计划 — 保底查一次财务数据"""
+        return {
+            "preliminary_judgment": "",
+            "investigations": [
+                {
+                    "concept": "财务基本面",
+                    "tool": "query_financial_data",
+                    "rationale": "兜底: 获取财务数据",
+                    "params": {"code": code},
+                },
+            ],
+            "valuation": {"needed": False},
+            "search_queries": [],
+        }
+
+    def _fmt_source_context(self, sources: list) -> str:
+        """格式化来源线索供 plan prompt 使用"""
+        if not sources:
+            return ""
+        lines = []
+        for s in sources[:5]:
+            step = s.get("step", "?")
+            role = s.get("role", "")[:100]
+            lines.append(f"- {step}: {role}")
+        return "\n".join(lines)
 
     # ═══ 多轮淘汰赛 (4+家同源比较) ═════════════════
 
@@ -1099,98 +1240,110 @@ class CoreScreeningAgent(ResearchAgent):
     def _build_competitive_analysis_prompt(self, name, code, industry, sources,
                                             node_context=None) -> str:
         """自由竞争分析 prompt — LLM 自主定义分析维度 + 自选财务指标 + 自搜市场信息"""
+        # str() 保护: 防止非 str 类型触发 __format__ 异常 (Python 3.7 已知问题)
+        name = str(name) if name is not None else ""
+        code = str(code) if code is not None else ""
+        industry = str(industry) if industry is not None else ""
+
         source_str = ", ".join(
-            f"{s['step']}/{s['field']}" + (f"({s['role']})" if s.get("role") else "")
+            str(s.get('step', '')) + "/" + str(s.get('field', '')) +
+            ("(" + str(s.get('role', '')) + ")" if s.get("role") else "")
             for s in sources) if sources else ""
 
         node_block = ""
         if node_context:
-            pn = node_context.get("name", "")
-            pp = node_context.get("profit_pool", "?")
-            vm = node_context.get("value_magnitude", "?")
-            sr = node_context.get("supply_rigidity", "?")
-            csr = node_context.get("china_substitution_rate", "?")
-            cs = node_context.get("competitive_structure", "?")
-            bn = (node_context.get("bottleneck_narrative", "") or "")[:200]
+            pn = str(node_context.get("name", ""))
+            pp = str(node_context.get("profit_pool", "?"))
+            vm = str(node_context.get("value_magnitude", "?"))
+            sr = str(node_context.get("supply_rigidity", "?"))
+            csr = str(node_context.get("china_substitution_rate", "?"))
+            cs = str(node_context.get("competitive_structure", "?"))
+            bn = str((node_context.get("bottleneck_narrative", "") or "")[:200])
             gl = node_context.get("global_leaders", [])
-            gl_str = ", ".join(gl[:5]) if gl else ""
-            node_block = f"""
-## 该候选所在产业链环节背景 (Step 2-5)
-- 环节: {pn}
-- 利润池: {pp}  | 市场量级: {vm}
-- 供给刚性: {sr}
-- 国产替代率: {csr}
-- 竞争结构: {cs}
-- 全球领导者: {gl_str}
-- 瓶颈描述: {bn}
-"""
+            gl_str = ", ".join(str(g) for g in gl[:5]) if gl else ""
+            _lines2 = [
+                "",
+                "## 该候选所在产业链环节背景 (Step 2-5)",
+                f"- 环节: {pn}",
+                f"- 利润池: {pp}  | 市场量级: {vm}",
+                f"- 供给刚性: {sr}",
+                f"- 国产替代率: {csr}",
+                f"- 竞争结构: {cs}",
+                f"- 全球领导者: {gl_str}",
+                f"- 瓶颈描述: {bn}",
+            ]
+            node_block = "\n".join(_lines2)
 
-        return f"""分析 {name}({code}) 在 {industry} 行业中的竞争地位和利润捕获能力。
-
-## 产业背景{node_block}
-上游来源: {source_str}
-
-## 可用工具
-主动使用以下工具获取实时数据:
-
-1. **query_financial_data(code, indicators=[...], raw_fields=[...])**
-   提供 30+ 财务指标和 20+ 原始财报字段。数据字典见下方 FINANCIAL_CATALOG。
-   使用场景举例: 毛利率趋势、营收增长、研发投入、现金流质量、资产负债结构等
-
-2. **web_search(query, num=5)**
-   搜索网络获取行业/公司实时信息。
-   使用场景举例: 行业地位、市场份额、客户关系、技术路线、认证壁垒、产能布局等
-
-{{FINANCIAL_CATALOG}}
-
-## 可选参考 (个股级分析角度)
-以下两条是上游步骤只覆盖到"环节"级、需要在本步骤深化到"个股"级的分析角度，**不是预设要求**：
-
-1. **个股关注度差 (Stock-Level Attention Gap)** —
-   同一个瓶颈环节的不同 A 股标的，机构关注度和定价效率可能天差地别。
-   这个标的是被充分研究的，还是被市场忽略的？
-
-2. **公司级价值捕获验证 (Firm-Level Value Capture)** —
-   Step 3 指出了该环节利润池规模和定价权分布，但具体这家公司：
-   - 在环节利润池中占多少？份额在扩大还是缩小？
-   - 有没有定价权？毛利率趋势如何？
-   - 客户锁定程度多深？切换成本多高？
-
-
-## 分析要求
-- **不要使用任何预设的分析框架或维度**。根据 {industry} 行业的竞争特征, 自主定义最能反映公司竞争力的分析维度
-- 每个维度的判断必须有来自 tool 调用的真实数据作为证据
-- 先查数据再判断, 不要先判断再勉强找证据支持
-- 如有需要, 可以自己从原始字段计算财务比率
-
-## 输出结构
-{{
-  "company": {{ "code": "{code}", "name": "{name}" }},
-  "industry_context": "对 {industry} 行业竞争特征的高度概括 (为什么这个行业赚/不赚钱)",
-  "analysis_dimensions": [
-    {{
-      "dimension": "自行定义的维度名称 (如: 客户锁定深度、技术迭代速度、供应链韧性...)",
-      "rating": "strong/medium/weak/emerging",
-      "evidence": ["来自 tool 调用的证据1", "证据2"],
-      "reasoning": "为什么这个维度在这个行业重要"
-    }}
-  ],
-  "lifecycle_stage": "startup | inflection | growth | mature | cyclical_bottom | cyclical_decline",
-  "stage_reasoning": "一句话说明判定依据 (如: 营收增速30%+且ROIC拐点向上, 判定为 inflection)",
-  "category_suggestion": "current_strong | future_strong | watchlist",
-  "category_reasoning": "分类理由",
-  "profit_capture_thesis": "这家公司在这个产业链环节中, 靠什么机制把产业景气转化为自身利润",
-  "thesis_breakers": ["什么条件下会推翻以上判断"],
-  "watch_events": [
-    {
-      "event": "事件描述 (如: XX客户认证通过)",
-      "trigger_condition": "触发信号 (如: 客户财报提及认证进度)",
-      "expected_timeframe": "预期时间窗口 (如: 2026-Q3)",
-      "event_type": "认证突破 | 产能释放 | 客户突破 | 政策落地 | 技术迭代"
-    }
-  ],
-  "roic_note": "如查询了 ROIC/ROIIC 等资本回报率数据, 在此注明关键结论"
-}}"""
+        # 无 f-string 拼接 (Python 3.7 f-string 特定 bug 规避)
+        _lines = [
+            f"分析 {name}({code}) 在 {industry} 行业中的竞争地位和利润捕获能力。",
+            "",
+            f"## 产业背景{node_block}",
+            f"上游来源: {source_str}",
+            "",
+            "## 可用工具",
+            "主动使用以下工具获取实时数据:",
+            "",
+            "1. **query_financial_data(code, indicators=[...], raw_fields=[...])**",
+            "   提供 30+ 财务指标和 20+ 原始财报字段。数据字典见下方 FINANCIAL_CATALOG。",
+            "   使用场景举例: 毛利率趋势、营收增长、研发投入、现金流质量、资产负债结构等",
+            "",
+            "2. **web_search(query, num=5)**",
+            "   搜索网络获取行业/公司实时信息。",
+            "   使用场景举例: 行业地位、市场份额、客户关系、技术路线、认证壁垒、产能布局等",
+            "",
+            "{FINANCIAL_CATALOG}",
+            "",
+            "## 可选参考 (个股级分析角度)",
+            '以下两条是上游步骤只覆盖到环节级、需要在本步骤深化到个股级的分析角度，**不是预设要求**：',
+            "",
+            "1. **个股关注度差 (Stock-Level Attention Gap)** —",
+            "   同一个瓶颈环节的不同 A 股标的，机构关注度和定价效率可能天差地别。",
+            "   这个标的是被充分研究的，还是被市场忽略的？",
+            "",
+            "2. **公司级价值捕获验证 (Firm-Level Value Capture)** —",
+            "   Step 3 指出了该环节利润池规模和定价权分布，但具体这家公司：",
+            "   - 在环节利润池中占多少？份额在扩大还是缩小？",
+            "   - 有没有定价权？毛利率趋势如何？",
+            "   - 客户锁定程度多深？切换成本多高？",
+            "",
+            "",
+            "## 分析要求",
+            f"- **不要使用任何预设的分析框架或维度**。根据 {industry} 行业的竞争特征, 自主定义最能反映公司竞争力的分析维度",
+            "- 每个维度的判断必须有来自 tool 调用的真实数据作为证据",
+            "- 先查数据再判断, 不要先判断再勉强找证据支持",
+            "- 如有需要, 可以自己从原始字段计算财务比率",
+            "",
+            "## 输出结构",
+            '{',
+            '  "company": { "code": "' + code + '", "name": "' + name + '" },',
+            f'  "industry_context": "对 {industry} 行业竞争特征的高度概括 (为什么这个行业赚/不赚钱)",',
+            '  "analysis_dimensions": [',
+            '    {',
+            '      "dimension": "自行定义的维度名称 (如: 客户锁定深度、技术迭代速度、供应链韧性...)",',
+            '      "rating": "strong/medium/weak/emerging",',
+            '      "evidence": ["来自 tool 调用的证据1", "证据2"],',
+            '      "reasoning": "为什么这个维度在这个行业重要"',
+            '    }',
+            '  ],',
+            '  "lifecycle_stage": "startup | inflection | growth | mature | cyclical_bottom | cyclical_decline",',
+            '  "stage_reasoning": "一句话说明判定依据 (如: 营收增速30%+且ROIC拐点向上, 判定为 inflection)",',
+            '  "category_suggestion": "current_strong | future_strong | watchlist",',
+            '  "category_reasoning": "分类理由",',
+            '  "profit_capture_thesis": "这家公司在这个产业链环节中, 靠什么机制把产业景气转化为自身利润",',
+            '  "thesis_breakers": ["什么条件下会推翻以上判断"],',
+            '  "watch_events": [',
+            '    {',
+            '      "event": "事件描述 (如: XX客户认证通过)",',
+            '      "trigger_condition": "触发信号 (如: 客户财报提及认证进度)",',
+            '      "expected_timeframe": "预期时间窗口 (如: 2026-Q3)",',
+            '      "event_type": "认证突破 | 产能释放 | 客户突破 | 政策落地 | 技术迭代"',
+            '    }',
+            '  ],',
+            '  "roic_note": "如查询了 ROIC/ROIIC 等资本回报率数据, 在此注明关键结论"',
+            '}',
+        ]
+        return "\n".join(_lines)
 
     # ═══ 工具 ═══════════════════════════════════════
 
@@ -1280,3 +1433,32 @@ def _extract_node_context(node: Dict) -> Dict:
         "value_magnitude": "",
         "bottleneck_severity": node.get("supply_rigidity", {}).get("severity", ""),
     }
+
+
+async def _safe_tool_call(handler, name: str, params: dict) -> dict:
+    """安全调用 TOOL_REGISTRY handler, 异常返回 dict"""
+    try:
+        result = await handler(**params)
+        return result or {}
+    except Exception as e:
+        logger.warning(f"[_safe_tool_call] {name} failed: {e}")
+        return {"_tool_error": str(e), "_tool_name": name}
+
+
+def _truncate_dict(d: dict, max_len: int = 5000) -> dict:
+    """截断 dict 中的长字符串/列表, 防止证据包过大"""
+    import json as _j
+    text = _j.dumps(d, ensure_ascii=False, default=str)
+    if len(text) <= max_len:
+        return d
+    # 截断每个值到 200 字符
+    truncated = {}
+    for k, v in d.items():
+        if isinstance(v, str) and len(v) > 200:
+            truncated[k] = v[:200] + "..."
+        elif isinstance(v, (list, dict)):
+            txt = _j.dumps(v, ensure_ascii=False, default=str)
+            truncated[k] = txt[:300] + "..." if len(txt) > 300 else v
+        else:
+            truncated[k] = v
+    return truncated
