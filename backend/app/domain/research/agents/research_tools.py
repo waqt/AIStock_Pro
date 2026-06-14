@@ -44,9 +44,9 @@ FINANCIAL_CONCEPTS_CATALOG = """
 用于判断：竞争格局是否稳定，龙头地位是否可维持。
 
 ### 估值定价 (Valuation)
-支持 PE/PB/PS/EV-EBITDA/PEG/FCF 六种定量估值方法。
-选择方法与参数后，系统执行计算返回目标价与当前价对比。
-用于判断：当前估值水平、上涨/下跌空间。
+支持 20+ 定量估值方法 (VALUATION_REGISTRY)，覆盖相对估值、绝对估值、高级估值与动态估值四大类。
+系统从 DB 读取真实财务数据并自动计算；LLM 选择方法并提供少量前向假设参数。
+用于判断：当前估值水平、上涨/下跌空间、情景概率分析。
 
 ### 基本面快照 (Fundamentals Snapshot)
 PE_TTM、PB、市值、ROE、股息率、营收/利润增速等。
@@ -65,7 +65,7 @@ RESEARCH_TOOLS = [
     },
     {
         "name": "calculate_valuation",
-        "description": "定量估值计算。提供 PE/PB/PS/EV-EBITDA/PEG/FCF 方法，系统执行返回目标价。",
+        "description": "定量估值计算。支持 20+ 方法 (VALUATION_REGISTRY)，系统从DB加载真实财务数据执行，返回目标价。",
     },
     {
         "name": "query_fundamentals",

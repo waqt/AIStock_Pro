@@ -1,9 +1,8 @@
 """质量调整估值 — 基于 ROE/股息/增速对 PE 倍数进行调整
 
-调用 framework/finance/valuation.py 的质量调整函数。
+内联实现 apply_quality_adjustment 逻辑，消除对旧 framework/finance/valuation.py 的依赖。
 """
 from app.domain.quant.valuation.base import ValuationMethod, register_valuation
-from app.framework.finance.valuation import apply_quality_adjustment
 
 
 @register_valuation
@@ -26,9 +25,20 @@ class QualityAdjustedMethod(ValuationMethod):
         if pe_ttm is None:
             return {k: None for k in cls.output}
 
-        adjusted, details = apply_quality_adjustment(
-            pe_ttm, roe, dividend_yield, eps_growth_3y)
+        # 质量调整逻辑 (原 apply_quality_adjustment 内联)
+        bonus = 0.0
+        details = []
+        if roe is not None and roe > 15:
+            bonus += 0.05
+            details.append(f"ROE={roe}%>15% (+5%)")
+        if dividend_yield is not None and dividend_yield > 2:
+            bonus += 0.03
+            details.append(f"股息={dividend_yield}%>2% (+3%)")
+        if eps_growth_3y is not None and eps_growth_3y > 20:
+            bonus += 0.05
+            details.append(f"EPS增速={eps_growth_3y}%>20% (+5%)")
 
+        adjusted = round(pe_ttm * (1 + bonus), 2)
         bonus_pct = round((adjusted - pe_ttm) / pe_ttm * 100, 1) if pe_ttm > 0 else 0
 
         return {

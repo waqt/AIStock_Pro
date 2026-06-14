@@ -158,7 +158,7 @@ class StockAuditor:
     # ═══════════════════════════════════════════════════
 
     async def audit_human_capital(self, code: str, name: str = "") -> Dict[str, Any]:
-        """人力资本审计 — LLM 从核心团队、人才能力等角度分析公司
+        """人力资本审计 — 聚焦核心人物背景/学术地位 + 公司人才待遇
 
         较贵 (Web Search × 3 + LLM Pro), 仅按需调用。
         """
@@ -168,11 +168,26 @@ class StockAuditor:
             fundamentals = await self.data_loader.load_fundamentals([code])
             name = fundamentals.get(code, {}).get("name", code)
 
+        # 加载研发费用数据 (用于佐证人才投入)
+        rd_info = {}
+        try:
+            fin = await self.data_loader.load_financial_statements(code, periods=4)
+            quarters = fin.get("quarters", [])
+            if quarters:
+                avg_rd = sum(float(q.get("rd_expense", 0) or 0) for q in quarters[:4]) / max(len(quarters[:4]), 1)
+                avg_revenue = sum(float(q.get("revenue", 0) or 0) for q in quarters[:4]) / max(len(quarters[:4]), 1)
+                rd_info = {
+                    "rd_expense_avg_yi": round(avg_rd / 1e8, 2),
+                    "rd_intensity_pct": round(avg_rd / avg_revenue * 100, 1) if avg_revenue > 0 else None,
+                }
+        except Exception:
+            pass
+
         # 1. 三维并行 Web 搜索
         queries = {
-            "core_team": f"{name} {code} 创始人 董事长 总经理 CTO 核心高管 履历 背景",
-            "talent_capability": f"{name} {code} 研发团队 技术人员占比 人才 校园招聘",
-            "culture_equity": f"{name} {code} 股权激励 员工持股 企业文化 管理风格",
+            "core_people": f"{name} {code} 创始人 董事长 总经理 CTO 核心团队 履历 教育背景",
+            "academic_status": f"{name} {code} 院士 学术带头人 教授 研发负责人 学术背景",
+            "talent_treatment": f"{name} {code} 薪酬水平 员工待遇 人均薪酬 福利 研发人员待遇",
         }
         search_results = {}
         for key, query in queries.items():
@@ -186,25 +201,40 @@ class StockAuditor:
             search_results[key] = items
 
         # 2. LLM 分析
-        prompt = f"""你是一位顶级人才评估专家(猎头+组织心理学家+薪酬顾问)。请从人力资本角度分析 {name} ({code})。
+        rd_block = ""
+        if rd_info:
+            rd_block = f"\n### 研发投入佐证\n最近4季平均研发费用: {rd_info.get('rd_expense_avg_yi', '?')}亿/季\n研发费用率: {rd_info.get('rd_intensity_pct', '?')}%\n"
+
+        prompt = f"""你是顶级人才评估专家。请从以下两个维度分析 {name} ({code}) 的人力资本质量。
 
 ## 搜索结果
-### 核心团队信息
-{_j(search_results.get("core_team", []), ensure_ascii=False)}
 
-### 人才能力信息
-{_j(search_results.get("talent_capability", []), ensure_ascii=False)}
+### 核心人物背景
+{_j(search_results.get("core_people", []), ensure_ascii=False)}
 
-### 文化与股权激励
-{_j(search_results.get("culture_equity", []), ensure_ascii=False)}
+### 学术地位与行业声望
+{_j(search_results.get("academic_status", []), ensure_ascii=False)}
 
+### 人才待遇
+{_j(search_results.get("talent_treatment", []), ensure_ascii=False)}
+{rd_block}
 ## 分析要求
-从人力资本角度评估这家公司, 自主决定分析维度:
-- 核心团队质量 (创始人视野/高管履历/技术背景/行业经验)
-- 人才密度与研发能力 (技术团队规模/人才吸引力/培养体系)
-- 组织健康度 (股权激励/核心团队稳定性/管理层价值观)
-- 人才风险 (关键人员依赖/继任计划/人才流失风险)
-- 任何你认为重要的其他维度
+
+聚焦两个核心维度：
+
+### 维度一: 核心人物背景与学术地位
+评估创始人/董事长/总经理/CTO/研发负责人的:
+- 学历背景 (是否名校/博士/海归)
+- 学术地位 (院士/教授/行业标准制定者/学术论文)
+- 行业声望 (是否行业协会负责人/国家项目带头人)
+- 国际视野 (是否有海外留学/工作经历)
+
+### 维度二: 公司人才待遇
+- 薪酬水平: 人均薪酬 vs 行业均值
+- 研发人员待遇: 研发人员薪酬/占比
+- 人才吸引力: 能否吸引顶尖高校毕业生
+- 研发投入佐证: 研发费用率 (如数据可用)
+- 判断: 待遇是否有竞争力, 能否留住核心人才
 
 ## 输出 JSON
 {{
@@ -212,16 +242,16 @@ class StockAuditor:
   "score": 0-100,
   "highlights": ["亮点1", "亮点2"],
   "risks": ["风险1", "风险2"],
-  "dimensions_analyzed": [
-    {{"name": "分析维度", "finding": "发现", "verdict": "GOOD/NEUTRAL/BAD"}}
+  "key_people": [
+    {{"name": "姓名", "role": "职位", "background": "学历/履历摘要", "academic_status": "学术地位(如有)"}}
   ],
-  "core_team_assessment": {{
-    "founder_ceo": "创始人/CEO评价",
-    "cto_tech_lead": "CTO/技术负责人评价",
-    "team_experience": "团队整体行业经验评价"
+  "talent_assessment": {{
+    "academic_depth": "学术深度评价(强/中/弱)",
+    "compensation_level": "薪酬待遇评价(有竞争力/一般/偏低)",
+    "rd_intensity_pct": {rd_info.get('rd_intensity_pct', 'null')},
+    "talent_attraction": "人才吸引力评价",
+    "key_personnel_risk": "关键人员依赖风险"
   }},
-  "talent_density": "人才密度评价",
-  "key_personnel_risk": "关键人员风险 (如有)",
   "summary": "一段总结 (50字以内)"
 }}
 
@@ -246,6 +276,153 @@ class StockAuditor:
     #   audit_valuation — 估值定价
     # ═══════════════════════════════════════════════════
 
+    # ═══ 新: b层补充 — FinancialStatement 原始元值 ══════
+
+    async def _load_raw_financial(self, code: str) -> Dict[str, Any]:
+        """b层补充: FinancialStatement 原始元值 (非亿元换算)"""
+        fin = await self.data_loader.load_financial_statements(code, periods=1)
+        quarters = fin.get("quarters", [])
+        if not quarters:
+            return {}
+        q = quarters[0]
+        return {
+            "total_assets": float(q.get("total_assets", 0) or 0),
+            "total_liabilities": float(q.get("total_liabilities", 0) or 0),
+            "total_equity": float(q.get("total_equity", 0) or 0),
+            "cash": float(q.get("cash", 0) or 0),
+            "fixed_assets": float(q.get("fixed_assets", 0) or 0),
+            "short_loan": float(q.get("short_loan", 0) or 0),
+            "long_loan": float(q.get("long_loan", 0) or 0),
+            "current_assets": float(q.get("current_assets", 0) or 0),
+            "current_liabilities": float(q.get("current_liabilities", 0) or 0),
+            "inventory": float(q.get("inventory", 0) or 0),
+            "accounts_receivable": float(q.get("accounts_receivable", 0) or 0),
+            "accounts_payable": float(q.get("accounts_payable", 0) or 0),
+            "contract_liability": float(q.get("contract_liability", 0) or 0),
+        }
+
+    # ═══ 新: c层 — 财务指标加载 ═════════════════════════
+
+    async def _load_financial_indicators(self, code: str) -> Dict[str, Any]:
+        """c层: 从 financial_indicators SQLite 加载财务指标"""
+        try:
+            from app.domain.quant.engine import indicator_store
+            row = indicator_store.get_financial_latest(code)
+            if not row:
+                return {}
+            KEYS = [
+                "roic_pct", "gross_margin_pct", "net_margin_pct", "operating_margin_pct",
+                "avg_rev_yoy_4q", "rev_yoy_ttm", "revenue_4q_yi",
+                "revenue_acceleration", "scissor_gap", "scissor_is_expanding",
+                "gross_margin_trend", "gross_margin_chg_pp", "operating_leverage",
+                "inflection_quality_label", "ocf_to_profit_label",
+            ]
+            return {k: row.get(k) for k in KEYS if row.get(k) is not None}
+        except Exception as e:
+            logger.warning(f"[StockAuditor] {code}: failed to load fin_indicators: {e}")
+            return {}
+
+    # ═══ 新: 股票信息 / 价格 / 历史数据加载 ════════════
+
+    async def _load_stock_info(self, code: str) -> Dict[str, Any]:
+        """加载总股本/流通股本"""
+        from app.framework.database.session import async_session
+        from app.models.models import StockMaster
+        async with async_session() as db:
+            row = await db.get(StockMaster, code)
+            if not row:
+                return {}
+            return {
+                "total_shares": float(row.total_shares or 0),
+                "float_shares": float(row.float_shares or 0),
+            }
+
+    async def _load_latest_price(self, code: str) -> Optional[float]:
+        """从 MarketData 读最新收盘价"""
+        from app.framework.database.session import async_session
+        from app.models.models import MarketData
+        from sqlalchemy import select
+        async with async_session() as db:
+            row = await db.execute(
+                select(MarketData.close)
+                .where(MarketData.stock_code == code)
+                .order_by(MarketData.trade_date.desc())
+                .limit(1)
+            )
+            price = row.scalar()
+            return float(price) if price else None
+
+    async def _load_pe_history(self, code: str, lookback_days: int = 1095) -> list:
+        """加载近 3 年 PE 历史序列 (需 StockValuation 有 pe_ttm)"""
+        from app.framework.database.session import async_session
+        from app.models.models import StockValuation, MarketData
+        from sqlalchemy import select
+        async with async_session() as db:
+            val = await db.get(StockValuation, code)
+            if not val or not val.pe_ttm:
+                return []
+            rows = await db.execute(
+                select(MarketData.close)
+                .where(MarketData.stock_code == code)
+                .order_by(MarketData.trade_date.desc())
+                .limit(lookback_days)
+            )
+            prices = [r[0] for r in rows.all() if r[0] and r[0] > 0]
+            if not prices:
+                return []
+            eps_est = prices[0] / val.pe_ttm
+            return [round(p / eps_est, 2) for p in reversed(prices)]
+
+    async def _load_pb_history(self, code: str, lookback_days: int = 1095) -> list:
+        """加载近 3 年 PB 历史序列"""
+        from app.framework.database.session import async_session
+        from app.models.models import StockValuation, MarketData, StockMaster
+        from sqlalchemy import select
+        async with async_session() as db:
+            val = await db.get(StockValuation, code)
+            if not val or not val.pb or not val.mcap_yi:
+                return []
+            info = await db.get(StockMaster, code)
+            shares = float(info.total_shares or 0) if info else 0
+            if shares <= 0:
+                return []
+            bvps = (val.mcap_yi * 1e8) / shares / val.pb
+            if bvps <= 0:
+                return []
+            rows = await db.execute(
+                select(MarketData.close)
+                .where(MarketData.stock_code == code)
+                .order_by(MarketData.trade_date.desc())
+                .limit(lookback_days)
+            )
+            prices = [r[0] for r in rows.all() if r[0] and r[0] > 0]
+            return [round(p / bvps, 2) for p in reversed(prices)]
+
+    async def _load_industry_pe_median(self, industry: str) -> Optional[float]:
+        """查询同行业 PE TTM 中位数"""
+        if not industry:
+            return None
+        try:
+            import numpy as np
+            from app.framework.database.session import async_session
+            from app.models.models import StockValuation, StockMaster
+            from sqlalchemy import select, collate
+            async with async_session() as db:
+                rows = await db.execute(
+                    select(StockValuation.pe_ttm)
+                    .join(StockMaster, collate(StockMaster.stock_code, 'utf8mb4_unicode_ci') == StockValuation.stock_code)
+                    .where(StockMaster.industry == industry)
+                    .where(StockValuation.pe_ttm.isnot(None))
+                    .where(StockValuation.pe_ttm > 0)
+                )
+                pe_values = [r[0] for r in rows.all()]
+            return float(np.median(pe_values)) if pe_values else None
+        except Exception as e:
+            logger.warning(f"[StockAuditor] industry_pe_median failed: {e}")
+            return None
+
+    # ═══ 恢复: a+b 层数据加载 (原 _load_valuation_data) ══
+
     async def _load_valuation_data(self, code: str) -> Dict[str, Any]:
         """加载估值所需数据 (fundamentals + 8Q + TTM)"""
         fundamentals = await self.data_loader.load_fundamentals([code])
@@ -259,101 +436,91 @@ class StockAuditor:
             "ttm": ttm,
         }
 
-    async def audit_valuation(self, code: str, name: str = "") -> Dict[str, Any]:
-        """估值定价 — LLM 选择估值方法 + 框架函数执行计算
+    # ═══════════════════════════════════════════════════
+    #   audit_valuation — 估值定价 (VALUATION_REGISTRY)
+    # ═══════════════════════════════════════════════════
 
-        两步: LLM 规划 → 代码执行 → 返回结果
+    def _build_valuation_catalog(self, method: type) -> Dict[str, Any]:
+        """构建单个估值方法的目录描述"""
+        meta = {
+            "name": method.name,
+            "label": getattr(method, 'label', method.name),
+            "category": getattr(method, 'category', ''),
+            "description": getattr(method, 'description', ''),
+            "output": getattr(method, 'output', []),
+            "needs_fin_indicators": getattr(method, 'requires_financial_indicators', False),
+            "needs_market_data": getattr(method, 'requires_market_data', False),
+        }
+        manual = self._MANUAL_PARAMS.get(method.name)
+        if manual:
+            meta["manual_params"] = manual
+        return meta
+
+    # 需要 LLM 提供前向假设参数的方法清单
+    _MANUAL_PARAMS = {
+        "three_stage_growth": {
+            "high_growth_rate": {"label": "高增期营收增速(%)", "default": 25.0, "desc": "Stage1(3年)年化营收增速"},
+            "terminal_growth_rate": {"label": "永续增速(%)", "default": 4.0, "desc": "永续增长率"},
+            "wacc": {"label": "折现率(%)", "default": 10.0, "desc": "加权平均资本成本"},
+        },
+        "scissor_inflection": {
+            "phase_assumption": {"label": "剪刀差阶段假设", "default": "improving", "desc": "improving/stable/declining"},
+        },
+        "dol_adjusted": {
+            "forward_growth": {"label": "前向营收增速(%)", "default": None, "desc": "预期未来营收增速(使用DB数据时自动填充)"},
+        },
+        "rev_growth_framework": {
+            "phase1_growth": {"label": "高增期增速(%)", "default": 20.0, "desc": "Stage1年化营收增速"},
+            "terminal_growth": {"label": "终端增速(%)", "default": 4.0, "desc": "永续增长率"},
+        },
+        "growth_peg": {
+            "expected_growth": {"label": "预期EPS增速(%)", "default": None, "desc": "默认使用eps_growth_3y"},
+        },
+        "rnpv": {
+            "rnd_type": {"label": "研发类型", "default": "moderate", "desc": "innovative(创新药)/moderate(创新仿制)/hybrid(仿制药)"},
+        },
+        "ps_valuation": {
+            "ps_multiple": {"label": "目标PS倍数", "default": 3.0, "desc": "市销率目标倍数"},
+        },
+    }
+
+    async def audit_valuation(self, code: str, name: str = "") -> Dict[str, Any]:
+        """估值定价 — LLM 选择估值方法 + VALUATION_REGISTRY 执行计算
+
+        数据流: a) 基本面 + b) 8Q TTM + c) 财务指标 → LLM 选方法 → 系统执行
         """
         logger.info(f"[StockAuditor] Valuation audit: {code} {name}")
 
-        # 1. 加载数据
+        # 1. 加载 a+b 数据
         val_data = await self._load_valuation_data(code)
         fund = val_data["fundamentals"]
         ttm = val_data["ttm"]
-
         if not name:
             name = fund.get("name", code)
 
-        # 2. 可用估值方法清单 (给 LLM 参考)
-        from app.framework.finance import (
-            pe_valuation, pb_valuation, ps_valuation,
-            ev_ebitda_valuation, peg_valuation, fcf_yield_valuation,
-            scenario_weighted,
-            match_asset_type,
+        # 2. 加载 b层补充 + c层财务指标 + 股票信息 + 最新价
+        raw_fin = await self._load_raw_financial(code)
+        fin_ind = await self._load_financial_indicators(code)
+        stock_info = await self._load_stock_info(code)
+        current_price = await self._load_latest_price(code)
+
+        # 3. 构建 VALUATION_REGISTRY 目录 (排除 valuation_health)
+        from app.domain.quant.valuation import VALUATION_REGISTRY
+
+        catalog = {}
+        for m_name, cls in VALUATION_REGISTRY.items():
+            if m_name == "valuation_health":
+                continue
+            catalog[m_name] = self._build_valuation_catalog(cls)
+
+        # 4. LLM 规划
+        price_str = f"{current_price:.2f}" if current_price else "未知"
+        plan_prompt = self._build_valuation_plan_prompt(
+            name, code, fund, ttm, fin_ind, stock_info, price_str, catalog
         )
 
-        available_methods = [
-            {"name": "pe_valuation", "desc": "市盈率估值: 目标价 = EPS × PE倍数",
-             "params": {"eps": "每股收益", "pe_multiple": "目标PE倍数"},
-             "适用": "盈利稳定可预测的企业"},
-            {"name": "pb_valuation", "desc": "市净率估值: 目标价 = 每股净资产 × PB倍数",
-             "params": {"book_per_share": "每股净资产", "pb_multiple": "目标PB倍数"},
-             "适用": "金融/强周期底部企业"},
-            {"name": "ps_valuation", "desc": "市销率估值: 目标价 = 每股营收 × PS倍数",
-             "params": {"revenue_per_share": "每股营收", "ps_multiple": "目标PS倍数"},
-             "适用": "高成长无利润/SaaS/创新药"},
-            {"name": "ev_ebitda_valuation", "desc": "EV/EBITDA: 目标价 = (EBITDA×倍数-净债务)/总股本",
-             "params": {"ebitda": "EBITDA(亿元)", "net_debt": "净债务(亿元)", "shares": "总股本(亿股)", "multiple": "目标倍数"},
-             "适用": "重资产制造/折旧高的企业"},
-            {"name": "peg_valuation", "desc": "PEG估值: 目标价 = EPS × 增速% × PEG",
-             "params": {"eps": "每股收益", "growth_rate_pct": "盈利增速%", "peg_target": "目标PEG(默认1.0)"},
-             "适用": "成长型企业"},
-            {"name": "fcf_yield_valuation", "desc": "FCF收益率: 目标价 = FCF每股 / 目标收益率%",
-             "params": {"fcf_per_share": "每股自由现金流", "target_yield_pct": "目标收益率%(默认5%)"},
-             "适用": "现金牛(水电/高速/港口)"},
-        ]
-
-        # 4. LLM 规划: 选择方法 + 定参数
-        plan_prompt = f"""你是估值专家。请为 {name} ({code}) 选择合适的估值方法并确定参数。
-
-## 公司数据
-{{
-  "industry": "{fund.get('industry', '未知')}",
-  "price": {fund.get('pe_ttm', 'N/A')},
-  "pe_ttm": {fund.get('pe_ttm', 'N/A')},
-  "pb": {fund.get('pb', 'N/A')},
-  "mcap_yi": {fund.get('mcap_yi', 'N/A')},
-  "roe": {fund.get('roe', 'N/A')},
-  "dividend_yield": {fund.get('dividend_yield', 'N/A')},
-  "eps_growth_3y": {fund.get('eps_growth_3y', 'N/A')},
-  "ttm_revenue_yi": {ttm.get('revenue_yi')},
-  "ttm_profit_yi": {ttm.get('profit_yi')},
-  "ttm_op_cashflow_yi": {ttm.get('ocf_yi')},
-  "total_shares_yi": {ttm.get('shares_yi')},
-  "net_debt_yi": {ttm.get('net_debt_yi')}
-}}
-
-## 可用估值方法
-{_j(available_methods, ensure_ascii=False, indent=2)}
-
-## 要求
-根据该公司行业特性和财务特征, 选择 1-2 种最合适的估值方法, 并提供参数。
-选择逻辑: 优先匹配该公司所属行业常用的方法, 同时考虑其财务结构(是否盈利/是否高折旧/是否高成长)。
-
-## 输出 JSON
-{{
-  "chosen_methods": [
-    {{
-      "method": "pe_valuation",
-      "rationale": "为什么选这个方法",
-      "params": {{"eps": 2.5, "pe_multiple": 20}},
-      "weight": 0.6
-    }}
-  ],
-  "scenario_analysis": {{
-    "bull": {{"price": 100, "probability": 0.2, "assumption": "乐观情景假设"}},
-    "base": {{"price": 80, "probability": 0.6, "assumption": "基准情景假设"}},
-    "bear": {{"price": 50, "probability": 0.2, "assumption": "悲观情景假设"}}
-  }},
-  "price_current": null,
-  "asset_type_suggestion": "根据行业和财务特征判断的资产类型"
-}}
-
-参数值使用合理估计。如果数据不足填 null。
-只输出JSON。"""
-
         try:
-            plan_text = await self.provider.chat_pro(plan_prompt, max_tokens=3072, timeout=180)
+            plan_text = await self.provider.chat_pro(plan_prompt, max_tokens=4096, timeout=180)
             plan = self._parse_json(plan_text)
             if not isinstance(plan, dict):
                 raise ValueError("Invalid plan JSON")
@@ -362,20 +529,232 @@ class StockAuditor:
             return {"code": code, "name": name, "audit_type": "valuation",
                     "verdict": "ERROR", "error": f"Planning failed: {e}"}
 
-        # 5. 执行计算
-        computed = self._execute_valuation(plan, ttm)
+        # 5. 执行所选方法
+        computed = await self._execute_valuation(
+            plan, code, val_data, raw_fin, fin_ind, stock_info, current_price, catalog
+        )
 
-        # 6. 组装结果
+        selected = [m.get("method", "") for m in plan.get("chosen_methods", [])]
         return {
             "code": code,
             "stock_name": name,
             "audit_type": "valuation",
-            "asset_type": plan.get("asset_type_suggestion", "unknown"),
-            "valuation_plan": plan.get("chosen_methods", []),
+            "current_price": current_price,
+            "valuation_plan": selected,
             "computed": computed,
-            "scenario_analysis": plan.get("scenario_analysis", {}),
             "summary": self._build_valuation_summary(computed),
         }
+
+    def _build_valuation_plan_prompt(
+        self, name: str, code: str, fund: dict, ttm: dict,
+        fin_ind: dict, stock_info: dict, price_str: str, catalog: dict
+    ) -> str:
+        """构建估值规划提示词 (LLM 选择方法 + 参数)"""
+        # 按是否需要手动参数分组
+        auto_methods = []
+        manual_methods = []
+        for m_name, meta in catalog.items():
+            entry = f"  - {meta['label']}({m_name}): {meta['description']}"
+            if meta.get("manual_params"):
+                entry += "\n    参数:"
+                for p_name, p_info in meta["manual_params"].items():
+                    entry += f" {p_info['label']}(默认{p_info['default']})"
+                manual_methods.append(entry)
+            else:
+                auto_methods.append(entry)
+
+        methods_block = "### 无需输入 (自动计算)\n" + "\n".join(auto_methods)
+        if manual_methods:
+            methods_block += "\n\n### 需 LLM 提供假设参数\n" + "\n".join(manual_methods)
+
+        fin_ind_block = _j({k: v for k, v in fin_ind.items() if v is not None}, indent=2) if fin_ind else "暂无"
+
+        return f"""你是估值专家。请为 {name}({code}) 选择合适的估值方法。
+
+## 公司数据
+
+当前股价: {price_str}
+行业: {fund.get("industry", "未知")}
+PE_TTM: {fund.get("pe_ttm", "N/A")} | PB: {fund.get("pb", "N/A")}
+市值: {fund.get("mcap_yi", "N/A")}亿
+ROE: {fund.get("roe", "N/A")}% | 股息率: {fund.get("dividend_yield", "N/A")}%
+EPS 增速(3Y): {fund.get("eps_growth_3y", "N/A")}%
+TTM 营收: {ttm.get("revenue_yi", "N/A")}亿 | 利润: {ttm.get("profit_yi", "N/A")}亿
+经营现金流: {ttm.get("ocf_yi", "N/A")}亿 | 研发: {ttm.get("rd_yi", "N/A")}亿
+净债务: {ttm.get("net_debt_yi", "N/A")}亿 | 净资产: {ttm.get("total_equity_yi", "N/A")}亿
+总股本: {stock_info.get("total_shares", "N/A")}股
+
+## 财务指标参考
+{fin_ind_block}
+
+## 可用估值方法 (VALUATION_REGISTRY)
+
+{methods_block}
+
+## 要求
+
+根据该公司行业特性和财务特征, 选择 1-2 种最合适的估值方法。
+- 优先选择"无需输入"的方法 (自动从真实财务数据计算)
+- 如需手动参数方法, 根据公司数据合理估计参数值
+- EV/EBITDA 适用于重资产高折旧行业
+- DDM 适用于稳定派息公司
+- rNPV 适用于生物医药/创新药
+
+## 输出 JSON
+{{
+  "chosen_methods": [
+    {{
+      "method": "pe_percentile",
+      "rationale": "为什么选这个方法",
+      "params": {{}}
+    }}
+  ],
+  "preliminary_judgment": "一句话初步判断估值水平"
+}}
+
+参数方法可提供的参数见方法说明。自动方法 params 留空对象。
+只输出JSON。"""
+
+    async def _execute_valuation(
+        self, plan: dict, code: str,
+        val_data: dict, raw_fin: dict, fin_ind: dict,
+        stock_info: dict, current_price: Optional[float],
+        catalog: dict,
+    ) -> Dict[str, Any]:
+        """执行估值计算 — 使用 VALUATION_REGISTRY
+
+        对 plan 中的每个 chosen_method, 加载数据后调 method.compute()
+        """
+        from app.domain.quant.valuation import VALUATION_REGISTRY
+
+        fund = val_data["fundamentals"]
+        ttm = val_data["ttm"]
+
+        results = []
+        weighted_prices = []
+
+        # 懒加载缓存
+        pe_history = None
+        pb_history = None
+        industry_pe_median = None
+
+        for method_def in plan.get("chosen_methods", []):
+            m_name = method_def.get("method", "")
+            user_params = method_def.get("params", {})
+
+            cls = VALUATION_REGISTRY.get(m_name)
+            if not cls:
+                logger.warning(f"[StockAuditor] Unknown method: {m_name}")
+                results.append({"method": m_name, "error": f"Unknown method"})
+                continue
+
+            try:
+                # 构建基础数据
+                kwargs = {
+                    **fund,                # pe_ttm, pb, mcap_yi, roe, ...
+                    **ttm,                 # revenue_yi, profit_yi, ... (亿元)
+                    **raw_fin,             # total_assets, cash, ... (元)
+                    **stock_info,          # total_shares
+                    **fin_ind,             # roic_pct, scissor_gap, ...
+                }
+                if current_price is not None:
+                    kwargs["price"] = current_price
+
+                # 注入方法默认参数 (仅 manual_params 中的)
+                manual = self._MANUAL_PARAMS.get(m_name, {})
+                for p_name, p_info in manual.items():
+                    default = p_info.get("default")
+                    if default is not None:
+                        kwargs.setdefault(p_name, default)
+
+                # 用户参数覆盖
+                for k, v in user_params.items():
+                    if v is not None:
+                        kwargs[k] = v
+
+                # 按需加载历史数据
+                if getattr(cls, 'requires_market_data', False):
+                    if pe_history is None:
+                        pe_history = await self._load_pe_history(code)
+                    if pb_history is None:
+                        pb_history = await self._load_pb_history(code)
+                    kwargs.setdefault("pe_history", pe_history or [])
+                    kwargs.setdefault("pb_history", pb_history or [])
+
+                # 按需加载行业 PE 中位数
+                if "industry_pe_median" in getattr(cls, 'requires', []):
+                    if industry_pe_median is None:
+                        industry = fund.get("industry", "")
+                        industry_pe_median = await self._load_industry_pe_median(industry)
+                    kwargs["industry_pe_median"] = industry_pe_median
+
+                # 执行计算
+                output = cls.compute(**kwargs)
+                if not output:
+                    raise ValueError("Empty compute result")
+
+                # 提取目标价和上行空间 (不同方法输出字段不同)
+                target_price = self._extract_target_price(m_name, output)
+                upside = None
+                if target_price is not None and current_price and current_price > 0:
+                    upside = round((target_price - current_price) / current_price * 100, 1)
+
+                results.append({
+                    "method": m_name,
+                    "label": getattr(cls, 'label', m_name),
+                    "output": output,
+                    "target_price": target_price,
+                    "upside_pct": upside,
+                })
+                if target_price is not None:
+                    weighted_prices.append(target_price)
+
+            except Exception as e:
+                logger.warning(f"[StockAuditor] {m_name} failed: {e}")
+                results.append({"method": m_name, "error": str(e)})
+
+        # 简单平均目标价
+        avg_target = round(sum(weighted_prices) / len(weighted_prices), 2) if weighted_prices else None
+
+        return {
+            "methods_used": results,
+            "avg_target_price": avg_target,
+        }
+
+    @staticmethod
+    def _extract_target_price(method: str, output: dict) -> Optional[float]:
+        """从方法输出中提取目标价 (不同方法字段名不同)"""
+        TARGET_FIELDS = {
+            "gordon_growth": "ddm_value",
+            "graham_number": "graham_number",
+            "net_asset_value": "nav_per_share",
+            "residual_income": "rim_value",
+            "three_stage_growth": "three_stage_value",
+            "scissor_inflection": "scissor_target_price",
+            "dol_adjusted": "dol_target_price",
+            "rev_growth_framework": "rgv_target_price",
+            "growth_peg": "growth_peg_target_price",
+            "rnpv": "rnpv_value",
+            "fcf_yield": "implied_value",
+            "pe_percentile": None,  # 无目标价
+            "pb_percentile": None,
+            "peg_analysis": None,
+            "ev_ic": None,
+            "industry_premium": None,
+            "roic_spread": None,
+            "quality_adjusted": None,
+            "scenario_estimate": "weighted_target",
+            "gm_multiple_adjust": "gm_target_price",
+            "ps_valuation": None,  # 需结合营收
+        }
+        field = TARGET_FIELDS.get(method)
+        if field:
+            return output.get(field)
+        # 兜底: 取第一个数值
+        for v in output.values():
+            if isinstance(v, (int, float)) and v and v > 0:
+                return v
+        return None
 
     # ═══════════════════════════════════════════════════
     #   组合审计
@@ -463,104 +842,19 @@ class StockAuditor:
             "accounts_pay_yi": round(accounts_pay / 1e8, 2),
         }
 
-    def _execute_valuation(self, plan: Dict, ttm: Dict) -> Dict[str, Any]:
-        """执行 LLM 规划的估值计算"""
-        from app.framework.finance.valuation import (
-            pe_valuation, pb_valuation, ps_valuation,
-            ev_ebitda_valuation, peg_valuation, fcf_yield_valuation,
-            scenario_weighted,
-        )
-
-        results = []
-        weighted_prices = []
-
-        for method_def in plan.get("chosen_methods", []):
-            method = method_def.get("method", "")
-            params = method_def.get("params", {})
-            weight = method_def.get("weight", 1.0)
-
-            try:
-                if method == "pe_valuation":
-                    price = pe_valuation(
-                        eps=float(params.get("eps", 0)),
-                        pe_multiple=float(params.get("pe_multiple", 15)),
-                    )
-                elif method == "pb_valuation":
-                    price = pb_valuation(
-                        book_per_share=float(params.get("book_per_share", 0)),
-                        pb_multiple=float(params.get("pb_multiple", 1.5)),
-                    )
-                elif method == "ps_valuation":
-                    price = ps_valuation(
-                        revenue_per_share=float(params.get("revenue_per_share", 0)),
-                        ps_multiple=float(params.get("ps_multiple", 3)),
-                    )
-                elif method == "ev_ebitda_valuation":
-                    price = ev_ebitda_valuation(
-                        ebitda=float(params.get("ebitda", 0)),
-                        net_debt=float(params.get("net_debt", 0)),
-                        shares=float(params.get("shares", 1)),
-                        multiple=float(params.get("multiple", 10)),
-                    )
-                elif method == "peg_valuation":
-                    price = peg_valuation(
-                        eps=float(params.get("eps", 0)),
-                        growth_rate_pct=float(params.get("growth_rate_pct", 15)),
-                        peg_target=float(params.get("peg_target", 1.0)),
-                    )
-                elif method == "fcf_yield_valuation":
-                    price = fcf_yield_valuation(
-                        fcf_per_share=float(params.get("fcf_per_share", 0)),
-                        target_yield_pct=float(params.get("target_yield_pct", 5.0)),
-                    )
-                else:
-                    continue
-
-                results.append({
-                    "method": method,
-                    "params": params,
-                    "target_price": price,
-                    "weight": weight,
-                })
-                weighted_prices.append(price * weight)
-            except Exception as e:
-                logger.warning(f"[StockAuditor] Valuation method {method} failed: {e}")
-                results.append({"method": method, "error": str(e)})
-
-        # 情景分析
-        scenarios = plan.get("scenario_analysis", {})
-        scenario_result = {}
-        if scenarios.get("bull") and scenarios.get("base") and scenarios.get("bear"):
-            try:
-                scenario_result = scenario_weighted(
-                    bull=float(scenarios["bull"]["price"]),
-                    base=float(scenarios["base"]["price"]),
-                    bear=float(scenarios["bear"]["price"]),
-                )
-            except Exception as e:
-                logger.warning(f"[StockAuditor] Scenario analysis failed: {e}")
-
-        # 加权平均目标价
-        total_weight = sum(m.get("weight", 1.0) for m in results if "error" not in m)
-        avg_target = round(sum(weighted_prices) / total_weight, 2) if total_weight > 0 else None
-
-        return {
-            "methods_used": results,
-            "weighted_avg_target": avg_target,
-            "scenario_weighted": scenario_result if scenario_result else None,
-        }
+    ## 旧 _execute_valuation 已移除 — 替换为 async 版 (见上方 _execute_valuation 新定义)
 
     def _build_valuation_summary(self, computed: Dict) -> str:
         """生成估值摘要"""
         parts = []
-        if computed.get("weighted_avg_target"):
-            parts.append(f"加权平均目标价: {computed['weighted_avg_target']}")
-        if computed.get("scenario_weighted"):
-            sw = computed["scenario_weighted"]
-            parts.append(f"情景加权: {sw.get('weighted_price')} "
-                         f"(区间 {sw.get('range', ['?','?'])[0]}-{sw.get('range', ['?','?'])[1]})")
-            if sw.get("asymmetry"):
-                parts.append(f"不对称性: {sw['asymmetry']}")
+        if computed.get("avg_target_price"):
+            parts.append(f"平均目标价: {computed['avg_target_price']}")
+        methods = computed.get("methods_used", [])
+        valid = [m for m in methods if "error" not in m]
+        if valid:
+            prices = [m.get("target_price") for m in valid if m.get("target_price")]
+            if prices:
+                parts.append(f"方法数: {len(valid)}, 目标价区间: {min(prices)}-{max(prices)}")
         return " | ".join(parts) if parts else "估值数据不足"
 
     def _overall_verdict(self, financial: Dict, hc: Dict, valuation: Dict) -> str:

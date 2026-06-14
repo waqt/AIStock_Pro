@@ -1,10 +1,9 @@
 """三情景估值 — Bull/Base/Bear 情景下的目标价分析
 
 基于当前 EPS 和不同的 PE 倍数假设, 给出三种情景的目标价。
-调用 framework/finance/valuation.py 的 scenario_weighted 函数。
+内联实现 scenario_weighted 逻辑，消除对旧 framework/finance/valuation.py 的依赖。
 """
 from app.domain.quant.valuation.base import ValuationMethod, register_valuation
-from app.framework.finance.valuation import scenario_weighted
 
 
 @register_valuation
@@ -41,14 +40,22 @@ class ScenarioEstimateMethod(ValuationMethod):
         base = eps * base_pe
         bear = eps * bear_pe
 
-        scenario = scenario_weighted(bull, base, bear)
+        # 情景概率加权 (原 scenario_weighted 内联)
+        p_bull = 0.2
+        p_base = 0.6
+        p_bear = 0.2
+        weighted = bull * p_bull + base * p_base + bear * p_bear
+        upside = (bull - weighted) / weighted * 100 if weighted else 0
+        downside = (bear - weighted) / weighted * 100 if weighted else 0
+        asymmetry_ratio = abs(upside / downside) if (downside and downside < 0) else (99 if upside > 0 else 1)
+        asymmetry_label = "强非对称" if asymmetry_ratio > 2 else ("对称" if asymmetry_ratio > 0.5 else "负非对称")
 
         return {
             "bull_target": round(bull, 2),
             "base_target": round(base, 2),
             "bear_target": round(bear, 2),
-            "weighted_target": scenario["weighted_price"],
-            "upside_pct": scenario["upside_pct"],
-            "downside_pct": scenario["downside_pct"],
-            "asymmetry": scenario["asymmetry"],
+            "weighted_target": round(weighted, 2),
+            "upside_pct": round(upside, 1),
+            "downside_pct": round(downside, 1),
+            "asymmetry": asymmetry_label,
         }

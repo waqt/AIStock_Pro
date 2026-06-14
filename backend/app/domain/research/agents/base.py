@@ -128,9 +128,10 @@ CALCULATE_VALUATION_TOOL = {
     "type": "function",
     "function": {
         "name": "calculate_valuation",
-        "description": "对股票进行定量估值计算。支持 PE/PB/PS/EV-EBITDA/PEG/FCF 六种方法+情景加权。"
-                       "LLM 选择估值方法+设定参数，系统执行计算返回目标价+当前价+涨跌幅空间。"
-                       "适用于需要量化判断估值高低、测算上涨/下跌空间的场景。",
+        "description": "对股票进行定量估值计算。使用系统 VALUATION_REGISTRY (20+ 注册方法),"
+                       "包括相对估值(PE/PB百分位/PEG/FCF收益等)、绝对估值(DDM/格雷厄姆/NAV/RIM)、"
+                       "高级估值(行业溢价/ROIC利差/质量调整/三情景)和动态估值(剪刀差/DOL调整/三阶段DCF/rNPV)。"
+                       "LLM 选择方法+设定假设参数，系统从DB读取真实财务数据自动计算，返回目标价+当前价+涨跌幅。",
         "parameters": {
             "type": "object",
             "properties": {
@@ -138,17 +139,21 @@ CALCULATE_VALUATION_TOOL = {
                     "type": "string",
                     "description": "6位股票代码, 如 '688012'",
                 },
-                "methods": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "所选估值方法列表: pe, pb, ps, ev_ebitda, peg, fcf_yield",
+                "method": {
+                    "type": "string",
+                    "description": "估值方法名 (来自 VALUATION_REGISTRY): "
+                                   "pe_percentile/pb_percentile/peg_analysis/fcf_yield/"
+                                   "gordon_growth/graham_number/net_asset_value/residual_income/"
+                                   "industry_premium/roic_spread/quality_adjusted/scenario_estimate/"
+                                   "scissor_inflection/dol_adjusted/rev_growth_framework/"
+                                   "three_stage_growth/growth_peg/rnpv/gm_multiple_adjust/ps_valuation/ev_ic",
                 },
                 "params": {
                     "type": "object",
-                    "description": "参数, 如 {\"eps\": 2.5, \"pe_multiple\": 20, \"growth_rate_pct\": 25}",
+                    "description": "方法的假设参数(可选, 系统有默认值)。如 {\"ps_multiple\": 3.0, \"phase_assumption\": \"improving\"}",
                 },
             },
-            "required": ["code", "methods"],
+            "required": ["code", "method"],
         },
     },
 }
@@ -304,52 +309,54 @@ register_tool("query_fundamentals")(_tool_query_fundamentals)
 
 async def _tool_calculate_valuation(
     code: str,
-    methods: list = None,
+    method: str = None,
     params: dict = None,
 ) -> dict:
-    """calculate_valuation 的实际执行函数 — 加载数据 → 执行估值计算 → 返回目标价
+    """calculate_valuation 的实际执行函数 — 使用 VALUATION_REGISTRY
 
-    不需要 LLM 规划 (Phase 1 已经完成), 直接执行计算。
+    LLM 指定方法 + 假设参数, 系统从 DB 加载真实财务数据自动计算。
     """
     from app.domain.research.services.stock_auditor import StockAuditor
     auditor = StockAuditor()
+
+    # 1. 加载 a+b+c 数据
     val_data = await auditor._load_valuation_data(code)
     fund = val_data["fundamentals"]
     ttm = val_data["ttm"]
+    raw_fin = await auditor._load_raw_financial(code)
+    fin_ind = await auditor._load_financial_indicators(code)
+    stock_info = await auditor._load_stock_info(code)
+    current_price = await auditor._load_latest_price(code)
 
-    # 获取当前价格
-    current_price = fund.get("price") or fund.get("pe_ttm", 0)
+    # 2. 查找方法
+    from app.domain.quant.valuation import VALUATION_REGISTRY
+    cls = VALUATION_REGISTRY.get(method)
+    if not cls:
+        return {"stock_code": code, "error": f"Unknown method: {method}",
+                "available_methods": list(VALUATION_REGISTRY.keys())}
 
-    # 构建 plan dict 给 _execute_valuation
-    plan = {
-        "chosen_methods": [],
-        "scenario_analysis": {},
-    }
+    # 3. 构建单一方法 plan
+    plan = {"chosen_methods": [{"method": method, "params": params or {}}]}
 
-    results = []
-    weighted_prices = []
-    m_params = params or {}
+    # 4. 执行计算
+    computed = await auditor._execute_valuation(
+        plan, code, val_data, raw_fin, fin_ind, stock_info, current_price, {}
+    )
 
-    for method in (methods or []):
-        method_params = m_params.get(method, {})
-        plan["chosen_methods"].append({
-            "method": method,
-            "params": method_params,
-            "weight": method_params.get("weight", 1.0),
-        })
-
-    computed = auditor._execute_valuation(plan, ttm)
+    # 5. 提取结果
+    methods_used = computed.get("methods_used", [])
+    result = methods_used[0] if methods_used else {"error": "No result"}
+    target_price = result.get("target_price")
+    upside = result.get("upside_pct")
 
     return {
         "stock_code": code,
         "stock_name": fund.get("name", code),
-        "current_price": fund.get("price"),
-        "industry": fund.get("industry"),
-        "computed": computed,
-        "upside_pct": round(
-            (computed.get("weighted_avg_target", 0) - float(fund.get("price", 0) or 0))
-            / float(fund.get("price", 1) or 1) * 100, 1
-        ) if computed.get("weighted_avg_target") and fund.get("price") else None,
+        "current_price": current_price,
+        "method": method,
+        "target_price": target_price,
+        "upside_pct": upside,
+        "output": result.get("output"),
     }
 
 
