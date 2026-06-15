@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Query, UploadFile, File, Body
 from typing import Optional, List
-from sqlalchemy import select, func, collate
+from sqlalchemy import select, func, collate, case
 from datetime import date, timedelta
 import re
 
@@ -1135,7 +1135,7 @@ async def get_fundamental_distribution():
                    StockValuation.roe, StockValuation.dividend_yield)
             .outerjoin(StockValuation, StockMaster.stock_code == collate(StockValuation.stock_code, 'utf8mb4_unicode_ci'))
             .where(StockValuation.pe_ttm.isnot(None))
-            .order_by(StockValuation.mcap_yi.desc().nullslast()).limit(100))
+            .order_by(case((StockValuation.mcap_yi.is_(None), 1), else_=0), StockValuation.mcap_yi.desc()).limit(100))
         rows = res.all()
 
     pe_buckets = {"0-10": 0, "10-20": 0, "20-30": 0, "30-50": 0, "50+": 0, "负PE": 0}

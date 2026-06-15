@@ -11,6 +11,7 @@ class OperatingLeverage(FinancialIndicator):
     category = "growth"
     indicator_type = "prosperity"
     applicable_stages = ["growth"]
+    concepts = ["growth_scissor_gap"]
     params = {}
     output = ["operating_leverage"]
     requires = ["revenue", "operate_cost", "sale_expense", "manage_expense"]

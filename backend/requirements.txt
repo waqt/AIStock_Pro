@@ -34,3 +34,4 @@ httpx
 loguru
 aiomysql==0.2.0
 APScheduler==3.10.4
+networkx>=3.2

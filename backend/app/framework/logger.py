@@ -26,6 +26,7 @@ def setup_logger():
         rotation="500 MB",
         retention="10 days",
         level="INFO",
+        enqueue=True,
         compression="zip"
     )
 

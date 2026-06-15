@@ -6,6 +6,52 @@
 
 ## 待优化
 
+### IDEA-025: System_Feature_Inventory.md 大版本同步
+- **来源**: V5.16 全系统扫描
+- **描述**: 文档严重落后于代码：声称 11 张表（实际 15 模型）、API 端点数低估（78→100+）、D1.4/D1.5 标记"待建设"但已实现、遗漏 StockMaster/StockValuation/PortfolioSnapshot/MacroHistory 等表、旧路由路径引用。需要全量校对，建议对齐到 V5.16 版本
+- **优先级**: 中
+- **状态**: 待开始
+
+### IDEA-024: portfolio/api/ 下重复路由文件（死代码）
+- **来源**: V5.16 全系统扫描
+- **描述**: `domain/portfolio/api/import_routes.py` 和 `positions.py` 定义了与 `app/api/import_api.py` 和 `app/api/positions.py` 完全相同的路由，但未被 `main.py` 导入。属于死代码，应删除
+- **文件**: `backend/app/domain/portfolio/api/import_routes.py`, `positions.py`
+- **优先级**: 低
+- **状态**: 待开始
+
+### IDEA-023: CLAUDE.md 数据源描述过时同步
+- **来源**: V5.16 全系统扫描
+- **描述**: CLAUDE.md 第 252 行"push2 适配器用 requests.get（同步）+ asyncio.to_thread"已过时(push2.py 已改为 httpx.AsyncClient)，但 valuation.py 和 stock_info_adapter.py 仍有同步用法。需同步更新文档和修复遗留同步调用
+- **优先级**: 低
+- **状态**: 待开始
+
+### IDEA-022: checkpoint.py print() 改为 logger
+- **来源**: V5.16 全系统扫描
+- **描述**: `framework/pipeline/checkpoint.py` 第 354/358/366 行有三处 `print()`，违反日志规范。改为 `logger.info()`。3 行改动的快速修复
+- **文件**: `backend/app/framework/pipeline/checkpoint.py`
+- **优先级**: 低
+- **状态**: 待开始
+
+### IDEA-021: 数据源双源同构 — 引入独立日线源
+- **来源**: V5.16 全系统扫描
+- **描述**: SinaSource 和 AkShareSource 对 A 股都走同一新浪接口 `money.finance.sina.com.cn`，港股都走 akshare。不是真正独立的冗余源。新浪挂了全挂。需引入真正的独立日线源（如腾讯日线或东方财富 API）
+- **文件**: `backend/app/domain/market_data/sources/sina.py`, `akshare.py`, `router.py`
+- **优先级**: 低
+- **状态**: 待开始
+
+### IDEA-020: sync_market 串行循环改并发
+- **来源**: V5.16 全系统扫描
+- **描述**: `engine.py:182` 的 `batch_sync_and_analyze` 用纯串行 for 循环同步 40 只股票，浪费异步能力。当前规模（~40 只）影响不大，扩展到数百只需加 `asyncio.gather` + 信号量控制并发
+- **文件**: `backend/app/domain/quant/engine/engine.py`
+- **优先级**: 低
+- **状态**: 待开始
+
+### IDEA-019: 多处静默吞异常（except: pass）清理
+- **来源**: V5.16 全系统扫描
+- **描述**: `report_store.py:163`、`global_capex_scanner.py:348/400`、`routes.py:570/588`、`tasks.py:177/288/307` 等处有 `except Exception: pass`。排查 bug 时造成困难。每处应至少打 `logger.warning`
+- **优先级**: 低
+- **状态**: 待开始
+
 ### IDEA-018: Monitor/Tracker 框架 — Pipeline 输出 → 量化追踪
 - **来源**: Gemini 报告 + 架构讨论
 - **描述**: 投研 Pipeline 负责"发现机会"（低频），Monitor 模块负责"盯盘追踪"（高频）。新建 `domain/monitor/` 目录，BaseTracker 抽象框架（订阅/轮询/阈值检查/告警），三个具体 Tracker：

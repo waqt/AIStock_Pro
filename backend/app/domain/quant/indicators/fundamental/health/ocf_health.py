@@ -11,6 +11,7 @@ class OCFHealth(FinancialIndicator):
     category = "health"
     indicator_type = "moat"
     applicable_stages = ["growth", "mature"]
+    concepts = ["financial_health"]
     params = {}
     output = ["ocf_health", "ocf_profit_ratio"]
     text_output = ["ocf_health"]

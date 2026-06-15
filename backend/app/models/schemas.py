@@ -66,6 +66,7 @@ class ImagePayload(BaseModel):
 
 class TextParsePayload(BaseModel):
     text: str
+    parse_type: str = "position"  # position | trade
 
 class BatchImportPayload(BaseModel):
     items: List[Dict[str, Any]]

@@ -20,6 +20,8 @@ from app.domain.research.agents.risk_analysis_agent import RiskAnalysisAgent
 from app.domain.research.agents.report_synthesis_agent import ReportSynthesisAgent
 from app.domain.research.pipelines import PIPELINES
 from app.domain.research.services.data_loader import data_loader
+from app.domain.graph.bridge import graph_bridge
+import app.domain.graph.builder  # noqa: register Step 3 parser
 from app.domain.research.services.report_store import save_report, list_reports, get_report, delete_report
 from app.framework.logger import logger
 from app.domain.observation.services.extractor import save_step_observations
@@ -603,6 +605,7 @@ async def _do_scan(req: ScanRequest, pre_run_id: str = None):
     elapsed = round(__import__("time").time() - t0, 1)
     try:
         save_checkpoint(step, run_id, input_hash, result, {"elapsed": elapsed, "input_summary": f"mode={req.mode}, target={target}"})
+        await graph_bridge.notify(run_id, step, result)
         _now = datetime.now().isoformat()
         # DISABLED: await save_step_observations(run_id, step, result, _now)
         trace.write(step)
@@ -634,6 +637,7 @@ async def _do_scan(req: ScanRequest, pre_run_id: str = None):
                 s3_result = await hacker.analyze(s3_ctx, trace=s3_trace)
                 s3_result["industry"] = s3_industry
                 save_checkpoint("step3_sc_hacker", run_id, "drilldown", s3_result, {"elapsed": 0})
+                await graph_bridge.notify(run_id, "step3_sc_hacker", s3_result)
                 s3_trace.write("step3_sc_hacker")
                 # DISABLED: await save_step_observations(run_id, "step3_sc_hacker", s3_result, datetime.now().isoformat())
                 logger.info(f"[MarketScanner] Step3 done: {s3_industry} → {len(s3_result.get('supply_chain_map',[]))} layers")
@@ -804,6 +808,7 @@ async def _synthesize_step11(run_id: str, industry: str, provider=None, trace_la
     step11_result = await rs_agent.analyze(rs_ctx, trace=rs_trace)
 
     save_checkpoint("step11_report", run_id, trace_label, step11_result, {"elapsed": 0})
+    await graph_bridge.notify(run_id, "step11_report", step11_result)
     rs_trace.write("step11_report")
 
     n_sections = len(step11_result.get("report", {}).get("sections", []))
@@ -846,6 +851,7 @@ async def industry_drilldown(req: IndustryDrilldownRequest):
 
         result["industry"] = req.industry_name
         save_checkpoint("step3_sc_hacker", run_id, "drilldown", result, {"elapsed": 0})
+        await graph_bridge.notify(run_id, "step3_sc_hacker", result)
         trace.write("step3_sc_hacker")
         # DISABLED: await save_step_observations(run_id, "step3_sc_hacker", result, datetime.now().isoformat())
         logger.info(f"[Drilldown] Step3 done: {req.industry_name} → {len(result.get('supply_chain_map',[]))} layers")
@@ -873,6 +879,7 @@ async def industry_drilldown(req: IndustryDrilldownRequest):
                 sd_trace = TraceContext(run_id)
                 step4_result = await sd.analyze(sd_ctx, trace=sd_trace)
                 save_checkpoint("step4_system_dynamics", run_id, "drilldown", step4_result, {"elapsed": 0})
+                await graph_bridge.notify(run_id, "step4_system_dynamics", step4_result)
                 sd_trace.write("step4_system_dynamics")
                 # DISABLED: await save_step_observations(run_id, "step4_system_dynamics", step4_result, datetime.now().isoformat())
                 logger.info(f"[Drilldown] Step4 done: {req.industry_name}")
@@ -896,6 +903,7 @@ async def industry_drilldown(req: IndustryDrilldownRequest):
                         screen_trace = TraceContext(run_id)
                         step6_result = await screener.analyze(screen_ctx, trace=screen_trace)
                         save_checkpoint("step6_core_screening", run_id, "drilldown", step6_result, {"elapsed": 0})
+                        await graph_bridge.notify(run_id, "step6_core_screening", step6_result)
                         screen_trace.write("step6_core_screening")
                         # DISABLED: await save_step_observations(run_id, "step6_core_screening", step6_result, datetime.now().isoformat())
                         logger.info(f"[Drilldown] Step6 done: {len(step6_result.get('ranked_stocks',[]))} strong + {len(step6_result.get('future_strong_candidates',[]))} future")
@@ -907,6 +915,7 @@ async def industry_drilldown(req: IndustryDrilldownRequest):
                             eg_trace = TraceContext(run_id)
                             step9_result = await eg_agent.analyze(eg_ctx, trace=eg_trace)
                             save_checkpoint("step9_expectation_gap", run_id, "drilldown", step9_result, {"elapsed": 0})
+                            await graph_bridge.notify(run_id, "step9_expectation_gap", step9_result)
                             eg_trace.write("step9_expectation_gap")
                             logger.info(f"[Drilldown] Step9 done: {len(step9_result.get('expectation_gaps',[]))} gaps")
 
@@ -922,6 +931,7 @@ async def industry_drilldown(req: IndustryDrilldownRequest):
                                 ra_trace = TraceContext(run_id)
                                 step10_result = await ra_agent.analyze(ra_ctx, trace=ra_trace)
                                 save_checkpoint("step10_risk_analysis", run_id, "drilldown", step10_result, {"elapsed": 0})
+                                await graph_bridge.notify(run_id, "step10_risk_analysis", step10_result)
                                 ra_trace.write("step10_risk_analysis")
                                 logger.info(f"[Drilldown] Step10 done: {len(step10_result.get('risks',[]))} risks")
 
@@ -987,6 +997,7 @@ async def system_dynamics_analysis(req: SystemDynamicsRequest = SystemDynamicsRe
 
         input_hash = hash_input({"industry": industry, "date": __import__("datetime").datetime.now().strftime("%Y%m%d")})
         save_checkpoint("step4_system_dynamics", run_id, input_hash, result, {"elapsed": 0})
+        await graph_bridge.notify(run_id, "step4_system_dynamics", result)
         trace.write("step4_system_dynamics")
         # DISABLED: await save_step_observations(run_id, "step4_system_dynamics", result, datetime.now().isoformat())
 
@@ -1006,6 +1017,7 @@ async def system_dynamics_analysis(req: SystemDynamicsRequest = SystemDynamicsRe
                 screen_trace = TraceContext(run_id)
                 step6_result = await screener.analyze(screen_ctx, trace=screen_trace)
                 save_checkpoint("step6_core_screening", run_id, "auto", step6_result, {"elapsed": 0})
+                await graph_bridge.notify(run_id, "step6_core_screening", step6_result)
                 screen_trace.write("step6_core_screening")
                 # DISABLED: await save_step_observations(run_id, "step6_core_screening", step6_result, datetime.now().isoformat())
                 logger.info(f"[SystemDynamics] Step6 auto-chain done: {len(step6_result.get('ranked_stocks',[]))} strong, {len(step6_result.get('future_strong_candidates',[]))} future")
@@ -1017,6 +1029,7 @@ async def system_dynamics_analysis(req: SystemDynamicsRequest = SystemDynamicsRe
                     eg_trace = TraceContext(run_id)
                     step9_result = await eg_agent.analyze(eg_ctx, trace=eg_trace)
                     save_checkpoint("step9_expectation_gap", run_id, "auto", step9_result, {"elapsed": 0})
+                    await graph_bridge.notify(run_id, "step9_expectation_gap", step9_result)
                     eg_trace.write("step9_expectation_gap")
                     logger.info(f"[SystemDynamics] Step9 auto-chain done: {len(step9_result.get('expectation_gaps',[]))} gaps")
 
@@ -1032,6 +1045,7 @@ async def system_dynamics_analysis(req: SystemDynamicsRequest = SystemDynamicsRe
                         ra_trace = TraceContext(run_id)
                         step10_result = await ra_agent.analyze(ra_ctx, trace=ra_trace)
                         save_checkpoint("step10_risk_analysis", run_id, "auto", step10_result, {"elapsed": 0})
+                        await graph_bridge.notify(run_id, "step10_risk_analysis", step10_result)
                         ra_trace.write("step10_risk_analysis")
                         logger.info(f"[SystemDynamics] Step10 auto-chain done: {len(step10_result.get('risks',[]))} risks")
 
@@ -1085,6 +1099,7 @@ async def continue_pipeline_step(run_id: str, step: str):
 
             result["industry"] = industry
             save_checkpoint("step3_sc_hacker", run_id, "continue", result, {"elapsed": 0})
+            await graph_bridge.notify(run_id, "step3_sc_hacker", result)
             trace.write("step3_sc_hacker")
             _now_s3 = datetime.now().isoformat()
             # DISABLED: await save_step_observations(run_id, "step3_sc_hacker", result, _now_s3)
@@ -1113,6 +1128,7 @@ async def continue_pipeline_step(run_id: str, step: str):
                     sd_trace = TraceContext(run_id)
                     step4_result = await sd.analyze(sd_ctx, trace=sd_trace)
                     save_checkpoint("step4_system_dynamics", run_id, "continue", step4_result, {"elapsed": 0})
+                    await graph_bridge.notify(run_id, "step4_system_dynamics", step4_result)
                     sd_trace.write("step4_system_dynamics")
                     # DISABLED: await save_step_observations(run_id, "step4_system_dynamics", step4_result, datetime.now().isoformat())
                     # Step 5 (V5.14 已合并入 Step 4) → Step 6
@@ -1131,6 +1147,7 @@ async def continue_pipeline_step(run_id: str, step: str):
                             screen_trace = TraceContext(run_id)
                             step6_result = await screener.analyze(screen_ctx, trace=screen_trace)
                             save_checkpoint("step6_core_screening", run_id, "continue", step6_result, {"elapsed": 0})
+                            await graph_bridge.notify(run_id, "step6_core_screening", step6_result)
                             screen_trace.write("step6_core_screening")
                             # DISABLED: await save_step_observations(run_id, "step6_core_screening", step6_result, datetime.now().isoformat())
                         except Exception as e:
@@ -1181,6 +1198,7 @@ async def continue_pipeline_step(run_id: str, step: str):
             trace = TraceContext(run_id)
             result = await sd.analyze(sd_ctx, trace=trace)
             save_checkpoint("step4_system_dynamics", run_id, "continue", result, {"elapsed": 0})
+            await graph_bridge.notify(run_id, "step4_system_dynamics", result)
             trace.write("step4_system_dynamics")
             # DISABLED: await save_step_observations(run_id, "step4_system_dynamics", result, datetime.now().isoformat())
             # Step 5 (V5.14 已合并入 Step 4) → Step 6
@@ -1199,6 +1217,7 @@ async def continue_pipeline_step(run_id: str, step: str):
                     screen_trace = TraceContext(run_id)
                     step6_result = await screener.analyze(screen_ctx, trace=screen_trace)
                     save_checkpoint("step6_core_screening", run_id, "continue", step6_result, {"elapsed": 0})
+                    await graph_bridge.notify(run_id, "step6_core_screening", step6_result)
                     screen_trace.write("step6_core_screening")
                     # DISABLED: await save_step_observations(run_id, "step6_core_screening", step6_result, datetime.now().isoformat())
                 except Exception as e:
@@ -1240,6 +1259,7 @@ async def continue_pipeline_step(run_id: str, step: str):
                     screen_trace = TraceContext(run_id)
                     step6_result = await screener.analyze(screen_ctx, trace=screen_trace)
                     save_checkpoint("step6_core_screening", run_id, "continue", step6_result, {"elapsed": 0})
+                    await graph_bridge.notify(run_id, "step6_core_screening", step6_result)
                     screen_trace.write("step6_core_screening")
                     # DISABLED: await save_step_observations(run_id, "step6_core_screening", step6_result, datetime.now().isoformat())
                     logger.info(f"[ContinueStep] Step6 done: {len(step6_result.get('ranked_stocks',[]))} strong, {len(step6_result.get('future_strong_candidates',[]))} future")
@@ -1275,6 +1295,7 @@ async def continue_pipeline_step(run_id: str, step: str):
             trace = TraceContext(run_id)
             result = await screener.analyze(ctx, trace=trace)
             save_checkpoint("step6_core_screening", run_id, "continue", result, {"elapsed": 0})
+            await graph_bridge.notify(run_id, "step6_core_screening", result)
             trace.write("step6_core_screening")
             # DISABLED: await save_step_observations(run_id, "step6_core_screening", result, datetime.now().isoformat())
 
@@ -1287,6 +1308,7 @@ async def continue_pipeline_step(run_id: str, step: str):
                 eg_trace = TraceContext(run_id)
                 step9_result = await eg_agent.analyze(eg_ctx, trace=eg_trace)
                 save_checkpoint("step9_expectation_gap", run_id, "continue", step9_result, {"elapsed": 0})
+                await graph_bridge.notify(run_id, "step9_expectation_gap", step9_result)
                 eg_trace.write("step9_expectation_gap")
                 logger.info(f"[ContinueStep] Step9 done: {len(step9_result.get('expectation_gaps',[]))} gaps")
 
@@ -1306,6 +1328,7 @@ async def continue_pipeline_step(run_id: str, step: str):
                     ra_trace = TraceContext(run_id)
                     step10_result = await ra_agent.analyze(ra_ctx, trace=ra_trace)
                     save_checkpoint("step10_risk_analysis", run_id, "continue", step10_result, {"elapsed": 0})
+                    await graph_bridge.notify(run_id, "step10_risk_analysis", step10_result)
                     ra_trace.write("step10_risk_analysis")
                     logger.info(f"[ContinueStep] Step10 done: {len(step10_result.get('risks',[]))} risks")
 
@@ -1340,6 +1363,7 @@ async def continue_pipeline_step(run_id: str, step: str):
             trace = TraceContext(run_id)
             result = await eg_agent.analyze(ctx, trace=trace)
             save_checkpoint("step9_expectation_gap", run_id, "continue", result, {"elapsed": 0})
+            await graph_bridge.notify(run_id, "step9_expectation_gap", result)
             trace.write("step9_expectation_gap")
 
             # 自动链 Step 10
@@ -1353,6 +1377,7 @@ async def continue_pipeline_step(run_id: str, step: str):
                 ra_trace = TraceContext(run_id)
                 step10_result = await ra_agent.analyze(ra_ctx, trace=ra_trace)
                 save_checkpoint("step10_risk_analysis", run_id, "continue", step10_result, {"elapsed": 0})
+                await graph_bridge.notify(run_id, "step10_risk_analysis", step10_result)
                 ra_trace.write("step10_risk_analysis")
                 logger.info(f"[ContinueStep] Step10 auto-chain done: {len(step10_result.get('risks',[]))} risks")
             except Exception as e:
@@ -1383,6 +1408,7 @@ async def continue_pipeline_step(run_id: str, step: str):
             trace = TraceContext(run_id)
             result = await ra_agent.analyze(ctx, trace=trace)
             save_checkpoint("step10_risk_analysis", run_id, "continue", result, {"elapsed": 0})
+            await graph_bridge.notify(run_id, "step10_risk_analysis", result)
             trace.write("step10_risk_analysis")
 
             # ── 自动链 Step 11: 综合报告 ──
@@ -1440,7 +1466,8 @@ async def continue_pipeline_step(run_id: str, step: str):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"[ContinueStep] {run_id}/{step} failed: {e}")
+        import traceback
+        logger.error(f"[ContinueStep] {run_id}/{step} failed: {e}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -1473,6 +1500,7 @@ async def direct_asset_mine(body: dict):
 
         elapsed = round(__import__("time").time() - t0, 1)
         save_checkpoint("step2a_direct_asset", run_id, "direct_asset_mine", result, {"elapsed": elapsed})
+        await graph_bridge.notify(run_id, "step2a_direct_asset", result)
         trace.write("step2a_direct_asset")
         # DISABLED: await save_step_observations(run_id, "step2a_direct_asset", result, datetime.now().isoformat())
 
@@ -1516,6 +1544,7 @@ async def second_order_extrapolate(body: dict):
 
         elapsed = round(__import__("time").time() - t0, 1)
         save_checkpoint("step2b_second_order", run_id, "second_order_extrapolate", result, {"elapsed": elapsed})
+        await graph_bridge.notify(run_id, "step2b_second_order", result)
         trace.write("step2b_second_order")
         # DISABLED: await save_step_observations(run_id, "step2b_second_order", result, datetime.now().isoformat())
 
@@ -1907,6 +1936,7 @@ async def trigger_patch(run_id: str, req: PatchRequest):
 
     # 5. 保存更新后的 checkpoint (hash="patch" 区分于原版)
     save_checkpoint("step6_core_screening", run_id, "patch", step6_output, {"elapsed": 0})
+    await graph_bridge.notify(run_id, "step6_core_screening", step6_output)
     trace.write("step6_core_screening_patch")
 
     logger.info(f"[Patch] Done: {len(updated)}/{len(req.stock_codes)} patched")

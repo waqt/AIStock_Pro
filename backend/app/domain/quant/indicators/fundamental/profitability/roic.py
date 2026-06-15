@@ -1,7 +1,7 @@
 """ROIC — 投资资本回报率（含研发资本化调整版本）"""
 from ..base import FinancialIndicator, register
-from .._roic_core import compute_roic as _compute_roic
-from .._roic_core import adjust_rd_capitalization
+from ._roic_utils import compute_roic as _compute_roic
+from ._roic_utils import adjust_rd_capitalization
 
 
 @register
@@ -12,6 +12,7 @@ class ROICIndicator(FinancialIndicator):
     judgment = ">20%=高; 15~20%=较高; 10~15%=中等; 8~10%=偏低; <8%=低。ROIC>15%且稳定通常对应较强的竞争优势。"
     category = "profitability"
     indicator_type = "moat"
+    concepts = ["capital_return_efficiency"]
     applicable_stages = ["growth", "mature"]
     params = {"capitalize_rd": False}
     output = ["roic", "roic_pct", "roic_quality", "roic_interpretation",

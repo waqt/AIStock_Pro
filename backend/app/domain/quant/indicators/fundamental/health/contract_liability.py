@@ -11,6 +11,7 @@ class ContractLiability(FinancialIndicator):
     category = "health"
     indicator_type = "prosperity"
     applicable_stages = ["inflection", "growth"]
+    concepts = ["financial_health"]
     params = {}
     output = ["contract_liability_yoy", "contract_liability_yi"]
     requires = ["contract_liability"]

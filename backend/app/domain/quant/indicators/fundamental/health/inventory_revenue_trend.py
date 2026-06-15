@@ -12,6 +12,7 @@ class InventoryRevenueTrend(FinancialIndicator):
     category = "health"
     indicator_type = "both"
     applicable_stages = ["growth", "mature"]
+    concepts = ["financial_health"]
     params = {}
     output = ["inventory_revenue_trend", "inv_rev_ratio_chg"]
     text_output = ["inventory_revenue_trend"]

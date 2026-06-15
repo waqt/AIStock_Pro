@@ -11,6 +11,7 @@ class ScissorGap(FinancialIndicator):
     category = "growth"
     indicator_type = "prosperity"
     applicable_stages = ["inflection", "growth"]
+    concepts = ["growth_scissor_gap"]
     params = {}
     output = ["scissor_gap", "scissor_is_expanding", "scissor_quarters_count"]
     text_output = ["scissor_is_expanding"]

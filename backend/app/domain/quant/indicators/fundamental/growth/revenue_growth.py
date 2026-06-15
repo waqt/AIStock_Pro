@@ -11,6 +11,7 @@ class RevenueGrowth(FinancialIndicator):
     category = "growth"
     indicator_type = "prosperity"
     applicable_stages = ["startup", "inflection", "growth"]
+    concepts = ["growth_scissor_gap"]
     params = {}
     output = ["rev_yoy_latest", "avg_rev_yoy_4q", "rev_yoy_ttm", "revenue_4q_yi"]
     requires = ["revenue"]

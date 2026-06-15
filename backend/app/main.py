@@ -23,6 +23,7 @@ from app.domain.quant.api.decision import router as quant_decision_router
 from app.domain.observation.api.routes import router as observation_router
 from app.domain.observation.monitor.api import router as monitor_router
 from app.domain.quant.valuation.api.routes import router as valuation_router
+from app.domain.graph.api.routes import router as graph_router
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -83,6 +84,7 @@ app.include_router(quant_decision_router)
 app.include_router(observation_router)
 app.include_router(monitor_router)
 app.include_router(valuation_router)
+app.include_router(graph_router)
 
 
 @app.get("/health")
@@ -128,6 +130,11 @@ async def startup_event():
         init_monitor_db()
     except Exception as e:
         logger.error(f"[❌] MonitorStore init failed: {e}")
+    try:
+        from app.domain.graph.store import init_db as init_graph_db
+        init_graph_db()
+    except Exception as e:
+        logger.error(f"[❌] GraphStore init failed: {e}")
 
     # 3. AI API Key 验证
     if settings.DEEPSEEK_API_KEY:

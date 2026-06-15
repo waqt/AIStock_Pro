@@ -11,6 +11,7 @@ class OCFProfitRatio(FinancialIndicator):
     category = "health"
     indicator_type = "both"
     applicable_stages = ["growth", "mature", "inflection"]
+    concepts = ["financial_health"]
     params = {}
     output = ["ocf_profit_ratio_ttm"]
     text_output = []  # 纯数值，无文本输出

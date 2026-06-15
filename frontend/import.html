@@ -198,25 +198,24 @@
             const text = document.getElementById('text-input').value;
             if (!text.trim()) { Modal.alert('提示', '请先粘贴文本数据'); return; }
 
-            if (currentTab === 'trade') {
-                Modal.alert('提示', '文本解析目前仅支持持仓列表，成交历史请使用截图识别。');
-                return;
-            }
-
             const statusEl = document.getElementById('import-preview');
-            statusEl.innerHTML = '<div style="text-align:center; padding:30px; color:var(--accent-blue);"><i class="fas fa-spinner fa-spin"></i> 解析中...</div>';
+            statusEl.innerHTML = '<div style="text-align:center; padding:30px; color:var(--accent-blue);"><i class="fas fa-spinner fa-spin"></i> AI 智能解析中...</div>';
             document.getElementById('import-controls').style.display = 'none';
 
             try {
                 const res = await fetch(`${API_BASE}/ai/parse-text`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text })
+                    body: JSON.stringify({ text, parse_type: currentTab })
                 });
                 const result = await res.json();
-                renderPreview(result.data || result);
+                if (result.success && result.data && result.data.length > 0) {
+                    renderPreview(result.data);
+                } else {
+                    statusEl.innerHTML = '<div style="text-align:center; padding:30px; color:var(--text-micro);">未识别到有效记录，请检查格式或使用截图导入</div>';
+                }
             } catch (e) {
-                statusEl.innerHTML = `<div style="text-align:center; padding:30px; color:var(--accent-red);">文本解析失败</div>`;
+                statusEl.innerHTML = `<div style="text-align:center; padding:30px; color:var(--accent-red);">文本解析失败: ${e.message}</div>`;
             }
         }
 

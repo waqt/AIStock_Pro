@@ -19,3 +19,7 @@ backend/data/*.db-shm
 backend/data/*.db-wal
 backend/data/pipeline_checkpoints/
 data/
+# Exclude junk directories
+-w/
+.VSCodeCounter/
+backend/=3.2

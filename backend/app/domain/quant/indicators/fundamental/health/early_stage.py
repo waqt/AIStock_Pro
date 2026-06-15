@@ -11,6 +11,7 @@ class BurnRateMonths(FinancialIndicator):
     category = "health"
     indicator_type = "moat"
     applicable_stages = ["startup", "inflection"]
+    concepts = ["financial_health"]
     params = {}
     output = ["burn_rate_months"]
     requires = ["cash", "op_cashflow"]
@@ -43,6 +44,7 @@ class RDToOpex(FinancialIndicator):
     judgment = ">1.0=研发费用高于销售管理费用; 0.5~1.0=两者相当; <0.5=销售管理费用高于研发费用。技术密集型行业通常>0.5。"
     category = "profitability"
     indicator_type = "moat"
+    concepts = ["profit_quality"]
     applicable_stages = ["startup", "inflection", "growth"]
     params = {}
     output = ["rd_to_opex"]

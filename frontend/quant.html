@@ -85,7 +85,7 @@
                             <div class="panel-header"><span class="panel-title">决策引擎</span></div>
                             <div class="panel-body">
                                 <div style="display:flex;gap:8px;margin-bottom:10px;">
-                                    <input type="text" id="stock-input" placeholder="股票代码 (如 688012)" value="688012"
+                                    <input type="text" id="stock-input" placeholder="股票代码/名称 (如 688012)"
                                         style="flex:1;background:#000;border:1px solid var(--border-color);color:#fff;padding:8px 10px;border-radius:4px;font-size:13px;">
                                     <button class="btn-action btn-primary" onclick="runDecision()" id="btn-decide" style="white-space:nowrap;">
                                         <i class="fas fa-play"></i> 决策
@@ -140,6 +140,7 @@
     <script src="js/framework/modal.js"></script>
     <script src="js/framework/task_monitor.js"></script>
     <script src="js/framework/indicator_compute.js"></script>
+    <script src="js/framework/stock_search.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/common.js"></script>
     <script>
@@ -456,7 +457,13 @@
 
         // ═══ Health Check — moved to health-check.html ═══
 
-        document.addEventListener('DOMContentLoaded', () => { loadIndicators(); });
+        document.addEventListener('DOMContentLoaded', () => {
+            loadIndicators();
+            StockSearch.attach('stock-input');
+            document.getElementById('stock-input').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') runDecision();
+            });
+        });
     </script>
 </body>
 </html>

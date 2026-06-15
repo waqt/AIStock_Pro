@@ -11,6 +11,7 @@ class RevenueAcceleration(FinancialIndicator):
     category = "growth"
     indicator_type = "prosperity"
     applicable_stages = ["inflection", "growth"]
+    concepts = ["growth_scissor_gap"]
     params = {}
     output = ["revenue_acceleration", "revenue_accel_pp"]
     text_output = ["revenue_acceleration"]

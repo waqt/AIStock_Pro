@@ -349,3 +349,82 @@
 ---
 
 > **统计**: 模块A-H 共 210 项功能点 | 后端API: 78个 | 数据库表: 11张 | 后台任务: 3个 | AI Agent: 12个 | 量化算子: 16个 | 量化策略: 8个
+
+## 模块I: 产业知识图谱 V1.0 ★ (Phase 1 MVP)
+
+### I1. 后端存储层
+
+| # | 功能 | 说明 | 状态 |
+|---|------|------|------|
+| I1.1 | GraphStore | SQLite 图谱持久化 (graph.db, thread-local WAL) | ✅ |
+| I1.2 | graph_nodes 表 | node_id/label/type/subtype/level/severity/properties(JSON) | ✅ |
+| I1.3 | graph_edges 表 | source_id/target_id/edge_type/weight/properties(JSON) | ✅ |
+| I1.4 | 节点类型 | chain(产业链)/process(工艺环节)/stock(个股), 前端颜色编码 | ✅ |
+| I1.5 | 瓶颈标记 | bottleneck subtype, extreme/very_high/high severity, 前端边框宽度 | ✅ |
+| I1.6 | 边类型 | belongs_to/feeds_to/sales_chain/expansion_chain, 前端颜色区分 | ✅ |
+
+### I2. GraphBuilder 解析器
+
+| # | 功能 | 说明 | 状态 |
+|---|------|------|------|
+| I2.1 | parse_step3 | 解析 SupplyChainHacker 输出 → nodes/edges | ✅ |
+| I2.2 | supply_chain_map 解析 | L1-L4链节点 + bottleneck_narrative/severity | ✅ |
+| I2.3 | sub_processes 解析 | 工艺节点 + belongs_to 边 | ✅ |
+| I2.4 | a_stock_mapping 解析 | 个股节点 + maps_to 边 | ✅ |
+| I2.5 | scarcity_ranking 增强 | 瓶颈 severity 富化 | ✅ |
+| I2.6 | sales_chain/expansion_chain | 前向/滞后传播边 | ✅ |
+| I2.7 | 确定性解析 | 纯 JSON checkpoint 解析, 无 LLM 调用 | ✅ |
+
+### I3. GraphBridge 集成
+
+| # | 功能 | 说明 | 状态 |
+|---|------|------|------|
+| I3.1 | notify() 注册器 | @graph_bridge.register("step_name") 装饰器注册解析器 | ✅ |
+| I3.2 | Pipeline 集成 | 27处 await graph_bridge.notify() 在 routes.py 各 save_checkpoint 后 | ✅ |
+| I3.3 | 跳过未注册 Step | 未注册 parser 的 step 静默跳过 | ✅ |
+
+### I4. API 端点
+
+| # | 端点 | 用途 | 状态 |
+|---|------|------|------|
+| I4.1 | GET /api/graph/runs | 列出有图谱数据的 Pipeline 运行 | ✅ |
+| I4.2 | GET /api/graph/parsers | 列出已注册的 Step 解析器 | ✅ |
+| I4.3 | GET /api/graph/{run_id} | 完整图谱 (nodes+edges, ECharts 格式) | ✅ |
+| I4.4 | GET /api/graph/{run_id}/node/{node_id} | 节点详情 | ✅ |
+| I4.5 | GET /api/graph/{run_id}/nodes/{node_type} | 按类型筛选节点 (chain/process/stock) | ✅ |
+| I4.6 | DELETE /api/graph/{run_id} | 删除图谱数据 | ✅ |
+
+### I5. 前端
+
+| # | 功能 | 说明 | 状态 |
+|---|------|------|------|
+| I5.1 | graph.html | 图谱页面 (暗色主题, 侧边栏 research 分组下) | ✅ |
+| I5.2 | ECharts force-directed | 力导向图, roam/缩放/拖拽 | ✅ |
+| I5.3 | 节点视觉映射 | type->color, centrality->size, severity->borderWidth, bottleneck->虚线边框 | ✅ |
+| I5.4 | 边视觉映射 | edge_type->color, weight->lineStyle.width | ✅ |
+| I5.5 | 图例 | chain/process/stock/bottleneck 颜色点 + 连线含义 | ✅ |
+| I5.6 | Run 选择器 | 下拉框选择 Pipeline 运行, 加载按钮切换 | ✅ |
+| I5.7 | 节点点击详情 | 侧边栏: bottleneck_narrative/profit_pool/competitive_landscape/value_node_tags | ✅ |
+| I5.8 | 关联边列表 | 点击节点显示出入边 + 连接节点 | ✅ |
+| I5.9 | 统计数据 | 节点数/边数/瓶颈数实时显示 | ✅ |
+
+### I6. 验证
+
+| # | 功能 | 说明 | 状态 |
+|---|------|------|------|
+| I6.1 | Mock 数据测试 | temp_lab/test_graph_e2e.py (4节点2边, 全断言通过) | ✅ |
+| I6.2 | 真实 checkpoint 测试 | temp_lab/test_real_checkpoint.py (3个产业线, 物理AI 8节点4边) | ✅ |
+| I6.3 | API 集成验证 | /api/graph/parsers -> step3_sc_hacker, /api/graph/runs -> 3 runs | ✅ |
+
+### Phase 2+ 规划
+
+| # | 规划 | 说明 | 状态 |
+|---|------|------|------|
+| I7.1 | Step 2/4/5/6 解析器 | GraphBuilder 扩展到全部 Step | 📋 |
+| I7.2 | NetworkX 中心性分析 | betweenness_centrality, shortest_path API | 📋 |
+| I7.3 | Monitor 信号锚定 | 价格变化->节点风险告警 | 📋 |
+| I7.4 | AI enrichment | 技术替代路径、价值流定量化 | 📋 |
+
+---
+
+> **统计**: 模块A-I 共 220 项功能点 | 后端API: 85个 | 数据库表: 11张+SQLite图谱库 | 后台任务: 3个 | AI Agent: 12个 | 量化算子: 16个 | 量化策略: 8个

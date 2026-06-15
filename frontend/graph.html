@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>AIStock | 产业图谱</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <style>
+        .graph-layout { display: flex; gap: 8px; height: calc(100vh - 110px); }
+        .graph-main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+        .graph-toolbar { display: flex; gap: 8px; align-items: center; padding: 6px 0; flex-wrap: wrap; }
+        .graph-toolbar select, .graph-toolbar button { background: rgba(255,255,255,0.05); border: 1px solid var(--border-thin); color: var(--text-dim); padding: 4px 10px; border-radius: 3px; font-size: 11px; cursor: pointer; }
+        .graph-toolbar select:hover, .graph-toolbar button:hover { background: rgba(255,255,255,0.1); color: #fff; }
+        .graph-toolbar .stat { color: var(--text-micro); font-size: 10px; margin-left: auto; }
+        #graph-container { flex: 1; background: rgba(0,0,0,0.2); border: 1px solid var(--border-thin); border-radius: 4px; min-height: 0; }
+        .graph-sidebar { width: 300px; min-width: 260px; display: flex; flex-direction: column; gap: 6px; border-left: 1px solid var(--border-color); padding-left: 8px; overflow-y: auto; }
+        .graph-sidebar .panel { background: rgba(255,255,255,0.02); border: 1px solid var(--border-thin); border-radius: 4px; padding: 8px; }
+        .graph-sidebar .panel-title { color: var(--accent-blue); font-size: 11px; margin-bottom: 6px; }
+        .graph-sidebar .panel .field { margin: 4px 0; font-size: 10px; }
+        .graph-sidebar .panel .field .key { color: var(--text-micro); }
+        .graph-sidebar .panel .field .val { color: #ccc; }
+        .graph-sidebar .panel .field .val.severe { color: var(--accent-red); }
+        .graph-sidebar .panel .field .val.medium { color: var(--accent-yellow); }
+        .graph-sidebar .panel .field .val.good { color: var(--accent-green); }
+        .graph-legend { display: flex; gap: 12px; flex-wrap: wrap; padding: 4px 0; }
+        .graph-legend .item { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text-dim); }
+        .graph-legend .dot { width: 10px; height: 10px; border-radius: 50%; }
+        .graph-legend .dot.chain { background: #5B8FF9; }
+        .graph-legend .dot.process { background: #5AD8A6; }
+        .graph-legend .dot.stock { background: #F6BD16; }
+        .graph-legend .dot.bottleneck { background: #F46649; }
+        .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--text-micro); gap: 12px; }
+        .empty-state i { font-size: 48px; opacity: 0.3; }
+        .empty-state .hint { font-size: 12px; }
+    </style>
+</head>
+<body data-page-id="graph">
+    <div class="app-container">
+        <aside class="sidebar"></aside>
+        <main class="main-content">
+            <div class="top-bar"></div>
+            <div class="workspace">
+                <div class="graph-layout">
+                    <div class="graph-main">
+                        <div class="graph-toolbar">
+                            <select id="run-selector"><option value="">— 选择 Run —</option></select>
+                            <button onclick="GraphApp.loadGraph()"><i class="fas fa-sync-alt"></i> 加载</button>
+                            <span class="stat" id="graph-stats"></span>
+                        </div>
+                        <div class="graph-legend" id="graph-legend">
+                            <span class="item"><span class="dot chain"></span> 产业链</span>
+                            <span class="item"><span class="dot process"></span> 工艺环节</span>
+                            <span class="item"><span class="dot stock"></span> 个股</span>
+                            <span class="item"><span class="dot bottleneck"></span> 瓶颈</span>
+                            <span class="item" style="margin-left:12px;color:var(--text-micro)">节点大小=中心性 | 边框宽度=瓶颈严重度</span>
+                        </div>
+                        <div id="graph-container">
+                            <div class="empty-state" id="empty-state">
+                                <i class="fas fa-project-diagram"></i>
+                                <div class="hint">选择 Run ID 加载产业图谱</div>
+                                <div class="hint" style="font-size:10px">数据来源: Pipeline Step 3 供应链拆解输出</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="graph-sidebar" id="graph-sidebar">
+                        <div class="panel">
+                            <div class="panel-title"><i class="fas fa-info-circle"></i> 节点详情</div>
+                            <div id="node-detail" style="color:var(--text-micro);font-size:10px">点击图谱中的节点查看详情</div>
+                        </div>
+                        <div class="panel">
+                            <div class="panel-title"><i class="fas fa-link"></i> 关联边</div>
+                            <div id="edge-list" style="color:var(--text-micro);font-size:10px">—</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="js/framework/api.js"></script>
+    <script src="js/framework/modal.js"></script>
+    <script src="js/framework/task_monitor.js"></script>
+    <script src="js/framework/markdown.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/common.js"></script>
+    <script src="js/graph.js"></script>
+</body>
+</html>

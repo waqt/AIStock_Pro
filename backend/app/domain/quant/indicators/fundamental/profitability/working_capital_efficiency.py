@@ -10,6 +10,7 @@ class WorkingCapitalEfficiency(FinancialIndicator):
     judgment = "<5%=低(营运资本需求小,占用上下游资金); 5~10%=较低; 10~20%=中等; >30%=高(扩张时资金占用大)。负值=净占用上下游资金,但需确认非拖欠供应商。"
     category = "profitability"
     indicator_type = "moat"
+    concepts = ["capital_return_efficiency"]
     applicable_stages = ["growth", "mature"]
     params = {}
     output = ["working_capital_efficiency"]

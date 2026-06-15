@@ -1,6 +1,6 @@
 """稳定性 — ROIC稳定性 / 营业利润率稳定性"""
 from ..base import FinancialIndicator, register
-from .._roic_core import compute_roic as _compute_roic
+from ..profitability._roic_utils import compute_roic as _compute_roic
 
 
 @register
@@ -12,6 +12,7 @@ class ROICStability(FinancialIndicator):
     category = "quality"
     indicator_type = "moat"
     applicable_stages = ["mature"]
+    concepts = ["moat_stability", "capital_return_efficiency"]
     params = {}
     output = ["roic_stability"]
     requires = ["revenue", "operate_cost", "sale_expense", "manage_expense",
@@ -46,6 +47,7 @@ class OperatingMarginStability(FinancialIndicator):
     category = "quality"
     indicator_type = "moat"
     applicable_stages = ["mature"]
+    concepts = ["moat_stability"]
     params = {}
     output = ["operating_margin_stability"]
     requires = ["revenue", "operate_cost", "sale_expense", "manage_expense"]

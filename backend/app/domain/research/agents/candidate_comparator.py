@@ -26,15 +26,20 @@ def _j(obj, **kw):
 class CandidateComparator(ResearchAgent):
     """候选比较智能体 V1.1 — 独立上下文、自己搜索、定性比较"""
 
-    def __init__(self, provider=None):
+    def __init__(self, provider=None, search_cache=None):
         super().__init__(provider=provider, data_loader=data_loader)
         self.name = "CandidateComparator"
+        self._search_cache = search_cache or {}
 
-    # ═══ 同源比较 ═══════════════════════════════════
+    # ═══ 同源比较 — PES 三阶段 ═════════════════════════════
 
     async def compare_within_source(self, candidates: List[Dict],
                                     node_context: Dict) -> Dict:
-        """同一瓶颈节点内的候选比较 — 不排名, 只输出观察+排除建议。
+        """同一瓶颈节点内的候选比较 — PES 三阶段
+
+        PLAN:     LLM 根据节点特征策划比较维度
+        EXECUTE:  系统按维度收集证据 (搜索+财务)
+        SYNTHESIZE: LLM 逐维度比较 + 排除建议
 
         Args:
             candidates: [{"code":"688012","name":"中微公司","source_type":"a_stock_mapping"}, ...]
@@ -56,10 +61,8 @@ class CandidateComparator(ResearchAgent):
         node_name = node_context.get("name", "")
         logger.info(f"[{self.name}] compare_within_source '{node_name}': {names}")
 
-        # 1. 并行搜索 — 每只候选 2 条查询
+        # ── Phase 0: 基础数据收集 (通用背景) ──────────
         search_data = await self._search_for_comparison(candidates, node_context)
-
-        # 2. 拉取基本面 (PE/PB/市值)
         fundamentals = {}
         try:
             codes = [c["code"] for c in candidates if c.get("code")]
@@ -68,47 +71,29 @@ class CandidateComparator(ResearchAgent):
         except Exception:
             pass
 
-        # 3. LLM 比较 (★ 失败时安全兜底: 全保留)
-        prompt = self._build_comparison_prompt(candidates, node_context, search_data, fundamentals)
-        result = None
-        try:
-            text = await self.provider.chat_pro(prompt, max_tokens=8192, timeout=120)
-            result_parsed = self.parse_json(text)
-            if isinstance(result_parsed, dict):
-                if "exclusion_suggestions" in result_parsed:
-                    result = result_parsed
-                else:
-                    result = {
-                        "observations": result_parsed.get("observations", []),
-                        "exclusion_suggestions": [],
-                        "comparison_dimensions": result_parsed.get("comparison_dimensions", []),
-                    }
-            else:
-                raise ValueError("LLM output not a dict")
-        except Exception as first_err:
-            logger.warning(f"[{self.name}] LLM failed ({first_err}), retrying...")
-            try:
-                simple_prompt = self._build_simple_comparison_prompt(
-                    candidates, node_context, search_data, fundamentals)
-                text2 = await self.provider.chat_pro(simple_prompt, max_tokens=4096, timeout=90)
-                result2 = self.parse_json(text2)
-                if isinstance(result2, dict) and result2.get("exclusion_suggestions") is not None:
-                    result = result2
-                    logger.info(f"[{self.name}] Retry succeeded")
-            except Exception:
-                logger.warning(f"[{self.name}] Retry also failed, passing all through (safe)")
+        # ── Phase PLAN: LLM 定比较维度 ────────────────
+        plan = await self._plan_comparison(candidates, node_context)
+        if plan is None:
+            plan = {"dimensions": [], "analytical_focus": ""}
+
+        # ── Phase EXECUTE: 系统按维度收集证据 ──────────
+        dimension_evidence = await self._execute_comparison_plan(
+            candidates, node_context, plan)
+
+        # ── Phase SYNTHESIZE: LLM 逐维度比较 ──────────
+        result = await self._synthesize_comparison(
+            candidates, node_context, plan, search_data, fundamentals, dimension_evidence)
 
         if result is not None:
             result.setdefault("observations", [])
             result.setdefault("exclusion_suggestions", [])
             result.setdefault("comparison_dimensions", [])
             result["source"] = node_name
-
             logger.info(f"[{self.name}] Done: candidates={len(candidates)}, "
                         f"suggested_exclude={[s.get('code','?') for s in result['exclusion_suggestions']]}")
             return result
 
-        # ★ 安全兜底: LLM 完全失败 → 全保留, 不排除任何候选
+        # ★ 安全兜底: LLM 完全失败 → 全保留
         logger.warning(f"[{self.name}] All LLM attempts failed, passing all '{node_name}' candidates through")
         return {
             "source": node_name,
@@ -132,7 +117,12 @@ class CandidateComparator(ResearchAgent):
             items = []
             for q in queries:
                 try:
-                    r = await self.data_loader.search_web(q, num=3)
+                    cache_key = q.strip().lower()
+                    if cache_key in self._search_cache:
+                        r = self._search_cache[cache_key]
+                    else:
+                        r = await self.data_loader.search_web(q, num=3)
+                        self._search_cache[cache_key] = r
                     for rr in r:
                         snippet = (rr.get("snippet", "") or "")[:150]
                         if snippet:
@@ -146,50 +136,11 @@ class CandidateComparator(ResearchAgent):
             results[code] = items
         return results
 
-    def _build_simple_comparison_prompt(self, candidates, node_context,
-                                         search_data, fundamentals) -> str:
-        """★ 简化版比较 prompt (重试用, 只要求 excluded)"""
-        node_name = node_context.get("name", "")
-        narrative = node_context.get("bottleneck_narrative", "")
-        profit_pool = node_context.get("profit_pool", "")
-        rigidity = node_context.get("supply_rigidity", "")
-        substitution = node_context.get("china_substitution_rate", "")
+    # ── Phase PLAN: LLM 定比较维度 ──────────────────
 
-        cand_lines = [f"- {c.get('name','?')}({c.get('code','?')})" for c in candidates]
-        search_lines = []
-        for code, items in search_data.items():
-            name = next((c.get("name", code) for c in candidates if c.get("code") == code), code)
-            for item in items[:3]:
-                search_lines.append(f"- {name}: {item['snippet'][:150]}")
-
-        fund_lines = []
-        for code, info in fundamentals.items():
-            fund_lines.append(
-                f"{info.get('name',code)}({code}): PE={info.get('pe_ttm','N/A')} "
-                f"营收={info.get('revenue','N/A')} 市值={info.get('market_capital','N/A')}")
-
-        return f"""比较以下公司在"{node_name}"环节的竞争力。
-
-环节: {node_name} | 利润池:{profit_pool} | 供给刚性:{rigidity} | 国产替代率:{substitution}
-瓶颈描述: {narrative[:200]}
-
-候选: {chr(10).join(cand_lines)}
-
-搜索证据: {chr(10).join(search_lines) if search_lines else '无'}
-
-基本面: {chr(10).join(fund_lines) if fund_lines else '无'}
-
-先逐票分析每家公司的技术能力、市场地位、盈利能力和竞争壁垒，分析差异而非排位。
-然后指出明显竞争力不足、在该环节缺乏参与价值的候选。
-最后输出JSON:
-{{"observations": [{{"code":"xxx","key_advantages":"...","key_concerns":"..."}}],
-  "exclusion_suggestions": [{{"code":"xxx","reason":"..."}}]}}
-observations覆盖所有候选，exclusion_suggestions只包含应排除的。
-分析过程写在外面，JSON独立可解析。"""
-
-    def _build_comparison_prompt(self, candidates: List[Dict], node_context: Dict,
-                                  search_data: Dict, fundamentals: Dict) -> str:
-        """构建同源比较 prompt — 不排名, 只输出观察+排除建议"""
+    async def _plan_comparison(self, candidates: List[Dict],
+                                node_context: Dict) -> Dict:
+        """PLAN: LLM 根据节点特征策划比较维度和证据需求"""
         node_name = node_context.get("name", "")
         narrative = node_context.get("bottleneck_narrative", "")
         profit_pool = node_context.get("profit_pool", "")
@@ -198,33 +149,12 @@ observations覆盖所有候选，exclusion_suggestions只包含应排除的。
         leaders = node_context.get("global_leaders", [])
         magnitude = node_context.get("value_magnitude", "")
 
-        # 候选基本信息
-        cand_lines = []
-        for c in candidates:
-            cand_lines.append(
-                f"- {c.get('name','?')}({c.get('code','?')}): "
-                f"{c.get('investment_logic', c.get('source_type',''))}"
-            )
+        cand_lines = "\n".join(
+            f"- {c.get('name','?')}({c.get('code','?')}): {c.get('source_type','')}"
+            for c in candidates
+        )
 
-        # 搜索结果
-        search_lines = []
-        for code, items in search_data.items():
-            name = next((c.get("name", code) for c in candidates if c.get("code") == code), code)
-            search_lines.append(f"\n## {name}({code})")
-            for item in items[:5]:
-                s = item["snippet"][:200]
-                search_lines.append(f"- {item['query']}: {s}")
-
-        # 基本面
-        fund_lines = []
-        for code, info in fundamentals.items():
-            name = info.get("name", code)
-            pe = info.get("pe_ttm") or info.get("pe", "N/A")
-            pb = info.get("pb", "N/A")
-            mcap = info.get("market_capital", "N/A")
-            fund_lines.append(f"{name}({code}): PE={pe} PB={pb} 市值={mcap}")
-
-        prompt = f"""你是资深产业分析师。比较以下候选公司在 "{node_name}" 环节的竞争力和投资价值。
+        prompt = f"""你是一位资深产业分析师。请为以下候选比较策划比较框架。
 
 ## 环节背景
 - 环节: {node_name}
@@ -232,47 +162,342 @@ observations覆盖所有候选，exclusion_suggestions只包含应排除的。
 - 供给刚性: {rigidity}
 - 国产替代率: {substitution}
 - 全球龙头: {', '.join(leaders) if leaders else 'N/A'}
-- 瓶颈描述: {narrative}
+- 瓶颈描述: {narrative[:300]}
 
 ## 候选公司
-{chr(10).join(cand_lines)}
+{cand_lines}
 
-## 原始搜索结果（关键证据，必须基于此判断）
-{chr(10).join(search_lines) if search_lines else "（无搜索结果）"}
+## 任务
+
+根据此环节的产业链特征和竞争本质，策划比较维度。
+
+关键原则:
+1. 维度必须与 **该环节的竞争本质** 相关（不同环节需要不同维度）
+   - 技术瓶颈环节 → 技术代差、产品覆盖度、客户认证壁垒
+   - 资源约束环节 → 资源储量、开采成本、产能扩张能力
+   - 规模效应环节 → 市场份额、成本结构、产能规模
+   - 渠道/品牌环节 → 渠道覆盖、品牌认知、客户粘性
+2. 每个维度说明需要什么 **证据类型**: search(搜索补充) 和/或 fundamentals(财务数据)
+3. 不预设固定维度，不设限制
+
+## 输出 JSON
+
+{{
+  "dimensions": [
+    {{
+      "name": "技术代差与产品覆盖度",
+      "weight": "high",
+      "rationale": "该环节为技术瓶颈，制程先进度是核心竞争壁垒",
+      "evidence_type": ["search"],
+      "search_query_template": "{{name}} {{node}} 技术 产品 参数 制程",
+      "financial_indicators": []
+    }},
+    {{
+      "name": "客户认证壁垒",
+      "weight": "high",
+      "rationale": "半导体设备需客户长期验证，认证进度决定营收可见度",
+      "evidence_type": ["search"],
+      "search_query_template": "{{name}} {{node}} 客户 认证 导入 验证",
+      "financial_indicators": []
+    }}
+  ],
+  "analytical_focus": "该环节竞争本质是..."
+}}
+
+规则:
+- dimensions 至少 2 个，最多 4 个
+- evidence_type 从 ["search", "fundamentals"] 中选择
+- search_query_template 用 {{{{name}}}} 和 {{{{node}}}} 作为占位符
+- financial_indicators 列出想查的具体指标名 (如 ["gross_margin", "rd_intensity"])"""
+
+        try:
+            text = await self.provider.chat_flash(prompt, max_tokens=4096, timeout=60)
+            result = self.parse_json(text)
+            if isinstance(result, dict) and result.get("dimensions"):
+                logger.info(f"[{self.name}] PLAN '{node_name}': "
+                            f"{[d['name'] for d in result['dimensions']]}")
+                return result
+            raise ValueError("Invalid plan")
+        except Exception as e:
+            logger.warning(f"[{self.name}] PLAN failed ({e}), using dimensions from node type")
+            return self._fallback_plan(node_context)
+
+    @staticmethod
+    def _fallback_plan(node_context: Dict) -> Dict:
+        """PLAN 降级: 根据节点类型推导合理维度"""
+        narrative = (node_context.get("bottleneck_narrative", "") or "").lower()
+        dims = []
+
+        # 从瓶颈描述判断节点类型
+        if any(kw in narrative for kw in ["技术", "制程", "工艺", "材料", "研发", "专利", "芯片"]):
+            dims = [
+                {"name": "技术能力与产品覆盖度", "weight": "high",
+                 "evidence_type": ["search"]},
+                {"name": "客户认证与导入进度", "weight": "high",
+                 "evidence_type": ["search"]},
+                {"name": "盈利能力与财务健康", "weight": "medium",
+                 "evidence_type": ["fundamentals"]},
+            ]
+        elif any(kw in narrative for kw in ["资源", "矿产", "产能", "产量"]):
+            dims = [
+                {"name": "资源储量与产能规模", "weight": "high",
+                 "evidence_type": ["search"]},
+                {"name": "成本优势与毛利率", "weight": "high",
+                 "evidence_type": ["search", "fundamentals"]},
+            ]
+        else:
+            dims = [
+                {"name": "市场地位与份额", "weight": "high",
+                 "evidence_type": ["search"]},
+                {"name": "产品竞争力与壁垒", "weight": "high",
+                 "evidence_type": ["search"]},
+                {"name": "盈利能力与增长", "weight": "medium",
+                 "evidence_type": ["search", "fundamentals"]},
+            ]
+
+        return {"dimensions": dims, "analytical_focus": narrative[:200]}
+
+    # ── Phase EXECUTE: 系统按维度收集证据 ──────────
+
+    async def _execute_comparison_plan(self, candidates: List[Dict],
+                                        node_context: Dict,
+                                        plan: Dict) -> Dict[str, Dict]:
+        """EXECUTE: 按 PLAN 的维度配置，为每候选收集搜索+财务证据
+
+        Returns:
+            {dim_name: {code: [evidence_items], ...}, ...}
+        """
+        node_name = node_context.get("name", "")
+        dimensions = plan.get("dimensions", [])
+        if not dimensions:
+            return {}
+
+        evidence = {}
+        for dim in dimensions:
+            dim_name = dim.get("name", "?")
+            evidence[dim_name] = {}
+            etypes = dim.get("evidence_type", ["search"])
+
+            for c in candidates:
+                code = c.get("code", "")
+                name = c.get("name", "")
+                evidence[dim_name].setdefault(code, [])
+
+                # 搜索证据
+                if "search" in etypes:
+                    tmpl = dim.get("search_query_template", "")
+                    if tmpl:
+                        query = tmpl.replace("{{name}}", name).replace("{{node}}", node_name)
+                        try:
+                            r = await self.data_loader.search_web(query, num=3)
+                            for rr in r:
+                                snippet = (rr.get("snippet", "") or "")[:200]
+                                if snippet:
+                                    evidence[dim_name][code].append({
+                                        "source": "search",
+                                        "query": query,
+                                        "content": snippet,
+                                    })
+                        except Exception:
+                            pass
+
+                # 财务证据 (基本面已有, 标注引用)
+                if "fundamentals" in etypes:
+                    evidence[dim_name][code].append({
+                        "source": "fundamentals",
+                        "note": "参照基础数据中的财务指标",
+                    })
+
+        # 统计日志
+        dim_counts = {d: sum(len(v) for v in ev.values()) for d, ev in evidence.items()}
+        logger.info(f"[{self.name}] EXECUTE '{node_name}': {dim_counts}")
+        return evidence
+
+    # ── Phase SYNTHESIZE: LLM 逐维度比较 ──────────
+
+    async def _synthesize_comparison(self, candidates, node_context, plan,
+                                      search_data, fundamentals,
+                                      dimension_evidence) -> Dict:
+        """SYNTHESIZE: LLM 基于证据逐维度比较，输出观察+排除建议"""
+        node_name = node_context.get("name", "")
+        narrative = node_context.get("bottleneck_narrative", "")
+        profit_pool = node_context.get("profit_pool", "")
+        rigidity = node_context.get("supply_rigidity", "")
+        substitution = node_context.get("china_substitution_rate", "")
+        leaders = node_context.get("global_leaders", [])
+        magnitude = node_context.get("value_magnitude", "")
+
+        # ── 候选基本信息 ──
+        cand_lines = "\n".join(
+            f"- {c.get('name','?')}({c.get('code','?')}): {c.get('investment_logic', c.get('source_type',''))}"
+            for c in candidates
+        )
+
+        # ── 基础搜索结果 (通用背景) ──
+        search_lines = []
+        for code, items in search_data.items():
+            name = next((c.get("name", code) for c in candidates if c.get("code") == code), code)
+            search_lines.append(f"\n## {name}({code})")
+            for item in items[:5]:
+                s = item["snippet"][:200]
+                search_lines.append(f"- {item['query']}: {s}")
+        search_block = "\n".join(search_lines) if search_lines else "（无搜索结果）"
+
+        # ── 基本面 ──
+        fund_lines = []
+        for code, info in fundamentals.items():
+            name = info.get("name", code)
+            pe = info.get("pe_ttm") or info.get("pe", "N/A")
+            pb = info.get("pb", "N/A")
+            mcap = info.get("market_capital", "N/A")
+            fund_lines.append(f"{name}({code}): PE={pe} PB={pb} 市值={mcap}")
+        fund_block = "\n".join(fund_lines) if fund_lines else "（无基本面数据）"
+
+        # ── 维度证据 (按维度组织) ──
+        dim_blocks = []
+        for dim in plan.get("dimensions", []):
+            dim_name = dim.get("name", "?")
+            dim_evidence = dimension_evidence.get(dim_name, {})
+            if not dim_evidence:
+                continue
+
+            block_lines = [f"\n### {dim_name}"]
+            for c in candidates:
+                code = c.get("code", "")
+                name = c.get("name", code)
+                items = dim_evidence.get(code, [])
+                if items:
+                    block_lines.append(f"\n{name}({code}):")
+                    for item in items[:4]:
+                        if item.get("source") == "search":
+                            block_lines.append(f"  - {item['content']}")
+                        else:
+                            block_lines.append(f"  - [参考基本面数据]")
+                else:
+                    block_lines.append(f"\n{name}({code}):（无特定证据）")
+            dim_blocks.append("\n".join(block_lines))
+
+        dim_block = "\n".join(dim_blocks)
+
+        # ── 分析方法说明 ──
+        dim_names = [d.get("name", "?") for d in plan.get("dimensions", [])]
+        analysis_method = "\n".join(
+            f"{i+1}. {name} — {dim.get('rationale', '')[:100]}"
+            for i, (name, dim) in enumerate(zip(dim_names, plan.get("dimensions", [])))
+        )
+
+        prompt = f"""你是资深产业分析师。基于以下证据，比较候选公司在 "{node_name}" 环节的竞争力。
+
+## 环节背景
+- 环节: {node_name}
+- 利润池: {profit_pool}  |  市场量级: {magnitude}
+- 供给刚性: {rigidity}
+- 国产替代率: {substitution}
+- 全球龙头: {', '.join(leaders) if leaders else 'N/A'}
+- 瓶颈描述: {narrative[:300]}
+
+## 比较框架
+{analysis_method if analysis_method else '无预设维度, 自行判断'}
+
+## 候选公司
+{cand_lines}
+
+## 基础搜索证据 (通用背景)
+{search_block}
 
 ## 基本面参考
-{chr(10).join(fund_lines) if fund_lines else "（无基本面数据）"}
+{fund_block}
 
-## 分析方法
-逐票分析每家公司在该环节的真实竞争壁垒，找出差异而非排位：
-1. 技术能力/产品性能 — 制程领先度？产品覆盖度？技术参数？
-2. 市场地位 — 市占率？客户质量？订单可见度？认证壁垒？
-3. 盈利能力 — 毛利率？营收规模？增长趋势？
-4. 竞争壁垒 — 客户切换成本？技术代差？替代难度？
+## 按维度整理的专项证据
+{dim_block if dim_blocks else "（无专项证据）"}
 
-分析完成后，指出哪些候选在该环节明显竞争力不足、缺乏参与价值。
+## 任务
 
-## 输出格式
-先写一段简要分析过程，然后输出以下JSON：
+按以下步骤分析:
+
+1. **逐维度比较**: 对每个维度, 评估各候选的表现 (strong/medium/weak/emerging)
+2. **识别差异**: 找出哪些候选在该维度有明显优势或明显短板
+3. **排除判断**: 综合各维度, 哪些候选在该环节明显竞争力不足
+
+## 输出 JSON
 
 {{
   "observations": [
-    {{"code": "688012", "key_advantages": "技术优势", "key_concerns": "估值偏高"}}
+    {{"code": "688012", "key_advantages": "技术优势: 7nm已量产", "key_concerns": "客户集中度高"}}
   ],
   "exclusion_suggestions": [
     {{"code": "xxx", "reason": "在该环节缺乏核心技术/客户基础/规模"}}
   ],
   "comparison_dimensions": [
-    {{"dimension": "技术能力", "leaders": ["688012"], "evidence": "具体事实"}},
-    {{"dimension": "市场地位", "leaders": ["002371"], "evidence": "具体事实"}},
-    {{"dimension": "盈利能力", "leaders": ["688012"], "evidence": "具体事实"}},
-    {{"dimension": "竞争壁垒", "leaders": ["688012"], "evidence": "具体事实"}}
+    {{"dimension": "技术能力", "leaders": ["688012"], "evidence": "具体事实"}}
   ]
 }}
-observations 覆盖所有候选, exclusion_suggestions 只包含应排除的。
-comparison_dimensions 的 leaders 是该维度领先的候选列表。
-JSON 之前的分析过程不会被丢弃，请确保 JSON 部分完整且独立可解析。"""
-        return prompt
+
+规则:
+- observations 覆盖 **全部** 候选
+- exclusion_suggestions 只包含该排除的 (没有就为空数组 [])
+- comparison_dimensions 的 leaders 是该维度领先的候选代码列表
+- 证据必须引用上面的搜索结果或基本面数据，不要编造"""
+        try:
+            text = await self.provider.chat_pro(prompt, max_tokens=8192, timeout=120)
+            result = self.parse_json(text)
+            if isinstance(result, dict) and "observations" in result:
+                return result
+            # JSON 中有 observations 但缺少 exclusion_suggestions
+            if isinstance(result, dict) and "exclusion_suggestions" not in result:
+                result["exclusion_suggestions"] = []
+                return result
+            raise ValueError("Invalid synthesis output")
+        except Exception as first_err:
+            logger.warning(f"[{self.name}] SYNTHESIZE failed ({first_err}), retrying simple...")
+            try:
+                return await self._retry_simple_synthesis(
+                    candidates, node_context, search_data, fundamentals)
+            except Exception:
+                return None
+
+    async def _retry_simple_synthesis(self, candidates, node_context,
+                                       search_data, fundamentals) -> Dict:
+        """SYNTHESIZE 重试: 简化版 prompt，只要求基本比较"""
+        node_name = node_context.get("name", "")
+        cand_lines = [f"- {c.get('name','?')}({c.get('code','?')})" for c in candidates]
+        search_lines = []
+        for code, items in search_data.items():
+            name = next((c.get("name", code) for c in candidates if c.get("code") == code), code)
+            for item in items[:3]:
+                search_lines.append(f"- {name}: {item['snippet'][:150]}")
+        fund_lines = []
+        for code, info in fundamentals.items():
+            fund_lines.append(
+                f"{info.get('name',code)}({code}): PE={info.get('pe_ttm','N/A')} "
+                f"营收={info.get('revenue','N/A')} 市值={info.get('market_capital','N/A')}")
+
+        text2 = await self.provider.chat_pro(f"""比较以下公司在"{node_name}"环节的竞争力。
+
+候选: {chr(10).join(cand_lines)}
+
+搜索证据: {chr(10).join(search_lines[:30]) if search_lines else '无'}
+
+基本面: {chr(10).join(fund_lines) if fund_lines else '无'}
+
+先逐票分析每家公司在技术能力、市场地位、盈利能力和竞争壁垒方面的表现，
+找出差异，然后指出明显竞争力不足的候选。
+最后输出JSON:
+{{"observations": [{{"code":"xxx","key_advantages":"...","key_concerns":"..."}}],
+  "exclusion_suggestions": [{{"code":"xxx","reason":"..."}}]}}""",
+            max_tokens=4096, timeout=90)
+        result2 = self.parse_json(text2)
+        if isinstance(result2, dict) and result2.get("exclusion_suggestions") is not None:
+            logger.info(f"[{self.name}] Retry synthesis succeeded")
+            return result2
+        return None
+
+    @staticmethod
+    def _fallback_rank(candidates: List[Dict]) -> List[Dict]:
+        """LLM 调用失败时的降级排序 (已弃用, 保留向后兼容)"""
+        return [{"code": c.get("code", ""), "name": c.get("name", ""),
+                 "rank": i + 1, "why": "LLM比较失败, 保留原始顺序"}
+                for i, c in enumerate(candidates)]
 
     @staticmethod
     def _fallback_rank(candidates: List[Dict]) -> List[Dict]:

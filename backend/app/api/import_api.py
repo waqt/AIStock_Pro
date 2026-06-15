@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Dict, Any, Optional
 
@@ -63,12 +63,13 @@ async def recognize_trades(payload: Dict[str, Any]):
         raise HTTPException(status_code=500, detail=f"识别引擎异常: {str(e)}")
 
 
-# 4. 文本解析
+# 4. 文本解析 (AI 优先)
 @router.post("/parse-text")
 async def parse_text(payload: TextParsePayload):
+    """AI 智能解析自由文本, payload.parse_type=position|trade"""
     if not payload.text.strip():
         raise HTTPException(status_code=400, detail="未提供文本数据")
-    results = AIImportService.parse_raw_text(payload.text)
+    results = await AIImportService.ai_parse_text(payload.text, payload.parse_type)
     return {"success": True, "data": results, "count": len(results)}
 
 

@@ -1,7 +1,7 @@
 """ROIIC — 增量资本回报率 + 研发资本化调整（产出 adjusted ROIC/ROIIC）"""
 from ..base import FinancialIndicator, register
-from .._roic_core import compute_roic as _compute_roic, compute_roiic as _compute_roiic
-from .._roic_core import adjust_rd_capitalization
+from ._roic_utils import compute_roic as _compute_roic, compute_roiic as _compute_roiic
+from ._roic_utils import adjust_rd_capitalization
 
 
 @register
@@ -12,6 +12,7 @@ class ROIICIndicator(FinancialIndicator):
     judgment = ">30%=新增资本回报率高; 15~30%=较高; 8~15%=中等; 0~8%=偏低; <0=新增资本亏损。ROIIC>ROIC表明边际回报在改善。"
     category = "profitability"
     indicator_type = "prosperity"
+    concepts = ["capital_return_efficiency"]
     applicable_stages = ["growth"]
     params = {"capitalize_rd": False}
     output = [

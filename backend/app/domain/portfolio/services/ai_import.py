@@ -366,11 +366,84 @@ class AIImportService:
         logger.error("[❌] All AI providers failed for trade recognition")
         return []
 
-    # ── Text Parsing ─────────────────────────────
+    # ── AI Text Parsing Prompts ──────────────────
+
+    AI_TEXT_PARSE_POSITION_PROMPT = """你是一个股票持仓数据提取助手。用户粘贴了一段文本，可能来自任何券商APP、表格或记事本。
+
+请智能识别并提取所有持仓记录。文本的格式可能非常多样：
+- 固定宽度对齐的表格
+- CSV/TSV 逗号制表符分隔
+- 券商 APP 的复制粘贴格式
+- 自然语言描述
+
+根据内容语义判断各列含义：
+- 股票代码: 纯数字6位 或 含交易所前缀(如SH600519)
+- 股票名称: 中文简称或全称
+- 持仓数量/股数: 持有的股票数量
+- 成本价/买入均价/持仓成本: 买入时的价格
+- 现价/最新价/市价: 当前价格，如缺失用成本价代替
+
+返回纯 JSON 数组（不要 Markdown 代码块），每条记录：
+{"stock_code":"600519","stock_name":"贵州茅台","shares":100,"cost_price":1750.00,"current_price":1820.50}
+
+重要规则：
+- stock_code 只保留数字部分，去掉 SH/SZ/hk 前缀
+- 如果某字段明显缺失，用 0 代替
+- shares 必须是整数
+- 识别不确信的字段宁可填 0 也不要编造
+- 只返回 JSON 数组，不要多余说明"""
+
+    AI_TEXT_PARSE_TRADE_PROMPT = """你是一个股票交易记录提取助手。用户粘贴了一段文本，可能来自任何券商APP、表格或记事本。
+
+请智能识别并提取所有交易记录。文本的格式可能非常多样：
+- 固定宽度对齐的表格
+- CSV/TSV 逗号制表符分隔
+- 券商 APP 的复制粘贴格式
+- 自然语言描述
+
+根据内容语义判断各列含义：
+- 股票代码: 纯数字6位 或 含交易所前缀
+- 股票名称: 中文简称
+- 交易类型: 买入/卖出/BUY/SELL
+- 数量/股数: 成交数量
+- 成交价/价格: 成交价格
+- 交易日期: 成交日期
+
+返回纯 JSON 数组（不要 Markdown 代码块），每条记录：
+{"stock_code":"600519","stock_name":"贵州茅台","trade_type":"BUY","shares":100,"price":1800.00,"trade_date":"2026-03-15"}
+
+重要规则：
+- stock_code 只保留数字部分，去掉 SH/SZ/hk 前缀
+- trade_type 用 BUY 或 SELL
+- trade_date 格式 YYYY-MM-DD
+- shares 必须是整数
+- 识别不确信的字段宁可填 0 也不要编造
+- 只返回 JSON 数组，不要多余说明"""
+
+    # ── AI Text Parsing ──────────────────────────
+
+    @classmethod
+    async def ai_parse_text(cls, text: str, parse_type: str = "position") -> List[Dict]:
+        """AI 智能解析自由文本 — 用 LLM 理解任意格式的文本列表"""
+        if not text.strip():
+            return []
+
+        prompt_text = cls.AI_TEXT_PARSE_POSITION_PROMPT if parse_type == "position" else cls.AI_TEXT_PARSE_TRADE_PROMPT
+        full_prompt = f"{prompt_text}\n\n## 用户输入的文本\n\n{text}\n\n## JSON 输出"
+
+        result = await cls._call_deepseek_text(full_prompt)
+        if result:
+            logger.info(f"[✅] AI parsed {len(result)} records from text ({parse_type})")
+            return result
+
+        logger.warning("[⚠️] AI text parsing failed, falling back to regex")
+        return cls.parse_raw_text(text)
+
+    # ── Text Parsing (regex fallback) ────────────
 
     @staticmethod
     def parse_raw_text(text: str) -> List[Dict]:
-        """规则解析文本: code stock_name shares [price]"""
+        """规则解析文本: code stock_name shares [price] (兜底用)"""
         results = []
         for line in text.strip().split("\n"):
             line = line.strip()
@@ -396,42 +469,54 @@ class AIImportService:
 
     # ── AI Excel Prompts ─────────────────────────
 
-    AI_EXCEL_POSITION_PROMPT = """你是一个股票持仓数据提取助手。下面是一个 Excel 表格数据，请智能识别并提取所有持仓记录。
+    AI_EXCEL_POSITION_PROMPT = """你是一个股票持仓数据提取专家。下面是一个 Excel 表格数据，列名和格式可能不固定，请智能识别并提取所有持仓记录。
 
-表格列名可能不固定，请根据列名语义判断：
-- 股票代码: 可能是 6位数字代码、或 4-5位数字、或含交易所前缀
-- 股票名称: 公司简称/全称
-- 持仓数量/股数: 持有的股票数量
-- 成本价: 买入均价/持仓成本
-- 现价/市价: 当前价格
+## 列名语义判断指南
+表格列名可能有各种变体，请根据语义而非字面匹配判断：
 
+| 目标字段 | 可能的列名变体 |
+|---------|--------------|
+| 股票代码 | 证券代码、证券编码、股票代码、代码、symbol、stock_code、交易代码、合约编号、投资代码 |
+| 股票名称 | 证券名称、股票简称、股票名称、名称、name、stock_name、证券名称、简称 |
+| 持仓数量 | 持仓数量、持股数量、持有数量、股数、数量、shares、volume、现量、持仓量、期末余额 |
+| 成本价 | 成本价、持仓成本、买入均价、成本、持仓均价、买入成本、cost_price、avg_cost、买入价 |
+| 现价/市价 | 现价、最新价、当前价、市价、current_price、price、收盘价、最新市值价、净值 |
+
+## 返回格式
 返回纯 JSON 数组（不要 Markdown 代码块），每条记录：
 {"stock_code":"600519","stock_name":"贵州茅台","shares":100,"cost_price":1750.00,"current_price":1820.50}
 
-注意：
-- stock_code 只保留数字部分，去掉交易所前缀（如 SH600519 → 600519）
+## 重要规则
+- stock_code 只保留数字部分，去掉 SH/SZ/hk 等交易所前缀
 - 如果某字段明显缺失，用 0 或空字符串代替
-- shares 必须是整数
+- 如果表格有"市值"、"盈亏"等额外列，忽略它们，只提取标准字段
+- shares 必须是整数（如有小数则四舍五入）
 - 只返回 JSON 数组，不要多余说明"""
 
-    AI_EXCEL_TRADE_PROMPT = """你是一个股票交易记录提取助手。下面是一个 Excel 表格数据，请智能识别并提取所有成交记录。
+    AI_EXCEL_TRADE_PROMPT = """你是一个股票交易记录提取专家。下面是一个 Excel 表格数据，列名和格式可能不固定，请智能识别并提取所有成交记录。
 
-表格列名可能不固定，请根据列名语义判断：
-- 股票代码: 6位数字代码
-- 股票名称: 公司简称
-- 交易类型: 买入/卖出/BUY/SELL
-- 数量/股数: 成交数量
-- 成交价/价格: 成交价格
-- 交易日期: 成交日期
+## 列名语义判断指南
+表格列名可能有各种变体，请根据语义而非字面匹配判断：
 
+| 目标字段 | 可能的列名变体 |
+|---------|--------------|
+| 股票代码 | 证券代码、证券编码、股票代码、代码、symbol、stock_code、交易代码、合约编号 |
+| 股票名称 | 证券名称、股票简称、股票名称、名称、name、stock_name、简称 |
+| 交易类型 | 交易类型、买卖、买卖方向、方向、action、trade_type、操作、业务类型、业务名称 |
+| 成交数量 | 成交数量、数量、shares、volume、股数、交易量、成交量、发生数量 |
+| 成交价 | 成交价、成交价格、价格、price、成交均价、交易价格、发生金额/数量 |
+| 交易日期 | 交易日期、日期、成交日期、委托日期、trade_date、date、业务日期、发生日期 |
+
+## 返回格式
 返回纯 JSON 数组（不要 Markdown 代码块），每条记录：
 {"stock_code":"600519","stock_name":"贵州茅台","trade_type":"BUY","shares":100,"price":1800.00,"trade_date":"2026-03-15"}
 
-注意：
-- stock_code 只保留数字部分
-- trade_type 用 BUY 或 SELL
-- trade_date 格式 YYYY-MM-DD
-- shares 必须是整数
+## 重要规则
+- stock_code 只保留数字部分，去掉 SH/SZ/hk 等交易所前缀
+- trade_type 根据内容判断：买入/买/BUY → "BUY"，卖出/卖/SELL → "SELL"
+- trade_date 格式 YYYY-MM-DD，如 "2025-08-15"
+- shares 必须是整数（如有小数则四舍五入）
+- 如果表格有"手续费"、"印花税"、"成交金额"等额外列，忽略它们
 - 只返回 JSON 数组，不要多余说明"""
 
     # ── Excel Parsing ────────────────────────────
@@ -439,7 +524,7 @@ class AIImportService:
     _COLUMN_MAP_POSITION = {
         "stock_code": ["股票代码", "代码", "code", "stock_code", "symbol", "证券代码", "证券编码", "股票编号"],
         "stock_name": ["股票名称", "名称", "name", "stock_name", "证券名称", "股票简称"],
-        "shares": ["持仓数量", "数量", "shares", "volume", "股数", "持仓", "持仓股数", "持有数量", "持股数量"],
+        "shares": ["持仓数量", "数量", "shares", "volume", "股数", "持仓", "持仓股数", "持有数量", "持股数量", "证券数量"],
         "cost_price": ["成本价", "持仓成本", "买入均价", "cost_price", "avg_cost", "成本", "持仓均价", "买入成本"],
         "current_price": ["现价", "最新价", "当前价", "current_price", "price", "市价", "最新市值价", "现价(元)"],
     }
@@ -454,16 +539,91 @@ class AIImportService:
     }
 
     @staticmethod
+    def _guess_columns_from_content(df: 'pd.DataFrame', sheet_type: str = "position") -> dict:
+        """根据数据内容猜测列含义 (列名完全无法匹配时的兜底)"""
+        import pandas as pd
+        guessed = {}
+        for i in range(len(df.columns)):
+            sample = df.iloc[:20, i].dropna().astype(str).tolist()
+            if not sample:
+                continue
+            six_digit = sum(1 for v in sample if re.match(r'^\d{6}$', v.strip()))
+            five_digit = sum(1 for v in sample if re.match(r'^\d{5}$', v.strip()))
+            chinese = sum(1 for v in sample if re.search(r'[一-鿿]', v))
+            decimal = sum(1 for v in sample if re.match(r'^\d+\.\d+$', v.strip()))
+            large = sum(1 for v in sample if re.match(r'^\d+\.?\d*$', v.strip()) and float(v) > 10000)
+            trade_t = sum(1 for v in sample if v.strip().upper() in ('BUY', 'SELL', '买入', '卖出', '买', '卖'))
+            date_m = sum(1 for v in sample if re.match(r'\d{4}[-/]\d{1,2}[-/]\d{1,2}', v.strip()))
+            n = len(sample)
+            if six_digit / n > 0.5 or five_digit / n > 0.5:
+                guessed["stock_code"] = i
+            elif chinese / n > 0.6 and sum(1 for v in sample if re.match(r'^\d+\.?\d*$', v.strip())) / n < 0.3:
+                guessed["stock_name"] = guessed.get("stock_name", i)
+            elif date_m / n > 0.5:
+                guessed["trade_date"] = i
+            elif trade_t / n > 0.3:
+                guessed["trade_type"] = i
+            elif large / n > 0.5:
+                guessed["shares"] = i
+            elif decimal / n > 0.5:
+                if "cost_price" not in guessed and sheet_type == "position":
+                    guessed["cost_price"] = i
+                elif "current_price" not in guessed and sheet_type == "position":
+                    guessed["current_price"] = i
+                elif "price" not in guessed:
+                    guessed["price"] = i
+        # 列冲突处理: 同一列被映射到两个字段时，保留更重要的
+        rev = {}
+        for k, v in list(guessed.items()):
+            if v in rev:
+                prev_k = rev[v]
+                if k in ("stock_code", "shares"):
+                    guessed.pop(prev_k)
+                    rev[v] = k
+                else:
+                    guessed.pop(k)
+            else:
+                rev[v] = k
+        return guessed
+
+    @staticmethod
     def _read_excel_bytes(file_bytes: bytes, sheet_name=0):
-        """从 BytesIO 读取 Excel, 依次尝试 openpyxl/xlrd/calamine 引擎"""
+        """从 BytesIO 读取 Excel, 依次尝试 openpyxl/xlrd/calamine 引擎, 最后尝试 TSV/CSV 回退"""
         import pandas as pd
         engines = ["openpyxl", "xlrd", "calamine", None]
         last_err = None
         for eng in engines:
             try:
-                return pd.read_excel(io.BytesIO(file_bytes), engine=eng, sheet_name=sheet_name)
+                df = pd.read_excel(io.BytesIO(file_bytes), engine=eng, sheet_name=sheet_name, dtype=str)
+                if df is not None and not df.empty:
+                    return df
             except Exception as e:
                 last_err = e
+                continue
+        # 如果默认 sheet 失败, 尝试其他 sheet
+        try:
+            xls = pd.ExcelFile(io.BytesIO(file_bytes))
+            for s in xls.sheet_names:
+                for eng in engines:
+                    try:
+                        df = pd.read_excel(io.BytesIO(file_bytes), engine=eng, sheet_name=s, dtype=str)
+                        if df is not None and not df.empty and len(df.columns) >= 3:
+                            return df
+                    except Exception:
+                        continue
+        except Exception:
+            pass
+        # 最后尝试作为 TSV/CSV 读取 (券商经常导出伪 .xls 文件, 实际上是 TSV)
+        for sep_name, sep in [("TSV", "\t"), ("CSV", ","), ("空格", r"\s+")]:
+            try:
+                df = pd.read_csv(io.BytesIO(file_bytes), sep=sep, encoding="gbk",
+                                 dtype=str, engine="python", on_bad_lines="skip")
+                if df is not None and not df.empty and len(df.columns) >= 3:
+                    # 清理 Excel 公式: ="002409" → 002409
+                    for col in df.columns:
+                        df[col] = df[col].astype(str).str.replace(r'^="|"$', '', regex=True)
+                    return df
+            except Exception:
                 continue
         raise last_err or ValueError("无法解析 Excel 文件，请确认文件格式为 .xlsx 或 .xls")
 
@@ -502,7 +662,13 @@ class AIImportService:
 
         if "stock_code" not in header:
             logger.warning(f"[Excel] No stock_code column found. Columns: {list(df.columns)}")
-            return []  # 找不到股票代码列则返回空
+            # 内容猜测: 如果列名完全无法匹配，尝试根据数据内容猜列
+            guessed = cls._guess_columns_from_content(df, sheet_type)
+            if guessed and "stock_code" in guessed:
+                header = guessed
+                logger.info(f"[Excel] Content-based column guess succeeded: {header}")
+            else:
+                return []  # 确实找不到
 
         results = []
         for _, row in df.iterrows():
@@ -533,36 +699,139 @@ class AIImportService:
 
     @classmethod
     async def ai_parse_excel(cls, file_bytes: bytes, sheet_type: str = "position") -> List[Dict]:
-        """AI 智能解析 Excel — 用 LLM 理解任意格式的表格, 返回结构化数据"""
+        """AI 智能解析 Excel — 三级策略: AI → 列名匹配 → 内容猜测"""
         import pandas as pd
         df = cls._read_excel_bytes(file_bytes)
         if df.empty or len(df.columns) == 0:
             return []
 
-        # 转成文本表格 (前 50 行 + 列名)
-        rows_out = []
-        rows_out.append(" | ".join(str(c) for c in df.columns))
-        rows_out.append(" | ".join(["---"] * len(df.columns)))
-        for _, row in df.head(50).iterrows():
-            vals = []
-            for v in row:
-                if pd.isna(v):
-                    vals.append("")
-                else:
-                    vals.append(str(v))
-            rows_out.append(" | ".join(vals))
-        table_text = "\n".join(rows_out)
-
-        prompt_text = cls.AI_EXCEL_POSITION_PROMPT if sheet_type == "position" else cls.AI_EXCEL_TRADE_PROMPT
-        full_prompt = f"{prompt_text}\n\n## 表格数据\n\n{table_text}"
-
-        result = await cls._call_deepseek_text(full_prompt)
+        # ── 三级策略: AI → 列名匹配 → 内容猜测 ──
+        result = None
+        result = await cls._ai_excel_parse(df, sheet_type)
         if result:
             logger.info(f"[✅] AI parsed {len(result)} records from Excel ({sheet_type})")
+        else:
+            logger.warning("[⚠️] AI Excel parsing empty, trying column mapping...")
+            result = cls.parse_excel(file_bytes, "fallback.xlsx", sheet_type)
+            if result:
+                logger.info(f"[✅] Column mapping parsed {len(result)} records from Excel")
+            else:
+                logger.warning("[⚠️] Column mapping empty, trying content-based guess...")
+                guessed = cls._guess_columns_from_content(df, sheet_type)
+                if guessed and "stock_code" in guessed:
+                    result = cls._apply_column_guess(df, guessed, sheet_type)
+                    if result:
+                        logger.info(f"[✅] Content-based guess parsed {len(result)} records")
+
+        if not result:
+            logger.error("[❌] All Excel parsing strategies failed")
+            return []
+
+        # 统一后处理: stock_code 规范化
+        for item in result:
+            if "stock_code" in item:
+                item["stock_code"] = cls._normalize_code(item["stock_code"])
+        return result
+
+    @classmethod
+    async def _ai_excel_parse(cls, df: 'pd.DataFrame', sheet_type: str) -> List[Dict]:
+        """用 AI 解析 DataFrame, 转 CSV 格式发送给 LLM"""
+        import pandas as pd
+        # 用 CSV 格式更紧凑, LLM 更容易理解行列关系
+        # 只发前 20 行 + 列名
+        sample = df.head(20).copy()
+        # 将所有列转为字符串, 处理 NaN
+        for col in sample.columns:
+            sample[col] = sample[col].apply(lambda x: "" if pd.isna(x) else str(x))
+        csv_lines = [",".join(str(c) for c in sample.columns)]
+        for _, row in sample.iterrows():
+            csv_lines.append(",".join(row.values))
+        csv_text = "\n".join(csv_lines)
+
+        prompt_text = cls.AI_EXCEL_POSITION_PROMPT if sheet_type == "position" else cls.AI_EXCEL_TRADE_PROMPT
+        full_prompt = f"{prompt_text}\n\n## CSV 表格数据 (列名行 + 数据行)\n\n{csv_text}\n\n## JSON 输出"
+
+        # 用单独的超时和 max_tokens 更大的调用
+        import time
+        t0 = time.time()
+        result = await cls._call_deepseek_text_long(full_prompt, max_tokens=4096, timeout=120)
+        elapsed = time.time() - t0
+
+        if result:
+            logger.info(f"[AI Excel] Parsed {len(result)} records in {elapsed:.1f}s")
             return result
 
-        logger.warning("[⚠️] AI Excel parsing failed, falling back to column mapping")
-        return cls.parse_excel(file_bytes, "ai_fallback.xlsx", sheet_type)
+        logger.warning(f"[AI Excel] AI returned empty ({elapsed:.1f}s)")
+        return []
+
+    @classmethod
+    async def _call_deepseek_text_long(cls, prompt: str, max_tokens: int = 4096, timeout: int = 120) -> Optional[List[Dict]]:
+        """DeepSeek Flash 文本模式 — 更长超时和 max_tokens, 专用于 Excel 解析"""
+        if not settings.DEEPSEEK_API_KEY:
+            return None
+        model = settings.DEEPSEEK_FLASH_MODEL
+        base = settings.DEEPSEEK_BASE_URL.rstrip("/")
+        headers = {"Authorization": f"Bearer {settings.DEEPSEEK_API_KEY}", "Content-Type": "application/json"}
+
+        if "anthropic" in base:
+            url = f"{base}/messages"
+            body = {
+                "model": model, "max_tokens": max_tokens,
+                "messages": [{"role": "user", "content": prompt}]
+            }
+        else:
+            url = f"{base}/chat/completions"
+            body = {
+                "model": model,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.05, "max_tokens": max_tokens
+            }
+
+        async with httpx.AsyncClient(proxy=None, timeout=timeout) as client:
+            resp = await client.post(url, json=body, headers=headers)
+            if resp.status_code != 200:
+                logger.warning(f"[⚠️] DeepSeek API error {resp.status_code}: {resp.text[:200]}")
+                return None
+            data = resp.json()
+            try:
+                if "anthropic" in base:
+                    text = "".join(b.get("text", "") for b in data["content"] if b["type"] == "text")
+                else:
+                    text = data["choices"][0]["message"]["content"]
+                return cls._extract_json(text)
+            except (KeyError, IndexError, TypeError) as e:
+                logger.warning(f"[⚠️] DeepSeek text parse error: {e}")
+                return None
+
+    @classmethod
+    def _apply_column_guess(cls, df: 'pd.DataFrame', header: dict, sheet_type: str) -> List[Dict]:
+        """用猜测的列映射提取数据"""
+        import pandas as pd
+        results = []
+        for _, row in df.iterrows():
+            try:
+                item = {}
+                for field, idx in header.items():
+                    val = row.iloc[idx]
+                    if pd.isna(val):
+                        val = 0 if field in ("shares", "cost_price", "current_price", "price") else ""
+                    item[field] = val
+                item["stock_code"] = cls._normalize_code(str(item.get("stock_code", "")))
+                item["stock_name"] = str(item.get("stock_name", ""))
+                item["shares"] = int(float(item.get("shares", 0))) if item.get("shares") else 0
+                if sheet_type == "position":
+                    item["cost_price"] = float(item.get("cost_price", 0)) if item.get("cost_price") else 0.0
+                    item["current_price"] = float(item.get("current_price", 0)) if item.get("current_price") else item.get("cost_price", 0.0)
+                else:
+                    item["price"] = float(item.get("price", 0)) if item.get("price") else 0.0
+                    tt = str(item.get("trade_type", "")).upper()
+                    item["trade_type"] = "BUY" if "买" in tt or "BUY" in tt else "SELL"
+                    if item.get("trade_date"):
+                        item["trade_date"] = str(item["trade_date"])[:10]
+                results.append(item)
+            except Exception as e:
+                logger.warning(f"[⚠️] Excel row parse error: {e}")
+        return results
 
     # ── Stock Code Normalization ─────────────────
 

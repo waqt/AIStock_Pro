@@ -218,7 +218,7 @@ window.HealthCheck = {
         }
     },
 
-    /** ═══ 回车触发 ═══ */
+    /** ═══ 回车触发 + 联想搜索 ═══ */
     init: function() {
         var input = document.getElementById('hc-code');
         if (input) {
@@ -226,6 +226,7 @@ window.HealthCheck = {
                 if (e.key === 'Enter') HealthCheck.run();
             });
         }
+        StockSearch.attach('hc-code');
     }
 };
 

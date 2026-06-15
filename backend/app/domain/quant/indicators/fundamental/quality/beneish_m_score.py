@@ -12,6 +12,7 @@ class BeneishMScoreIndicator(FinancialIndicator):
     category = "quality"
     indicator_type = "both"
     applicable_stages = ["growth", "mature"]
+    concepts = ["moat_stability"]
     params = {}
     output = ["m_score", "m_score_interpretation", "m_score_components"]
     text_output = ["m_score_interpretation", "m_score_components"]

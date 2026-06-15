@@ -5,7 +5,7 @@
 当前作为向后兼容的透传层保留。
 """
 import warnings
-from app.domain.quant.indicators.fundamental._roic_core import (
+from app.domain.quant.indicators.fundamental.profitability._roic_utils import (
     compute_roic,
     compute_roiic,
     compute_roe_from_financials,
@@ -16,7 +16,7 @@ from app.domain.quant.indicators.fundamental._roic_core import (
 
 warnings.warn(
     "framework/finance/roiic.py is deprecated. "
-    "Use domain/quant/indicators/fundamental/_roic_core instead.",
+    "Use domain/quant/indicators/fundamental/profitability/_roic_utils instead.",
     DeprecationWarning, stacklevel=2,
 )
 

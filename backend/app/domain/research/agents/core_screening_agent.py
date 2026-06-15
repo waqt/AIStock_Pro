@@ -29,6 +29,16 @@ class CoreScreeningAgent(ResearchAgent):
     def __init__(self, provider=None):
         super().__init__(provider=provider, data_loader=data_loader)
         self.name = "CoreScreeningAgent"
+        self._search_cache = {}  # 搜索缓存: {query: results}, 同 run 不重复搜
+
+    async def _cached_search_web(self, query: str, num: int = 5) -> list:
+        """带缓存的 search_web，同 run 内相同 query 只搜一次"""
+        key = query.strip().lower()
+        if key in self._search_cache:
+            return self._search_cache[key]
+        raw = await self.data_loader.search_web(query, num=num)
+        self._search_cache[key] = raw
+        return raw
 
     # ═══ 工具 ═══════════════════════════════════════
 
@@ -39,22 +49,6 @@ class CoreScreeningAgent(ResearchAgent):
         text = re.sub(r'<[^>]+>', '', text)
         text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', text)
         return text[:250]
-
-    async def _search_adaptive(self, chains: List[List[str]], num: int = 4, trace=None) -> List[Dict]:
-        all_data = []
-        for chain in chains:
-            items = []
-            for q in chain:
-                results = await self.data_loader.search_web(q, num=num)
-                items = []
-                for r in results:
-                    snippet = self._clean_snippet(r.get("snippet", ""))
-                    if snippet:
-                        items.append({"title": r.get("title", ""), "snippet": snippet})
-                if trace: trace.record_search(q, items)
-                if items: break
-            all_data.append({"query": chain[0] if not items else q, "results": items})
-        return all_data
 
     # ═══ Phase 1: 线索汇总 ═════════════════════════
 
@@ -149,10 +143,16 @@ class CoreScreeningAgent(ResearchAgent):
                     "mapping_type": q.get("mapping_type", "direct"),
                 })
 
-        # ── 源4: 人力资本线索 (对低国产化率节点) ──
+        # ── 源4: 人力资本线索 (对低国产化率且无已有标的的节点) ──
         for node in step3.get("supply_chain_map", []):
             subst = node.get("competitive_landscape", {}).get("china_substitution_rate", "")
             if subst in ("below_5pct", "5_20pct"):
+                # 如果该节点已有 a_stock_mapping (直接标的)，不再搜人力资本
+                has_mapping = any(
+                    sub.get("a_stock_mapping") for sub in node.get("sub_processes", [])
+                )
+                if has_mapping:
+                    continue
                 leaders = node.get("competitive_landscape", {}).get("global_leaders", [])
                 node_name = node.get("name", "")
                 for leader in leaders[:2]:
@@ -165,6 +165,62 @@ class CoreScreeningAgent(ResearchAgent):
 
         logger.info(f"[{self.name}] Collect: {len(direct)} direct candidates, {len(search_clues)} search clues")
         return {"direct_candidates": direct, "search_clues": search_clues, "seen_codes": seen}
+
+    # ═══ a_stock_mapping 交叉验证 ══════════════════
+
+    async def _crosscheck_a_stock_mapping(self, direct_candidates: List[Dict],
+                                            search_clues: List[Dict]) -> tuple:
+        """验证 a_stock_mapping 标的在数据库中存在。
+
+        Step 3 LLM 产出 a_stock_mapping（股票→产业链节点映射）。
+        此方法做确定性事实核查：如果映射的股票代码在 DB 中不存在，
+        说明可能是 LLM 幻觉，降级为 search_clue 让搜索重新验证。
+
+        纯 DB 查询，不加 LLM 调用。
+        """
+        mapping_candidates = [c for c in direct_candidates if c.get("_source_type") == "a_stock_mapping"]
+        non_mapping = [c for c in direct_candidates if c.get("_source_type") != "a_stock_mapping"]
+
+        if not mapping_candidates:
+            return direct_candidates, search_clues
+
+        codes = [c["code"] for c in mapping_candidates]
+        stock_info = await self.data_loader.load_fundamentals(codes)
+
+        verified = []
+        downgraded = []
+
+        for cand in mapping_candidates:
+            code = cand.get("code", "")
+            info = stock_info.get(code)
+
+            if info and info.get("name"):
+                cand["name"] = info["name"]  # 用 DB 中的正式名称
+                verified.append(cand)
+            else:
+                downgraded.append(cand)
+
+        # 降级的标的转为搜索线索
+        for cand in downgraded:
+            node = cand.get("source_node", "")
+            query = f"A股 {cand.get('name','')} {node} 上市公司"
+            search_clues.append({
+                "_source_type": "asset_search_query",
+                "query": query,
+                "priority": "high",
+                "rationale": f"从a_stock_mapping降级: {node} 代码{cand.get('code','')} 未在DB中找到",
+                "mapping_type": "direct",
+            })
+
+        n_verified = len(verified)
+        n_downgraded = len(downgraded)
+        if n_downgraded:
+            logger.info(f"[{self.name}] a_stock_mapping crosscheck: {n_verified} verified, "
+                        f"{n_downgraded} downgraded to search_clue")
+        elif n_verified:
+            logger.info(f"[{self.name}] a_stock_mapping crosscheck: all {n_verified} verified in DB")
+
+        return non_mapping + verified, search_clues
 
     # ═══ Phase 2: 搜索 ═════════════════════════════
 
@@ -201,14 +257,13 @@ class CoreScreeningAgent(ResearchAgent):
                         f"A股 {foreign_company} 供应商 合作伙伴 供货 上市公司 2026",
                         f"A股 {foreign_company} 竞争对手 国产替代 对标 上市公司 2026",
                         f"{foreign_company} 中国 供应链 合作 A股 供应商 2026",
-                        f"曾在{foreign_company}工作 前员工 创始人 核心团队 A股 公司 2026",
                     ]
                     logger.info(f"[{self.name}] Deep search for '{foreign_company}': {len(deep_queries)} queries")
 
                     all_results = []
                     for dq in deep_queries:
                         try:
-                            raw = await self.data_loader.search_web(dq, num=5)
+                            raw = await self._cached_search_web(dq, num=5)
                             for r in raw:
                                 snippet = self._clean_snippet(r.get("snippet", ""))
                                 if snippet:
@@ -237,7 +292,7 @@ class CoreScreeningAgent(ResearchAgent):
                     # ── 标准搜索路径 ──
                     results = []
                     try:
-                        raw = await self.data_loader.search_web(query, num=5)
+                        raw = await self._cached_search_web(query, num=5)
                         for r in raw:
                             snippet = self._clean_snippet(r.get("snippet", ""))
                             if snippet:
@@ -348,46 +403,59 @@ class CoreScreeningAgent(ResearchAgent):
             context = c.get("rationale", "") or c.get("source_node", "") or c.get("source", "")
             prompt_lines.append(f"[{i}] query={q} | priority={priority} | context={context}")
 
-        prompt = f"""你是一个搜索线索去重专家。以下是从产业链分析中提取的 A 股搜索线索，请找出语义重复的线索并去重。
+        prompt = f"""你是一个A股产业链搜索策略师。以下是从产业链分析中提取的搜索线索，
+每条线索代表一个寻找A股上市公司的搜索方向。
 
-语义重复的定义：两条搜索查询虽然用词不同，但搜索意图相同或高度重叠。
-例如 "A股 MLCC 陶瓷粉体 龙头 2026" 和 "高纯钛酸钡 供应商 上市公司" 都指向 MLCC 上游材料环节，应视为重复。
+你的任务是将这些搜索条件整合为**最少但覆盖最全**的搜索查询集合。
+
+## 背景
+我们正在分析"{industry}"产业链，需要找到以下细分环节中的A股上市公司。
+每条线索就是一个搜索条件，用于在互联网上找到相关公司。
 
 每条线索格式: [序号] query=搜索词 | priority=优先级 | context=来源上下文
 
 线索列表:
 {chr(10).join(prompt_lines)}
 
-去重要求:
-1. 两条 query 搜索意图相同 → 视为重复，保留 priority 更高的那条
-2. priority 相同时，保留 query 信息更完整、更具体的那条
-3. 主题不同（如"AI芯片" vs "MLCC材料"）即使部分关键词重叠也不去重
-4. 不确定时宁可多留，不要误删
+## 整合原则
+1. 两条线索指向同一产业环节（如同为"行星滚柱丝杠"的不同角度）
+	   → 合并为一条更精准的查询，合并时保留关键信息
+2. 两条线索指向不同细分环节（如"丝杠"vs"磨床设备"）
+	   → 各自保留，因为需要覆盖独立子赛道
+3. 合并后的每条查询应该有清晰的投资含义，覆盖一个有独立意义的细分方向
+4. 不确定是否合并时，宁可分成两条，不要漏掉细分环节
+5. 不要删除高优先级线索，优先保留包含具体公司名/产品名的查询
 
-输出 JSON:
-{{"dedup_map": {{"保留的序号": ["被合并的序号1", "被合并的序号2", ...]}}, "reasoning": "简要说明主要合并判断"}}
+## 输出格式
+{{"integrated_queries": [
+	  {{"query": "整合后的搜索查询", "kept": [0, 1], "merged": [2, 3], "rationale": "合并原因"}},
+	  ...
+	]}}
 只输出 JSON。"""
 
         try:
             text = await self.provider.chat_flash(prompt, max_tokens=1024, timeout=30)
             parsed = self.parse_json(text)
-            dedup_map = {}
+            integrated = []
             if isinstance(parsed, dict):
-                dedup_map = parsed.get("dedup_map", {})
+                integrated = parsed.get("integrated_queries", [])
 
             kept_indices = set()
             removed_indices = set()
-            for keep_str, remove_list in dedup_map.items():
-                try:
-                    keep_idx = int(keep_str)
-                    kept_indices.add(keep_idx)
-                    for r in (remove_list or []):
-                        removed_indices.add(int(r))
-                except (ValueError, TypeError):
-                    continue
+            for entry in integrated:
+                for k in (entry.get("kept") or []):
+                    try:
+                        kept_indices.add(int(k))
+                    except (ValueError, TypeError):
+                        pass
+                for m in (entry.get("merged") or []):
+                    try:
+                        removed_indices.add(int(m))
+                    except (ValueError, TypeError):
+                        pass
 
             # LLM 输出异常时全保留
-            if not kept_indices or len(removed_indices) >= len(asset_queries):
+            if not integrated or not kept_indices or len(removed_indices) >= len(asset_queries):
                 logger.warning(f"[CoreScreeningAgent] LLM dedup abnormal, keeping all {len(asset_queries)}")
                 final = non_asset + asset_queries
                 return final
@@ -397,7 +465,7 @@ class CoreScreeningAgent(ResearchAgent):
                 if i not in removed_indices:
                     final.append(c)
 
-            logger.info(f"[CoreScreeningAgent] Dedup clues: {len(search_clues)} -> {len(final)} (LLM)")
+            logger.info(f"[CoreScreeningAgent] Dedup clues: {len(search_clues)} -> {len(final)} (LLM, {len(integrated)} groups)")
             return final
 
         except Exception as e:
@@ -469,7 +537,7 @@ class CoreScreeningAgent(ResearchAgent):
         if trace:
             trace.record_llm(f"Phase3_synthesis_{code}", str(analysis)[:200], model="deepseek-v4-pro")
 
-        # ═══ 解析输出 (兼容旧 schema) ═════════════════
+        # ═══ 解析输出 (兼容旧 schema, 含 0 维度降级) ══
         lifecycle_stage = "startup"
         category = "future_strong"
         if isinstance(analysis, dict):
@@ -479,9 +547,15 @@ class CoreScreeningAgent(ResearchAgent):
             if raw_stage in valid_stages:
                 lifecycle_stage = raw_stage
 
-            cat = (analysis.get("category_suggestion") or "").lower().strip()
-            if cat in ("current_strong", "future_strong", "watchlist"):
-                category = cat
+            dims = analysis.get("analysis_dimensions", [])
+            if not dims:
+                # ★ 0 维度降级: 证据不足以做出判断, 放入观察名单
+                category = "watchlist"
+                logger.warning(f"[{self.name}] {code}: 0 dims -> downgraded to watchlist")
+            else:
+                cat = (analysis.get("category_suggestion") or "").lower().strip()
+                if cat in ("current_strong", "future_strong", "watchlist"):
+                    category = cat
 
         result_dict = {
             "code": code,
@@ -589,25 +663,27 @@ class CoreScreeningAgent(ResearchAgent):
         search_results = await asyncio.gather(*search_tasks, return_exceptions=True) if search_tasks else []
         val_result = await val_future if val_future else None
 
-        # 按概念分组整理证据
+        # 按概念分组整理证据 (仅财务数据按概念分组, 搜索不分组)
         for i, inv in enumerate(plan.get("investigations", [])):
             concept = inv.get("concept", f"dim_{i}")
-            concept_data = {"financial": None, "search": []}
+            concept_data = {"financial": None}
 
             if i < len(fin_results) and not isinstance(fin_results[i], Exception):
                 concept_data["financial"] = _truncate_dict(fin_results[i])
 
-            # 关联搜索结果 (按关键词匹配)
-            query_keywords = inv.get("rationale", "")[:20]
-            for sr in search_results:
-                if isinstance(sr, Exception):
-                    continue
-                if isinstance(sr, list):
-                    for item in sr:
-                        if isinstance(item, dict) and query_keywords in str(item):
-                            concept_data["search"].append(item.get("snippet", "")[:200])
-
             evidence[concept] = concept_data
+
+        # 所有搜索结果汇总 (不按概念分组 — 之前的关键词子串匹配从未工作)
+        search_all = []
+        for sr in search_results:
+            if isinstance(sr, Exception):
+                continue
+            if isinstance(sr, list):
+                for item in sr:
+                    if isinstance(item, dict) and item.get("snippet"):
+                        search_all.append(item["snippet"][:200])
+        if search_all:
+            evidence["search_all"] = search_all[:15]  # 最多15条
 
         # 估值结果
         if val_result and not isinstance(val_result, Exception):
@@ -619,20 +695,28 @@ class CoreScreeningAgent(ResearchAgent):
 
     async def _synthesize_verdict(self, name: str, code: str, industry: str,
                                    plan: Dict, evidence: Dict) -> Dict:
-        """Phase 3: LLM 基于证据做综合研判"""
+        """Phase 3: LLM 基于证据做综合研判 (带1次重试, 应对 analysis_dimensions 缺失)"""
         from app.domain.research.agents.research_tools import build_synthesis_prompt
         prompt = build_synthesis_prompt(name, code, industry, plan, evidence)
-        try:
-            text = await self.provider.chat_pro(prompt, max_tokens=4096, timeout=180)
-            result = self.parse_json(text)
-            if isinstance(result, dict) and result.get("analysis_dimensions"):
-                logger.info(f"[{self.name}] Synthesis {code}: {len(result['analysis_dimensions'])} dims")
-                return result
-            logger.warning(f"[{self.name}] Synthesis {code}: missing analysis_dimensions")
-            return {}
-        except Exception as e:
-            logger.warning(f"[{self.name}] Synthesis {code} failed: {e}")
-            return {}
+
+        for attempt in range(2):
+            try:
+                text = await self.provider.chat_pro(prompt, max_tokens=4096, timeout=180)
+                result = self.parse_json(text)
+                if isinstance(result, dict) and result.get("analysis_dimensions"):
+                    logger.info(f"[{self.name}] Synthesis {code}: "
+                                f"{len(result['analysis_dimensions'])} dims (attempt {attempt+1})")
+                    return result
+                logger.warning(f"[{self.name}] Synthesis {code}: "
+                               f"missing analysis_dimensions (attempt {attempt+1})")
+                if attempt == 0:
+                    prompt += ("\n\n**警告: 上次输出缺少 analysis_dimensions 数组。"
+                               "必须输出至少 1 个 analysis_dimensions 维度。"
+                               "证据不足时也需输出 1 个维度并在 evidence 中注明'证据有限'。**\n")
+            except Exception as e:
+                logger.warning(f"[{self.name}] Synthesis {code} failed (attempt {attempt+1}): {e}")
+
+        return {}
 
     def _default_plan(self, code: str) -> Dict:
         """Plan 失败时的兜底计划 — 保底查一次财务数据"""
@@ -661,54 +745,7 @@ class CoreScreeningAgent(ResearchAgent):
             lines.append(f"- {step}: {role}")
         return "\n".join(lines)
 
-    # ═══ 多轮淘汰赛 (4+家同源比较) ═════════════════
-
-    async def _pairwise_tournament(self, comparator: "CandidateComparator",
-                                    candidates: List[Dict], group: Dict) -> Dict:
-        """4+候选时使用多轮淘汰, 避免一次 LLM 比较丢失所有信息。
-
-        赛制: 配对初赛 (pairwise) → 胜者组决赛
-        每轮只比 2 家, LLM 负载更轻, JSON 更小, 成功率更高。
-        """
-        cands = list(candidates)
-        node_name = group.get("node", "")
-        node_context = group.get("node_context", {})
-
-        # 第1轮: 配对赛
-        pairs = []
-        i = 0
-        while i < len(cands):
-            a = cands[i]
-            if i + 1 < len(cands):
-                pairs.append((a, cands[i + 1]))
-            else:
-                pairs.append((a, None))  # 轮空
-            i += 2
-
-        winners = []
-        for a, b in pairs:
-            if b is None:
-                winners.append(a)
-                continue
-            pair_result = await comparator.compare_within_source([a, b], node_context)
-            ranked = pair_result.get("ranked", [])
-            if ranked:
-                winners.append(next((c for c in [a, b] if c.get("code") == ranked[0].get("code")), a))
-            else:
-                winners.append(a)
-
-        # 第2轮: 决赛 (胜者组排序)
-        if len(winners) <= 3:
-            final_result = await comparator.compare_within_source(winners, node_context)
-        else:
-            # 超过3个胜者再打一轮
-            final_result = await self._pairwise_tournament(comparator, winners, group)
-
-        final_result["source"] = node_name
-        final_result["_tournament"] = True
-        return final_result
-
-    # ═══ Phase A: LLM 快速筛选 ═════════════════
+    # ═══ Phase 3a-1: LLM 快速预筛选 ═══════════════
 
     async def _llm_screen_group(self, candidates: List[Dict],
                                  node_context: Dict) -> List[Dict]:
@@ -764,15 +801,6 @@ class CoreScreeningAgent(ResearchAgent):
             return {"agent": self.name, "error": "No AI provider"}
 
         industry = ctx.get("industry", "未指定")
-        step2_only = ctx.get("step2_only", False)
-        step2_output = ctx.get("step2_output", {})
-
-        # ── Path A: Step 2 only (DEPRECATED V5.16, will be removed in V6) ──
-        if step2_only:
-            logger.warning(f"[{self.name}] Path A (step2_only) is DEPRECATED, will be removed in V6")
-            candidates = await self._aggregate_candidates_from_step2(step2_output, trace=trace)
-            return await self._legacy_step2_flow(candidates, industry, ctx, trace)
-
         step3 = ctx.get("step3_output", ctx.get("supply_chain_map_ctx", {}))
         step4 = ctx.get("step4_output", {})
         step5 = ctx.get("step5_output", {})
@@ -781,6 +809,11 @@ class CoreScreeningAgent(ResearchAgent):
 
         # ═══ Phase 1: 线索汇总 ═════════════════════
         clues = await self._collect_all_clues(industry, step3, step4, step5)
+
+        # ★ a_stock_mapping 交叉验证: 检查映射的股票是否存在于 DB
+        clues["direct_candidates"], clues["search_clues"] = await self._crosscheck_a_stock_mapping(
+            clues["direct_candidates"], clues["search_clues"]
+        )
 
         # ═══ Phase 2: 搜索 ═══════════════════════════
         # 取前12条 search_clues (按优先级: a_share_equivalent > asset_search_query > human_capital > tag)
@@ -813,7 +846,7 @@ class CoreScreeningAgent(ResearchAgent):
         from app.domain.research.services.screening_gate import hard_filter
 
         codes = [c["code"] for c in deduped[:20]]
-        stock_info_map = await data_loader.load_fundamentals(codes) if codes else {}
+        stock_info_map = await self.data_loader.load_fundamentals(codes) if codes else {}
         cycle_position = (step3 if isinstance(step3, dict) else {}).get("cycle_position", "")
 
         # 硬过滤器: 只排除 ST / 低流动性
@@ -822,9 +855,9 @@ class CoreScreeningAgent(ResearchAgent):
             logger.warning(f"[{self.name}] All {len(deduped)} candidates filtered by hard_filter")
             return self._empty_result(industry, filtered=filtered, cycle_position=cycle_position)
 
-        # ═══ Phase 3a: 分组 → Phase A筛选 → Phase B比较 ════
+        # ═══ Phase 3a: 分组 → 3a-1预筛选 → 3a-2同源比较 ════
         from app.domain.research.agents.candidate_comparator import CandidateComparator
-        comparator = CandidateComparator(provider=self.provider)
+        comparator = CandidateComparator(provider=self.provider, search_cache=self._search_cache)
         groups = self._group_by_source(passed, step3)
         all_comparisons = []
         to_verify = []  # (candidate, is_winner, eliminated_by, eliminated_reason)
@@ -972,96 +1005,6 @@ class CoreScreeningAgent(ResearchAgent):
             "filter_log": filtered,
         }
 
-    # ═══ 旧流程 (Path A: step2_only) ═══════════════
-
-    async def _legacy_step2_flow(self, candidates, industry, ctx, trace) -> Dict:
-        """Path A 简化流程: 无比较排名 (DEPRECATED V5.16, will be removed in V6)"""
-        if not candidates:
-            return self._empty_result(industry)
-
-        from app.domain.research.services.screening_gate import hard_filter
-        from app.framework.finance.financial_data_view import build_financial_data_view
-        from app.framework.finance.stage_classifier import StageClassifier
-        cycle_position = ""
-
-        codes = [c["code"] for c in candidates[:20]]
-        stock_info_map = await data_loader.load_fundamentals(codes) if codes else {}
-        fin_map = {}
-        from app.domain.research.services.financial_data_loader import load_financials as _load_fin
-        for code in codes[:10]:
-            try:
-                fin_data = await _load_fin(code, periods=8, mode="auto")
-                if fin_data and fin_data.get("quarters"):
-                    fin_map[code] = fin_data
-            except Exception:
-                pass
-
-        # 硬过滤器 + LLM 生命周期分类
-        passed, filtered = hard_filter(candidates, stock_info_map)
-        if not passed:
-            return self._empty_result(industry, filtered=filtered)
-
-        classifier = StageClassifier(provider=self.provider)
-        stage_map = {}
-        for c in passed:
-            code = c.get("code", "")
-            quarters = fin_map.get(code, {}).get("quarters", [])
-            if quarters:
-                try:
-                    fv = build_financial_data_view(quarters)
-                    result = await classifier.classify(fv, {
-                        "stock_code": code,
-                        "stock_name": c.get("name", ""),
-                        "industry": industry,
-                    })
-                    stage_map[code] = result.get("stage", "startup")
-                except Exception:
-                    stage_map[code] = "startup"
-            else:
-                stage_map[code] = "startup"
-
-        from app.domain.research.services.stock_auditor import StockAuditor
-        auditor = StockAuditor(provider=self.provider)
-        for c in passed[:10]:
-            code = c["code"]
-            try:
-                audit = await auditor.audit_summary(code)
-                if audit and audit.get("financial_verdict"):
-                    c["audit"] = {"verdict": audit["financial_verdict"], "score": audit.get("financial_score", 0)}
-            except Exception:
-                pass
-
-            search_data = await self._search_adaptive([[
-                f"{c.get('name','')} {code} 行业地位 市场份额 竞争壁垒 护城河",
-                f"{c.get('name','')} {code} 定价权 毛利率 客户 认证",
-            ]], num=3, trace=trace)
-            prompt = self._build_moat_prompt(c.get("name", code), code, industry, c.get("source", []), search_data)
-            try:
-                text = await self.provider.chat_flash(prompt, max_tokens=4096, timeout=90)
-                if trace: trace.record_llm(prompt, text, model="deepseek-v4-flash")
-                result = self.parse_json(text)
-                if isinstance(result, dict) and result.get("moat_profile"):
-                    c.update(result)
-            except Exception:
-                pass
-
-        future_strong = [c for c in passed if c.get("category") in ("future_strong", "current_strong")]
-        watchlist_out = [c for c in passed if c.get("category") == "watchlist"]
-        logger.info(f"[{self.name}] Step2-only done: {len(future_strong)} future, {len(watchlist_out)} watchlist")
-
-        return {
-            "agent": self.name,
-            "confidence": "medium",
-            "lifecycle_gate": {"cycle_position": "", "gate_mode": "auto"},
-            "candidate_pool": {"total_collected": len(candidates), "after_prescreen": len(passed), "ranked": len(future_strong)},
-            "ranked_stocks": [],
-            "future_strong_candidates": future_strong,
-            "watchlist": watchlist_out,
-            "comparisons": [],
-            "source_detail": {"step2_only": len(candidates)},
-            "step3_backfill": {},
-            "filter_log": filtered,
-        }
 
     # ═══ 旧候选聚合 (标记 deprecated, 对外兼容) ═══
 
@@ -1073,278 +1016,6 @@ class CoreScreeningAgent(ResearchAgent):
         result = clues["direct_candidates"] + search_cands
         seen = set(clues["seen_codes"])
         return [c for c in result if c.get("code") and c["code"] not in seen or seen.add(c["code"])]
-
-    async def _aggregate_candidates_from_step2(self, step2_output: Dict, trace=None) -> List[Dict]:
-        """Path A: 从 Step 2 的 transmission_order 节点直接挖掘标的 (DEPRECATED V5.16, will be removed in V6)"""
-        propagation = step2_output.get("propagation", {}) if isinstance(step2_output, dict) else {}
-        transmission_order = propagation.get("transmission_order", [])
-        node_names = [node.get("node", "") for node in transmission_order if node.get("node", "")]
-
-        tags = list(set(node_names))
-        if not tags:
-            logger.warning(f"[{self.name}] step2_only: no transmission_order nodes found")
-            return []
-
-        logger.info(f"[{self.name}] step2_only: extracted {len(tags)} nodes from transmission_order: {tags}")
-        catalysts = [c.get("catalyst", "") for c in (step2_output.get("catalysts", []) or [])[:3]]
-        search_context = " ".join(catalysts) if catalysts else ""
-        search_queries = [f"A股 {' '.join(tags[:3])} 龙头企业 核心标的 2026"]
-        if search_context:
-            search_queries.append(f"A股 {search_context} 龙头股票 上市公司")
-        search_queries.append(f"A股 {' '.join(tags[:2])} 核心卡脖子标的")
-        search_data = await self._search_adaptive([search_queries], num=5, trace=trace)
-        return await self._llm_tag_to_stock_mapping(tags, search_data, " / ".join(tags[:3]), trace=trace)
-
-    async def _llm_tag_to_stock_mapping(self, tags: List[str], search_data: List[Dict],
-                                         industry: str, trace=None) -> List[Dict]:
-        """将 value node tags 通过 LLM 分批映射为具体股票代码 (DEPRECATED V5.16, will be removed in V6)"""
-        if not tags:
-            return []
-
-        batch_size = 8
-        batches = [tags[i:i+batch_size] for i in range(0, len(tags), batch_size)]
-        all_candidates = []
-
-        for batch_idx, tag_batch in enumerate(batches):
-            logger.info(f"[{self.name}] Tag batch {batch_idx + 1}/{len(batches)}: {len(tag_batch)} tags")
-            batch_prompt = f"""找出 {industry} 行业以下价值节点标签对应的 A 股核心标的。
-价值节点标签: {tag_batch}
-搜索参考: {_j(search_data)}
-输出纯JSON数组，每项格式: [{{"code":"600000","name":"公司名","tags":["匹配的标签"]}}]
-最多输出 8 只真正属于这些核心卡脖子节点的标的。
-只输出JSON数组，不要包含其他文字。"""
-
-            batch_result = None
-            for attempt in range(2):
-                try:
-                    text = await self.provider.chat_flash(batch_prompt, max_tokens=2048, timeout=90)
-                    if trace: trace.record_llm(batch_prompt, text, model="deepseek-v4-flash")
-                    if not text or not text.strip():
-                        continue
-                    batch_result = self.parse_json(text)
-                    if batch_result is not None:
-                        break
-                except Exception as e:
-                    logger.warning(f"[{self.name}] Batch {batch_idx + 1} attempt {attempt + 1} failed: {e}")
-
-            raw_list = []
-            if isinstance(batch_result, list):
-                raw_list = batch_result
-            elif isinstance(batch_result, dict):
-                for key in ("core_stocks", "stocks", "candidates", "data", "results", "stock_list", "assets", "all_assets"):
-                    raw_list = batch_result.get(key, [])
-                    if raw_list:
-                        break
-            for r in raw_list:
-                if isinstance(r, dict) and "code" in r and r["code"] not in {c["code"] for c in all_candidates}:
-                    all_candidates.append({
-                        "code": r["code"], "name": r.get("name", r["code"]),
-                        "_source_type": "tag",
-                        "source": [{"step": "step6_mining", "field": "tags", "role": ",".join(r.get("tags", []))}],
-                    })
-
-        logger.info(f"[{self.name}] Tags->stocks: {len(all_candidates)} candidates from {len(batches)} batches")
-        return all_candidates
-
-    # ═══ 公司阶段判定 + 指标 ═══════════════════════
-
-    @staticmethod
-    def _get_stage_indicators(stage: str) -> dict:
-        return {
-            "startup":    {"primary": ["burn_rate_months", "rd_intensity", "rd_to_opex", "contract_liability_yoy"],
-                           "note": "研发期: 关注现金跑道和研发投入效率, 财务阈值大幅放宽"},
-            "inflection": {"primary": ["gross_margin_pct", "gross_margin_trend", "revenue_yoy", "revenue_acceleration",
-                                        "rd_to_revenue_trend", "contract_liability_yoy", "profit_turnaround", "revenue_qoq"],
-                           "note": "拐点期: '研发→收益'验证窗口, 4个真拐点信号(毛利率上升+合同负债爆发+研发费率下降+营收加速)"},
-            "growth":     {"primary": ["roiic", "roic", "gross_margin_trend", "operating_leverage", "revenue_yoy"],
-                           "note": "成长期: 验证扩张质量, ROIIC应>当前ROIC"},
-            "mature":     {"primary": ["roic", "roic_stability", "ocf_health", "gross_margin_pct", "operating_margin_stability",
-                                        "working_capital_efficiency", "inventory_revenue_ratio"],
-                           "note": "成熟期: 验证护城河是否还在, 利润稳定性+现金回报率"},
-            "decline":    {"primary": ["revenue_yoy", "ocf_health", "gross_margin_trend", "inventory_revenue_ratio"],
-                           "note": "衰退期: 关注收入下滑速度和现金流退化"},
-        }.get(stage, {"primary": [], "note": "未知阶段"})
-
-    # ═══ Prompt: 六维权力画像 (增强版) ═════════════
-
-    def _build_moat_prompt(self, name, code, industry, sources, search_data,
-                            node_context=None, roic=None) -> str:
-        source_str = ", ".join(
-            f"{s['step']}/{s['field']}" + (f"({s['role']})" if s.get("role") else "")
-            for s in sources) if sources else ""
-
-        search_summary = ""
-        for sd in search_data:
-            search_summary += f"\n### {sd['query']}\n"
-            for r in sd["results"][:3]:
-                search_summary += f"  - {r['title']}: {r['snippet'][:150]}\n"
-
-        # 节点上下文 (可选)
-        node_block = ""
-        if node_context:
-            node_block = f"""
-## 该候选所在瓶颈环节背景 (Step 3)
-- 环节: {node_context.get('name', '')}
-- 利润池: {node_context.get('profit_pool', '?')}  | 市场量级: {node_context.get('value_magnitude', '?')}
-- 供给刚性: {node_context.get('supply_rigidity', '?')}
-- 国产替代率: {node_context.get('china_substitution_rate', '?')}
-- 竞争结构: {node_context.get('competitive_structure', '?')}
-- 瓶颈描述: {node_context.get('bottleneck_narrative', '')[:200]}
-"""
-
-        roic_block = f"\n- ROIC(投入资本回报率): {roic}%" if roic is not None else ""
-
-        return f"""你是产业竞争分析专家。评估 {name}({code}) 在 {industry} 赛道中的六维产业权力。
-
-上游来源: {source_str}{node_block}
-
-## 搜索证据
-{search_summary}
-
-## 财务参考{roic_block}
-
-## 六维权力判断 (每维: strong/medium/weak/emerging, 必须基于搜索证据, 禁止空想)
-
-{{
-  "moat_profile": {{
-    "position_power": "strong/medium/weak/emerging",
-    "position_evidence": ["证据: 是否产业链必经节点? 客户能否绕过?"],
-    "pricing_power": "strong/medium/weak/emerging",
-    "pricing_evidence": ["证据: 能否涨价? 毛利率趋势? 占客户成本比例?"],
-    "expansion_power": "strong/medium/weak/emerging",
-    "expansion_evidence": ["证据: 产能能否扩张? 在建工程? 设备锁定?"],
-    "certification_power": "strong/medium/weak/emerging",
-    "certification_evidence": ["证据: 客户认证周期? 切换成本? 已进入哪些大客户?"],
-    "resource_power": "strong/medium/weak/emerging",
-    "resource_evidence": ["证据: 掌握稀缺资源/产能/人才/配额?"],
-    "cognitive_power": "strong/medium/weak/emerging",
-    "cognitive_evidence": ["证据: 是否比市场更早押对技术路线/提前布局?"]
-  }},
-  "profit_capture_thesis": {{
-    "why_it_captures_profit": ["为什么这家公司能把产业景气变成自己的利润"],
-    "future_profit_driver": ["未来利润增长的核心驱动力"]
-  }},
-  "growth_asymmetry": {{
-    "growth_type": "nonlinear_breakout/inflection_point/linear/cyclical/unknown",
-    "triggers": ["催化剂事件"],
-    "current_stage": "当前所处阶段"
-  }},
-  "thesis_breakers": ["什么条件会推翻以上判断"]
-}}
-
-## 规则
-- 每维至少1条 evidence, 没有证据→标记 weak/emerging 并说明"搜索证据不足"
-- 禁止输出股票代码以外的投资建议
-- 不要编造没有搜索证据支撑的判断"""
-
-    def _build_competitive_analysis_prompt(self, name, code, industry, sources,
-                                            node_context=None) -> str:
-        """自由竞争分析 prompt — LLM 自主定义分析维度 + 自选财务指标 + 自搜市场信息"""
-        # str() 保护: 防止非 str 类型触发 __format__ 异常 (Python 3.7 已知问题)
-        name = str(name) if name is not None else ""
-        code = str(code) if code is not None else ""
-        industry = str(industry) if industry is not None else ""
-
-        source_str = ", ".join(
-            str(s.get('step', '')) + "/" + str(s.get('field', '')) +
-            ("(" + str(s.get('role', '')) + ")" if s.get("role") else "")
-            for s in sources) if sources else ""
-
-        node_block = ""
-        if node_context:
-            pn = str(node_context.get("name", ""))
-            pp = str(node_context.get("profit_pool", "?"))
-            vm = str(node_context.get("value_magnitude", "?"))
-            sr = str(node_context.get("supply_rigidity", "?"))
-            csr = str(node_context.get("china_substitution_rate", "?"))
-            cs = str(node_context.get("competitive_structure", "?"))
-            bn = str((node_context.get("bottleneck_narrative", "") or "")[:200])
-            gl = node_context.get("global_leaders", [])
-            gl_str = ", ".join(str(g) for g in gl[:5]) if gl else ""
-            _lines2 = [
-                "",
-                "## 该候选所在产业链环节背景 (Step 2-5)",
-                f"- 环节: {pn}",
-                f"- 利润池: {pp}  | 市场量级: {vm}",
-                f"- 供给刚性: {sr}",
-                f"- 国产替代率: {csr}",
-                f"- 竞争结构: {cs}",
-                f"- 全球领导者: {gl_str}",
-                f"- 瓶颈描述: {bn}",
-            ]
-            node_block = "\n".join(_lines2)
-
-        # 无 f-string 拼接 (Python 3.7 f-string 特定 bug 规避)
-        _lines = [
-            f"分析 {name}({code}) 在 {industry} 行业中的竞争地位和利润捕获能力。",
-            "",
-            f"## 产业背景{node_block}",
-            f"上游来源: {source_str}",
-            "",
-            "## 可用工具",
-            "主动使用以下工具获取实时数据:",
-            "",
-            "1. **query_financial_data(code, indicators=[...], raw_fields=[...])**",
-            "   提供 30+ 财务指标和 20+ 原始财报字段。数据字典见下方 FINANCIAL_CATALOG。",
-            "   使用场景举例: 毛利率趋势、营收增长、研发投入、现金流质量、资产负债结构等",
-            "",
-            "2. **web_search(query, num=5)**",
-            "   搜索网络获取行业/公司实时信息。",
-            "   使用场景举例: 行业地位、市场份额、客户关系、技术路线、认证壁垒、产能布局等",
-            "",
-            "{FINANCIAL_CATALOG}",
-            "",
-            "## 可选参考 (个股级分析角度)",
-            '以下两条是上游步骤只覆盖到环节级、需要在本步骤深化到个股级的分析角度，**不是预设要求**：',
-            "",
-            "1. **个股关注度差 (Stock-Level Attention Gap)** —",
-            "   同一个瓶颈环节的不同 A 股标的，机构关注度和定价效率可能天差地别。",
-            "   这个标的是被充分研究的，还是被市场忽略的？",
-            "",
-            "2. **公司级价值捕获验证 (Firm-Level Value Capture)** —",
-            "   Step 3 指出了该环节利润池规模和定价权分布，但具体这家公司：",
-            "   - 在环节利润池中占多少？份额在扩大还是缩小？",
-            "   - 有没有定价权？毛利率趋势如何？",
-            "   - 客户锁定程度多深？切换成本多高？",
-            "",
-            "",
-            "## 分析要求",
-            f"- **不要使用任何预设的分析框架或维度**。根据 {industry} 行业的竞争特征, 自主定义最能反映公司竞争力的分析维度",
-            "- 每个维度的判断必须有来自 tool 调用的真实数据作为证据",
-            "- 先查数据再判断, 不要先判断再勉强找证据支持",
-            "- 如有需要, 可以自己从原始字段计算财务比率",
-            "",
-            "## 输出结构",
-            '{',
-            '  "company": { "code": "' + code + '", "name": "' + name + '" },',
-            f'  "industry_context": "对 {industry} 行业竞争特征的高度概括 (为什么这个行业赚/不赚钱)",',
-            '  "analysis_dimensions": [',
-            '    {',
-            '      "dimension": "自行定义的维度名称 (如: 客户锁定深度、技术迭代速度、供应链韧性...)",',
-            '      "rating": "strong/medium/weak/emerging",',
-            '      "evidence": ["来自 tool 调用的证据1", "证据2"],',
-            '      "reasoning": "为什么这个维度在这个行业重要"',
-            '    }',
-            '  ],',
-            '  "lifecycle_stage": "startup | inflection | growth | mature | cyclical_bottom | cyclical_decline",',
-            '  "stage_reasoning": "一句话说明判定依据 (如: 营收增速30%+且ROIC拐点向上, 判定为 inflection)",',
-            '  "category_suggestion": "current_strong | future_strong | watchlist",',
-            '  "category_reasoning": "分类理由",',
-            '  "profit_capture_thesis": "这家公司在这个产业链环节中, 靠什么机制把产业景气转化为自身利润",',
-            '  "thesis_breakers": ["什么条件下会推翻以上判断"],',
-            '  "watch_events": [',
-            '    {',
-            '      "event": "事件描述 (如: XX客户认证通过)",',
-            '      "trigger_condition": "触发信号 (如: 客户财报提及认证进度)",',
-            '      "expected_timeframe": "预期时间窗口 (如: 2026-Q3)",',
-            '      "event_type": "认证突破 | 产能释放 | 客户突破 | 政策落地 | 技术迭代"',
-            '    }',
-            '  ],',
-            '  "roic_note": "如查询了 ROIC/ROIIC 等资本回报率数据, 在此注明关键结论"',
-            '}',
-        ]
-        return "\n".join(_lines)
-
     # ═══ 工具 ═══════════════════════════════════════
 
     def _empty_result(self, industry, filtered=None, cycle_position="", gate_mode="growth"):

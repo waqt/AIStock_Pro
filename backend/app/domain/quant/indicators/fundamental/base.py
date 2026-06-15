@@ -29,6 +29,9 @@ class FinancialIndicator:
     category: str = "fundamental"
     indicator_type: str = "both"    # "moat"(护城河) / "prosperity"(高景气) / "both"
     applicable_stages: list = []    # ["startup","inflection","growth","mature","decline"]
+    concepts: list = []             # 所属投资分析概念标签
+                                     # 如 ["capital_return_efficiency", "profit_quality"]
+                                     # 供投研 Pipeline 按概念分组展示，注入 LLM prompt
     params: dict = {}        # 可调参数
     output: list = []        # 输出字段名列表
     requires: list = []      # 依赖的 FinancialStatement 字段

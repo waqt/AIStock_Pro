@@ -16,6 +16,7 @@ const UI_COMPONENTS = {
             { id: 'research', icon: 'fas fa-brain', label: 'AI 投研', url: 'research.html',
               subs: [
                 { id: 'observations', icon: 'fas fa-eye', label: '投研观察', url: 'observations.html' },
+                { id: 'graph', icon: 'fas fa-project-diagram', label: '产业图谱', url: 'graph.html' },
               ]
             },
             { id: 'quant', icon: 'fas fa-chart-line', label: '量化决策', url: 'quant.html',

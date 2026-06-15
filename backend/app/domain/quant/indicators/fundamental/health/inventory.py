@@ -11,6 +11,7 @@ class InventoryIndicator(FinancialIndicator):
     category = "health"
     indicator_type = "both"
     applicable_stages = ["growth", "mature"]
+    concepts = ["financial_health"]
     params = {}
     output = ["inventory_revenue_ratio", "inventory_yoy"]
     requires = ["inventory", "revenue"]

@@ -5,11 +5,11 @@
 当前作为向后兼容的透传层保留。
 """
 import warnings
-from app.domain.quant.indicators.fundamental._roic_core import adjust_rd_capitalization
+from app.domain.quant.indicators.fundamental.profitability._roic_utils import adjust_rd_capitalization
 
 warnings.warn(
     "framework/finance/rd_adjustment.py is deprecated. "
-    "Use domain/quant/indicators/fundamental/_roic_core instead.",
+    "Use domain/quant/indicators/fundamental/profitability/_roic_utils instead.",
     DeprecationWarning, stacklevel=2,
 )
 

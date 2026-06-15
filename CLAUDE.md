@@ -64,6 +64,11 @@ backend/app/
 │   │   │   ├── report_store.py    #   研报 JSON 文件持久化
 │   │   │   └── stock_auditor.py   #   ★ 股票审计工具 (LLM自主规划, 替代旧Step7/8)
 │   │   └── api/routes.py          #   /api/research/* + /api/research/pipeline/*
+│   ├── graph/                     # ★ 产业知识图谱 (Phase 1 MVP)
+│   │   ├── store.py               #   GraphStore — SQLite 图谱持久化 (thread-local WAL)
+│   │   ├── bridge.py              #   GraphBridge — notify() + parser 注册器 (最小耦合)
+│   │   ├── builder.py             #   parse_step3 — checkpoint JSON → nodes/edges (确定性, 无LLM)
+│   │   └── api/routes.py          #   /api/graph/* (runs/parsers/{run_id}/node)
 │   └── quant/                     # ★ 量化模块 V5.6
 │       ├── indicators/            #   16个算子 (每文件一算子, @register 自注册)
 │       │   ├── base.py            #   BaseIndicator + @register
@@ -93,10 +98,12 @@ backend/app/
 ├── indicators.html                # ★ 指标数据 (全景卡片 + 时间序列图 + 排名)
 ├── data.html                      # 数据中心 (6 Tab)
 ├── import.html                    # 智能导入
+├── graph.html                     # ★ 产业知识图谱 (ECharts force-directed)
 ├── js/
 │   ├── framework/
 │   │   ├── api.js / modal.js / task_monitor.js / markdown.js
 │   │   └── indicator_compute.js   # ★ 指标计算公共组件
+│   ├── graph.js                    # ★ 产业图谱 ECharts force-directed 渲染
 │   ├── ui.js                      # 侧边栏+顶栏
 │   ├── common.js                  # escHtml / initCommon
 │   └── data-tabs/                 # 数据中心 Tab 模块
@@ -111,7 +118,8 @@ backend/data/                      # ★ 数据文件 (单目录统一管理)
 ├── indicators.db                  #   SQLite 指标库 (宽表, 52列)
 ├── macro_report.json              #   宏观周期报告缓存
 ├── pipeline_checkpoints/          #   投研 Pipeline 检查点
-└── research_reports/              #   研报 JSON 输出
+├── research_reports/              #   研报 JSON 输出
+└── graph.db                       #   SQLite 产业图谱库 (graph domain)
 ```
 
 ## 数据同步架构 — 四层设计
@@ -355,6 +363,7 @@ V3.0 遗留 (向后兼容): SupplyChainAnalyst, IndustryAnalyst, ResearchCoordin
 | Trace | framework/pipeline/trace.py | TraceContext: 搜索/LLM/DB 全链路记录 |
 | Glossary | framework/pipeline/glossary.py | 16类跨Step枚举定义, prompt注入 |
 | ObservationStore | domain/observation/ | ★ 投研观察框架: 提取/存储/查询/前端 badge |
+| GraphStore + Bridge | domain/graph/ | ★ 产业知识图谱: GraphStore(SQLite) + GraphBridge(notify注册器) + Builder(checkpoint解析) |
 | Valuation | framework/finance/valuation.py | PE/PB/PS/EV_EBITDA/PEG/FCF纯函数 |
 | Model Map | framework/finance/model_map.py | 资产类型→估值模型映射 |
 | Task Engine | framework/tasks/engine.py V5.1 | 按类别信号量+去重+异步执行 |
@@ -542,6 +551,18 @@ from app.framework.finance import (
 # 星标收藏: PUT /api/research/pipeline/{run_id}/star
 # 删除项目: DELETE /api/research/pipeline/{run_id}
 
+# 产业知识图谱 (graph domain)
+# 图运行列表: GET /api/graph/runs
+# 已注册解析器: GET /api/graph/parsers
+# 完整图谱: GET /api/graph/{run_id} — 返回 nodes + edges (ECharts force-directed)
+# 节点详情: GET /api/graph/{run_id}/node/{node_id}
+# 按类型筛选: GET /api/graph/{run_id}/nodes/{node_type}
+# 删除图谱: DELETE /api/graph/{run_id}
+# Pipeline 集成: 在 routes.py 每个 save_checkpoint() 后自动 await graph_bridge.notify()
+# 当前注册: step3_sc_hacker (Step 3 SupplyChainHacker 解析)
+
+# AI 模型路由
+
 # AI 模型路由
 from app.framework.ai.providers.deepseek import DeepSeekProvider
 provider = DeepSeekProvider()
@@ -621,3 +642,36 @@ python temp_lab/regenerate_report.py SOFC
 8. 更新 `System_Feature_Inventory.md` 和 `CLAUDE.md` (如有架构变更)
 9. `smoke_test.py` 通过 (16 API)
 10. `git commit` (见 `.claude/rules/quality-gates.md`)
+
+## 日志系统
+
+### 日志文件位置
+```
+E:\workspace\AIResearch\AIStock_Pro\logs\app_YYYY-MM-DD.log
+```
+每天一个文件, 保留 10 天, 超 500MB 自动压缩归档。
+
+### 查询方式
+```bash
+# 查看今天日志 (含 tail 追踪)
+tail -f logs/app_$(date +%F).log
+
+# 按模块筛选
+grep "\[CoreScreeningAgent\]" logs/app_2026-06-12.log
+grep "\[QuantEngine\]" logs/app_2026-06-12.log
+
+# 按级别筛选
+grep "ERROR" logs/app_2026-06-12.log
+
+# 按股票代码
+grep "301413" logs/app_2026-06-12.log
+
+# 查询异常 traceback (多行)
+grep -A 20 "ERROR.*\|Traceback" logs/app_2026-06-12.log
+
+# 查看最后 100 行
+tail -n 100 logs/app_2026-06-12.log
+```
+
+### 日志级别规范
+详见 `.claude/rules/logging-standards.md`。

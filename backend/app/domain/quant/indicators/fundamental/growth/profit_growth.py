@@ -11,6 +11,7 @@ class ProfitGrowth(FinancialIndicator):
     category = "growth"
     indicator_type = "prosperity"
     applicable_stages = ["startup", "inflection", "growth"]
+    concepts = ["growth_scissor_gap"]
     params = {}
     output = ["profit_yoy_latest", "avg_profit_yoy_4q", "profit_yoy_ttm", "profit_4q_yi"]
     requires = ["profit"]

@@ -11,6 +11,7 @@ class RevenueScale(FinancialIndicator):
     category = "profile"
     indicator_type = "both"
     applicable_stages = ["startup", "inflection", "growth", "mature"]
+    concepts = ["company_profile"]
     params = {}
     output = ["revenue_scale"]
     text_output = ["revenue_scale"]

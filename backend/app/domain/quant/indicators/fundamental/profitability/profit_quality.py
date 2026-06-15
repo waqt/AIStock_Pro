@@ -10,6 +10,7 @@ class GrossMarginTrend(FinancialIndicator):
     judgment = "rising=毛利率持续上升; stable=窄幅波动; declining=毛利率持续下降。gross_margin_chg_pp=最新季与4季前毛利率差值(百分点)。"
     category = "profitability"
     indicator_type = "moat"
+    concepts = ["profit_quality"]
     applicable_stages = ["inflection", "growth", "mature"]
     params = {}
     output = ["gross_margin_trend", "gross_margin_chg_pp"]
@@ -57,6 +58,7 @@ class RDIntensity(FinancialIndicator):
     judgment = ">15%=高(生物医药/软件行业常见); 8~15%=中高; 3~8%=中等; <3%=低。高低本身无绝对好坏,需结合行业特征和研发资本化政策综合判断。"
     category = "profitability"
     indicator_type = "moat"
+    concepts = ["profit_quality"]
     applicable_stages = ["startup", "inflection"]
     params = {}
     output = ["rd_intensity"]

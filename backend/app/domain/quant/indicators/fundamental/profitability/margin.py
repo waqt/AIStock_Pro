@@ -10,6 +10,7 @@ class MarginIndicator(FinancialIndicator):
     judgment = "毛利率>70%=高(通常对应强定价权); 50~70%=较高; 30~50%=中等; <30%=偏低。净利率>20%=高利润率。行业间差异大(消费品牌通常高,零售/大宗低),建议与同行横向对比。"
     category = "profitability"
     indicator_type = "moat"
+    concepts = ["profit_quality"]
     applicable_stages = ["inflection", "growth", "mature"]
     params = {}
     output = ["gross_margin_pct", "net_margin_pct", "operating_margin_pct"]
